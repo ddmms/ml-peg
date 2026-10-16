@@ -14,12 +14,11 @@ from ase.calculators.calculator import Calculator, all_changes
 from ase.io import write
 import numpy as np
 import pytest
-
+from test_permutation_symmetry import PairSpringCalculator
 
 from ml_peg.calcs.physicality.parity_symmetry import (
     calc_parity_symmetry as calc_module,
 )
-
 from ml_peg.calcs.physicality.parity_symmetry.calc_parity_symmetry import (
     RATTLE_SEED,
     RATTLE_STDEV,
@@ -30,9 +29,6 @@ from ml_peg.calcs.physicality.parity_symmetry.calc_parity_symmetry import (
 from ml_peg.models.mock import MockErrorCalculator
 
 ANALYSIS_MODULE = "ml_peg.analysis.physicality.parity_symmetry.analyse_parity_symmetry"
-
-
-from test_permutation_symmetry import PairSpringCalculator
 
 
 class CubicFieldCalculator(Calculator):
@@ -220,20 +216,31 @@ def test_non_equivariant_calculator_gives_expected_deltas(analysis_module):
     """Test a parity-breaking calculator gives the analytically expected changes."""
     # Run CubicFieldCalculator on a small molecule and compare get_deltas to
     # 2|E| / N (meV/atom) and max |2F| (meV/Å)
-    for struct_name in STRUCTURES:
-        struct_name = molecule("H2O")
-        deltas = analysis_module.get_deltas("cubic_field", "H2O")
+    for struct_name, struct in STRUCTURES.items():
+        deltas = analysis_module.get_deltas("cubic_field", struct_name)
         assert deltas is not None
         delta_energy, delta_forces = deltas
-        expected_energy = 2.0 * abs(CubicFieldCalculator().get_potential_energy(struct_name)) / len(struct_name)
-        expected_forces = np.max(np.abs(2.0 * CubicFieldCalculator().get_forces(struct_name)))
+        calc = CubicFieldCalculator()
+        expected_energy = 2.0 * abs(calc.get_potential_energy(struct)) / len(struct)
+        expected_forces = np.max(np.abs(2.0 * calc.get_forces(struct)))
         assert delta_energy == pytest.approx(expected_energy * 1e3, rel=1e-6)
         assert delta_forces == pytest.approx(expected_forces * 1e3, rel=1e-6)
+
 
 def test_get_deltas_missing_file_returns_none(analysis_module):
     """Test a structure without an output file returns None."""
     deltas = analysis_module.get_deltas("mock", "kürtőskalács")
     assert deltas is None
+
+
+def test_get_deltas_unreadable_file_returns_nan(analysis_module, tmp_path):
+    """Test an unreadable output file gives a failed (NaN) datum, not an error."""
+    bad_path = calc_outputs_path(tmp_path) / "mock" / "truncated.xyz"
+    bad_path.write_text("3\nnot a valid extxyz comment line\nH 0.0\n")
+    with pytest.warns(RuntimeWarning):
+        deltas = analysis_module.get_deltas("mock", "truncated")
+    assert deltas is not None
+    assert all(np.isnan(d) for d in deltas)
 
 def test_missing_model_gives_no_scores(analysis_module, monkeypatch):
     """Test a model with no outputs is given None for every metric."""

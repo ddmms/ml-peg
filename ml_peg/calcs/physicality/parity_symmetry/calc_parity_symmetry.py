@@ -129,7 +129,13 @@ STRUCTURES = {
 }
 
 
-def evaluate(calc, struct: Atoms, inverted: bool = False) -> Atoms:
+def evaluate(
+    calc,
+    struct: Atoms,
+    inverted: bool = False,
+    model_name: str = "unknown",
+    struct_name: str = "unknown",
+) -> Atoms:
     """
     Evaluate energy and forces for `struct`, storing them as info/arrays.
 
@@ -142,6 +148,10 @@ def evaluate(calc, struct: Atoms, inverted: bool = False) -> Atoms:
     inverted
         Whether `struct` is the parity-transformed (inverted, r -> -r) structure,
         rather than the original.
+    model_name
+        Name of the model, used to identify a failed evaluation.
+    struct_name
+        Name of the structure, used to identify a failed evaluation.
 
     Returns
     -------
@@ -154,7 +164,13 @@ def evaluate(calc, struct: Atoms, inverted: bool = False) -> Atoms:
         energy = struct.get_potential_energy()
         forces = struct.get_forces()
     except Exception as exc:
-        warn(f"Error calculating energy/forces: {exc} (In parity symmetry calculation)", category=RuntimeWarning, stacklevel=2)
+        warn(
+            f"Error calculating energy/forces for model {model_name}, structure "
+            f"{struct_name} (inverted={inverted}) in parity symmetry "
+            f"calculation: {exc}",
+            category=RuntimeWarning,
+            stacklevel=2,
+        )
         energy = np.nan
         forces = np.full((len(struct), 3), np.nan)
 
@@ -192,12 +208,24 @@ def test_parity_symmetry(mlip: tuple[str, Any]) -> None:
         original = struct.copy()
         original.info["charge"] = 0
         original.info["spin"] = 1
-        original = evaluate(calc, original, inverted=False)
+        original = evaluate(
+            calc,
+            original,
+            inverted=False,
+            model_name=model_name,
+            struct_name=struct_name,
+        )
 
         inverted = struct.copy()
         inverted.positions *= -1
         inverted.info["charge"] = 0
         inverted.info["spin"] = 1
-        inverted = evaluate(calc, inverted, inverted=True)
+        inverted = evaluate(
+            calc,
+            inverted,
+            inverted=True,
+            model_name=model_name,
+            struct_name=struct_name,
+        )
 
         write(write_dir / f"{struct_name}.xyz", [original, inverted])

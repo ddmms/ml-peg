@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from warnings import warn
 
 from ase.io import read
 import numpy as np
@@ -14,6 +15,7 @@ from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.physicality.permutation_symmetry.calc_permutation_symmetry import (  # noqa: E501
     STRUCTURES,
+    generate_permutations,
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -88,38 +90,58 @@ def list_deltas(model_name: str, struct_name: str) -> list[float] | None:
         Mean and max absolute energy change (meV/atom), then mean and max of the
         largest absolute force component change (meV/Å), or None if outputs are
         missing. Mean and max are taken over all permutations of the structure,
-        relative to the original.
+        relative to the original. NaN if any evaluation failed, or if the
+        outputs are unreadable or incomplete.
     """
     xyz_path = CALC_PATH / model_name / f"{struct_name}.xyz"
     if not xyz_path.exists():
         return None
 
-    frames = read(xyz_path, index=":")
-    original = next((f for f in frames if f.info["permutation_index"] == 0), None)
-    if original is None:
-        return None
-    n_atoms = len(original)
-    e0 = original.get_potential_energy()
-    f0 = original.get_forces()
+    # Unreadable, truncated or incomplete outputs are a failed datum (NaN), so
+    # _mean_max blanks the model rather than the whole analysis aborting, or
+    # the model being scored on only the surviving permutations
+    try:
+        frames = read(xyz_path, index=":")
+        indices = sorted(f.info["permutation_index"] for f in frames)
+        if struct_name in STRUCTURES:
+            n_expected = len(generate_permutations(STRUCTURES[struct_name])) + 1
+            if indices != list(range(n_expected)):
+                raise ValueError(
+                    f"expected permutation indices 0-{n_expected - 1}, "
+                    f"found {indices}"
+                )
+        original = next(f for f in frames if f.info["permutation_index"] == 0)
+        n_atoms = len(original)
+        e0 = original.get_potential_energy()
+        f0 = original.get_forces()
 
-    energy_deltas = []
-    force_deltas = []
-    for frame in frames:
-        if frame.info["permutation_index"] == 0:
-            continue
-        # Atom i of the permuted frame is atom perm[i] of the original, so
-        # scatter its forces back into the original atom order before comparing
-        perm = frame.arrays["permutation"]
-        forces = np.empty_like(f0)
-        forces[perm] = frame.get_forces()
+        energy_deltas = []
+        force_deltas = []
+        for frame in frames:
+            if frame.info["permutation_index"] == 0:
+                continue
+            # Atom i of the permuted frame is atom perm[i] of the original, so
+            # scatter its forces back into the original atom order before
+            # comparing
+            perm = frame.arrays["permutation"]
+            forces = np.empty_like(f0)
+            forces[perm] = frame.get_forces()
 
-        delta_energy = abs(frame.get_potential_energy() - e0) / n_atoms
-        delta_forces = np.abs(forces - f0).max()
-        energy_deltas.append(delta_energy * EV_TO_MEV)
-        force_deltas.append(delta_forces * EV_TO_MEV)
+            delta_energy = abs(frame.get_potential_energy() - e0) / n_atoms
+            delta_forces = np.abs(forces - f0).max()
+            energy_deltas.append(delta_energy * EV_TO_MEV)
+            force_deltas.append(delta_forces * EV_TO_MEV)
 
-    if not energy_deltas:
-        return None
+        if not energy_deltas:
+            raise ValueError("no permuted frames found")
+    except Exception as exc:
+        warn(
+            f"Failed to read permutation symmetry outputs for model {model_name}, "
+            f"structure {struct_name}: {exc}",
+            category=RuntimeWarning,
+            stacklevel=2,
+        )
+        return [np.nan] * 4
 
     # NaN from a failed evaluation propagates, so _mean_max later blanks the model
     return [

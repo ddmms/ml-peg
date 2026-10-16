@@ -298,8 +298,8 @@ def test_list_deltas_missing_file_returns_none(analysis_module):
     assert analysis_module.list_deltas("not_a_model", "H2O") is None
 
 
-def test_list_deltas_missing_original_returns_none(analysis_module):
-    """Test an output file without the unpermuted frame returns None."""
+def test_list_deltas_missing_original_returns_nan(analysis_module):
+    """Test an output file without the unpermuted frame is a failed (NaN) datum."""
     water = molecule("H2O")
     perm = np.array([0, 2, 1])
     permuted = evaluate(
@@ -309,7 +309,43 @@ def test_list_deltas_missing_original_returns_none(analysis_module):
     out_dir.mkdir(parents=True)
     write(out_dir / "H2O.xyz", [permuted])
 
-    assert analysis_module.list_deltas("partial", "H2O") is None
+    with pytest.warns(RuntimeWarning):
+        deltas = analysis_module.list_deltas("partial", "H2O")
+    assert all(np.isnan(d) for d in deltas)
+
+
+def test_list_deltas_missing_permutation_returns_nan(analysis_module):
+    """Test an output file missing a permuted frame is a failed (NaN) datum."""
+    methane = molecule("CH4")
+    original = evaluate(
+        PairSpringCalculator(),
+        methane.copy(),
+        permutation_index=0,
+        permutation=np.arange(len(methane)),
+    )
+    # Only the first of the expected permutations is written
+    perm = generate_permutations(STRUCTURES["CH4"])[0]
+    permuted = evaluate(
+        PairSpringCalculator(), methane[perm], permutation_index=1, permutation=perm
+    )
+    out_dir = analysis_module.CALC_PATH / "partial"
+    out_dir.mkdir(parents=True)
+    write(out_dir / "CH4.xyz", [original, permuted])
+
+    with pytest.warns(RuntimeWarning):
+        deltas = analysis_module.list_deltas("partial", "CH4")
+    assert all(np.isnan(d) for d in deltas)
+
+
+def test_list_deltas_unreadable_file_returns_nan(analysis_module):
+    """Test an unreadable output file is a failed (NaN) datum, not an error."""
+    out_dir = analysis_module.CALC_PATH / "partial"
+    out_dir.mkdir(parents=True)
+    (out_dir / "H2O.xyz").write_text("3\nnot a valid extxyz comment line\nH 0.0\n")
+
+    with pytest.warns(RuntimeWarning):
+        deltas = analysis_module.list_deltas("partial", "H2O")
+    assert all(np.isnan(d) for d in deltas)
 
 
 def test_mean_max_requires_complete_set(analysis_module):
