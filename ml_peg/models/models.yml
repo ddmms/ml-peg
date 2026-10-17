@@ -1,3 +1,25 @@
+aimnet2:
+  module: aimnet.calculators
+  class_name: AIMNet2ASE
+  datasets: [AIMNet2]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M+D3/def2-TZVPP
+  kwargs:
+    # Alias for ensemble member 0 (aimnet2-wb97m-d3_0), not the 4-member ensemble average.
+    model: "aimnet2"
+
+aimnet2-2025:
+  module: aimnet.calculators
+  class_name: AIMNet2ASE
+  datasets: [AIMNet2, AIMNet2-2025]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: B97-3c
+  kwargs:
+    # Alias for ensemble member 0 (aimnet2-b973c-2025-d3_0), not the 4-member ensemble average.
+    model: "aimnet2-2025"
+
 mace-mp-0a:
   module: mace.calculators
   class_name: mace_mp

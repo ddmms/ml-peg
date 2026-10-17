@@ -1502,6 +1502,44 @@
         "U",
         "Np"
       ]
+    },
+    "AIMNet2": {
+      "number": 14,
+      "supported": [
+        "H",
+        "B",
+        "C",
+        "N",
+        "O",
+        "F",
+        "Si",
+        "P",
+        "S",
+        "Cl",
+        "As",
+        "Se",
+        "Br",
+        "I"
+      ]
+    },
+    "AIMNet2-2025": {
+      "number": 14,
+      "supported": [
+        "H",
+        "B",
+        "C",
+        "N",
+        "O",
+        "F",
+        "Si",
+        "P",
+        "S",
+        "Cl",
+        "As",
+        "Se",
+        "Br",
+        "I"
+      ]
     }
   }
 }

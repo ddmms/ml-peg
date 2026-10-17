@@ -526,3 +526,77 @@ sevennet-omni-mpa
     kwargs:
       model: "7net-omni"
       modal: "mpa"
+
+AIMNet2
+=======
+
+.. TODO: switch to ``--extra aimnet`` once an aimnet release after 0.2.0 includes
+   aimnetcentral PR #127 (see the aimnet entry in pyproject.toml [dependency-groups]).
+
+Install these models (MIT licence) with ``uv sync --group aimnet``. Installing
+with pip is not currently supported: the AIMNet2 calculator fix for reused
+calculators silently dropping neighbours is not yet in a PyPI release of
+``aimnet``, so ML-PEG pins it to a git commit that only uv applies.
+Both models evaluate their network in float32, with energies accumulated in
+float64 (full float64 evaluation is not supported). They include their own
+DFT-D3 correction, and cover H, B, C, N, O, F, Si, P, S, Cl, As, Se, Br and
+I. They are closed-shell models: ``atoms.info["charge"]`` is used, but spin
+multiplicity is ignored. Periodic systems automatically use DSF long-range
+Coulomb by default, though note that "All models were trained on isolated
+molecules and molecular clusters. They are not parameterized for bulk materials,
+extended surfaces, or metallic systems." See the AIMNet2
+`model documentation <https://isayevlab.github.io/aimnetcentral/models/guide/>`_.
+
+Each AIMNet2 model is released as an ensemble of four independently trained
+members. ML-PEG benchmarks **only member 0 by default**, not the ensemble average.
+This matches the aimnetcentral default: the ``aimnet2`` and ``aimnet2-2025`` aliases
+resolve to ``aimnet2-wb97m-d3_0`` and ``aimnet2-b973c-2025-d3_0`` respectively, and
+the `model selection guide <https://isayevlab.github.io/aimnetcentral/models/guide/>`_
+recommends a single member for production use, (all members have very similar accuracy
+on average). aimnetcentral does not provide an ensemble-averaging calculator.
+To benchmark a different member, set ``kwargs.model`` to its full name, e.g.
+``aimnet2-wb97m-d3_2`` (``_0`` to ``_3`` are valid).
+
+``aimnet2`` is described in Anstine, Zubatyuk and Isayev, *Chem. Sci.*, 2025, **16**,
+10228–10244, `doi:10.1039/d4sc08572h <https://doi.org/10.1039/d4sc08572h>`_.
+``aimnet2-2025`` is described in Nayal, Cho and Isayev, *Mach. Learn.: Sci. Technol.*,
+2026, **7**, 055033, `doi:10.1088/2632-2153/aea39f <https://doi.org/10.1088/2632-2153/aea39f>`_.
+
+Both training sets are public (MIT licence). ``AIMNet2`` is the original set of
+about 20M molecular structures, released in two versions (ωB97M/def2-TZVPP for
+``aimnet2`` and B97-3c), `doi:10.1184/R1/27629937.v2
+<https://doi.org/10.1184/R1/27629937.v2>`_. ``AIMNet2-2025`` is a continually
+pretrained version of the AIMNet2(2023) model (trained on the B97-3c version of
+the ``AIMNet2`` dataset), trained with an additional 3.8M structures at B97-3c
+focused on non-covalent interactions,
+`doi:10.1184/R1/31141138.v1 <https://doi.org/10.1184/R1/31141138.v1>`_.
+
+aimnet2
+-------
+
+.. code-block:: yaml
+
+   aimnet2:
+     module: aimnet.calculators
+     class_name: AIMNet2ASE
+     datasets: [AIMNet2]
+     device: "auto"
+     trained_on_dispersion: true
+     level_of_theory: ωB97M+D3/def2-TZVPP
+     kwargs:
+       model: "aimnet2"
+
+aimnet2-2025
+------------
+
+.. code-block:: yaml
+
+   aimnet2-2025:
+     module: aimnet.calculators
+     class_name: AIMNet2ASE
+     datasets: [AIMNet2, AIMNet2-2025]
+     device: "auto"
+     trained_on_dispersion: true
+     level_of_theory: B97-3c
+     kwargs:
+       model: "aimnet2-2025"
