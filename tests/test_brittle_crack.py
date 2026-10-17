@@ -606,3 +606,124 @@ def test_an_ordering_output_without_model_energies_gives_nan_with_a_warning():
     with pytest.warns(UserWarning, match="mymodel .*no model energy"):
         out = an.ordering_metrics({name: model}, {}, {name: ref}, model="mymodel")
     assert all(np.isnan(v) for v in out.values())
+
+
+class _SWRecorder(Calculator):
+    """Stillinger-Weber (with stress) recording ``charge`` and ``spin`` of each call."""
+
+    implemented_properties = ["energy", "free_energy", "forces", "stress"]
+
+    def __init__(self) -> None:
+        """Start with no recorded structures."""
+        super().__init__()
+        self.seen = set()
+        self.sw = _sw()
+
+    def calculate(
+        self, atoms=None, properties=("energy",), system_changes=all_changes
+    ) -> None:
+        """
+        Record the structure's charge and spin, then evaluate SW.
+
+        Parameters
+        ----------
+        atoms
+            Structure.
+        properties
+            Requested properties.
+        system_changes
+            Changes since the last call.
+        """
+        super().calculate(atoms, properties, system_changes)
+        self.seen.add((atoms.info.get("charge"), atoms.info.get("spin")))
+        a = atoms.copy()
+        a.calc = self.sw
+        self.results = {
+            "energy": a.get_potential_energy(),
+            "free_energy": a.get_potential_energy(),
+            "forces": a.get_forces(),
+            "stress": a.get_stress(),
+        }
+
+
+def test_material_constants_give_every_structure_charge_and_spin():
+    """The lattice and elastic-constant cells carry charge and spin from the start."""
+    rec = _SWRecorder()
+    c = ct.material_constants(rec)
+    assert rec.seen == {(0, 1)}
+    assert c["a0"] == pytest.approx(5.43095, abs=1e-4)
+
+
+def test_an_unconverged_lattice_relaxation_raises(monkeypatch):
+    """A lattice relaxation that hits its step limit raises (failed constants)."""
+    from ase.optimize import LBFGS
+
+    monkeypatch.setattr(LBFGS, "run", lambda self, **kwargs: False)
+    with pytest.raises(RuntimeError, match="did not converge"):
+        ct.material_constants(_sw())
+
+
+def test_the_elastic_constant_relaxations_have_a_step_limit(monkeypatch):
+    """Every optimiser run in material_constants is given a finite step limit."""
+    from ase.optimize import LBFGS
+
+    calls = []
+    run = LBFGS.run
+
+    def spy(self, **kwargs):
+        """
+        Record the run's keyword arguments, then run.
+
+        Parameters
+        ----------
+        **kwargs
+            Optimiser run arguments.
+
+        Returns
+        -------
+        bool
+            Whether the run converged.
+        """
+        calls.append(kwargs)
+        return run(self, **kwargs)
+
+    monkeypatch.setattr(LBFGS, "run", spy)
+    ct.material_constants(_sw())
+    assert calls and all(0 < k.get("steps", np.inf) < np.inf for k in calls)
+
+
+def test_spin_multiplicity_follows_the_electron_count():
+    """Even electron count: singlet; odd ((110)[1-10], 96 Si + 39 H): doublet."""
+    from ase import Atoms
+
+    assert ct.neutral_lowest_spin(Atoms("Si2")).info == {"charge": 0, "spin": 1}
+    assert ct.neutral_lowest_spin(Atoms("SiH")).info == {"charge": 0, "spin": 2}
+    cl = ct.reference_cluster(ct.load_cases()["Si_110_110"])
+    assert ct.neutral_lowest_spin(cl).info["spin"] == 2
+
+
+def test_the_110_crack_is_traced_as_a_doublet():
+    """The odd-electron (110)[1-10] cluster is evaluated with spin 2."""
+    case = ct.load_cases()["Si_110_110"]
+    rec = _InfoRecorder()
+    consts = {"a0": 5.43095, "C11": 0.945, "C12": 0.477, "C44": 0.352, "gamma": 0.104}
+    ct.trace_case(case, rec, consts, max_points=2)
+    assert rec.seen == {(0, 2)}
+
+
+def test_case_outputs_are_skipped_for_unscored_cases_and_plot_errors(
+    tmp_path, monkeypatch
+):
+    """No figure or trace for a case that failed scoring; a plot error only warns."""
+    from ase import Atoms
+
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    monkeypatch.setattr(an, "OUT_PATH", tmp_path)
+    bad = [Atoms("Si2", positions=[[0, 0, 0], [2.3, 0, 0]])]  # no K_over_KG
+    nan_errs = dict.fromkeys(an.FAILED_KEYS, np.nan)
+    assert not an.write_case_outputs("m", "Si_111_110", bad, bad, nan_errs)
+    assert not list(tmp_path.rglob("*"))
+    ok_errs = {**nan_errs, "coverage": 0.5}
+    with pytest.warns(UserWarning, match="m Si_111_110: no plot"):
+        assert not an.write_case_outputs("m", "Si_111_110", bad, bad, ok_errs)

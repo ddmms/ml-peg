@@ -8,7 +8,7 @@ metrics:
   Si (110)[1-10] E error:
     good: 0.0952
     bad: 0.2856
-    unit: "2 gamma L b"
+    unit: "2γLb"
     tooltip: "RMS error of the bond-breaking energy along the path (the elastic term c k^2 uses the DFT reference's c~ for every model), in units of 2 gamma L b_bulk; coverage-padded."
     level_of_theory: PBE
   Si (110)[1-10] D error:
@@ -26,7 +26,7 @@ metrics:
   Si (110)[001] E error:
     good: 0.0952
     bad: 0.2856
-    unit: "2 gamma L b"
+    unit: "2γLb"
     tooltip: "RMS error of the bond-breaking energy along the path (the elastic term c k^2 uses the DFT reference's c~ for every model), in units of 2 gamma L b_bulk; coverage-padded."
     level_of_theory: PBE
   Si (110)[001] D error:
@@ -44,7 +44,7 @@ metrics:
   Si (111)[1-10] E error:
     good: 0.0952
     bad: 0.2856
-    unit: "2 gamma L b"
+    unit: "2γLb"
     tooltip: "RMS error of the bond-breaking energy along the path (the elastic term c k^2 uses the DFT reference's c~ for every model), in units of 2 gamma L b_bulk; coverage-padded."
     level_of_theory: PBE
   Si (111)[1-10] D error:

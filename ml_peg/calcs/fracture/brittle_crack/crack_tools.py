@@ -77,7 +77,7 @@ def ordering_energies(frames: list[Atoms], calc) -> list[Atoms]:
     """
     out = []
     for frame in frames:
-        atoms = neutral_singlet(frame.copy())
+        atoms = neutral_lowest_spin(frame.copy())
         atoms.calc = calc
         atoms.info["model_energy"] = float(atoms.get_potential_energy())
         atoms.calc = None
@@ -85,9 +85,13 @@ def ordering_energies(frames: list[Atoms], calc) -> list[Atoms]:
     return out
 
 
-def neutral_singlet(atoms: Atoms) -> Atoms:
+def neutral_lowest_spin(atoms: Atoms) -> Atoms:
     """
-    Mark a structure as neutral and spin singlet for the model.
+    Mark a structure as neutral and in its lowest spin state for the model.
+
+    The multiplicity is 1 for an even electron count and 2 for an odd one, as the DFT
+    references: the (110)[1-10] cluster (96 Si, 39 H) is a doublet; the other clusters,
+    bulk and slabs have no net moment.
 
     Parameters
     ----------
@@ -97,11 +101,16 @@ def neutral_singlet(atoms: Atoms) -> Atoms:
     Returns
     -------
     Atoms
-        The same structure, with info ``charge`` 0 and ``spin`` 1.
+        The same structure, with info ``charge`` 0 and ``spin`` (multiplicity) 1 or 2.
     """
     atoms.info["charge"] = 0
-    atoms.info["spin"] = 1
+    atoms.info["spin"] = 1 + int(atoms.numbers.sum()) % 2
     return atoms
+
+
+# step limit of the bulk relaxations (a model that cannot relax an 8-atom cell in this
+# many steps fails the constants instead of running on)
+MAX_STEPS = 500
 
 
 def material_constants(calc, symbol: str = "Si") -> dict:
@@ -121,13 +130,15 @@ def material_constants(calc, symbol: str = "Si") -> dict:
         Lattice constant ``a0`` (A) and ``C11``, ``C12``, ``C44`` (eV/A^3).
     """
     from ase.build import bulk
+    from ase.filters import StrainFilter
     from ase.optimize import LBFGS
-    from matscipy.dislocation import get_elastic_constants
     from matscipy.elasticity import fit_elastic_constants
 
-    a0, *_ = get_elastic_constants(calculator=calc, symbol=symbol, verbose=False)
-    cell = neutral_singlet(bulk(symbol, "diamond", a=a0, cubic=True))
+    cell = neutral_lowest_spin(bulk(symbol, "diamond", cubic=True))
     cell.calc = calc
+    if not LBFGS(StrainFilter(cell), logfile=None).run(fmax=1e-5, steps=MAX_STEPS):
+        raise RuntimeError(f"lattice relaxation did not converge in {MAX_STEPS} steps")
+    a0 = float(cell.cell.lengths()[0])
     c, _ = fit_elastic_constants(
         cell,
         symmetry="cubic",
@@ -135,6 +146,7 @@ def material_constants(calc, symbol: str = "Si") -> dict:
         N_steps=5,
         optimizer=LBFGS,
         fmax=1e-6,
+        steps=MAX_STEPS,
         verbose=False,
     )
     return {
@@ -178,7 +190,9 @@ def cleavage_energy(calc, a0: float, surface, front, symbol: str = "Si") -> floa
     from ase.optimize import LBFGS
     from matscipy.fracture_mechanics.clusters import diamond
 
-    slab = neutral_singlet(diamond(symbol, a0, [2, 6, 1], list(surface), list(front)))
+    slab = neutral_lowest_spin(
+        diamond(symbol, a0, [2, 6, 1], list(surface), list(front))
+    )
     slab.set_pbc(True)
     slab.wrap()
     slab.calc = calc
@@ -310,7 +324,7 @@ def model_problem(case: dict, calc, consts: dict):
     crk = crack(case, consts)
     k_g = crk.k1g(consts["gamma"])
     k0 = case["start_k"]
-    atoms = neutral_singlet(cluster_like(ref, crk, k0 * k_g, consts["a0"]))
+    atoms = neutral_lowest_spin(cluster_like(ref, crk, k0 * k_g, consts["a0"]))
     cryst = atoms.copy()
     cryst.positions = atoms.arrays["reference"]
     regions_from_groups(cryst)

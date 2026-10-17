@@ -494,6 +494,45 @@ def _write_plot(model: str, name: str, ref_frames, model_frames) -> None:
     fig.write_json(path)
 
 
+def write_case_outputs(model: str, name: str, ref_frames, model_frames, errs) -> bool:
+    """
+    Write a model's S-curve figure and trace on a case, if the case was scored.
+
+    A case whose scoring failed (NaN coverage: failed calculation or invalid frames)
+    gets no figure or trace; a plotting error warns instead of stopping the analysis.
+
+    Parameters
+    ----------
+    model
+        Model name.
+    name
+        Case name.
+    ref_frames
+        DFT reference frames.
+    model_frames
+        Model frames.
+    errs
+        The case's errors (``model_errors`` output).
+
+    Returns
+    -------
+    bool
+        Whether the outputs were written.
+    """
+    if not np.isfinite(errs.get("coverage", np.nan)):
+        return False
+    try:
+        _write_plot(model, name, ref_frames, model_frames)
+    except Exception as exc:  # noqa: BLE001 - any bad frame: skip this case's outputs
+        warn(f"{model} {name}: no plot ({exc})", stacklevel=2)
+        return False
+    if model_frames:
+        out = OUT_PATH / name / model
+        out.mkdir(parents=True, exist_ok=True)
+        write(out / f"{model}-trace.extxyz", model_frames)
+    return True
+
+
 def reference_structures() -> list[Path]:
     """
     Write the reference clusters of all cases, for the structure (element) info.
@@ -543,11 +582,9 @@ def case_results() -> dict[str, dict[str, dict]]:
             frames[name] = read_frames(CALC_PATH / model / f"{name}.extxyz", model)
         results[model] = model_errors(consts, frames, refs, model=model)
         for name in CASES:
-            _write_plot(model, name, refs[name], frames[name])
-            if frames[name]:
-                out = OUT_PATH / name / model
-                out.mkdir(parents=True, exist_ok=True)
-                write(out / f"{model}-trace.extxyz", frames[name])
+            write_case_outputs(
+                model, name, refs[name], frames[name], results[model][name]
+            )
     return results
 
 

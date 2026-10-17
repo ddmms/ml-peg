@@ -103,6 +103,9 @@ Reference data:
   K/K_G = 1.5036 to 0.005 eV/Å at the same level of theory as the paths (spin-polarised
   PBE, VASP, PAW, 520 eV cutoff, 0.02 eV Gaussian smearing, 17 k-points along the
   crack front).
+* Models that take a charge and spin multiplicity are given a neutral structure in its
+  lowest spin state, as the DFT references: a doublet for the odd-electron (110)[1-10]
+  cluster (96 Si, 39 H), a singlet for the other clusters, bulk and slabs.
 * Manuscript in preparation.
 
 Method:
