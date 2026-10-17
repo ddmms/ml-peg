@@ -47,11 +47,6 @@ NUM_MD_STEPS = 150_000
 TIMESTEP = 1 * units.fs
 LOG_INTERVAL = 100
 
-# The reference densities come from a study using dispersion-inclusive models,
-# and adding D3 on top of those would double-count. Set to True to apply the
-# runtime D3 correction as liquid_densities does.
-ADD_D3 = False
-
 DATA_ZIP = "battery_electrolyte_densities.zip"
 DATA_KEY = (
     "inputs/molecular_dynamics/battery_electrolyte_densities/"
@@ -217,8 +212,7 @@ def test_battery_electrolyte_densities(mlip: tuple[str, Any], system_id: int) ->
 
     model_name, model = mlip
     calc = model.get_calculator(precision="low")
-    if ADD_D3:
-        calc = model.add_d3_calculator(calc)
+    calc = model.add_d3_calculator(calc)
 
     system_name = input_xyz_path.stem
     out_dir = OUT_PATH / model_name

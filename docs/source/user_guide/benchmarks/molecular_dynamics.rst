@@ -187,6 +187,12 @@ NPT-equilibrated, which is why a shorter equilibration period is used than for
 the organic liquid densities benchmark. Densities are compared to experimental
 values at 298.2 K.
 
+As in the other ML-PEG liquid-density benchmarks, runtime D3 corrections are
+applied only to models whose registry configuration indicates that dispersion
+is not included in their training. Models already trained with dispersion,
+including UMA-OMol, receive no additional correction. Corrected models are
+labelled accordingly in the results table.
+
 Computational cost
 ------------------
 

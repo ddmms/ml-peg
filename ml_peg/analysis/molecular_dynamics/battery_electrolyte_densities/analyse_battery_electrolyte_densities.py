@@ -11,6 +11,7 @@ import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
     get_struct_info,
     load_metrics_config,
     mae,
@@ -22,6 +23,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
+D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
 
 # Must match LOG_INTERVAL * TIMESTEP in calc_battery_electrolyte_densities.py.
 LOG_INTERVAL_PS = 0.1
@@ -226,6 +228,7 @@ def get_mape(densities: dict[str, list]) -> dict[str, float]:
     filename=OUT_PATH / "battery_electrolyte_densities_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=D3_MODEL_NAMES,
 )
 def metrics(
     get_mae: dict[str, float],
