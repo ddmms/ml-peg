@@ -269,6 +269,28 @@ dpa-4-plus-omat
      kwargs:
        model: DPA4-Plus-OMat24-v20260805
 
+NEP
+===
+
+Install the calorine backend with ``uv sync --extra nep``. ``model_filename`` accepts a
+local path, a URL (downloaded once to ``~/.cache/ml_peg/models/nep``), or the shorthand
+``NEP89``. NEP calculators only support double precision.
+
+nep89
+-----
+
+.. code-block:: yaml
+
+   nep89:
+     module: nep.calculator
+     class_name: NEP
+     device: "auto"
+     trained_on_dispersion: true
+     level_of_theory: PBE
+     datasets: [NEP89]
+     kwargs:
+       model_filename: "NEP89"
+
 Orb
 ===
 

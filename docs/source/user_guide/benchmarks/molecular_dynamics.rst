@@ -313,3 +313,102 @@ Input structures:
 
 * MLIP Audit benchmark suite, InstaDeep.
   Structures derived from PDB entries 2LNF, 7OFG, and 1A7M.
+
+
+Optimised inference speed
+=========================
+
+Summary
+-------
+
+Speed and memory of MLIP developers' own optimised MD implementations. Developers
+supply an `Apptainer <https://apptainer.org>`_ container that follows ML-PEG's
+contract; ML-PEG owns the workload, runs the container, measures it from outside,
+validates its results and plots them. Containers are run with Apptainer so that
+campaigns work on rootless HPC clusters.
+
+Each campaign runs NVE molecular dynamics (velocity Verlet, 100 warm-up and 1,000
+measured steps, 1 fs timestep or 0.5 fs with hydrogen) from fixed 300 K momenta,
+on a size ladder of about 1e3 to 1e6 atoms for each material, three times per
+size and precision mode. After an out-of-memory result, larger sizes of that
+material are skipped. While each run executes, ML-PEG records the wall time, peak
+GPU memory (per process via NVML, or device memory above an idle baseline) and
+peak host memory.
+
+A run only counts if every check passes:
+
+1. ``inference.json`` matches the contract schema.
+2. The weights checksum agrees between the output, the container label and ML-PEG.
+3. For the smallest size, energies and forces at the input positions match ML-PEG's
+   float64 reference calculator for the model (calorine's ``CPUNEP`` for NEP), to
+   0.1 meV/atom and 1 meV/Å in ``fp64``, or 1 meV/atom and 10 meV/Å otherwise.
+4. The NVE energy drift is at most 1 meV/atom.
+5. Timestamps are monotonic, within the external wall time, with at least 20
+   measured steps.
+6. An ``unsupported_elements`` status agrees with the model's elements.
+
+Failed runs are kept in the results table with a reason, but are not plotted.
+
+Running a campaign:
+
+.. code-block:: bash
+
+   uv sync --extra inference-speed --extra nep
+   # Stage <campaign>/in from <material>.extxyz base cells
+   ml_peg inference-speed stage --base-dir base_cells --out campaign
+   # Build images into $MLPEG_SIF_CACHE (default ~/.cache/ml_peg/optimized_inference_speed)
+   ml_peg inference-speed build --model nep89_gpumd
+   # On a GPU node
+   ml_peg inference-speed run --campaign campaign --models nep89_gpumd
+   ml_peg inference-speed analyse --campaign campaign
+
+``run --runtime local`` runs a container's entry point without Apptainer, for
+testing on machines without Apptainer or a GPU.
+
+Contributing a container
+------------------------
+
+Add ``contrib/optimized_inference_speed/<name>/container.def`` and a short README,
+and an entry for ``<name>`` in
+``ml_peg/calcs/molecular_dynamics/optimized_inference_speed/models.yml``. The
+contract (invocation, inputs, MD settings, precision modes and output schema) is
+described in ``contrib/optimized_inference_speed/README.md``. The ``_mock``
+container is a minimal example.
+
+Metrics
+-------
+
+1. Time per atom-step
+
+Median wall time per atom per MD step at the size closest to 16,000 atoms, for the
+fastest valid implementation and precision mode, averaged over materials.
+
+2. Largest system
+
+Largest number of atoms with a valid, successful run.
+
+3. Valid runs
+
+Fraction of launched runs that passed every validation check.
+
+All metrics have weight 0, so speed does not contribute to the overall score.
+Figures show µs per atom-step and peak GPU memory against the number of atoms for
+each container and precision mode, with the median and min–max over repeats.
+
+Benchmark speed
+------------------
+
+Very slow: a full campaign runs up to about 1e6 atoms, three times per size and
+precision mode, with a 30 minute timeout per run.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Base cells are supplied by ML-PEG. Supercells and momenta are generated
+  deterministically by ``ml_peg inference-speed stage``.
+
+Reference data:
+
+* Static validation uses ML-PEG's own reference calculator for each model.

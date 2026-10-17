@@ -1,0 +1,25 @@
+# Containers for the optimised inference speed benchmark.
+#
+# Keys are container names, i.e. directories in contrib/optimized_inference_speed.
+#   mlpeg_model: ML-PEG model the container implements; its calculator is the
+#     float64 reference for static validation ("mock" is the zero calculator).
+#   weights_sha256: expected sha256 of the baked-in weights. Must match the
+#     container's mlpeg.weights_sha256 label and its inference.json.
+#   elements: supported elements, or null for any element.
+#   elements_from_dataset: alternatively, read supported elements for a dataset
+#     from ml_peg/app/data/element_coverage.json.
+#   local_entry: command run by `--runtime local`, without Apptainer. Relative
+#     paths are resolved against the container directory; {python} is replaced by
+#     the current interpreter.
+
+_mock:
+  mlpeg_model: mock
+  weights_sha256: af343e6adc2806e6b83fcd5ba1c518af067135e82701b9c77884c4d58bed5f6f
+  elements: null
+  local_entry: ["{python}", "runscript.py"]
+
+nep89_gpumd:
+  mlpeg_model: nep89
+  # sha256 of nep89_20250409.txt (GPUMD v4.0), shared with the calorine reference
+  weights_sha256: 75168ece02e840e4a32644f982b78d43cba697f5b64b4c8134ab66c7a8c28be1
+  elements_from_dataset: NEP89
