@@ -537,6 +537,7 @@ def build_category(
             test_entries.append(
                 {
                     "name": test_name,
+                    "description": getattr(table, "description", "") or "",
                     "framework_ids": test_framework_ids,
                     "layout": all_layouts[category][test_name],
                     "key": test_name,
