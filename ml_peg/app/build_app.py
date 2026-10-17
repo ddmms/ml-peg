@@ -56,6 +56,11 @@ from ml_peg.app.utils.register_callbacks import (
     register_filter_loading_callback,
     register_filter_tables_callback,
 )
+from ml_peg.app.utils.search import (
+    build_search_box,
+    build_search_entries,
+    register_search_callbacks,
+)
 from ml_peg.app.utils.settings import register_settings_callbacks
 from ml_peg.app.utils.shell import STARTUP_MASK_POLL_MS, register_shell_callbacks
 from ml_peg.app.utils.storage import (
@@ -532,6 +537,7 @@ def build_category(
             test_entries.append(
                 {
                     "name": test_name,
+                    "description": getattr(table, "description", "") or "",
                     "framework_ids": test_framework_ids,
                     "layout": all_layouts[category][test_name],
                     "key": test_name,
@@ -696,10 +702,17 @@ def build_nav(
     weight_preset_selector = build_weight_preset_selector(_summary_label_style)
 
     sidebar = Div(
-        id="sidebar-nav",
+        [
+            build_search_box(),
+            Div(
+                id="sidebar-nav",
+                children=build_sidebar(
+                    "/", category_paths, framework_paths, framework_labels
+                ),
+                **{"role": "navigation", "aria-label": "Benchmark navigation"},
+            ),
+        ],
         className="mlpeg-sidebar",
-        children=build_sidebar("/", category_paths, framework_paths, framework_labels),
-        **{"role": "navigation", "aria-label": "Benchmark navigation"},
     )
 
     path_to_category = {path: category for category, path in category_paths.items()}
@@ -960,6 +973,11 @@ def build_nav(
     register_storage_callbacks()
     register_settings_callbacks()
     register_bug_report_callbacks(global_state_stores)
+    register_search_callbacks(
+        build_search_entries(
+            category_paths, framework_paths, framework_labels, category_views
+        )
+    )
 
     @callback(
         Output("model-filter-checklist", "value"),
