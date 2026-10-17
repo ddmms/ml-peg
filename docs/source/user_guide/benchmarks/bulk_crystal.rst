@@ -907,3 +907,77 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+MAD-bench
+=========
+
+Summary
+-------
+
+MLIPs are evaluated on a fixed set of 2,000 structures from the MAD-1.6 test split,
+sampled uniformly with seed 42, against several DFT reference protocols on the same
+geometries. Each structure is a single point with ``charge=0`` and ``spin=1``.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Protocol
+     - Functional
+     - Status
+   * - MAD-1.6
+     - r2SCAN, FHI-aims
+     - available, used in the main table
+   * - Materials Project
+     - PBE and PBE+U
+     - planned
+   * - MAD-1
+     - PBEsol
+     - planned
+   * - MatPES
+     - PBE and r2SCAN
+     - planned
+
+The app's reference protocol selector switches the parity plots and diagnostics between
+the protocols present in the input data.
+
+Metrics
+-------
+
+1. Force MAE
+
+MAE of all force components of the 2,000 structures, in eV/Å.
+
+2. Stress MAE
+
+MAE of the six Voigt stress components of the 256 ``mc3d_rattled`` structures with a
+reference stress, in GPa. Not scored (weight 0), so its thresholds only colour the cell.
+
+A metric is NaN unless every structure in its population has a valid prediction. The
+unscored diagnostics table shows the evaluated and expected structure counts, and the
+RMSE, p8 (eighth root of the mean eighth power error) and maximum error. Force errors
+match ``mtt eval`` in metatrain, which reports stress as virial per atom instead. Energy
+errors are not reported until a reference energy convention is agreed.
+
+Benchmark speed
+---------------
+
+Fast: about 7 minutes with ``pet-mad-s-1p5`` on an Apple M3 Pro CPU. GPU runtime is not
+yet measured.
+
+Data availability
+-----------------
+
+Input structures:
+
+* ``mad-1.6-r2scan-test.xyz`` from Materials Cloud Archive
+  https://doi.org/10.24435/materialscloud:jc-9f. ``prepare_mad_bench.py`` builds the
+  input archive, and ``selection.json`` in it records the source checksum and the
+  selected structures.
+
+Reference data:
+
+* r2SCAN forces, energies and stresses from the same file, computed with all-electron
+  FHI-aims.
+* C. Malosso et al., High-quality, high-information datasets for universal
+  atomistic machine learning, arXiv:2603.02089 (2026)
