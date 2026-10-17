@@ -12,10 +12,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Battery Electrolyte Densities"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html"
@@ -35,21 +32,30 @@ class BatteryElectrolyteDensitiesApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            labels = sorted([f.stem for f in model_dir.glob("*.xyz")])
-            structs = [
-                "/assets/molecular_dynamics/battery_electrolyte_densities/"
-                f"{MODELS[0]}/{label}.xyz"
-                for label in labels
-            ]
-        else:
-            structs = []
+        # Keep the hover fields intact and append a model-specific asset key.
+        # The shared callback resolves the last customdata field, so selection
+        # does not depend on trace indices or the current model registry order.
+        structs = {}
+        for trace in (scatter.figure or {}).get("data", []):
+            points = trace.get("customdata")
+            if points is None:
+                continue
+            keyed_points = []
+            for point in points:
+                label = point[0]  # First hover field is the analysis system label.
+                key = f"{trace['name']}/{label}.xyz"
+                keyed_points.append([*point, key])
+                if (DATA_PATH / key).is_file():
+                    structs[key] = (
+                        "/assets/molecular_dynamics/battery_electrolyte_densities/"
+                        f"{key}"
+                    )
+            trace["customdata"] = keyed_points
 
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            column_to_plot=dict.fromkeys(("MAE", "RMSE", "MAPE"), scatter),
         )
 
         struct_from_scatter(
@@ -57,6 +63,7 @@ class BatteryElectrolyteDensitiesApp(BaseApp):
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
             structs=structs,
             mode="struct",
+            follow_frames=False,
         )
 
 
