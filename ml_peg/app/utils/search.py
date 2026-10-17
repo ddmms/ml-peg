@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from urllib.parse import quote
 
-from dash import Input, Output, callback, clientside_callback, ctx, no_update
+from dash import ALL, Input, Output, callback, clientside_callback, ctx, no_update
 from dash.dcc import Input as SearchInput
 from dash.dcc import Link, Store
-from dash.html import Div, Span
+from dash.html import Div, Label, Span
 
 MAX_RESULTS = 8
 
@@ -23,6 +23,7 @@ def build_search_box() -> Div:
     """
     return Div(
         [
+            Label("Search", htmlFor="sidebar-search"),
             SearchInput(
                 id="sidebar-search",
                 type="search",
@@ -86,6 +87,9 @@ def build_search_entries(
                 "label": test["name"],
                 "kind": category_title,
                 "href": f"{category_path}#{quote(test['name'])}",
+                "search_text": (
+                    f"{test['name']} {test.get('description', '')} {category_title}"
+                ),
             }
             for test in category_view["tests"]
         )
@@ -108,11 +112,12 @@ def register_search_callbacks(entries: list[dict[str, str]]) -> None:
         Output("sidebar-search-results", "children"),
         Input("sidebar-search", "value"),
         Input("app-location", "href"),
+        Input("sidebar-search-jump", "data"),
         prevent_initial_call=True,
     )
     def show_matches(
-        query: str | None, href: str | None
-    ) -> tuple[str | object, list[Link] | Div]:
+        query: str | None, href: str | None, selection: dict | None
+    ) -> tuple[str | object, list[Div] | Div]:
         """
         List the entries matching the query, or clear the box after navigation.
 
@@ -122,20 +127,26 @@ def register_search_callbacks(entries: list[dict[str, str]]) -> None:
             Current text in the search input.
         href
             Current URL, used only to detect navigation.
+        selection
+            Selection event, including clicks on the current URL.
 
         Returns
         -------
-        tuple[str | object, list[Link] | Div]
+        tuple[str | object, list[Div] | Div]
             New input value and the results to show below it.
         """
-        if ctx.triggered_id == "app-location":
+        if ctx.triggered_id in ("app-location", "sidebar-search-jump"):
             return "", []
 
         query = (query or "").strip().lower()
         if not query:
             return no_update, []
 
-        matches = [entry for entry in entries if query in entry["label"].lower()]
+        matches = [
+            entry
+            for entry in entries
+            if query in entry.get("search_text", entry["label"]).lower()
+        ]
         matches.sort(
             key=lambda entry: (
                 not entry["label"].lower().startswith(query),
@@ -147,13 +158,17 @@ def register_search_callbacks(entries: list[dict[str, str]]) -> None:
             return no_update, Div("No matches", className="mlpeg-search-empty")
 
         return no_update, [
-            Link(
-                [
-                    Span(entry["label"], className="mlpeg-search-label"),
-                    Span(entry["kind"], className="mlpeg-search-kind"),
-                ],
-                href=entry["href"],
-                className="mlpeg-search-result",
+            Div(
+                Link(
+                    [
+                        Span(entry["label"], className="mlpeg-search-label"),
+                        Span(entry["kind"], className="mlpeg-search-kind"),
+                    ],
+                    href=entry["href"],
+                    className="mlpeg-search-result",
+                ),
+                id={"type": "search-result", "href": entry["href"]},
+                n_clicks=0,
             )
             for entry in matches[:MAX_RESULTS]
         ]
@@ -162,42 +177,59 @@ def register_search_callbacks(entries: list[dict[str, str]]) -> None:
     # after navigation, so poll for its toggle, expand it and scroll to it
     clientside_callback(
         """
-        function(hash) {
-            if (!hash || hash.length < 2) {
-                return window.dash_clientside.no_update;
+        function(href, clicks) {
+            var nu = window.dash_clientside.no_update;
+            var ctx = window.dash_clientside.callback_context;
+            var trigger = (ctx.triggered || [])[0];
+            var selected = trigger && trigger.prop_id.startsWith('{');
+            var target = href;
+            if (selected) {
+                // Ignore result-list mounting/removal, which also changes ALL.
+                if (!clicks || !clicks.some(n => n > 0)) return nu;
+                var id = JSON.parse(trigger.prop_id.slice(0, -9));
+                target = id.href;
+                document.body.classList.remove('sidebar-open');
             }
 
-            var name = decodeURIComponent(hash.slice(1));
+            var token = (window.mlpegSearchJumpToken || 0) + 1;
+            window.mlpegSearchJumpToken = token;
+            var url = new URL(target, window.location.href);
+            var selection = selected ? {token: token} : nu;
+            if (!url.hash || url.hash.length < 2) return selection;
+            var name;
+            try {
+                name = decodeURIComponent(url.hash.slice(1));
+            } catch (e) {
+                return selection;
+            }
             var toggleId = JSON.stringify({index: name, type: "bench-toggle"});
             var tries = 0;
-
+            function current() {
+                return window.mlpegSearchJumpToken === token;
+            }
             function openCard() {
-                var toggle = document.getElementById(toggleId);
-
+                if (!current()) return;
+                var arrived = window.location.pathname === url.pathname
+                    && window.location.hash === url.hash;
+                var toggle = arrived && document.getElementById(toggleId);
                 if (!toggle) {
-                    if (tries++ < 100) {
-                        setTimeout(openCard, 100);
-                    }
+                    if (tries++ < 100) setTimeout(openCard, 100);
                     return;
                 }
-
-                if (toggle.getAttribute("aria-expanded") !== "true") {
-                    toggle.click();
-                }
-
+                if (toggle.getAttribute("aria-expanded") !== "true") toggle.click();
                 var card = toggle.closest(".mlpeg-bench-card") || toggle;
                 card.scrollIntoView({behavior: "smooth", block: "start"});
-
-                // scroll once more after the cards above have finished laying out
                 setTimeout(function() {
-                    card.scrollIntoView({behavior: "smooth", block: "start"});
+                    if (current() && card.isConnected) {
+                        card.scrollIntoView({behavior: "smooth", block: "start"});
+                    }
                 }, 800);
             }
-
             openCard();
-            return window.dash_clientside.no_update;
+            return selection;
         }
         """,
         Output("sidebar-search-jump", "data"),
-        Input("app-location", "hash"),
+        Input("app-location", "href"),
+        Input({"type": "search-result", "href": ALL}, "n_clicks"),
     )
