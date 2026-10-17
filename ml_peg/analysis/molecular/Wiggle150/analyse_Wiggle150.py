@@ -167,7 +167,7 @@ def metrics(wiggle150_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
-@pytest.mark.framework("mace-multihead")
+@pytest.mark.framework("mace-multihead", "aceff")
 def test_wiggle150(metrics: dict[str, dict]) -> None:
     """
     Run Wiggle150 analysis.
