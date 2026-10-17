@@ -1,0 +1,43 @@
+metrics:
+  Density Error:
+    good: 0.034
+    bad: 0.257
+    unit: "g/cm3"
+    tooltip: "Absolute error in the NPT density (p16_w42 cell, 200 ps, mean over the last 150 ps) vs experiment (1.7126 g/cm3, Gilbert et al. JCED 2017). Good: 0.034 g/cm3 (2%), the RMS density fluctuation of the 382-atom cell (1.0-3.0% of rho_exp across the models within 15% of experiment, median 1.6%; the statistical uncertainty on the 150 ps mean is 4x smaller). Bad: 0.257 g/cm3 (15%), as in the aluminosilicate glass density benchmark."
+    level_of_theory: Experimental
+    weight: 1.0
+  Density Error (%):
+    good: 2.0
+    bad: 15.0
+    unit: "%"
+    tooltip: "Percent error in the NPT density vs experiment (1.7126 g/cm3, Gilbert et al. JCED 2017). Same thresholds as Density Error, expressed relatively. Reported, not scored."
+    level_of_theory: Experimental
+    weight: 0
+  CN Li-O_water Error:
+    good: 0.15
+    bad: 0.5
+    unit: "-"
+    tooltip: "Absolute error in the Li-O_water coordination number (Li-O g(r) integrated to its first minimum, 2.83 A, on the p64_w170 NVT trajectory) vs the theoretical reference at 21 m (CN=2.4: r2SCAN AIMD 2.23 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 2.35-2.39 over >2 ns). Good: 0.15, the reference uncertainty (AIMD vs converged spread). Bad: 0.5. The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and is not used for the partitioning."
+    level_of_theory: r2SCAN
+    weight: 0.25
+  CN Li-O_TFSI Error:
+    good: 0.05
+    bad: 0.5
+    unit: "-"
+    tooltip: "Absolute error in the Li-O_TFSI coordination number vs the theoretical reference at 21 m (CN=1.9: r2SCAN AIMD 2.02 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 1.89-1.91 over >2 ns). Good: 0.05, the reference uncertainty (agreement between the two r2SCAN-trained potentials). Bad: 0.5. The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and is not used for the partitioning."
+    level_of_theory: r2SCAN
+    weight: 0.25
+  CN Li-O_total Error:
+    good: 0.10
+    bad: 0.5
+    unit: "-"
+    tooltip: "Absolute error in the total Li-O coordination number vs the reference CN=4.3 (r2SCAN AIMD 4.31; converged r2SCAN-trained MACE 4.27-4.29; consistent with the experimental 4.21 at ~18.5 m, Watanabe et al. JPCB 2021, neutron diffraction with isotopic substitution). Good: 0.10, the theory-experiment spread. Bad: 0.5. Reported and colour-coded but not scored (weight 0): it is the sum of the two partial coordination numbers, and would reward models that miss water and TFSI in opposite directions."
+    level_of_theory: r2SCAN
+    weight: 0
+  S(q) R-factor:
+    good: 0.02
+    bad: 0.21
+    unit: "-"
+    tooltip: "R-factor between the computed and experimental X-ray S(q) (SAXS, Zhang et al. JPCB 2021), sum|S_exp - S_calc| / sum|S_exp|, on the experimental q grid from 0.51 to 11.9 A^-1. Good: 0.02, the finite-size floor: at fixed experimental density, a 4x change in cell volume (382 -> 1534 atoms) shifts R by -0.014 to +0.023 (mean |shift| 0.011), 5-6x the sampling uncertainty (sigma_R = 0.002 from disjoint halves of a 496-frame trajectory). Bad: 0.21, the R-factor of a structureless fluid (S(q) = 1 on the same grid): a model at this value carries no structural information. The metric detects qualitative failures of the liquid structure rather than ranking models, since adjacent models are separated by less than 2 sigma_R."
+    level_of_theory: Experimental
+    weight: 0.5
