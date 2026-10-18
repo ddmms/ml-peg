@@ -332,7 +332,7 @@ tace-oam-7m:
   kwargs:
     model: "TACE-OAM-7M"
 
-tece-oam-rra-1.0:
+tece-oam-rra-1p0:
   module: tace.interface.ase
   class_name: TACEAseCalc
   datasets: [MPtrj, sAlex, OMAT]
