@@ -21,7 +21,7 @@ citations:
       - Ondrej Gutten
       - Lubomír Rulíšek
     year: 2018
-    doi: 10.1021/acs.jctc.7b01074
+    doi: "10.1021/acs.jctc.7b01074"
   - key: plett2023mpconf196water
     role: reference_data
     title: 'Conformational energies of biomolecules in solution: Extending the MPCONF196 benchmark with
@@ -31,4 +31,4 @@ citations:
       - Stefan Grimme
       - Andreas Hansen
     year: 2023
-    doi: 10.1002/jcc.27248
+    doi: "10.1002/jcc.27248"
