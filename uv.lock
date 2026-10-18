@@ -6831,7 +6831,7 @@ sevenn = [
     { name = "sevenn" },
 ]
 tace = [
-    { name = "tace" },
+    { name = "tace", extra = ["eqx"] },
 ]
 uma = [
     { name = "fairchem-core", marker = "python_full_version >= '3.11'" },
@@ -6912,7 +6912,7 @@ requires-dist = [
     { name = "sevenn", marker = "extra == 'sevenn'", specifier = "==0.12.1" },
     { name = "simpoly", extras = ["vivace"], marker = "sys_platform != 'linux' and extra == 'vivace'", git = "https://github.com/microsoft/simpoly.git?rev=da100ad32d971214cf9343d9d853e8ce61604dc0" },
     { name = "simpoly", extras = ["vivace", "cuda13"], marker = "sys_platform == 'linux' and extra == 'vivace'", git = "https://github.com/microsoft/simpoly.git?rev=da100ad32d971214cf9343d9d853e8ce61604dc0" },
-    { name = "tace", marker = "extra == 'tace'", specifier = "==0.2.4" },
+    { name = "tace", extras = ["eqx"], marker = "extra == 'tace'", specifier = "==0.2.4" },
     { name = "tensorpotential", marker = "extra == 'grace'", specifier = "==0.6.0" },
     { name = "torch-dftd", marker = "extra == 'd3'", specifier = "==0.5.1" },
     { name = "tqdm", specifier = ">=4.67.3,<5" },
@@ -13033,6 +13033,12 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/da/04/e55a5b53391334f6b071bcd01cc84b8015d60c87126e9cf3f65a5c174da0/tace-0.2.4.tar.gz", hash = "sha256:c9a60fab1b8a47052d6b8fcf602952233b23e5a246fb25a73a71f5a360aea50a", size = 573119, upload-time = "2026-10-16T12:52:26.93Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/00/21/3a9d7e108d6f38383878e06deb2c0e187e47cd699fd65a55430198a7e743/tace-0.2.4-py3-none-any.whl", hash = "sha256:269324bb7d16079d9caf1b4cc6d288b65f327f5140ddbaf52a3282dbe78efb74", size = 623033, upload-time = "2026-10-16T12:52:25.294Z" },
+]
+
+[package.optional-dependencies]
+eqx = [
+    { name = "filelock" },
+    { name = "ninja" },
 ]
 
 [[package]]
