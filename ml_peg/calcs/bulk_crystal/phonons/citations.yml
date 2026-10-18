@@ -7,5 +7,23 @@ contributors:
   - name: "Balazs Pota"
     github: "bpota"
 
-# TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - key: "togo-2023-mdr-phonons"
+    role: reference_data
+    title: "MDR phonon calculation database"
+    authors:
+      - "Atsushi Togo"
+    year: 2023
+    doi: "10.48505/nims.4197"
+    url: "https://doi.org/10.48505/nims.4197"
+  - key: "loew-2024-phonons"
+    role: benchmark_method
+    title: "Universal Machine Learning Interatomic Potentials are Ready for Phonons"
+    authors:
+      - "Antoine Loew"
+      - "Dewen Sun"
+      - "Hai-Chen Wang"
+      - "Silvana Botti"
+      - "Miguel A. L. Marques"
+    year: 2024
+    url: "https://arxiv.org/abs/2412.16551"

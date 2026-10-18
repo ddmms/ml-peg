@@ -10,5 +10,14 @@ contributors:
     github: "ElliottKasoar"
     email: "elliott.kasoar@stfc.ac.uk"
 
-# TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - key: "alfonso-ramos-2025-cyclo70"
+    role: reference_data
+    title: "CYCLO70: A New Challenging Pericyclic Benchmarking Set for Kinetics and Thermochemistry Evaluation"
+    authors:
+      - "Javier E. Alfonso-Ramos"
+      - "Carlo Adamo"
+      - "Éric Brémond"
+      - "Thijs Stuyver"
+    year: 2025
+    doi: "10.1021/acs.jctc.5c00925"

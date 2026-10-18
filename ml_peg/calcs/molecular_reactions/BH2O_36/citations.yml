@@ -10,5 +10,15 @@ contributors:
     github: "ElliottKasoar"
     email: "elliott.kasoar@stfc.ac.uk"
 
-# TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - key: "epstein-2023-hydrolysis"
+    role: reference_data
+    title: "Assessing the Accuracy of Density Functional Approximations for Predicting Hydrolysis Reaction Kinetics"
+    authors:
+      - "Alexander Rizzolo Epstein"
+      - "Evan Walter Clark Spotte-Smith"
+      - "Maxwell C. Venetos"
+      - "Oxana Andriuc"
+      - "Kristin Aslaug Persson"
+    year: 2023
+    doi: "10.1021/acs.jctc.3c00176"
