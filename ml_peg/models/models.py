@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import dataclasses
 from functools import wraps
-import os
 from typing import TYPE_CHECKING, Any, Literal, get_args
 from warnings import warn
 
@@ -38,18 +37,6 @@ def check_precision(precision: str) -> None:
         raise ValueError(
             f"Invalid precision '{precision}'. Must be one of {get_args(Precision)}."
         )
-
-
-def _patch_os_sched_getaffinity() -> None:
-    """
-    Provide ``os.sched_getaffinity`` on platforms that lack it, such as macOS.
-
-    TACE's bundled ``eqx`` kernels call the Linux-only ``os.sched_getaffinity`` at
-    import time to size a thread pool, so importing TACE fails elsewhere. The
-    fallback reports every CPU as available, matching an unrestricted Linux process.
-    """
-    if not hasattr(os, "sched_getaffinity"):
-        os.sched_getaffinity = lambda pid: set(range(os.cpu_count() or 1))
 
 
 def _patch_metatomic_nvalchemi_max_neighbors() -> None:
@@ -599,9 +586,6 @@ class TaceCalc(SumCalc):
         Calculator
             Loaded TACE ASE calculator.
         """
-        _patch_os_sched_getaffinity()
-
-        from tace.foundations import tace_foundations
         from tace.interface.ase import TACEAseCalc
 
         check_precision(precision)
@@ -613,10 +597,8 @@ class TaceCalc(SumCalc):
 
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
 
-        # TACEAseCalc needs a checkpoint path, not a foundation model name. The
-        # registry downloads the checkpoint on first use and caches it.
+        # TACE resolves foundation names and local checkpoint paths directly.
         calc_kwargs = {**self.kwargs, **kwargs}
-        calc_kwargs["model"] = str(tace_foundations[calc_kwargs["model"]])
         return TACEAseCalc(dtype=dtype, device=device, **calc_kwargs)
 
     @property
@@ -629,7 +611,6 @@ class TaceCalc(SumCalc):
         bool
             Whether the calculator can be loaded.
         """
-        _patch_os_sched_getaffinity()
         try:
             from tace.interface.ase import TACEAseCalc
 

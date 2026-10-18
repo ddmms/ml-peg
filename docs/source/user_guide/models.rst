@@ -531,7 +531,7 @@ TACE
 ====
 
 `Model documentation <https://tace.readthedocs.io/en/latest/guide/foundation.html>`_.
- Model weights are licensed under CC BY 4.0.
+Model weights are licensed under CC BY 4.0.
 
 tace-oam-7m
 -----------

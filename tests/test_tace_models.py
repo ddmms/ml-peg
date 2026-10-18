@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import sys
 from types import ModuleType
 
 import pytest
 
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import TaceCalc, _patch_os_sched_getaffinity
+from ml_peg.models.models import TaceCalc
 
 
 @pytest.mark.parametrize(
@@ -32,47 +31,33 @@ def test_tace_models_use_tace_wrapper(model_name: str, checkpoint: str) -> None:
 @pytest.mark.parametrize(
     ("precision", "dtype"), [("low", "float32"), ("high", "float64")]
 )
-def test_tace_calculator_resolves_checkpoint_and_dtype(
-    monkeypatch: pytest.MonkeyPatch, precision: str, dtype: str
+@pytest.mark.parametrize("checkpoint", ["TACE-OAM-7M", "/tmp/local-model.pt"])
+def test_tace_calculator_passes_model_and_dtype(
+    monkeypatch: pytest.MonkeyPatch, precision: str, dtype: str, checkpoint: str
 ) -> None:
-    """Map ML-PEG precision to TACE's dtype and pass a checkpoint path."""
+    """Map ML-PEG precision to TACE's dtype and preserve model names or paths."""
 
     class FakeTACEAseCalc:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
     tace = ModuleType("tace")
-    foundations = ModuleType("tace.foundations")
-    foundations.tace_foundations = {"TACE-OAM-7M": "/cache/TACE-OAM-7M.pt"}
     interface = ModuleType("tace.interface")
     interface_ase = ModuleType("tace.interface.ase")
     interface_ase.TACEAseCalc = FakeTACEAseCalc
     for name, module in {
         "tace": tace,
-        "tace.foundations": foundations,
         "tace.interface": interface,
         "tace.interface.ase": interface_ase,
     }.items():
         monkeypatch.setitem(sys.modules, name, module)
 
-    model = TaceCalc(device="cpu", kwargs={"model": "TACE-OAM-7M"})
+    model = TaceCalc(device="cpu", kwargs={"model": checkpoint})
     calc = model.get_calculator(precision=precision)
 
     assert calc.kwargs == {
-        "model": "/cache/TACE-OAM-7M.pt",
+        "model": checkpoint,
         "dtype": dtype,
         "device": "cpu",
     }
-    assert model.kwargs == {"model": "TACE-OAM-7M"}
-
-
-def test_sched_getaffinity_fallback_on_platforms_without_it(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Provide the Linux-only call TACE's eqx kernels need at import time."""
-    monkeypatch.delattr(os, "sched_getaffinity", raising=False)
-    monkeypatch.setattr(os, "cpu_count", lambda: 4)
-
-    _patch_os_sched_getaffinity()
-
-    assert os.sched_getaffinity(0) == {0, 1, 2, 3}
+    assert model.kwargs == {"model": checkpoint}

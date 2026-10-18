@@ -6912,7 +6912,7 @@ requires-dist = [
     { name = "sevenn", marker = "extra == 'sevenn'", specifier = "==0.12.1" },
     { name = "simpoly", extras = ["vivace"], marker = "sys_platform != 'linux' and extra == 'vivace'", git = "https://github.com/microsoft/simpoly.git?rev=da100ad32d971214cf9343d9d853e8ce61604dc0" },
     { name = "simpoly", extras = ["vivace", "cuda13"], marker = "sys_platform == 'linux' and extra == 'vivace'", git = "https://github.com/microsoft/simpoly.git?rev=da100ad32d971214cf9343d9d853e8ce61604dc0" },
-    { name = "tace", marker = "extra == 'tace'", specifier = "==0.2.3" },
+    { name = "tace", marker = "extra == 'tace'", specifier = "==0.2.4" },
     { name = "tensorpotential", marker = "extra == 'grace'", specifier = "==0.6.0" },
     { name = "torch-dftd", marker = "extra == 'd3'", specifier = "==0.5.1" },
     { name = "tqdm", specifier = ">=4.67.3,<5" },
@@ -13003,7 +13003,7 @@ wheels = [
 
 [[package]]
 name = "tace"
-version = "0.2.3"
+version = "0.2.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ase" },
@@ -13030,9 +13030,9 @@ dependencies = [
     { name = "torch", version = "2.11.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11' or extra == 'extra-6-ml-peg-dpa' or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-mattersim') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-sevenn') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-uma') or (extra == 'extra-6-ml-peg-mace' and extra == 'extra-6-ml-peg-vivace')" },
     { name = "torch-geometric" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/8a/b6/41e6b1276878ba567a022f2c75de84771cee158b3dbd4dbcfd961deed83c/tace-0.2.3.tar.gz", hash = "sha256:b6df1bc9889bfe8eac0962f0512875341754812a3f3d72b2f8fa3c1026a43c79", size = 566202, upload-time = "2026-10-06T15:00:10.916Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/da/04/e55a5b53391334f6b071bcd01cc84b8015d60c87126e9cf3f65a5c174da0/tace-0.2.4.tar.gz", hash = "sha256:c9a60fab1b8a47052d6b8fcf602952233b23e5a246fb25a73a71f5a360aea50a", size = 573119, upload-time = "2026-10-16T12:52:26.93Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/aa/ae/ebccbeb025ca3c7cece232dd011161bb1804f9c67eddd62d77293ebdac2d/tace-0.2.3-py3-none-any.whl", hash = "sha256:ebcafd661c4b7cabc495d22726f3f4d0b121eb4e70ce518b2e08660702d4bb3f", size = 621255, upload-time = "2026-10-06T15:00:08.896Z" },
+    { url = "https://files.pythonhosted.org/packages/00/21/3a9d7e108d6f38383878e06deb2c0e187e47cd699fd65a55430198a7e743/tace-0.2.4-py3-none-any.whl", hash = "sha256:269324bb7d16079d9caf1b4cc6d288b65f327f5140ddbaf52a3282dbe78efb74", size = 623033, upload-time = "2026-10-16T12:52:25.294Z" },
 ]
 
 [[package]]
