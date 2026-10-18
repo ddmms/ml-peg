@@ -533,6 +533,12 @@ TACE
 `Model documentation <https://tace.readthedocs.io/en/latest/guide/foundation.html>`_.
 Model weights are licensed under CC BY 4.0.
 
+Install with ``uv sync --extra tace``. This includes the EQX build dependencies
+and requires PyTorch 2.10 or newer for TACE's optional AOTI export path.
+The ``tace`` and ``uma`` extras require separate environments because UMA
+requires PyTorch 2.8.x. EQX CUDA compilation additionally needs a CUDA toolkit
+and a C++ compiler; ordinary CPU inference does not require CUDA.
+
 tace-oam-7m
 -----------
 

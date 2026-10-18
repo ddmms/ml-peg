@@ -88,6 +88,7 @@ sevenn = [
 ]
 tace = [
     "tace[eqx]==0.2.4",
+    "torch>=2.10",
 ]
 vivace = [
     "simpoly[vivace,cuda13]; sys_platform == 'linux'",
@@ -219,6 +220,11 @@ override-dependencies = [
 ]
 
 conflicts = [
+    # UMA requires torch~=2.8.0; TACE AOTI uses newer export APIs.
+    [
+        { extra = "tace" },
+        { extra = "uma" },
+    ],
     [
         { extra = "dpa" },
         { extra = "mace" },
