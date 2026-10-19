@@ -90,6 +90,34 @@ def _load_inference_speed_output(model_outputs_dir: Path) -> InferenceSpeedModel
     return InferenceSpeedModelOutput.model_validate(data)
 
 
+def _check_structures_match(benchmark: MlPegInferenceSpeedBenchmark) -> None:
+    """
+    Check the loaded timings describe the structures currently on disk.
+
+    ``analyze`` pairs ``model_output.forward_times`` with the structure names it
+    lists from the data directory, by position. If the dataset on disk has changed
+    since the calculation ran, timings would be silently attributed to the wrong
+    structures, so require the two orderings to be identical.
+
+    Parameters
+    ----------
+    benchmark
+        Benchmark with its ``model_output`` already loaded.
+
+    Raises
+    ------
+    ValueError
+        If the structures differ from those the calculation timed.
+    """
+    timed = benchmark.model_output.structure_names
+    on_disk = benchmark._structure_names
+    if timed != on_disk:
+        raise ValueError(
+            f"Structures timed by the calculation ({timed}) do not match those in "
+            f"{benchmark.data_dir} ({on_disk}). Please re-run the calculation."
+        )
+
+
 @pytest.fixture
 def analyze_results() -> dict:
     """
@@ -116,6 +144,7 @@ def analyze_results() -> dict:
             benchmark.model_output = _load_inference_speed_output(
                 CALC_PATH / model_name
             )
+            _check_structures_match(benchmark)
             results[model_name] = benchmark.analyze()
         except Exception as exc:
             warn(
