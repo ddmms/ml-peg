@@ -1,0 +1,61 @@
+# Brittle-crack cases: (material, crack system). Each case is traced on the topology of its
+# DFT reference cluster (clamped_cluster with the "topology" constants at K = k K_G), mapped
+# onto every model with cluster_like. "coordinate" is the S-curve bond (atom indices of the
+# reference topology); "precon" the many-body potential of the corrector's surrogate Jacobian.
+cases:
+  Si_110_110:
+    label: "Si (110)[1-10]"
+    symbol: Si
+    crack_surface: [1, -1, 0]
+    crack_front: [1, 1, 0]
+    n: [4, 6, 1]
+    skin: [0.5, 1.0]
+    tip_offset: 0.0
+    stagger_caps: true
+    passivate: true
+    coordinate: [60, 35]
+    precon: stillinger_weber
+    start_k: 0.6
+    topology: {a0: 5.4686, C11: 153.2, C12: 56.8, C44: 74.8, surface_energy: 1.511, k: 1.0}
+  Si_110_001:
+    label: "Si (110)[001]"
+    symbol: Si
+    crack_surface: [1, 1, 0]
+    crack_front: [0, 0, 1]
+    n: [4, 4, 1]
+    skin: [1.0, 1.0]
+    tip_offset: 0.0
+    stagger_caps: true
+    passivate: true
+    coordinate: [21, 24]
+    precon: stillinger_weber
+    start_k: 0.6
+    topology: {a0: 5.4686, C11: 153.2, C12: 56.8, C44: 74.8, surface_energy: 1.511, k: 1.0}
+  Si_111_110:
+    label: "Si (111)[1-10]"
+    symbol: Si
+    crack_surface: [1, 1, 1]
+    crack_front: [1, -1, 0]
+    n: [3, 2, 1]
+    skin: [0.5, 0.3333333333333333]
+    tip_offset: -3.35
+    stagger_caps: false
+    passivate: true
+    coordinate: [17, 4]
+    precon: stillinger_weber
+    start_k: 0.6
+    topology: {a0: 5.4686, C11: 153.2, C12: 56.8, C44: 74.8, surface_energy: 1.479, k: 1.0}
+# Ordering-over-load checks: DFT-relaxed states of one cluster along their stable DFT
+# branches (S3 data <name>.extxyz: info "state", "K_over_KG", "REF_energy"; array "fixed"
+# marks the clamped atoms). Each frame is relaxed at fixed K with the model; E(first state)
+# - E(second state) is compared with DFT's over the loads where DFT has both, per unit
+# length of crack front, and so is the load where the order flips. A relaxation that
+# leaves its state's basin (q = d(j, l) - d(i, l) of q_triple moves by more than q_tol)
+# or does not converge is not scored.
+orderings:
+  Si_111_110_431_ordering:
+    label: "Si (111)[1-10] 5-7"
+    states: ["5-7", "sharp"]
+    q_triple: [51, 52, 53]
+    q_tol: 0.5
+    n_grid: 11

@@ -1,0 +1,40 @@
+implementers:
+  - name: "James Kermode"
+    github: "jameskermode"
+
+contributors: []
+
+citations:
+  - key: "buze-2021-continuation-fracture"
+    role: benchmark_method
+    title: "Numerical-continuation-enhanced flexible boundary condition scheme applied to mode-I and mode-III fracture"
+    authors:
+      - "Maciej Buze"
+      - "James R. Kermode"
+    year: 2021
+    doi: "10.1103/PhysRevE.103.033002"
+    url: null
+  - key: "kermode-2008-fracture-instabilities"
+    role: inspired_by
+    title: "Low-speed fracture instabilities in a brittle crystal"
+    authors:
+      - "J. R. Kermode"
+      - "T. Albaret"
+      - "D. Sherman"
+      - "N. Bernstein"
+      - "P. Gumbsch"
+      - "M. C. Payne"
+      - "G. Csányi"
+      - "A. De Vita"
+    year: 2008
+    doi: "10.1038/nature07297"
+    url: null
+  - key: "swinburne-2017-virtual-work"
+    role: inspired_by
+    title: "Computing energy barriers for rare events from hybrid quantum/classical simulations through the virtual work principle"
+    authors:
+      - "Thomas D. Swinburne"
+      - "James R. Kermode"
+    year: 2017
+    doi: "10.1103/PhysRevB.96.144102"
+    url: null
