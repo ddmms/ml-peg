@@ -322,7 +322,7 @@ Summary
 -------
 
 Measure of model inference speed and how it scales with system size. A
-size-stratified dataset of 13 biomolecular structures (71-6713 atoms) is used.
+size-stratified dataset of 13 biomolecular structures (71-6714 atoms) is used.
 For each system the model forward pass (energy + forces) through the model's
 ASE calculator is timed.
 
@@ -362,8 +362,9 @@ Data availability
 
 Input structures:
 
-* MLIP Audit benchmark suite, InstaDeep. A size-stratified set of protein chains
-  (elements C, N, H, O, S, P) taken from the PDB.
+* MLIP Audit benchmark suite, InstaDeep. A size-stratified set of 13 structures
+  taken from the PDB (elements C, N, H, O, S, P): mostly protein chains, plus a
+  peptide and an RNA fragment.
 
 Reference data:
 

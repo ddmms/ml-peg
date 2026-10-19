@@ -8,6 +8,7 @@ from warnings import warn
 from zipfile import ZipFile
 
 from ase.calculators.calculator import Calculator
+from ase.io import read
 import numpy as np
 from plotly.colors import qualitative
 import plotly.graph_objects as go
@@ -126,6 +127,26 @@ def analyze_results() -> dict:
 
 
 @pytest.fixture
+def num_atoms() -> dict[str, int]:
+    """
+    Get the number of atoms in each input structure.
+
+    ``InferenceSpeedStructureResult.num_atoms`` is parsed from the filename prefix,
+    which does not always match the structure that was timed: some inputs are
+    multi-frame, and the calculation times the final frame, as read by ASE.
+
+    Returns
+    -------
+    dict[str, int]
+        Mapping of structure name to its number of atoms.
+    """
+    check_dataset()
+
+    data_dir = CALC_PATH / BENCHMARK
+    return {path.stem: len(read(path)) for path in sorted(data_dir.glob("*.xyz"))}
+
+
+@pytest.fixture
 def struct_info() -> None:
     """Write the combined element set to ``info.json`` for filtering."""
     check_dataset()
@@ -138,7 +159,7 @@ def struct_info() -> None:
 
 
 @pytest.fixture
-def scaling_curves(analyze_results) -> dict[str, tuple[list, list, list]]:
+def scaling_curves(analyze_results, num_atoms) -> dict[str, tuple[list, list, list]]:
     """
     Get the model throughput scaling curve for each model.
 
@@ -146,6 +167,8 @@ def scaling_curves(analyze_results) -> dict[str, tuple[list, list, list]]:
     ----------
     analyze_results
         Mapping of model name to its ``InferenceSpeedResult``.
+    num_atoms
+        Mapping of structure name to its number of atoms.
 
     Returns
     -------
@@ -160,8 +183,8 @@ def scaling_curves(analyze_results) -> dict[str, tuple[list, list, list]]:
             continue
         points = [
             (
-                structure.num_atoms,
-                structure.num_atoms / structure.average_forward_time,
+                num_atoms[structure.structure_name],
+                num_atoms[structure.structure_name] / structure.average_forward_time,
                 structure.structure_name,
             )
             for structure in result.structures
@@ -170,8 +193,8 @@ def scaling_curves(analyze_results) -> dict[str, tuple[list, list, list]]:
         if not points:
             continue
         points.sort(key=lambda point: point[0])
-        num_atoms, throughputs, names = zip(*points, strict=True)
-        curves[model_name] = (list(num_atoms), list(throughputs), list(names))
+        sizes, throughputs, names = zip(*points, strict=True)
+        curves[model_name] = (list(sizes), list(throughputs), list(names))
     return curves
 
 
@@ -241,7 +264,7 @@ def throughput_plot(scaling_curves) -> None:
 
 
 @pytest.fixture
-def get_forward_time_per_atom(analyze_results) -> dict[str, float]:
+def get_forward_time_per_atom(analyze_results, num_atoms) -> dict[str, float]:
     """
     Get the mean per-atom forward-pass time for each model.
 
@@ -249,6 +272,8 @@ def get_forward_time_per_atom(analyze_results) -> dict[str, float]:
     ----------
     analyze_results
         Mapping of model name to its ``InferenceSpeedResult``.
+    num_atoms
+        Mapping of structure name to its number of atoms.
 
     Returns
     -------
@@ -268,7 +293,7 @@ def get_forward_time_per_atom(analyze_results) -> dict[str, float]:
             per_atom_times[model_name] = np.nan
             continue
         values = [
-            structure.average_forward_time / structure.num_atoms
+            structure.average_forward_time / num_atoms[structure.structure_name]
             for structure in result.structures
         ]
         per_atom_times[model_name] = sum(values) / len(values) * SECONDS_TO_MICROSECONDS
