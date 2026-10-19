@@ -228,6 +228,7 @@ def _run_density(
     write(out_dir / f"final_density_{density:.1f}.xyz", atoms)
 
 
+@pytest.mark.framework("mace-mp")
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_amorphous_carbon_melt_quench(mlip: tuple[str, object]) -> None:
