@@ -7,6 +7,7 @@ from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 import yaml
 
@@ -27,7 +28,36 @@ MODEL_KEYS = frozenset(
 )
 
 #: Keys that must be set for a model in models.yml.
-REQUIRED_MODEL_KEYS = frozenset({"module", "class_name"})
+REQUIRED_MODEL_KEYS = frozenset({"module", "class_name", "trained_on_dispersion"})
+
+
+def pop_required_kwarg(name: str, kwargs: dict[str, Any], key: str) -> Any:
+    """
+    Take a keyword argument that a model must set.
+
+    Parameters
+    ----------
+    name
+        Name of the model being loaded.
+    kwargs
+        Keyword arguments set by the model's `kwargs` key.
+    key
+        Keyword argument to take.
+
+    Returns
+    -------
+    Any
+        Value set for `key`.
+
+    Raises
+    ------
+    ValueError
+        If the keyword argument is not set.
+    """
+    if key not in kwargs:
+        raise ValueError(f"'{name}' must set '{key}' in its kwargs")
+
+    return kwargs.pop(key)
 
 
 def default_models_file() -> Path:
@@ -84,6 +114,15 @@ def validate_config(name: str, cfg: dict[str, Any]) -> None:
             f"'{name}' sets dispersion_kwargs that would be ignored: "
             f"{', '.join(unknown)}. "
             f"Valid keys are: {', '.join(sorted(DISPERSION_KWARGS))}"
+        )
+
+    # Dispersion is only added for models not already trained with it, so only the
+    # display label is used for the rest.
+    if cfg["trained_on_dispersion"] and set(dispersion_kwargs) - {"label"}:
+        warn(
+            f"'{name}' is trained on dispersion, so no correction is added and its "
+            "dispersion_kwargs are unused, other than 'label'",
+            stacklevel=2,
         )
 
 
@@ -250,13 +289,15 @@ def load_models(
                 loaded_models[name] = DpaCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
+                    device=cfg.get("device", None),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "FAIRChemCalculator":
                 kwargs = cfg.get("kwargs", {})
-                model_name = kwargs.pop("model_name")
+                model_name = pop_required_kwarg(name, kwargs, "model_name")
                 task_name = kwargs.pop("task_name", "omat")
                 overrides = kwargs.pop("overrides", {})
                 loaded_models[name] = FairChemCalc(
@@ -273,7 +314,7 @@ def load_models(
                 )
             case "ORBCalculator":
                 kwargs = cfg.get("kwargs", {})
-                orb_name = kwargs.pop("name")
+                orb_name = pop_required_kwarg(name, kwargs, "name")
                 loaded_models[name] = OrbCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
@@ -319,6 +360,7 @@ def load_models(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
@@ -336,6 +378,7 @@ def load_models(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "auto"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),

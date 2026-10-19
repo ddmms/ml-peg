@@ -75,6 +75,26 @@ def _named_parameters(target: Callable) -> set[str]:
     }
 
 
+def _takes_var_keyword(target: Callable) -> bool:
+    """
+    Check whether a callable collects extra keyword arguments.
+
+    Parameters
+    ----------
+    target
+        Callable to inspect.
+
+    Returns
+    -------
+    bool
+        Whether the callable takes `**kwargs`.
+    """
+    return any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in inspect.signature(target).parameters.values()
+    )
+
+
 def accepted_kwargs(target: Callable, class_name: str) -> set[str]:
     """
     Get the keyword arguments a calculator accepts.
@@ -109,6 +129,11 @@ def accepted_kwargs(target: Callable, class_name: str) -> set[str]:
     for forwarded_target in targets:
         if forwarded_target is not target:
             accepted |= _named_parameters(forwarded_target)
+
+        # Anything else is only reached through `**kwargs`.
+        if not _takes_var_keyword(forwarded_target):
+            continue
+
         # ASE calculators also take their class defaults as keyword arguments.
         accepted |= set(getattr(forwarded_target, "default_parameters", None) or ())
         if isinstance(forwarded_target, type) and issubclass(
@@ -119,7 +144,12 @@ def accepted_kwargs(target: Callable, class_name: str) -> set[str]:
     return accepted | PASSTHROUGH_KWARGS.get(class_name, set())
 
 
-def check_kwargs(kwargs: dict[str, Any], target: Callable, class_name: str) -> None:
+def check_kwargs(
+    kwargs: dict[str, Any],
+    target: Callable,
+    class_name: str,
+    reserved: Sequence[str] = (),
+) -> None:
     """
     Check that configured keyword arguments are accepted by the calculator.
 
@@ -135,13 +165,17 @@ def check_kwargs(kwargs: dict[str, Any], target: Callable, class_name: str) -> N
         Calculator class or factory function the keyword arguments are passed to.
     class_name
         Registry `class_name`, used to look up what `target` accepts indirectly.
+    reserved
+        Parameter names set by ML-PEG itself, which must not be overridden.
 
     Raises
     ------
     ValueError
-        If a keyword argument is accepted by neither `target` nor anything it passes
-        its own `**kwargs` on to.
+        If a keyword argument is reserved, or is accepted by neither `target` nor
+        anything it passes its own `**kwargs` on to.
     """
+    check_reserved(kwargs, reserved)
+
     # Nothing to check against, such as a test double taking only `**kwargs`.
     if not _named_parameters(target) and not getattr(
         target, "default_parameters", None
@@ -153,6 +187,29 @@ def check_kwargs(kwargs: dict[str, Any], target: Callable, class_name: str) -> N
         raise ValueError(
             f"{', '.join(unknown)} would be ignored by {class_name}. Valid keyword "
             f"arguments are: {', '.join(sorted(accepted))}"
+        )
+
+
+def check_reserved(kwargs: dict[str, Any], reserved: Sequence[str]) -> None:
+    """
+    Check that keyword arguments set by ML-PEG are not also set by the model.
+
+    Parameters
+    ----------
+    kwargs
+        Keyword arguments set by the model's `kwargs` key.
+    reserved
+        Parameter names set by ML-PEG itself, which must not be overridden.
+
+    Raises
+    ------
+    ValueError
+        If a reserved keyword argument is set.
+    """
+    if overridden := sorted(set(kwargs) & set(reserved)):
+        raise ValueError(
+            f"{', '.join(overridden)} is set by ML-PEG, so cannot be set through "
+            "model kwargs. Precision is set by the benchmark, or by overwrite_dtype"
         )
 
 
@@ -215,14 +272,14 @@ def split_kwargs(
     ValueError
         If a keyword argument is reserved, or is accepted by none of the targets.
     """
-    accepted = [set(inspect.signature(target).parameters) for target in targets]
+    check_reserved(kwargs, reserved)
+
+    accepted = [
+        accepted_kwargs(target, getattr(target, "__name__", "")) for target in targets
+    ]
     split: list[dict[str, Any]] = [{} for _ in targets]
 
     for key, value in kwargs.items():
-        if key in reserved:
-            raise ValueError(
-                f"'{key}' is set by ML-PEG, so cannot be set through model kwargs"
-            )
         match = next(
             (
                 target_kwargs
@@ -237,6 +294,31 @@ def split_kwargs(
         match[key] = value
 
     return split
+
+
+def warn_precision_unused(class_name: str, default_dtype: str | None) -> None:
+    """
+    Warn that a calculator cannot be run at the precision set for it.
+
+    Only warns when `overwrite_dtype` asked for a precision, as calculators without a
+    dtype argument always run at their native precision, which their `get_calculator`
+    documents.
+
+    Parameters
+    ----------
+    class_name
+        Registry `class_name` of the calculator.
+    default_dtype
+        Value set by the model's `overwrite_dtype` key, if any.
+    """
+    if default_dtype is None:
+        return
+
+    warn(
+        f"{class_name} has no dtype argument, so overwrite_dtype "
+        f"'{default_dtype}' has no effect",
+        stacklevel=3,
+    )
 
 
 def check_precision(precision: str) -> None:
@@ -374,7 +456,12 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
             Loaded ASE Calculator.
         """
         target = import_calculator(self.module, self.class_name)
-        check_kwargs(self.kwargs or {}, target, self.class_name)
+        check_kwargs(
+            self.kwargs or {},
+            target,
+            self.class_name,
+            reserved=("default_dtype", "dtype"),
+        )
 
         # Drop the dtype set from the requested precision if the calculator has no
         # such argument, rather than leaving ASE to ignore it silently.
@@ -388,7 +475,17 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
                 )
                 del kwargs[dtype_arg]
 
-        return MlipxGenericASECalc.get_calculator(self, **kwargs)
+        # mlipx passes `device` to every calculator, so drop it the same way.
+        model = self
+        if self.device is not None and "device" not in accepted:
+            warn(
+                f"{self.class_name} does not take 'device', so it is ignored. Set "
+                "'device: null' for this model to make that explicit",
+                stacklevel=2,
+            )
+            model = dataclasses.replace(self, device=None)
+
+        return MlipxGenericASECalc.get_calculator(model, **kwargs)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
         """
@@ -422,6 +519,8 @@ class DpaCalc(SumCalc):
 
     module: str = "deepmd.calculator"
     class_name: str = "DP"
+    device: Device | str | None = None
+    default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -442,6 +541,14 @@ class DpaCalc(SumCalc):
             Loaded DeePMD ASE calculator.
         """
         check_precision(precision)
+        warn_precision_unused(self.class_name, self.default_dtype)
+
+        if self.device is not None:
+            warn(
+                f"{self.class_name} has no device argument, so 'device: "
+                f"{self.device}' is ignored. DeePMD selects the device itself",
+                stacklevel=2,
+            )
 
         dp = import_calculator(self.module, self.class_name)
         check_kwargs(self.kwargs, dp, self.class_name)
@@ -543,6 +650,7 @@ class VivaceCalc(SumCalc):
     module: str = "simpoly.vivace.calculator"
     class_name: str = "MLFFCalculator"
     device: Device | None = None
+    default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -565,6 +673,7 @@ class VivaceCalc(SumCalc):
         check_kwargs(self.kwargs, mlff_calculator, self.class_name)
 
         check_precision(precision)
+        warn_precision_unused(self.class_name, self.default_dtype)
 
         kwargs.update(self.kwargs)
         calc = mlff_calculator(**kwargs)
@@ -628,7 +737,9 @@ class OrbCalc(SumCalc):
             dtype = self.default_dtype
 
         model_kwargs, calc_kwargs = split_kwargs(
-            self.kwargs, (method, orb_calculator), reserved=("device", "precision")
+            self.kwargs,
+            (method, orb_calculator),
+            reserved=("device", "precision", "model", "atoms_adapter"),
         )
 
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
@@ -718,12 +829,15 @@ class FairChemCalc(SumCalc):
                 "overrides",
                 "inference_settings",
                 "task_name",
+                "predict_unit",
             ),
         )
 
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+
         predictor = pretrained_mlip.get_predict_unit(
             self.model_name,
-            device=self.device,
+            device=device,
             overrides=self.overrides,
             inference_settings=inference_settings,
             **predictor_kwargs,
@@ -812,6 +926,7 @@ class SevenNetCalc(SumCalc):
     module: str = "sevenn.calculator"
     class_name: str = "SevenNetCalculator"
     device: Device | None = None
+    default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -835,6 +950,7 @@ class SevenNetCalc(SumCalc):
         check_kwargs(self.kwargs, sevennet_calculator, self.class_name)
 
         check_precision(precision)
+        warn_precision_unused(self.class_name, self.default_dtype)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
 
         if device is None:
@@ -933,13 +1049,18 @@ class GraceCalc(GenericASECalc):
         if self.default_dtype is not None:
             suffix = self.default_dtype
 
-        model_name = f"{self.kwargs['model']}{suffix}"
+        configured_model = self.kwargs.get("model")
+        if configured_model is None:
+            raise ValueError(f"{self.class_name} models must set 'model' in kwargs")
+
+        model_name = f"{configured_model}{suffix}"
         if model_name not in MODELS_NAME_LIST:
             warn(
-                "Unable to find model with requested precision, using default",
+                f"No '{model_name}' checkpoint is published, so '{configured_model}' "
+                "is used at its own precision instead",
                 stacklevel=2,
             )
-            model_name = self.kwargs["model"]
+            model_name = configured_model
 
         # Set the model on a copy, as `self.kwargs` is shared with the model registry.
         model = dataclasses.replace(self, kwargs={**self.kwargs, "model": model_name})

@@ -80,13 +80,15 @@ The common fields are:
 
    Use ``null`` when the calculator has no device argument, with a comment
    saying so, e.g. ``device: null  # Unused: grace_fm has no device argument``.
-   Such calculators choose their own device, and anything set here would be
-   swallowed by ASE's ``Calculator`` and silently ignored. This currently
-   applies to ``grace_fm``, ``DP`` and plain ASE calculators such as
-   ``LennardJones``.
+   Such calculators choose their own device. This currently applies to
+   ``grace_fm``, ``DP`` and plain ASE calculators such as ``LennardJones``.
+   Setting a device for one of those warns and is ignored, rather than being
+   silently swallowed by ASE's ``Calculator``, so ``null`` keeps the entry quiet
+   and records that the setting may become usable in future.
 
 ``trained_on_dispersion``
-   Whether the model's training data already included dispersion corrections.
+   **Required.** Whether the model's training data already included dispersion
+   corrections.
    Some benchmark scripts call ``add_d3_calculator``. If this field is
    ``false``, ML-PEG may add a separate D3 correction for those benchmarks; if it
    is ``true``, the base calculator is used unchanged.
@@ -150,6 +152,9 @@ The common fields are:
       defaulting to ``D3``. It has no effect on the correction applied, so only
       set it if the name should differ from the calculation.
 
+   No correction is added when ``trained_on_dispersion`` is ``true``, so setting
+   anything but ``label`` alongside it warns.
+
 ``overwrite_dtype``
    Optional precision override for model wrappers that support it. Most
    benchmarks request either ``precision="high"`` or ``precision="low"``, which
@@ -161,10 +166,15 @@ The common fields are:
    takes its own precision strings and ``grace_fm`` takes a suffix appended to
    ``kwargs.model`` (``-fp64``) that selects a different published checkpoint.
    Check the relevant ``get_calculator`` in ``ml_peg/models/models.py`` before
-   setting it; wrappers whose backend has no dtype argument ignore the field.
-   Those wrappers ignore the requested ``precision`` too: DPA checkpoints are
-   fixed at float32, SevenNet exposes no precision argument, and Vivace takes
-   its dtype from the checkpoint metadata.
+   setting it. The field may be set for any model, so it can be applied across a
+   whole models file, but wrappers whose backend has no dtype argument warn that
+   it has no effect. Those wrappers ignore the requested ``precision`` too: DPA
+   checkpoints are fixed at float32, SevenNet exposes no precision argument, and
+   Vivace takes its dtype from the checkpoint metadata.
+
+   Set the precision through this field rather than ``kwargs``: a dtype argument
+   in ``kwargs`` is rejected, since it would override both ``precision`` and
+   ``overwrite_dtype``.
 
 Examples
 --------
