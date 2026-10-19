@@ -36,6 +36,9 @@ FORWARDED_KWARGS = {
     "mace_omol": (("mace.calculators", "MACECalculator"),),
     "mace_polar": (("mace.calculators", "MACECalculator"),),
     "grace_fm": (("tensorpotential.calculator", "TPCalculator"),),
+    "MatterSimCalculator": (
+        ("mattersim.forcefield.potential", "Potential.from_checkpoint"),
+    ),
 }
 
 #: Keyword arguments read from `**kwargs` by a calculator, so absent from the
@@ -47,7 +50,6 @@ PASSTHROUGH_KWARGS = {
     "mace_omol": MACE_KWARGS,
     "mace_polar": MACE_KWARGS,
     "MACECalculator": MACE_KWARGS,
-    "MatterSimCalculator": {"load_path"},
     "grace_fm": {"cutoff"},
 }
 
@@ -69,7 +71,7 @@ def _named_parameters(target: Callable) -> set[str]:
     return {
         name
         for name, parameter in inspect.signature(target).parameters.items()
-        if parameter.kind is not inspect.Parameter.VAR_KEYWORD
+        if parameter.kind is not inspect.Parameter.VAR_KEYWORD and name != "self"
     }
 
 
@@ -167,13 +169,18 @@ def import_calculator(module: str, class_name: str) -> Callable:
         Module containing the calculator, as set by the registry's `module` key.
     class_name
         Calculator class or factory function, as set by the registry's `class_name` key.
+        Dotted names are resolved in turn, e.g. `Potential.from_checkpoint`.
 
     Returns
     -------
     Callable
         Calculator class or factory function.
     """
-    return getattr(importlib.import_module(module), class_name)
+    calculator = importlib.import_module(module)
+    for attribute in class_name.split("."):
+        calculator = getattr(calculator, attribute)
+
+    return calculator
 
 
 def split_kwargs(
@@ -358,18 +365,28 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
         Parameters
         ----------
         **kwargs
-            Any keyword arguments to pass to `get_calculator`.
+            Any keyword arguments to pass to `get_calculator`, including the dtype
+            set from the requested precision.
 
         Returns
         -------
         Calculator
             Loaded ASE Calculator.
         """
-        check_kwargs(
-            self.kwargs or {},
-            import_calculator(self.module, self.class_name),
-            self.class_name,
-        )
+        target = import_calculator(self.module, self.class_name)
+        check_kwargs(self.kwargs or {}, target, self.class_name)
+
+        # Drop the dtype set from the requested precision if the calculator has no
+        # such argument, rather than leaving ASE to ignore it silently.
+        accepted = accepted_kwargs(target, self.class_name)
+        for dtype_arg in ("default_dtype", "dtype"):
+            if dtype_arg in kwargs and dtype_arg not in accepted:
+                warn(
+                    f"{self.class_name} does not take '{dtype_arg}', so the requested "
+                    "precision has no effect",
+                    stacklevel=2,
+                )
+                del kwargs[dtype_arg]
 
         return MlipxGenericASECalc.get_calculator(self, **kwargs)
 
