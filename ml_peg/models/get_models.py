@@ -10,8 +10,6 @@ from typing import Any
 
 import yaml
 
-from ml_peg.models import models_file
-
 #: Keys that may be set for a model in models.yml. Anything else would be ignored.
 MODEL_KEYS = frozenset(
     {
@@ -30,6 +28,23 @@ MODEL_KEYS = frozenset(
 
 #: Keys that must be set for a model in models.yml.
 REQUIRED_MODEL_KEYS = frozenset({"module", "class_name"})
+
+
+def default_models_file() -> Path:
+    """
+    Get the models file set for the current run.
+
+    Looked up when needed, rather than bound when this module is imported, so the
+    file set by the CLI is used however late this module is first imported.
+
+    Returns
+    -------
+    Path
+        Path to the YAML file defining models, defaulting to models.yml.
+    """
+    from ml_peg import models
+
+    return models.models_file
 
 
 def validate_config(name: str, cfg: dict[str, Any]) -> None:
@@ -89,7 +104,7 @@ def _load_models_yaml(
     dict[str, Any]
         Parsed models.yml registry.
     """
-    filepath = filepath if filepath else models_file
+    filepath = filepath if filepath else default_models_file()
     with open(filepath, encoding="utf8") as file:
         return yaml.safe_load(file) or {}
 
@@ -116,7 +131,7 @@ def load_model_configs(
         - model_levels: Dictionary mapping model names to their level of
           theory (or ``None``)
     """
-    filepath = filepath if filepath else models_file
+    filepath = filepath if filepath else default_models_file()
     all_models = _load_models_yaml(filepath)
 
     model_levels: dict[str, str | None] = {}
@@ -220,7 +235,7 @@ def load_models(
     if mock_only:
         return loaded_models
 
-    filepath = filepath if filepath else models_file
+    filepath = filepath if filepath else default_models_file()
     all_models = _load_models_yaml(filepath)
 
     for name, cfg in get_subset(all_models, models).items():
@@ -370,7 +385,7 @@ def get_model_names(
     list[str]
         Loaded model names from `filepath`.
     """
-    filepath = filepath if filepath else models_file
+    filepath = filepath if filepath else default_models_file()
     all_models = _load_models_yaml(filepath)
 
     model_names = []
