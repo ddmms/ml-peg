@@ -286,38 +286,138 @@ def raw_metrics(errs: dict) -> dict[str, float]:
     return out
 
 
-def ordering_error(model_frames: list, ref_frames: list) -> float:
+def q_coordinate(atoms, q_triple) -> float:
     """
-    Error of a model's energy difference between two DFT-relaxed states.
+    Return the state coordinate q = d(j, l) - d(i, l) of an ordering check.
 
     Parameters
     ----------
-    model_frames
-        The states with the model energy (info ``model_energy``), in the reference
-        order.
-    ref_frames
-        The DFT states (info ``state``, ``REF_energy``).
+    atoms
+        Structure.
+    q_triple
+        Atoms (i, j, l).
 
     Returns
     -------
     float
-        |dE_model - dE_DFT| per unit length of crack front (meV/A), with
-        dE = E(first state) - E(second state).
+        The coordinate (A); negative for the sharp (4,3,1) tip, positive for 5-7.
     """
-    if [f.info["state"] for f in model_frames] != [f.info["state"] for f in ref_frames]:
-        raise ValueError("model ordering states do not match the reference")
-    d_model = (
-        model_frames[0].info["model_energy"] - model_frames[1].info["model_energy"]
-    )
-    d_ref = ref_frames[0].info["REF_energy"] - ref_frames[1].info["REF_energy"]
-    return 1000 * abs(d_model - d_ref) / float(ref_frames[0].cell[2, 2])
+    a, b, c = (int(x) for x in q_triple)
+    return sc.pair_distance(atoms, (b, c)) - sc.pair_distance(atoms, (a, c))
+
+
+def _crossover(k: np.ndarray, de: np.ndarray) -> float:
+    """
+    Return the load where a straight-line fit of dE(K) crosses zero.
+
+    Parameters
+    ----------
+    k
+        Loads (K/K_G).
+    de
+        Energy differences at those loads.
+
+    Returns
+    -------
+    float
+        Crossover load; NaN for fewer than two points or a flat fit.
+    """
+    if len(k) < 2:
+        return np.nan
+    slope, intercept = np.polyfit(k, de, 1)
+    return float(-intercept / slope) if slope != 0 else np.nan
+
+
+def ordering_curve(model_frames: list, ref_frames: list, ordering: dict) -> dict:
+    """
+    Compare a model's energy ordering of two states with DFT's over a range of loads.
+
+    E(first state) - E(second state) is interpolated in K along each state's frames, on
+    ``n_grid`` loads spanning the range where DFT has both. A model frame counts only if
+    its fixed-K relaxation converged and stayed in its state's basin (q within ``q_tol``
+    of the DFT frame's); a load is covered where both states have counted frames on
+    either side of it.
+
+    Parameters
+    ----------
+    model_frames
+        Model outputs (``ct.ordering_relaxations``), in the reference order.
+    ref_frames
+        DFT states (info ``state``, ``K_over_KG``, ``REF_energy``).
+    ordering
+        Settings: ``states``, ``q_triple``, ``q_tol``, ``n_grid``.
+
+    Returns
+    -------
+    dict
+        ``error`` (RMS |dE_model - dE_DFT| per unit front length over the covered loads,
+        meV/A), ``coverage`` (fraction of the loads covered), ``k_cross`` and
+        ``k_cross_ref`` (the loads where the straight-line fits of dE(K) cross zero).
+
+    Raises
+    ------
+    ValueError
+        If the model frames are not the reference's states and loads (stale outputs).
+    """
+    key = [(f.info["state"], round(float(f.info["K_over_KG"]), 6)) for f in ref_frames]
+    if [
+        (f.info["state"], round(float(f.info["K_over_KG"]), 6)) for f in model_frames
+    ] != key:
+        raise ValueError("model ordering frames do not match the reference")
+    first, second = ordering["states"]
+    front = float(ref_frames[0].cell[2, 2])
+    curves = {}
+    for state in (first, second):
+        idx = [i for i, f in enumerate(ref_frames) if f.info["state"] == state]
+        k = np.array([ref_frames[i].info["K_over_KG"] for i in idx])
+        ok = np.array(
+            [
+                bool(model_frames[i].info.get("model_converged", False))
+                and abs(
+                    float(model_frames[i].info["model_q"])
+                    - q_coordinate(ref_frames[i], ordering["q_triple"])
+                )
+                <= ordering["q_tol"]
+                for i in idx
+            ]
+        )
+        curves[state] = (
+            k,
+            np.array([ref_frames[i].info["REF_energy"] for i in idx]),
+            np.array([model_frames[i].info["model_energy"] for i in idx]),
+            ok,
+        )
+    lo = max(c[0].min() for c in curves.values())
+    hi = min(c[0].max() for c in curves.values())
+    grid = np.linspace(lo, hi, int(ordering["n_grid"]))
+    d_ref = np.interp(grid, *curves[first][:2]) - np.interp(grid, *curves[second][:2])
+    covered = np.ones(len(grid), bool)
+    d_model = np.zeros(len(grid))
+    for sign, state in ((1.0, first), (-1.0, second)):
+        k, _, e, ok = curves[state]
+        if ok.sum() < 2:
+            covered[:] = False
+            continue
+        covered &= (grid >= k[ok].min() - 1e-12) & (grid <= k[ok].max() + 1e-12)
+        d_model += sign * np.interp(grid, k[ok], e[ok])
+    err = 1000 * np.abs(d_model - d_ref)[covered] / front
+    return {
+        "error": float(np.sqrt(np.mean(err**2))) if covered.any() else np.nan,
+        "coverage": float(covered.mean()),
+        "k_cross": _crossover(grid[covered], d_model[covered]),
+        "k_cross_ref": _crossover(grid, d_ref),
+    }
 
 
 def ordering_metrics(
     frames: dict, status: dict, refs: dict, model: str = ""
 ) -> dict[str, float]:
     """
-    Return the branch-ordering metric values of a model.
+    Return the ordering-over-load metric values of a model.
+
+    Two metrics per check, padded by coverage like the S-curve ones (an uncovered load
+    counts at the bad threshold): the ordering error and the error of the crossover
+    load.
 
     Parameters
     ----------
@@ -338,25 +438,33 @@ def ordering_metrics(
     """
     out = {}
     for name, ordering in ORDERINGS.items():
-        metric = f"{ordering['label']} ordering error"
+        names = (
+            f"{ordering['label']} ordering error",
+            f"{ordering['label']} crossover error",
+        )
         states = frames.get(name, [])
         failed = str(status.get(name, "")).startswith("failed")
         if states and len(states) != len(refs[name]):
             warn(
-                f"{model} {name}: {len(states)} of {len(refs[name])} states; "
+                f"{model} {name}: {len(states)} of {len(refs[name])} frames; "
                 "not scored",
                 stacklevel=2,
             )
             states = []
         if states and any("model_energy" not in f.info for f in states):
             warn(
-                f"{model} {name}: no model energy on every state; not scored",
+                f"{model} {name}: no model energy on every frame; not scored",
                 stacklevel=2,
             )
             states = []
-        out[metric] = (
-            np.nan if failed or not states else ordering_error(states, refs[name])
-        )
+        if failed or not states:
+            out.update(dict.fromkeys(names, np.nan))
+            continue
+        c = ordering_curve(states, refs[name], ordering)
+        dk = abs(c["k_cross"] - c["k_cross_ref"])
+        for metric, value in zip(names, (c["error"], dk), strict=True):
+            th = DEFAULT_THRESHOLDS[metric]
+            out[metric] = sc.padded(value, c["coverage"], th["good"], th["bad"])
     return out
 
 

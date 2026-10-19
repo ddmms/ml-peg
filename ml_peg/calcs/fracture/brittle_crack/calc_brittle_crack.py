@@ -62,7 +62,9 @@ def test_brittle_crack(mlip: tuple[str, Any]) -> None:
     data = download_s3_data(key=ct.S3_KEY, filename=ct.S3_FILENAME) / "brittle_crack"
     for name in ORDERINGS:
         try:
-            frames = ct.ordering_energies(read(data / f"{name}.extxyz", ":"), calc)
+            frames = ct.ordering_relaxations(
+                read(data / f"{name}.extxyz", ":"), calc, ORDERINGS[name]["q_triple"]
+            )
             status[name] = "complete"
         except Exception as exc:
             warn(f"{model_name} {name}: {exc}", stacklevel=2)

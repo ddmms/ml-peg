@@ -56,6 +56,12 @@ metrics:
   Si (111)[1-10] 5-7 ordering error:
     good: 12.5
     bad: 37.6
-    unit: "meV/A"
-    tooltip: "Error of E(5-7) - E(sharp) on the DFT-relaxed (4,3,1) states at K/K_G 1.50, per unit length of crack front. DFT puts the 5-7 state 37.6 meV/A below the sharp one; bad = that gap (the order can flip), good = bad / 3."
+    unit: "meV/Å"
+    tooltip: "RMS error of E(5-7) - E(sharp) over K/K_G 1.46-1.76, per unit length of crack front: each DFT state of the (4,3,1) cluster relaxed at fixed K with the model; a load where a state leaves its basin or does not relax counts at the bad threshold. bad = the DFT gap at K/K_G 1.50 (37.6 meV/Å), good = bad / 3."
+    level_of_theory: PBE
+  Si (111)[1-10] 5-7 crossover error:
+    good: 0.020
+    bad: 0.060
+    unit: "K/K_G"
+    tooltip: "Error of the load where the 5-7 and sharp states swap order (DFT: K/K_G 1.56; 5-7 lower below it), from straight-line fits of dE(K). bad = the shift the ordering error's bad threshold (145 meV per cell) makes at the DFT slope of dE(K) (2.42 eV per unit K/K_G), good = bad / 3; padded by coverage like the ordering error."
     level_of_theory: PBE

@@ -236,6 +236,9 @@ def test_evaluated_structures_are_neutral_singlets():
 
 
 HAVE_DATA = (BENCHMARK_DATA_DIR / "brittle_crack.zip").exists()
+HAVE_ORDERING_DATA = (
+    BENCHMARK_DATA_DIR / "brittle_crack" / "Si_111_110_431_ordering.extxyz"
+).exists()
 
 
 def test_raw_metrics_pad_by_coverage_with_the_loaded_thresholds():
@@ -468,120 +471,286 @@ def test_calc_is_marked_fast():
     assert "fast" in marks and "slow" not in marks
 
 
-def _ordering_frames(e57: float, esharp: float, key: str) -> list:
+ORDER = {
+    "label": "X 5-7",
+    "states": ["5-7", "sharp"],
+    "q_triple": [0, 1, 2],
+    "q_tol": 0.5,
+    "n_grid": 7,
+}
+
+
+def _ramp_frames(de57, key: str, ks=(1.5, 1.6, 1.7), q57=1.5, qsharp=-1.3) -> list:
     """
-    Two-state ordering frames with energies under ``key``, front length 4 A.
+    Ordering-over-load frames: the 5-7 and sharp states at each K, front length 4 A.
+
+    The q coordinate d(1, 2) - d(0, 2) of the three Si atoms is q57 (5-7) or qsharp
+    (sharp); atoms 0 and 2 are clamped (``fixed``).
 
     Parameters
     ----------
-    e57
-        Energy of the 5-7 state (eV).
-    esharp
-        Energy of the sharp state (eV).
+    de57
+        E(5-7) - E(sharp) (eV) as a function of K; E(sharp) = 0.
     key
         Info key of the energy (``REF_energy`` or ``model_energy``).
+    ks
+        Loads (K/K_G) of the frames, the same for both states.
+    q57
+        q of the 5-7 frames (A).
+    qsharp
+        q of the sharp frames (A).
 
     Returns
     -------
     list
-        The two frames.
+        The 5-7 frames by K, then the sharp ones.
     """
     from ase import Atoms
 
     out = []
-    for state, e in (("5-7", e57), ("sharp", esharp)):
-        a = Atoms("Si2", positions=[[0, 0, 0], [1.2, 1.2, 1.2]], cell=[10, 10, 4])
-        a.info.update(state=state, K_over_KG=1.5, **{key: e})
-        out.append(a)
+    for state, q in (("5-7", q57), ("sharp", qsharp)):
+        for k in ks:
+            d02 = 2.5 if q > 0 else 3.7
+            a = Atoms(
+                "Si3",
+                positions=[[d02, 0, 0], [0, d02 + q, 0], [0, 0, 0]],
+                cell=[10, 10, 4],
+                pbc=[False, False, True],
+            )
+            a.set_array("fixed", np.array([1, 0, 1], dtype=int))
+            e = de57(k) if state == "5-7" else 0.0
+            a.info.update(state=state, K_over_KG=k, **{key: e})
+            if key == "model_energy":
+                a.info.update(model_q=q, model_converged=True)
+            out.append(a)
     return out
 
 
-def test_ordering_error_is_the_per_length_energy_difference_error():
-    """|dE_model - dE_DFT| per unit crack-front length, in meV/A."""
+def _linear(k):
+    """
+    DFT-like E(5-7) - E(sharp): -0.2 eV at K 1.5, crossing zero at K 1.6.
+
+    Parameters
+    ----------
+    k
+        Load (K/K_G).
+
+    Returns
+    -------
+    float
+        Energy difference (eV).
+    """
+    return 2.0 * (k - 1.6)
+
+
+def test_ordering_curve_of_the_reference_itself_has_no_error():
+    """A model equal to DFT: zero ordering error, full coverage, the same crossover."""
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
-    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
-    model = _ordering_frames(0.5, 0.0, "model_energy")
-    assert an.ordering_error(model, ref) == pytest.approx(375.0)
+    ref = _ramp_frames(_linear, "REF_energy")
+    c = an.ordering_curve(_ramp_frames(_linear, "model_energy"), ref, ORDER)
+    assert c["error"] == pytest.approx(0.0, abs=1e-9) and c["coverage"] == 1.0
+    assert c["k_cross"] == pytest.approx(c["k_cross_ref"]) == pytest.approx(1.6)
 
 
-def test_failed_or_missing_ordering_gives_nan():
-    """A failed or absent ordering calculation is not scored."""
+def test_an_energy_offset_is_the_ordering_error_and_shifts_the_crossover():
+    """DE off by 0.04 eV: 10 meV/A on a 4 A front; the crossover moves by 0.04 / 2.0."""
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
-    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
-    model = _ordering_frames(0.5, 0.0, "model_energy")
-    name = next(iter(an.ORDERINGS))
-    refs = {name: ref}
-    ok = an.ordering_metrics({name: model}, {}, refs)
-    assert list(ok.values()) == [pytest.approx(375.0)]
-    for frames, status in (({name: []}, {}), ({name: model}, {name: "failed: x"})):
-        assert all(
-            np.isnan(v) for v in an.ordering_metrics(frames, status, refs).values()
+    ref = _ramp_frames(_linear, "REF_energy")
+    model = _ramp_frames(lambda k: _linear(k) + 0.04, "model_energy")
+    c = an.ordering_curve(model, ref, ORDER)
+    assert c["error"] == pytest.approx(10.0)
+    assert c["k_cross"] - c["k_cross_ref"] == pytest.approx(-0.02)
+
+
+def test_a_state_that_leaves_its_basin_is_not_scored_at_that_load():
+    """
+    Leave a load unscored where a state left its basin or did not converge.
+
+    A 5-7 frame that relaxes to the sharp side (q off by more than q_tol) drops out: the
+    loads beyond the last 5-7 frame still in its basin are not covered.
+    """
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = _ramp_frames(_linear, "REF_energy")
+    model = _ramp_frames(_linear, "model_energy")
+    model[2].info["model_q"] = -1.2  # the 5-7 frame at K 1.7
+    c = an.ordering_curve(model, ref, ORDER)
+    assert c["coverage"] == pytest.approx(4 / 7)  # grid 1.5..1.7 in 7: 1.5..1.6 covered
+    model[2].info.update(
+        model_q=1.5, model_converged=False
+    )  # an unconverged relaxation
+    assert an.ordering_curve(model, ref, ORDER)["coverage"] == pytest.approx(4 / 7)
+
+
+def test_ordering_frames_that_differ_from_the_reference_raise():
+    """Stale outputs (other states or loads) raise, as a topology mismatch does."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ref = _ramp_frames(_linear, "REF_energy")
+    with pytest.raises(ValueError, match="do not match"):
+        an.ordering_curve(_ramp_frames(_linear, "model_energy")[::-1], ref, ORDER)
+    with pytest.raises(ValueError, match="do not match"):
+        an.ordering_curve(
+            _ramp_frames(_linear, "model_energy", ks=(1.5, 1.6, 1.8)), ref, ORDER
         )
 
 
+def test_ordering_metrics_pad_by_coverage_and_give_nan_for_failed_runs(monkeypatch):
+    """
+    Pad both metrics by coverage; failed or incomplete outputs are NaN.
+
+    Failed, absent, truncated or energy-less outputs give NaN (the last two warn).
+    """
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    monkeypatch.setattr(an, "ORDERINGS", {"o": ORDER})
+    th = {
+        "X 5-7 ordering error": {"good": 12.5, "bad": 37.6},
+        "X 5-7 crossover error": {"good": 0.020, "bad": 0.060},
+    }
+    monkeypatch.setattr(an, "DEFAULT_THRESHOLDS", {**an.DEFAULT_THRESHOLDS, **th})
+    ref = {"o": _ramp_frames(_linear, "REF_energy")}
+    model = _ramp_frames(lambda k: _linear(k) + 0.2, "model_energy")
+    out = an.ordering_metrics({"o": model}, {}, ref)
+    assert out["X 5-7 ordering error"] == pytest.approx(50.0)
+    assert out["X 5-7 crossover error"] == pytest.approx(0.1)
+    for frames, status in (({"o": []}, {}), ({"o": model}, {"o": "failed: x"})):
+        assert all(
+            np.isnan(v) for v in an.ordering_metrics(frames, status, ref).values()
+        )
+    with pytest.warns(UserWarning, match="mymodel o: 5 of 6 frames"):
+        out = an.ordering_metrics({"o": model[:5]}, {}, ref, model="mymodel")
+    assert all(np.isnan(v) for v in out.values())
+    del model[0].info["model_energy"]
+    with pytest.warns(UserWarning, match="mymodel o: no model energy"):
+        out = an.ordering_metrics({"o": model}, {}, ref, model="mymodel")
+    assert all(np.isnan(v) for v in out.values())
+
+
 def test_ordering_metric_thresholds():
-    """Thresholds: bad = |dE_DFT| per front length (37.6 meV/A), good = bad / 3."""
+    """
+    Check the thresholds: ordering bad = the DFT gap at K/K_G 1.50, good = bad / 3.
+
+    Crossover: the K shift that bad gap makes at the DFT slope, and a third of it.
+    """
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
     th = an.DEFAULT_THRESHOLDS["Si (111)[1-10] 5-7 ordering error"]
     assert th["good"] == pytest.approx(12.5) and th["bad"] == pytest.approx(37.6)
+    th = an.DEFAULT_THRESHOLDS["Si (111)[1-10] 5-7 crossover error"]
+    assert th["good"] == pytest.approx(0.020) and th["bad"] == pytest.approx(0.060)
 
 
-def test_ordering_energies_are_neutral_singlet_model_energies():
-    """The calc helper returns copies with the model energy; DFT info is kept."""
+def test_ordering_relaxations_keep_the_clamped_atoms_and_record_the_basin():
+    """
+    Relax each state at fixed K as a neutral lowest-spin structure.
+
+    The clamped atoms stay put; the output carries the relaxed and DFT-geometry model
+    energies, q and whether the relaxation converged.
+    """
     rec = _InfoRecorder()
-    frames = ct.ordering_energies(_ordering_frames(-1.0, 0.0, "REF_energy"), rec)
+    ref = _ramp_frames(_linear, "REF_energy", ks=(1.5,))
+    out = ct.ordering_relaxations(ref, rec, ORDER["q_triple"], fmax=0.05)
     assert rec.seen == {(0, 1)}
-    assert [f.info["state"] for f in frames] == ["5-7", "sharp"]
-    assert [f.info["REF_energy"] for f in frames] == [-1.0, 0.0]
-    assert all(np.isfinite(f.info["model_energy"]) for f in frames)
+    assert [f.info["state"] for f in out] == ["5-7", "sharp"]
+    for f, r in zip(out, ref, strict=True):
+        clamped = r.arrays["fixed"] == 1
+        assert np.allclose(f.positions[clamped], r.positions[clamped])
+        assert f.info["model_energy"] <= f.info["model_energy_dft_geom"] + 1e-9
+        assert isinstance(f.info["model_converged"], bool | np.bool_)
+        assert np.isfinite(f.info["model_q"])
+        assert f.info["REF_energy"] == r.info["REF_energy"]
 
 
-@pytest.mark.skipif(not HAVE_DATA, reason="reference data not in the ml_peg cache")
-def test_packaged_dft_ordering_is_5_7_below_sharp():
-    """The DFT 5-7 state is 145.4 meV (37.6 meV/A of front) below the sharp state."""
-    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+def test_an_ordering_relaxation_has_a_step_limit(monkeypatch):
+    """The fixed-K relaxations run with a finite step limit."""
+    from ase.optimize import LBFGS
 
-    ref = an.reference_frames("Si_111_110_431_order")
-    e = {f.info["state"]: f.info["REF_energy"] for f in ref}
-    assert 1000 * (e["5-7"] - e["sharp"]) == pytest.approx(-145.36, abs=0.01)
-    assert len(ref[0]) == 216
+    calls = []
+    run = LBFGS.run
+
+    def spy(self, **kwargs):
+        """
+        Record the run's keyword arguments, then run.
+
+        Parameters
+        ----------
+        **kwargs
+            Optimiser run arguments.
+
+        Returns
+        -------
+        bool
+            Whether the run converged.
+        """
+        calls.append(kwargs)
+        return run(self, **kwargs)
+
+    monkeypatch.setattr(LBFGS, "run", spy)
+    ct.ordering_relaxations(
+        _ramp_frames(_linear, "REF_energy", ks=(1.5,)), _SiOnly(), [0, 1, 2]
+    )
+    assert calls and all(0 < k.get("steps", np.inf) < np.inf for k in calls)
 
 
-def test_ordering_energies_survive_the_output_file(tmp_path):
-    """Model ordering energies written by the calc are read back by the analysis."""
+def test_ordering_relaxations_survive_the_output_file(tmp_path):
+    """Model ordering frames written by the calc are read back and scored."""
     from ase.io import read, write
 
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
-    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
-    write(tmp_path / "o.extxyz", ct.ordering_energies(ref, _SiOnly()), format="extxyz")
-    assert np.isfinite(an.ordering_error(read(tmp_path / "o.extxyz", ":"), ref))
+    ref = _ramp_frames(_linear, "REF_energy")
+    out = ct.ordering_relaxations(ref, _SiOnly(), ORDER["q_triple"], fmax=0.05)
+    write(tmp_path / "o.extxyz", out, format="extxyz")
+    back = read(tmp_path / "o.extxyz", ":")
+    assert all(isinstance(f.info["model_converged"], bool | np.bool_) for f in back)
+    assert np.isfinite(an.ordering_curve(back, ref, ORDER)["coverage"])
 
 
-def test_a_truncated_ordering_file_gives_nan_with_a_warning():
-    """An ordering output with fewer states than the reference is not scored."""
+@pytest.mark.skipif(
+    not HAVE_ORDERING_DATA, reason="ordering reference not in the ml_peg cache"
+)
+def test_packaged_dft_ordering_crosses_over_near_k_1_56():
+    """DFT: 5-7 below sharp at low load, above it past K* ~ 1.56, on 11 loads each."""
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
-    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
-    model = _ordering_frames(0.5, 0.0, "model_energy")[:1]
-    name = next(iter(an.ORDERINGS))
-    with pytest.warns(UserWarning, match="mymodel .*1 of 2 states"):
-        out = an.ordering_metrics({name: model}, {}, {name: ref}, model="mymodel")
-    assert all(np.isnan(v) for v in out.values())
+    name = "Si_111_110_431_ordering"
+    ref = an.reference_frames(name)
+    assert len(ref) == 22 and len(ref[0]) == 216 and "fixed" in ref[0].arrays
+    c = an.ordering_curve(ref_as_model(ref), ref, an.ORDERINGS[name])
+    assert c["k_cross_ref"] == pytest.approx(1.564, abs=0.001)
+    assert c["error"] == pytest.approx(0.0, abs=1e-9) and c["coverage"] == 1.0
 
 
-def test_ordering_states_that_differ_from_the_reference_still_raise():
-    """Stale outputs on other states raise, as a topology mismatch does."""
+def ref_as_model(ref: list) -> list:
+    """
+    Copy reference frames as a perfect model output.
+
+    Parameters
+    ----------
+    ref
+        Reference frames.
+
+    Returns
+    -------
+    list
+        Frames with ``model_energy`` = ``REF_energy``, converged, in their basin.
+    """
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
-    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
-    model = _ordering_frames(0.5, 0.0, "model_energy")[::-1]
-    name = next(iter(an.ORDERINGS))
-    with pytest.raises(ValueError, match="do not match"):
-        an.ordering_metrics({name: model}, {}, {name: ref})
+    q_triple = an.ORDERINGS["Si_111_110_431_ordering"]["q_triple"]
+    out = []
+    for f in ref:
+        g = f.copy()
+        g.info.update(
+            model_energy=f.info["REF_energy"],
+            model_converged=True,
+            model_q=an.q_coordinate(f, q_triple),
+        )
+        out.append(g)
+    return out
 
 
 def test_an_unreadable_output_file_gives_no_frames_with_a_warning(tmp_path):
@@ -593,19 +762,6 @@ def test_an_unreadable_output_file_gives_no_frames_with_a_warning(tmp_path):
     with pytest.warns(UserWarning, match="mymodel Si_111_110.extxyz: unreadable"):
         assert an.read_frames(bad, "mymodel") == []
     assert an.read_frames(tmp_path / "missing.extxyz", "mymodel") == []
-
-
-def test_an_ordering_output_without_model_energies_gives_nan_with_a_warning():
-    """Frames lacking ``model_energy`` (an incomplete calculation) are not scored."""
-    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
-
-    ref = _ordering_frames(-1.0, 0.0, "REF_energy")
-    model = _ordering_frames(0.5, 0.0, "model_energy")
-    del model[1].info["model_energy"]
-    name = next(iter(an.ORDERINGS))
-    with pytest.warns(UserWarning, match="mymodel .*no model energy"):
-        out = an.ordering_metrics({name: model}, {}, {name: ref}, model="mymodel")
-    assert all(np.isnan(v) for v in out.values())
 
 
 class _SWRecorder(Calculator):

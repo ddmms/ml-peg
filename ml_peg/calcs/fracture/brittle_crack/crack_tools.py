@@ -12,6 +12,9 @@ import yaml
 CASES_PATH = Path(__file__).with_name("cases.yml")
 S3_KEY = "inputs/fracture/brittle_crack/brittle_crack.zip"
 S3_FILENAME = "brittle_crack.zip"
+# step limit of the bulk and ordering relaxations (a model that cannot relax in this
+# many steps fails the constants, or leaves that ordering frame unscored)
+MAX_STEPS = 500
 TRACE = {
     "ftol": 2e-3,
     "dr_cap": 0.05,
@@ -58,29 +61,83 @@ def load_orderings(path: Path = CASES_PATH) -> dict[str, dict]:
     return yaml.safe_load(Path(path).read_text()).get("orderings", {})
 
 
-def ordering_energies(frames: list[Atoms], calc) -> list[Atoms]:
+def pair_distance_z(atoms: Atoms, i: int, j: int) -> float:
     """
-    Evaluate a model's energies on the DFT-relaxed states of a branch-ordering check.
+    Return the distance of two atoms with the minimum image along the front (z).
+
+    Parameters
+    ----------
+    atoms
+        Structure (periodic along the cell's third vector).
+    i, j
+        Atom indices.
+
+    Returns
+    -------
+    float
+        Distance (A).
+    """
+    v = atoms.positions[j] - atoms.positions[i]
+    fz = float(atoms.cell[2, 2])
+    v[2] -= fz * np.round(v[2] / fz)
+    return float(np.linalg.norm(v))
+
+
+def ordering_relaxations(
+    frames: list[Atoms],
+    calc,
+    q_triple,
+    fmax: float = 0.01,
+    steps: int = MAX_STEPS,
+) -> list[Atoms]:
+    """
+    Relax the DFT states of an ordering-over-load check at fixed K with a model.
+
+    Each frame's clamped atoms (array ``fixed`` = 1) hold its K field; the other atoms
+    relax with LBFGS from the DFT geometry.
 
     Parameters
     ----------
     frames
-        DFT states (info ``state``, ``K_over_KG``, ``REF_energy``).
+        DFT states (info ``state``, ``K_over_KG``, ``REF_energy``; array ``fixed``).
     calc
         ASE calculator of the model.
+    q_triple
+        Atoms (i, j, l) of the state coordinate q = d(j, l) - d(i, l), which tells the
+        states apart.
+    fmax
+        Force tolerance of the relaxation (eV/A).
+    steps
+        Step limit of each relaxation.
 
     Returns
     -------
     list[Atoms]
-        Copies of the states with the model energy in info ``model_energy`` (not
-        ``energy``, which the extxyz reader moves to a calculator).
+        Relaxed copies with info ``model_energy`` (relaxed), ``model_energy_dft_geom``
+        (at the DFT geometry), ``model_q`` and ``model_converged`` (not ``energy``,
+        which the extxyz reader moves to a calculator).
     """
+    from ase.constraints import FixAtoms
+    from ase.optimize import LBFGS
+
+    a, b, c = (int(x) for x in q_triple)
     out = []
     for frame in frames:
         atoms = neutral_lowest_spin(frame.copy())
+        if "fixed" in atoms.arrays:
+            atoms.set_constraint(FixAtoms(mask=atoms.arrays["fixed"] != 0))
         atoms.calc = calc
-        atoms.info["model_energy"] = float(atoms.get_potential_energy())
+        e_dft_geom = float(atoms.get_potential_energy())
+        converged = bool(LBFGS(atoms, logfile=None).run(fmax=fmax, steps=steps))
+        energy = float(atoms.get_potential_energy())
         atoms.calc = None
+        atoms.set_constraint()
+        atoms.info.update(
+            model_energy=energy,
+            model_energy_dft_geom=e_dft_geom,
+            model_q=pair_distance_z(atoms, b, c) - pair_distance_z(atoms, a, c),
+            model_converged=converged,
+        )
         out.append(atoms)
     return out
 
@@ -106,11 +163,6 @@ def neutral_lowest_spin(atoms: Atoms) -> Atoms:
     atoms.info["charge"] = 0
     atoms.info["spin"] = 1 + int(atoms.numbers.sum()) % 2
     return atoms
-
-
-# step limit of the bulk relaxations (a model that cannot relax an 8-atom cell in this
-# many steps fails the constants instead of running on)
-MAX_STEPS = 500
 
 
 def material_constants(calc, symbol: str = "Si") -> dict:

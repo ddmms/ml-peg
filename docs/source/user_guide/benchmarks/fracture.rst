@@ -49,17 +49,30 @@ model).
    displacements relative to each model's own K-field, on second-neighbour bonds within
    8 Å of the tip and not behind it, matched at equal coordinate.
 
-A tenth metric checks which crack-tip state the model prefers:
+Two more metrics check which crack-tip state the model prefers, and at which loads:
 
 4. 5-7 ordering error
 
    On a larger (111)[1-10] cluster, (4,3,1) unit cells and 216 atoms, DFT has two
-   states at the same load, K/K_G = 1.50: a sharp crack tip and a reconstructed tip
-   with 5- and 7-membered rings. DFT puts the 5-7 state 145 meV (37.6 meV/Å of crack
-   front) below the sharp one. The metric is the error of the model's energy
-   difference between the two DFT-relaxed structures, per unit length of crack front
-   (meV/Å). Its thresholds are physical rather than SW-anchored: bad is the DFT gap
-   itself (an error that large can reverse the order) and good is a third of it.
+   stable states over K/K_G = 1.46-1.76: a sharp crack tip and a reconstructed tip with
+   5- and 7-membered rings. Which is lower depends on the load: DFT puts the 5-7 state
+   145 meV (37.6 meV/Å of crack front) below the sharp one at K/K_G = 1.50, and above it
+   past K/K_G = 1.56. Each DFT state, at 11 loads per state, is relaxed at fixed K with
+   the model (the clamped boundary atoms keep the load's K field); the metric is the RMS
+   error of the model's E(5-7) - E(sharp) over the window, interpolated in K along each
+   state, per unit length of crack front (meV/Å). A relaxation that does not converge,
+   or that leaves its state (the coordinate q = d(52, 53) - d(51, 53), about -1.35 Å
+   sharp and +1.5 Å 5-7, moves by more than 0.5 Å), is not scored, and the loads it
+   leaves uncovered count at the bad threshold. Its thresholds are physical rather than
+   SW-anchored: bad is the DFT gap at K/K_G = 1.50 (an error that large can reverse the
+   order) and good is a third of it.
+
+5. 5-7 crossover error
+
+   The error of the load at which the two states swap order (DFT: K/K_G = 1.56), from
+   straight-line fits of E(5-7) - E(sharp) against K. bad is the shift the ordering
+   error's bad threshold makes at the DFT slope (2.42 eV per cell per unit K/K_G),
+   0.060, and good is a third of it; padded by coverage like the ordering error.
 
 A model that does not cover the whole window (its trace stops early or folds back) is
 penalised: the uncovered fraction counts at the "bad" threshold, so its score is the
@@ -67,7 +80,7 @@ coverage times the score of its error on the covered part. Thresholds changed in
 app do not change this coverage padding, which uses the defaults. A calculation that
 fails (an error in the constants, the cleavage energy, the tracer or the scoring of a
 case) is not scored: its metrics and benchmark score are NaN. The benchmark score (the
-mean of the ten metric scores with default weights) is the combined value.
+mean of the eleven metric scores with default weights) is the combined value.
 
 Thresholds
 ----------
@@ -98,11 +111,12 @@ Reference data:
 * Spin-polarised PBE (VASP, PAW, 520 eV cutoff) pseudo-arclength continuation on
   H-passivated clamped clusters (100-135 atoms), packaged as the reference paths of the
   three cases.
-* The 5-7 ordering states (``Si_111_110_431_order.extxyz``): the sharp and 5-7 tips of
-  the 216-atom (4,3,1) H-passivated clamped cluster, each relaxed at fixed
-  K/K_G = 1.5036 to 0.005 eV/Å at the same level of theory as the paths (spin-polarised
-  PBE, VASP, PAW, 520 eV cutoff, 0.02 eV Gaussian smearing, 17 k-points along the
-  crack front).
+* The 5-7 ordering states (``Si_111_110_431_ordering.extxyz``): sharp and 5-7 tips of
+  the 216-atom (4,3,1) H-passivated clamped cluster at 11 loads each between
+  K/K_G = 1.456 and 1.762, taken from the stable parts of DFT continuations of both
+  states (each point a fixed-K relaxation to 0.005 eV/Å) at the same level of theory as
+  the paths (spin-polarised PBE, VASP, PAW, 520 eV cutoff, 0.02 eV Gaussian smearing,
+  17 k-points along the crack front).
 * Models that take a charge and spin multiplicity are given a neutral structure in its
   lowest spin state, as the DFT references: a doublet for the odd-electron (110)[1-10]
   cluster (96 Si, 39 H), a singlet for the other clusters, bulk and slabs.
