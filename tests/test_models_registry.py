@@ -14,10 +14,44 @@ MODELS_FILE = Path(__file__).parents[1] / "ml_peg" / "models" / "models.yml"
 REGISTRY = safe_load(MODELS_FILE.read_text(encoding="utf8"))
 
 
+BASE_CONFIG = {
+    "module": "ase.calculators.emt",
+    "class_name": "EMT",
+    "trained_on_dispersion": True,
+}
+
+
 @pytest.mark.parametrize("name", REGISTRY)
 def test_config_is_valid(name: str):
     """Every entry only sets keys that are used, including models not run."""
     validate_config(name, REGISTRY[name])
+
+
+@pytest.mark.parametrize(
+    "coverage",
+    (
+        pytest.param({"datasets": ["MPTrj"]}, id="miscased dataset"),
+        pytest.param({"datasets": "MPtrj"}, id="dataset not a list"),
+        pytest.param({"additional_supported_elements": ["Cuu"]}, id="not an element"),
+        # YAML reads an unquoted "No" as False
+        pytest.param(
+            {"additional_supported_elements": ["Md", False]}, id="unquoted No"
+        ),
+    ),
+)
+def test_unresolvable_coverage_rejected(coverage: dict):
+    """Element coverage that would silently resolve to nothing is rejected."""
+    with pytest.raises(ValueError):
+        validate_config("example", BASE_CONFIG | coverage)
+
+
+def test_resolvable_coverage_accepted():
+    """Recognised datasets and element symbols are accepted."""
+    validate_config(
+        "example",
+        BASE_CONFIG
+        | {"datasets": ["MPtrj"], "additional_supported_elements": ["No", "Lr"]},
+    )
 
 
 @pytest.mark.parametrize("name", REGISTRY)

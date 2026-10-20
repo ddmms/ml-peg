@@ -31,6 +31,71 @@ MODEL_KEYS = frozenset(
 REQUIRED_MODEL_KEYS = frozenset({"module", "class_name", "trained_on_dispersion"})
 
 
+@lru_cache(maxsize=1)
+def covered_datasets() -> frozenset[str]:
+    """
+    Get the datasets with recorded element coverage.
+
+    Returns
+    -------
+    frozenset[str]
+        Dataset names defined in element_coverage.json.
+    """
+    import json
+
+    from ml_peg.app import APP_ROOT
+
+    with open(APP_ROOT / "data" / "element_coverage.json", encoding="utf8") as file:
+        return frozenset(json.load(file).get("datasets", {}))
+
+
+def validate_elements(name: str, cfg: dict[str, Any]) -> None:
+    """
+    Check that a model's recorded element coverage can be resolved.
+
+    Datasets and elements that are not recognised contribute nothing to the coverage
+    used by the app's element filter, so are rejected rather than ignored.
+
+    Parameters
+    ----------
+    name
+        Name of the model being checked.
+    cfg
+        Model configuration, as defined in models.yml.
+
+    Raises
+    ------
+    ValueError
+        If a dataset has no element coverage, or an element symbol is not an element.
+    """
+    from ml_peg.analysis.utils.periodic_table import PERIODIC_TABLE_SYMBOLS
+
+    datasets = cfg.get("datasets") or []
+    elements = cfg.get("additional_supported_elements") or []
+
+    for key, value in (
+        ("datasets", datasets),
+        ("additional_supported_elements", elements),
+    ):
+        if not isinstance(value, list):
+            raise ValueError(f"'{name}' must set '{key}' to a list, or null")
+
+    if unknown := sorted(set(datasets) - covered_datasets()):
+        raise ValueError(
+            f"'{name}' lists dataset(s) without element coverage: "
+            f"{', '.join(unknown)}. Names are case-sensitive, and each must be a key "
+            "in ml_peg/app/data/element_coverage.json"
+        )
+
+    unknown_elements = set(elements) - set(PERIODIC_TABLE_SYMBOLS)
+    if invalid := sorted(str(element) for element in unknown_elements):
+        raise ValueError(
+            f"'{name}' lists additional_supported_elements that are not elements: "
+            f"{', '.join(invalid)}. Symbols must be quoted, as YAML reads an "
+            "unquoted 'No' as false"
+        )
+
+
 def pop_required_kwarg(name: str, kwargs: dict[str, Any], key: str) -> Any:
     """
     Take a keyword argument that a model must set.
@@ -107,6 +172,8 @@ def validate_config(name: str, cfg: dict[str, Any]) -> None:
             f"'{name}' sets key(s) that would be ignored: {', '.join(unknown)}. "
             f"Valid keys are: {', '.join(sorted(MODEL_KEYS))}"
         )
+
+    validate_elements(name, cfg)
 
     dispersion_kwargs = cfg.get("dispersion_kwargs") or {}
     if unknown := sorted(set(dispersion_kwargs) - DISPERSION_KWARGS):

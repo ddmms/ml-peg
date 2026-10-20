@@ -106,8 +106,9 @@ The common fields are:
    covers. A model's coverage is the **union** across all listed datasets, so the
    app's element filter can keep or exclude elements by a model's coverage. Names
    are **case-sensitive** and every one must be a key in ``element_coverage.json``
-   (each entry has a ``supported`` element list and a ``number`` count); add a
-   new dataset entry there if the model's training set is not yet listed. Set
+   (each entry has a ``supported`` element list and a ``number`` count), which is
+   checked when the model is loaded; add a new dataset entry there if the model's
+   training set is not yet listed. Set
    ``datasets: null`` when the model was trained on e.g. a non-public dataset (then
    express its coverage entirely through ``additional_supported_elements``).
 
@@ -116,7 +117,9 @@ The common fields are:
    coverage. A model's total coverage is the union of its datasets' elements and
    this list. **Quote every symbol**: YAML reads an unquoted ``No`` as boolean
    ``false``, which drops nobelium and adds a non-element to the model's
-   coverage. To determine coverage empirically, run
+   coverage. Symbols are checked against the periodic table when the model is
+   loaded, so a typo or an unquoted ``No`` is reported rather than silently
+   changing the model's coverage. To determine coverage empirically, run
    ``ml_peg/models/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
    since model backends conflict), then
    ``ml_peg/models/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
