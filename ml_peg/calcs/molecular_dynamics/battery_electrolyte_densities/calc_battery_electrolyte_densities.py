@@ -216,7 +216,6 @@ def run_npt(atoms: Atoms, calc, output_fname: Path) -> None:
         dyn.close()
 
 
-@pytest.mark.framework("omol25-electrolytes")
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_battery_electrolyte_densities(mlip: tuple[str, Any], system_id: int) -> None:
