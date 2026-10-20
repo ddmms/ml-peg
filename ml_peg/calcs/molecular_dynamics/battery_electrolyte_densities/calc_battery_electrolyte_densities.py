@@ -45,10 +45,7 @@ ATM = 1.01325 * units.bar
 # Number of configurations in the dataset.
 N_SYSTEMS = 25
 
-# 150 ps of NPT per system: 50 ps equilibration, discarded during analysis, then
-# 100 ps of production. This is the protocol proposed in ddmms/ml-peg#358, and is
-# shorter than the 1 ns used by liquid_densities because these inputs arrive
-# already NPT-equilibrated with a potential of comparable quality.
+# 500 ps of NPT per system: 300 ps equilibration, then 200 ps of production.
 
 DATA_ZIP = "battery_electrolyte_densities.zip"
 DATA_KEY = (
