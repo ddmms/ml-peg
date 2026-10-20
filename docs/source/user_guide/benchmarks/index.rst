@@ -6,6 +6,7 @@ Benchmarks
     :maxdepth: 3
 
     alloy_metallurgy
+    amorphous_materials
     biomolecules
     bulk_crystal
     conformers
