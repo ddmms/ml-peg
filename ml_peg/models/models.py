@@ -561,6 +561,64 @@ class SevenNetCalc(SumCalc):
         return SevenNetCalculator(device=device_str, **self.kwargs)
 
 
+# https://github.com/xvzemin/tace
+@dataclasses.dataclass(kw_only=True)
+class TaceCalc(SumCalc):
+    """Dataclass for TACE calculators."""
+
+    device: Device | None = None
+    default_dtype: str | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
+        """
+        Prepare and load the calculator.
+
+        Parameters
+        ----------
+        precision
+            Level of precision to evaluate the model.
+        **kwargs
+            Keyword arguments that override the registry calculator options.
+
+        Returns
+        -------
+        Calculator
+            Loaded TACE ASE calculator.
+        """
+        from tace.interface.ase import TACEAseCalc
+
+        check_precision(precision)
+        precision_map = {"low": "float32", "high": "float64"}
+        dtype = precision_map[precision]
+
+        if self.default_dtype is not None:
+            dtype = self.default_dtype
+
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+
+        # TACE resolves foundation names and local checkpoint paths directly.
+        calc_kwargs = {**self.kwargs, **kwargs}
+        return TACEAseCalc(dtype=dtype, device=device, **calc_kwargs)
+
+    @property
+    def available(self) -> bool:
+        """
+        Check whether the calculator module is available.
+
+        Returns
+        -------
+        bool
+            Whether the calculator can be loaded.
+        """
+        try:
+            from tace.interface.ase import TACEAseCalc
+
+            return True
+        except ImportError:
+            return False
+
+
 @dataclasses.dataclass(kw_only=True)
 class GraceCalc(GenericASECalc):
     """Dataclass for GRACE calculator."""

@@ -86,6 +86,10 @@ upet = [
 sevenn = [
     "sevenn==0.12.1",
 ]
+tace = [
+    "tace[eqx]==0.2.4",
+    "torch>=2.13",
+]
 vivace = [
     "simpoly[vivace,cuda13]; sys_platform == 'linux'",
     "simpoly[vivace]; sys_platform != 'linux'",
@@ -216,6 +220,21 @@ override-dependencies = [
 ]
 
 conflicts = [
+    # deepmd-kit 3.2.0 pins torch==2.11.0.
+    [
+        { extra = "tace" },
+        { extra = "dpa" },
+    ],
+    # UPET's pinned metatrain dependencies require torch<2.13.
+    [
+        { extra = "tace" },
+        { extra = "upet" },
+    ],
+    # UMA requires torch~=2.8.0; TACE AOTI uses newer export APIs.
+    [
+        { extra = "tace" },
+        { extra = "uma" },
+    ],
     [
         { extra = "dpa" },
         { extra = "mace" },

@@ -322,6 +322,36 @@ sevennet-omni-mpa:
     model: "7net-omni"
     modal: "mpa"
 
+tace-oam-7m:
+  module: tace.interface.ase
+  class_name: TACEAseCalc
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "cpu"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "TACE-OAM-7M"
+
+tece-oam-rra-1p0:
+  module: tace.interface.ase
+  class_name: TACEAseCalc
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "cpu"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "TECE-OAM-RRA-1.0"
+
+tace-oam-l:
+  module: tace.interface.ase
+  class_name: TACEAseCalc
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "cpu"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "TACE-OAM-L"
+
 Vivace:
   module: simpoly.vivace.calculator
   class_name: MLFFCalculator
