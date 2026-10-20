@@ -96,7 +96,6 @@ def get_app() -> BatteryElectrolyteDensitiesApp:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
-        framework_ids="omol25-electrolytes",
     )
 
 

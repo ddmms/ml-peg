@@ -338,7 +338,6 @@ def metrics(
     }
 
 
-@pytest.mark.framework("omol25-electrolytes")
 def test_battery_electrolyte_densities(metrics: dict[str, dict]) -> None:
     """
     Run battery electrolyte densities test.

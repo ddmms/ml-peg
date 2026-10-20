@@ -14,7 +14,10 @@ def pytest_addoption(parser):
     parser
         Parser to use.
     """
-    parser.addoption("--system-id", action="store", default=0, type=int)
+    try:
+        parser.addoption("--system-id", action="store", default=0, type=int)
+    except ValueError:
+        pass
 
 
 @pytest.fixture
