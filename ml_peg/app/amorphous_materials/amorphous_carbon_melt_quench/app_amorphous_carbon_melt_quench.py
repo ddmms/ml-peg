@@ -62,8 +62,8 @@ class AmorphousCarbonMeltQuenchApp(BaseApp):
             scatter_id="amorphous-carbon-melt-quench-figure",
             struct_id="amorphous-carbon-melt-quench-struct-placeholder",
             structs=[
-                list(trace.customdata or [])
-                for trace in (scatter.figure.data if scatter.figure else [])
+                list(trace.get("customdata") or [])
+                for trace in (scatter.figure or {}).get("data", [])
             ],
         )
 
