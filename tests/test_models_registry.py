@@ -8,11 +8,41 @@ import pytest
 from yaml import safe_load
 
 from ml_peg.models.get_models import load_models, validate_config
-from ml_peg.models.models import accepted_kwargs, check_kwargs, import_calculator
+from ml_peg.models.models import (
+    DpaCalc,
+    FairChemCalc,
+    GenericASECalc,
+    GraceCalc,
+    MatterSimCalc,
+    OrbCalc,
+    SevenNetCalc,
+    TaceCalc,
+    UPETCalc,
+    VivaceCalc,
+    accepted_kwargs,
+    check_kwargs,
+    import_calculator,
+)
 
 MODELS_FILE = Path(__file__).parents[1] / "ml_peg" / "models" / "models.yml"
 REGISTRY = safe_load(MODELS_FILE.read_text(encoding="utf8"))
 
+#: Wrapper each `class_name` in the registry is loaded through.
+WRAPPERS = {
+    "DP": DpaCalc,
+    "FAIRChemCalculator": FairChemCalc,
+    "ORBCalculator": OrbCalc,
+    "MatterSimCalculator": MatterSimCalc,
+    "UPETCalculator": UPETCalc,
+    "SevenNetCalculator": SevenNetCalc,
+    "TACEAseCalc": TaceCalc,
+    "MLFFCalculator": VivaceCalc,
+    "grace_fm": GraceCalc,
+    "mace_mp": GenericASECalc,
+    "mace_off": GenericASECalc,
+    "mace_omol": GenericASECalc,
+    "mace_polar": GenericASECalc,
+}
 
 BASE_CONFIG = {
     "module": "ase.calculators.emt",
@@ -76,6 +106,30 @@ def test_registry_loads():
     models = load_models(filepath=MODELS_FILE, run_mock=False, mock_only=False)
 
     assert sorted(models) == sorted(REGISTRY)
+
+
+@pytest.mark.parametrize("name", REGISTRY)
+def test_class_name_selects_wrapper(name: str):
+    """Every entry is loaded through the wrapper its class_name selects."""
+    class_name = REGISTRY[name]["class_name"]
+    assert class_name in WRAPPERS, (
+        f"'{name}' uses class_name '{class_name}', which has no wrapper in this test. "
+        "Add it here when adding a model family."
+    )
+
+    model = load_models((name,), filepath=MODELS_FILE, run_mock=False, mock_only=False)
+
+    assert isinstance(model[name], WRAPPERS[class_name])
+
+
+def test_unknown_precision_rejected():
+    """Calculators are only built at a precision ML-PEG defines."""
+    model = load_models(
+        ("mace-mp-0a",), filepath=MODELS_FILE, run_mock=False, mock_only=False
+    )["mace-mp-0a"]
+
+    with pytest.raises(ValueError, match="Invalid precision"):
+        model.get_calculator(precision="medium")
 
 
 @pytest.mark.parametrize("name", REGISTRY)
