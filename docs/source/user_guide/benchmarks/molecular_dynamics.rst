@@ -209,6 +209,20 @@ Reference data:
 * Same as input data
 * Experimental
 
+Concentrations
+^^^^^^^^^^^^^^
+
+Each electrolyte is labelled by its nominal (starting) salt concentration,
+which is encoded in the structure file name, e.g. ``napf6_diglyme_1M.xyz``
+or ``napf6_dme_0.5M.xyz``. The nominal value sets the number of ion pairs
+and solvent molecules used to build the initial simulation box.
+
+Because the box volume relaxes during NPT equilibration, the molarity of the
+equilibrated system differs from the nominal value. The ``concentration_M``
+column of the reference CSV gives this equilibrated concentration, calculated
+from the number of salt formula units and the equilibrated box volume.
+Neat solvents have no salt and are listed at 0 M.
+
 
 Bond length distribution
 ========================
