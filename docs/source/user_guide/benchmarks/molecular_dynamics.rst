@@ -182,11 +182,9 @@ Metrics
 4. Stable runs (%)
 
 For each system, the density is the average over an NPT molecular dynamics run
-at 298.2 K and 1 atm with a 1 fs timestep. The first 50 ps of each 150 ps
-trajectory is discarded, leaving 100 ps of production. Inputs are already
-NPT-equilibrated, which is why a shorter equilibration period is used than for
-the organic liquid densities benchmark. Densities are compared to experimental
-values at 298.2 K.
+at 298.2 K and 1 atm with a 1 fs timestep. The first 300 ps of each 500 ps
+trajectory is discarded, leaving 200 ps of production. Densities are compared
+to experimental values at 298.2 K.
 
 Density errors are reported for stable systems. Stable runs is the percentage of systems
 that complete the full simulation with finite positions, energies and forces.
@@ -194,7 +192,7 @@ that complete the full simulation with finite positions, energies and forces.
 Computational cost
 ------------------
 
-High: 150 ps of NPT MD per system, for 25 systems per model.
+High: 500 ps of NPT MD per system, for 25 systems per model.
 
 Data availability
 -----------------
