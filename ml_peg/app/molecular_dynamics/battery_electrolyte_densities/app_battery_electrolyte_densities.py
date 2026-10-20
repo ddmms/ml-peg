@@ -55,7 +55,13 @@ class BatteryElectrolyteDensitiesApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot=dict.fromkeys(("MAE", "RMSE", "MAPE"), scatter),
+            column_to_plot={
+                **dict.fromkeys(("MAE", "RMSE", "MAPE"), scatter),
+                "Stable runs": read_plot(
+                    DATA_PATH / "figure_completion.json",
+                    id=f"{BENCHMARK_NAME}-completion-figure",
+                ),
+            },
         )
 
         struct_from_scatter(

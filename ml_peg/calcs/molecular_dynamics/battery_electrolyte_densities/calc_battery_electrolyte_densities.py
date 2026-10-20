@@ -12,6 +12,7 @@ https://github.com/KMNitesh05/sodium-ion-battery-electrolyte-dataset
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 import time
@@ -25,6 +26,11 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution, Stationary
 import numpy as np
 import pytest
 
+from ml_peg.calcs.molecular_dynamics.battery_electrolyte_densities.protocol import (
+    LOG_INTERVAL,
+    NUM_MD_STEPS,
+    TIMESTEP,
+)
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -43,9 +49,6 @@ N_SYSTEMS = 25
 # 100 ps of production. This is the protocol proposed in ddmms/ml-peg#358, and is
 # shorter than the 1 ns used by liquid_densities because these inputs arrive
 # already NPT-equilibrated with a potential of comparable quality.
-NUM_MD_STEPS = 150_000
-TIMESTEP = 1 * units.fs
-LOG_INTERVAL = 100
 
 DATA_ZIP = "battery_electrolyte_densities.zip"
 DATA_KEY = (
@@ -140,16 +143,43 @@ def run_npt(atoms: Atoms, calc, output_fname: Path) -> None:
     output_fname
         File name to save the trajectory to.
     """
-    if Path(output_fname).exists():
+    output_fname = Path(output_fname)
+    status_path = output_fname.with_suffix(".status.json")
+    previous_complete = None
+    if status_path.exists():
         try:
-            traj = Trajectory(output_fname)
-            atoms = traj[-1]
-            nsteps = (len(traj) - 1) * LOG_INTERVAL
+            previous_complete = json.loads(status_path.read_text())["complete"]
+        except (ValueError, KeyError):
+            previous_complete = False
+    status_path.write_text(json.dumps({"complete": False}))
+    nsteps = 0
+    if output_fname.exists():
+        try:
+            with Trajectory(output_fname) as traj:
+                restart_atoms = traj[-1]
+                restart_steps = (len(traj) - 1) * LOG_INTERVAL
+                if restart_steps > NUM_MD_STEPS:
+                    raise ValueError("Trajectory exceeds the expected run length")
+                if restart_steps == NUM_MD_STEPS and previous_complete is False:
+                    raise ValueError("Previous run did not finish successfully")
+                if (
+                    not np.isfinite(restart_atoms.positions).all()
+                    or not np.isfinite(restart_atoms.get_volume())
+                    or restart_atoms.get_volume() <= 0
+                    or not np.isfinite(restart_atoms.get_potential_energy())
+                    or not np.isfinite(restart_atoms.get_forces()).all()
+                ):
+                    raise ValueError("Invalid restart state")
+            atoms = restart_atoms
+            nsteps = restart_steps
         except Exception as exc:
-            print(exc)
-            nsteps = 0
-    else:
-        nsteps = 0
+            backup = output_fname.with_name(
+                f"{output_fname.name}.invalid-{time.time_ns()}"
+            )
+            output_fname.rename(backup)
+            warn(
+                f"Cannot resume {output_fname}: {exc}. Saved as {backup}", stacklevel=2
+            )
 
     atoms.calc = calc
     # Set default charge and spin
@@ -169,7 +199,7 @@ def run_npt(atoms: Atoms, calc, output_fname: Path) -> None:
         pdamp=500 * units.fs,
         trajectory=output_fname,
         loginterval=LOG_INTERVAL,
-        append_trajectory=True,
+        append_trajectory=nsteps > 0,
     )
     dyn.nsteps = nsteps
     dyn.attach(log_md, interval=LOG_INTERVAL, dyn=dyn, start_time=time.time())
@@ -177,7 +207,13 @@ def run_npt(atoms: Atoms, calc, output_fname: Path) -> None:
         dyn.run(steps=NUM_MD_STEPS - nsteps)
     except Exception as exc:
         warn(f"Error running MD: {exc}", stacklevel=2)
-        dyn.atoms.info["energy"] = np.nan
+        status_path.write_text(json.dumps({"complete": False, "error": str(exc)}))
+    else:
+        status_path.write_text(
+            json.dumps({"complete": dyn.nsteps == NUM_MD_STEPS, "steps": dyn.nsteps})
+        )
+    finally:
+        dyn.close()
 
 
 @pytest.mark.framework("omol25-electrolytes")

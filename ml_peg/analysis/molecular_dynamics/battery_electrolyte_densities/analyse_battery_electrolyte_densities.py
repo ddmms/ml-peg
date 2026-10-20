@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from warnings import warn
 
 from ase import units
 from ase.io import Trajectory, write
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_scatter
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     get_struct_info,
@@ -19,20 +21,16 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.molecular_dynamics.battery_electrolyte_densities.protocol import (
+    EQUILIB_TIME_PS,
+    EXPECTED_FRAMES,
+    LOG_INTERVAL_PS,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map(MODELS)
-
-# Must match LOG_INTERVAL * TIMESTEP in calc_battery_electrolyte_densities.py.
-LOG_INTERVAL_PS = 0.1
-
-# Portion of each trajectory discarded before averaging, leaving 100 ps of
-# production. The inputs are already NPT-equilibrated, so this only needs to
-# cover relaxation into the new potential energy surface. Protocol from
-# ddmms/ml-peg#358.
-EQUILIB_TIME_PS = 50
 
 BENCHMARK = "battery_electrolyte_densities"
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / BENCHMARK / "outputs"
@@ -71,21 +69,35 @@ def compute_density(traj_path: Path) -> float:
     Returns
     -------
     float
-        Average density in g/cm^3, or NaN if the trajectory is shorter than the
-        discarded equilibration period.
+        Average density in g/cm^3, or NaN for incomplete, failed, missing or
+        unreadable trajectories, or non-finite saved positions, energies or forces.
     """
     au_to_g_cm3 = 1e24 / units.mol
-    skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
-
-    traj = Trajectory(traj_path)
-    if len(traj) <= skip_frames:
+    skip_frames = round(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
+    status_path = traj_path.with_suffix(".status.json")
+    try:
+        if status_path.exists() and not json.loads(status_path.read_text())["complete"]:
+            return np.nan
+        with Trajectory(traj_path) as traj:
+            if len(traj) != EXPECTED_FRAMES:
+                return np.nan
+            densities = []
+            for index, atoms in enumerate(traj):
+                volume = atoms.get_volume()
+                if (
+                    not np.isfinite(volume)
+                    or volume <= 0
+                    or not np.isfinite(atoms.positions).all()
+                    or not np.isfinite(atoms.get_potential_energy())
+                    or not np.isfinite(atoms.get_forces()).all()
+                ):
+                    return np.nan
+                if index > skip_frames:
+                    densities.append(au_to_g_cm3 * atoms.get_masses().sum() / volume)
+        return float(np.mean(densities))
+    except Exception as exc:
+        warn(f"Cannot score {traj_path}: {exc}", stacklevel=2)
         return np.nan
-
-    densities = [
-        au_to_g_cm3 * atoms.get_masses().sum() / atoms.get_volume()
-        for atoms in traj[skip_frames:]
-    ]
-    return float(np.mean(densities))
 
 
 def mape(ref: list, prediction: list) -> float:
@@ -139,23 +151,24 @@ def densities() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted densities.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(INFO["exp_density"])} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         for label in INFO["filenames"]:
             traj_path = CALC_PATH / model_name / f"{label}.traj"
-            results[model_name].append(compute_density(traj_path))
-
-            atoms = Trajectory(traj_path)[-1]
-            if not ref_stored:
-                results["ref"].append(atoms.info["exp_density"])
-
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms)
-        ref_stored = True
+            density = compute_density(traj_path)
+            if np.isfinite(density):
+                try:
+                    with Trajectory(traj_path) as traj:
+                        atoms = traj[-1]
+                except Exception as exc:
+                    warn(f"Cannot read final frame of {traj_path}: {exc}", stacklevel=2)
+                    results[model_name].append(np.nan)
+                    continue
+                structs_dir = OUT_PATH / model_name
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{label}.xyz", atoms)
+            results[model_name].append(density)
 
     return results
 
@@ -223,17 +236,80 @@ def get_mape(densities: dict[str, list]) -> dict[str, float]:
     }
 
 
+@plot_scatter(
+    filename=OUT_PATH / "figure_completion.json",
+    title="Complete electrolyte runs",
+    x_label="System",
+    y_label="Completed / %",
+    hovertemplate="System: %{x}<br>Completed: %{y}%<extra>%{fullData.name}</extra>",
+)
+def completion_plot(densities: dict[str, list]) -> dict[str, list]:
+    """
+    Plot complete (100) and incomplete or invalid (0) systems for each model.
+
+    Parameters
+    ----------
+    densities
+        Reference and predicted densities, aligned to the expected systems.
+
+    Returns
+    -------
+    dict[str, list]
+        System labels and binary completion percentages for models with output.
+    """
+    return {
+        model_name: [INFO["filenames"], (100 * np.isfinite(values)).tolist()]
+        for model_name, values in densities.items()
+        if model_name != "ref"
+        and any(
+            (CALC_PATH / model_name / f"{label}.traj").exists()
+            for label in INFO["filenames"]
+        )
+    }
+
+
+@pytest.fixture
+def stable_runs(densities: dict[str, list]) -> dict[str, float]:
+    """
+    Return the percentage of expected systems with complete, finite trajectories.
+
+    Parameters
+    ----------
+    densities
+        Reference and predicted densities, with invalid runs represented by NaN.
+
+    Returns
+    -------
+    dict[str, float]
+        Completion percentages, or NaN for models without trajectory output.
+    """
+    completion_plot(densities)
+    return {
+        model_name: (
+            100.0 * np.isfinite(densities[model_name]).sum() / len(INFO["filenames"])
+            if any(
+                (CALC_PATH / model_name / f"{label}.traj").exists()
+                for label in INFO["filenames"]
+            )
+            else np.nan
+        )
+        for model_name in MODELS
+    }
+
+
 @pytest.fixture
 @build_table(
     filename=OUT_PATH / "battery_electrolyte_densities_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     get_mae: dict[str, float],
     get_rmse: dict[str, float],
     get_mape: dict[str, float],
+    stable_runs: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all metrics.
@@ -246,6 +322,8 @@ def metrics(
         Root mean squared errors for all models.
     get_mape
         Mean absolute percentage errors for all models.
+    stable_runs
+        Percentage of complete, finite trajectories for each model.
 
     Returns
     -------
@@ -256,6 +334,7 @@ def metrics(
         "MAE": get_mae,
         "RMSE": get_rmse,
         "MAPE": get_mape,
+        "Stable runs": stable_runs,
     }
 
 
