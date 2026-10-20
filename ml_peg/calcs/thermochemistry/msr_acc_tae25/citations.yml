@@ -1,0 +1,29 @@
+implementers:
+  - name: "Dacong Wei"
+    github: "Wei-Dacong"
+    email: "weid@mpip-mainz.mpg.de"
+
+contributors: []
+
+citations:             # what a user of this benchmark must cite
+  - key: "ehlert-2025-msr_acc_tae25"
+    role: reference_data
+    title: "Accurate Chemistry Collection: Coupled cluster atomization energies for broad chemical space"
+    authors:
+      - "S. Ehlert"
+      - "J. Hermann"
+      - "T. Vogels"
+      - "V. G. Satorras"
+      - "S. Lanius"
+      - "M. Segler"
+      - "K. J. H. Giesbertz"
+      - "D. P. Kooi"
+      - "K. Takeda"
+      - "C. Huang"
+      - "G. Luise"
+      - "R. van den Berg"
+      - "P. Gori-Giorgi"
+      - "A. Karton"
+    year: 2025
+    doi: 10.1038/s41597-026-07200-8
+    url: https://doi.org/10.1038/s41597-026-07200-8
