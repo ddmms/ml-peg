@@ -179,6 +179,7 @@ Metrics
 1. Density MAE
 2. Density RMSE
 3. Density MAPE
+4. Stable runs (%)
 
 For each system, the density is the average over an NPT molecular dynamics run
 at 298.2 K and 1 atm with a 1 fs timestep. The first 50 ps of each 150 ps
@@ -187,11 +188,8 @@ NPT-equilibrated, which is why a shorter equilibration period is used than for
 the organic liquid densities benchmark. Densities are compared to experimental
 values at 298.2 K.
 
-As in the other ML-PEG liquid-density benchmarks, runtime D3 corrections are
-applied only to models whose registry configuration indicates that dispersion
-is not included in their training. Models already trained with dispersion,
-including UMA-OMol, receive no additional correction. Corrected models are
-labelled accordingly in the results table.
+Density errors are reported for stable systems. Stable runs is the percentage of systems
+that complete the full simulation with finite positions, energies and forces.
 
 Computational cost
 ------------------
