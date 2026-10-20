@@ -434,6 +434,8 @@ def load_models(
                 )
             case "TACEAseCalc":
                 loaded_models[name] = TaceCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     device=cfg.get("device", "cpu"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),

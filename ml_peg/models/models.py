@@ -964,6 +964,8 @@ class SevenNetCalc(SumCalc):
 class TaceCalc(SumCalc):
     """Dataclass for TACE calculators."""
 
+    module: str = "tace.interface.ase"
+    class_name: str = "TACEAseCalc"
     device: Device | None = None
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
@@ -984,7 +986,10 @@ class TaceCalc(SumCalc):
         Calculator
             Loaded TACE ASE calculator.
         """
-        from tace.interface.ase import TACEAseCalc
+        tace_calculator = import_calculator(self.module, self.class_name)
+        check_kwargs(
+            self.kwargs, tace_calculator, self.class_name, reserved=("dtype", "device")
+        )
 
         check_precision(precision)
         precision_map = {"low": "float32", "high": "float64"}
@@ -997,7 +1002,7 @@ class TaceCalc(SumCalc):
 
         # TACE resolves foundation names and local checkpoint paths directly.
         calc_kwargs = {**self.kwargs, **kwargs}
-        return TACEAseCalc(dtype=dtype, device=device, **calc_kwargs)
+        return tace_calculator(dtype=dtype, device=device, **calc_kwargs)
 
     @property
     def available(self) -> bool:
@@ -1010,10 +1015,11 @@ class TaceCalc(SumCalc):
             Whether the calculator can be loaded.
         """
         try:
-            from tace.interface.ase import TACEAseCalc
+            # Same import as `get_calculator`, so the check cannot drift from it.
+            import_calculator(self.module, self.class_name)
 
             return True
-        except ImportError:
+        except (ImportError, AttributeError):
             return False
 
 

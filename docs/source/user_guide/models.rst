@@ -567,7 +567,6 @@ sevennet-omni-mpa
        model: "7net-omni"
        modal: "mpa"
 
-
 TACE
 ====
 
@@ -581,15 +580,15 @@ TACE-OAM-7M (M).
 
 .. code-block:: yaml
 
-  tace-oam-7m:
-    module: tace.interface.ase
-    class_name: TACEAseCalc
-    datasets: [MPtrj, sAlex, OMAT]
-    device: "cpu"
-    trained_on_dispersion: false
-    level_of_theory: PBE
-    kwargs:
-      model: "TACE-OAM-7M"
+   tace-oam-7m:
+     module: tace.interface.ase
+     class_name: TACEAseCalc
+     datasets: [MPtrj, sAlex, OMAT]
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: "TACE-OAM-7M"
 
 tece-oam-rra-1p0
 ----------------
@@ -598,15 +597,15 @@ TECE-OAM-RRA-1.0 (XL).
 
 .. code-block:: yaml
 
-  tece-oam-rra-1p0:
-    module: tace.interface.ase
-    class_name: TACEAseCalc
-    datasets: [MPtrj, sAlex, OMAT]
-    device: "cpu"
-    trained_on_dispersion: false
-    level_of_theory: PBE
-    kwargs:
-      model: "TECE-OAM-RRA-1.0"
+   tece-oam-rra-1p0:
+     module: tace.interface.ase
+     class_name: TACEAseCalc
+     datasets: [MPtrj, sAlex, OMAT]
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: "TECE-OAM-RRA-1.0"
 
 tace-oam-l
 ----------
@@ -615,16 +614,15 @@ TACE-OAM-L (L).
 
 .. code-block:: yaml
 
-  tace-oam-l:
-    module: tace.interface.ase
-    class_name: TACEAseCalc
-    datasets: [MPtrj, sAlex, OMAT]
-    device: "cpu"
-    trained_on_dispersion: false
-    level_of_theory: PBE
-    kwargs:
-      model: "TACE-OAM-L"
-
+   tace-oam-l:
+     module: tace.interface.ase
+     class_name: TACEAseCalc
+     datasets: [MPtrj, sAlex, OMAT]
+     device: "cpu"
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model: "TACE-OAM-L"
 
 Vivace
 ======
