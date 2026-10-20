@@ -15,7 +15,7 @@ from ml_peg.models.models import TaceCalc
     ("model_name", "checkpoint"),
     [
         ("tace-oam-7m", "TACE-OAM-7M"),
-        ("tece-oam-rra-1.0", "TECE-OAM-RRA-1.0"),
+        ("tece-oam-rra-1p0", "TECE-OAM-RRA-1.0"),
         ("tace-oam-l", "TACE-OAM-L"),
     ],
 )

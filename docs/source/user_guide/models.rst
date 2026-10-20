@@ -556,14 +556,14 @@ TACE-OAM-7M (M).
     kwargs:
       model: "TACE-OAM-7M"
 
-tece-oam-rra-1.0
+tece-oam-rra-1p0
 ----------------
 
 TECE-OAM-RRA-1.0 (XL).
 
 .. code-block:: yaml
 
-  tece-oam-rra-1.0:
+  tece-oam-rra-1p0:
     module: tace.interface.ase
     class_name: TACEAseCalc
     datasets: [MPtrj, sAlex, OMAT]
