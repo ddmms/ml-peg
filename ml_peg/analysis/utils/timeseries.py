@@ -138,10 +138,11 @@ def get_statistical_inefficiency(
     Calculate the statistical inefficiency of a time series.
 
     The autocorrelation function is summed up to, but not including, its first
-    non-positive value after ``minimum_samples`` lags. This gives the same result as
-    OpenFF Evaluator's ``_statistical_inefficiency``, but calculates the
-    autocorrelation function by FFT, so it's faster for long time series with long
-    correlation times (for short time series with short correlation times, both methods
+    non-positive value after ``minimum_samples`` lags, as suggested by Swope
+    and used in Chodera et al. [1]_. This gives the same result as OpenFF
+    Evaluator's ``_statistical_inefficiency``, but calculates the autocorrelation
+    function by FFT, so it's faster for long time series with long correlation
+    times (for short time series with short correlation times, both methods
     will be fast).
 
     Parameters
@@ -163,6 +164,12 @@ def get_statistical_inefficiency(
     ------
     ValueError
         If the time series is not one-dimensional or contains non-finite values.
+
+    References
+    ----------
+    .. [1] J. D. Chodera, W. C. Swope, J. W. Pitera, C. Seok, and K. A. Dill. Use of the
+       weighted histogram analysis method for the analysis of simulated and parallel
+       tempering simulations. JCTC 3(1):26-41, 2007.
     """
     data = np.asarray(time_series, dtype=float)
     if data.ndim != 1:
@@ -263,7 +270,7 @@ def estimate_mean(
         )
 
     # Correct for bias due to unknown mean with n_eff - 1,
-    # though bias is small for reasonable n_eff. 
+    # though bias is small for reasonable n_eff.
     sem = float(np.sqrt(data.var() / (n_eff - 1)))
     t_val = float(t_dist.ppf(1 - alpha / 2, n_eff - 1))
     ci_95 = t_val * sem
