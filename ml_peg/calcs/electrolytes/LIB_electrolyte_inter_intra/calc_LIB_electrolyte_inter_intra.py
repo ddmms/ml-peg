@@ -62,9 +62,24 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
         file_prefix = out_dir / f"{struct_path.stem[:-6]}_{model_name}_D3.xyz"
         configs = read(struct_path, ":")
         for struct in configs:
+            struct_elems = struct.get_chemical_symbols()
+            if struct_elems == ["Li"]:
+                struct.info["spin"] = 1
+                struct.info["charge"] = 1
+
+            elif (
+                len(struct_elems) == 7
+                and struct_elems.count("P") == 1
+                and struct_elems.count("F") == 6
+            ):
+                struct.info["spin"] = 1
+                struct.info["charge"] = -1
+
+            else:
+                struct.info["spin"] = 1
+                struct.info["charge"] = 0
+
             struct.calc = copy(calc)
-            struct.info["spin"] = 0
-            struct.info["charge"] = 1
             try:
                 struct.info["energy"] = struct.get_potential_energy()
                 struct.arrays["forces"] = struct.get_forces()

@@ -27,7 +27,7 @@ Metrics
 Root mean square errors for each predicted property compared to PBE data.
 
 All properties listed above are calculated for each structure. The intra decomposition for a frame is achieved by isolating each molecule and evaluating it with PBE.
-The intra properties are then calculated by subtracting the intra property from the total property prediction. The D3 correction is applied both on the models and the PBE functional.
+The inter properties are then calculated by subtracting the intra property from the total property prediction. The D3 correction is applied both on the models and the PBE functional.
 
 Computational cost
 ------------------
