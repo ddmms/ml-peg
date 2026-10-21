@@ -26,6 +26,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PAT
 
 SYSTEM_INFO = get_struct_info(
     calc_path=CALC_PATH,
+    model_name="ref",
     glob_pattern="*.xyz",
     index=":",
     include_filenames=True,
@@ -75,11 +76,11 @@ def get_volscan_results(
             frame.calc.__dict__["results"]["energy"] * 1000 / len(frame)
             for frame in configs
         ]
-        relative_energies = energies - min(energies)
+        relative_energies = [energy - min(energies) for energy in energies]
         densities = [extAtoms.get_density_gcm3(frame) for frame in configs]
 
         results[model].append(densities)
-        results[model].append(relative_energies.tolist())
+        results[model].append(relative_energies)
 
     return results
 

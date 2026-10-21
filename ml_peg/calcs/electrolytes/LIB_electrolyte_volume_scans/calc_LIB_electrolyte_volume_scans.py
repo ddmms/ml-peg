@@ -58,8 +58,8 @@ def test_volume_scans(mlip: tuple[str, Any]) -> None:
         configs = read(struct_path, ":")
         for struct in configs:
             struct.calc = copy(calc)
-            struct.info["spin"] = 0
-            struct.info["charge"] = 1
+            struct.info["spin"] = 1
+            struct.info["charge"] = 0
             try:
                 struct.calc = copy(calc)
                 struct.info["energy"] = struct.get_potential_energy()
