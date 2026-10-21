@@ -111,7 +111,7 @@ orb-v3-consv-inf-omat:
   class_name: ORBCalculator
   datasets: [OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -121,7 +121,7 @@ orb-v3-direct-inf-omat:
   module: orb_models.forcefield.inference.calculator
   class_name: ORBCalculator
   datasets: [OMAT]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -132,7 +132,7 @@ orb-v3-consv-omol:
   class_name: ORBCalculator
   datasets: [OMol25]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V/def2-TZVPD
   kwargs:
@@ -143,7 +143,7 @@ mattersim-5M:
   class_name: MatterSimCalculator
   datasets: null
   additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -154,7 +154,7 @@ mattersim-1M:
   class_name: MatterSimCalculator
   datasets: null
   additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -165,7 +165,7 @@ uma-s-1p1-omat:
   class_name: FAIRChemCalculator
   datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
-  device: "cpu"
+  device: "auto"
   level_of_theory: PBE
   trained_on_dispersion: false
   kwargs:
@@ -177,7 +177,7 @@ uma-m-1p1-omat:
   class_name: FAIRChemCalculator
   datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
-  device: "cpu"
+  device: "auto"
   level_of_theory: PBE
   trained_on_dispersion: false
   kwargs:
@@ -250,7 +250,7 @@ uma-s-1p1-omol:
   class_name: FAIRChemCalculator
   datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V/def2-TZVPD
   kwargs:
@@ -262,7 +262,7 @@ uma-s-1p2-omol:
   class_name: FAIRChemCalculator
   datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V/def2-TZVPD
   kwargs:
@@ -274,7 +274,7 @@ uma-m-1p1-omol:
   class_name: FAIRChemCalculator
   datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V/def2-TZVPD
   kwargs:
@@ -285,7 +285,7 @@ pet-mad:
   module: upet.calculator
   class_name: UPETCalculator
   datasets: [MAD]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBEsol
   kwargs:
@@ -298,7 +298,7 @@ pet-mad-s-1p5:
   module: upet.calculator
   class_name: UPETCalculator
   datasets: [OMAT, MAD-1p5]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: r2SCAN
   kwargs:
@@ -312,7 +312,7 @@ pet-oam-xl:
   class_name: UPETCalculator
   datasets: [MPtrj, sAlex, OMAT]
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: False
   level_of_theory: PBE
   kwargs:
@@ -324,7 +324,7 @@ sevennet-omni-mpa:
   class_name: SevenNetCalculator
   datasets: [MPtrj, sAlex, MAD, MatPES-PBE, OMAT, OMol25, OC20, OC22, ODAC23, SPICE, QCML, MP-ALOE, MatPES-r2SCAN]
   additional_supported_elements: ["Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Og", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -335,7 +335,7 @@ tace-oam-7m:
   module: tace.interface.ase
   class_name: TACEAseCalc
   datasets: [MPtrj, sAlex, OMAT]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -345,7 +345,7 @@ tece-oam-rra-1p0:
   module: tace.interface.ase
   class_name: TACEAseCalc
   datasets: [MPtrj, sAlex, OMAT]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -355,7 +355,7 @@ tace-oam-l:
   module: tace.interface.ase
   class_name: TACEAseCalc
   datasets: [MPtrj, sAlex, OMAT]
-  device: "cpu"
+  device: "auto"
   trained_on_dispersion: false
   level_of_theory: PBE
   kwargs:
@@ -365,7 +365,7 @@ Vivace:
   module: simpoly.vivace.calculator
   class_name: MLFFCalculator
   datasets: [OMol25, PolyCrop, PolyPack, PolyDiss]
-  device: "cuda"
+  device: "auto"
   trained_on_dispersion: true
   level_of_theory: r2SCAN+D3
   kwargs:

@@ -372,7 +372,7 @@ def load_models(
                     class_name=cfg["class_name"],
                     model_name=model_name,
                     task_name=task_name,
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     overrides=overrides,
                     kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
@@ -386,7 +386,7 @@ def load_models(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     name=orb_name,
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -406,7 +406,7 @@ def load_models(
                 loaded_models[name] = MatterSimCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -416,7 +416,7 @@ def load_models(
                 loaded_models[name] = UPETCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -426,7 +426,7 @@ def load_models(
                 loaded_models[name] = SevenNetCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -436,7 +436,7 @@ def load_models(
                 loaded_models[name] = TaceCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -456,7 +456,7 @@ def load_models(
                 loaded_models[name] = GraceCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),

@@ -42,8 +42,11 @@ ASE-compatible calculator that needs no special setup, is just a YAML entry.
 4. **Record element coverage** via ``datasets`` and
    ``additional_supported_elements``, so the app's element filter works for the
    new model.
-5. **Document the model** in ``docs/source/user_guide/models.rst``, which lists
-   the YAML entry for every model shipped with ML-PEG.
+5. **Describe the model**, if it needs more than its registry entry, in
+   ``docs/source/user_guide/model_notes.yml``. The model list in
+   :doc:`Models </user_guide/models>` is generated from ``models.yml``, so the
+   entry itself needs no copying — but a model family that is new to ML-PEG must
+   be added there, or the docs build fails.
 6. **Check the entry loads and runs** — see `Checking a new entry`_.
 
 Model entry format
@@ -56,7 +59,7 @@ A typical entry has this shape:
    model-name:
      module: package.module
      class_name: CalculatorFactoryOrClass
-     device: cuda
+     device: auto
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -75,8 +78,13 @@ The common fields are:
    branches in ``load_models`` for model families that need a dedicated wrapper.
 
 ``device``
-   Device passed to calculators that support it. Options: ``cuda``, ``cpu``,
-   ``auto`` or ``null``.
+   Device passed to calculators that support it. Options: ``auto``, ``cuda``,
+   ``cpu`` or ``null``.
+
+   Use ``auto``, which runs on a GPU when one is available and on the CPU
+   otherwise, unless there is a reason to pin the model to one device — in which
+   case record that reason in a comment, as every entry that is not ``auto``
+   should explain itself.
 
    Use ``null`` when the calculator has no device argument, with a comment
    saying so, e.g. ``device: null  # Unused: grace_fm has no device argument``.
@@ -189,7 +197,7 @@ MACE-MP foundation model:
    mace-mp-0a:
      module: mace.calculators
      class_name: mace_mp
-     device: cuda
+     device: auto
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -202,7 +210,7 @@ MACE checkpoint from a local path:
    my-mace-model:
      module: mace.calculators
      class_name: mace_mp
-     device: cuda
+     device: auto
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -215,7 +223,7 @@ Models with a specific head or task can pass that head in ``kwargs``:
    mace-mh-1-omol:
      module: mace.calculators
      class_name: mace_mp
-     device: cuda
+     device: auto
      trained_on_dispersion: true
      level_of_theory: ωB97M-V/def2-TZVPD
      kwargs:
@@ -225,7 +233,7 @@ Models with a specific head or task can pass that head in ``kwargs``:
    uma-s-1p1-omol:
      module: fairchem.core
      class_name: FAIRChemCalculator
-     device: cuda
+     device: auto
      trained_on_dispersion: true
      level_of_theory: ωB97M-V/def2-TZVPD
      kwargs:
@@ -245,7 +253,7 @@ MACE-Polar foundation model:
    mace-polar-1-m:
      module: mace.calculators
      class_name: mace_polar
-     device: cuda
+     device: auto
      trained_on_dispersion: true
      level_of_theory: ωB97M-V
      kwargs:
@@ -259,7 +267,7 @@ ORB entries are routed to the dedicated ``OrbCalc`` wrapper by
    orb-v3-consv-inf-omat:
      module: orb_models.forcefield.inference.calculator
      class_name: ORBCalculator
-     device: cuda
+     device: auto
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -272,7 +280,7 @@ FairChem/UMA entries use the dedicated ``FAIRChemCalculator`` branch:
    uma-s-1p1-omat:
      module: fairchem.core
      class_name: FAIRChemCalculator
-     device: cuda
+     device: auto
      trained_on_dispersion: false
      level_of_theory: PBE
      kwargs:
@@ -286,7 +294,7 @@ PET-MAD entries use UPET's ``UPETCalculator``:
    pet-mad:
      module: upet.calculator
      class_name: UPETCalculator
-     device: cuda
+     device: auto
      trained_on_dispersion: false
      level_of_theory: PBEsol
      kwargs:

@@ -1,0 +1,47 @@
+# Descriptions for the generated model list in models.rst. Every class_name used in
+# ml_peg/models/models.yml must belong to a family here, or the docs build fails.
+# Families are documented in the order they are defined below.
+
+families:
+  MACE:
+    class_names: [mace, mace_mp, mace_off, mace_omol, mace_polar, MACECalculator]
+
+  DPA:
+    class_names: [DP]
+    notes: |
+      Install these fixed-float32 DeePMD checkpoints with ``uv sync --extra dpa``.
+      DPA-3.3-1M uses OpenLAM-v1 with the OMat24 head and the DPA4 variants use
+      OMat24. DPA-3.3-1M is CC-BY-4.0, while DPA4 is CC-BY-NC-4.0 and restricted
+      to non-commercial use.
+
+  Orb:
+    class_names: [ORBCalculator]
+
+  PET:
+    class_names: [UPETCalculator]
+
+  UMA (FairChem):
+    class_names: [FAIRChemCalculator]
+
+  MatterSim:
+    class_names: [MatterSimCalculator]
+
+  GRACE:
+    class_names: [grace_fm]
+
+  SevenNet:
+    class_names: [SevenNetCalculator]
+
+  TACE:
+    class_names: [TACEAseCalc]
+    notes: |
+      `Model documentation <https://tace.readthedocs.io/en/latest/guide/foundation.html>`_.
+      Model weights are licensed under CC BY 4.0.
+
+  Vivace:
+    class_names: [MLFFCalculator]
+
+models:
+  tace-oam-7m: TACE-OAM-7M (M).
+  tece-oam-rra-1p0: TECE-OAM-RRA-1.0 (XL).
+  tace-oam-l: TACE-OAM-L (L).
