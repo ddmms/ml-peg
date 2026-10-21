@@ -179,9 +179,12 @@ def statistical_inefficiency(
     # Lags 1 to n_samples - 2, matching the OpenFF loop
     acf = autocov[1:-1] / autocov[0]
     lags = np.arange(1, len(acf) + 1)
-    truncate = np.flatnonzero((acf <= 0.0) & (lags > minimum_samples))
-    if truncate.size:
-        acf = acf[: truncate[0]]
+
+    # Keep the ACF up to (excluding) the first non-positive value after minimum_samples
+    is_cutoff = (acf <= 0.0) & (lags > minimum_samples)
+    if is_cutoff.any():
+        first_cutoff = np.argmax(is_cutoff)  # Index of the first True
+        acf = acf[:first_cutoff]
 
     return max(1.0 + 2.0 * float(acf.sum()), 1.0)
 
