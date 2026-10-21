@@ -155,25 +155,31 @@ def statistical_inefficiency(
     Returns
     -------
     float
-        Statistical inefficiency, g >= 1.
+        Statistical inefficiency, g >= 1. Returns 1 if the time series has fewer
+        than two samples or zero variance (with a warning), as there are no
+        fluctuations to be correlated.
 
     Raises
     ------
     ValueError
-        If the time series is not one-dimensional, has fewer than two samples,
-        contains non-finite values, or has zero variance.
+        If the time series is not one-dimensional or contains non-finite values.
     """
     data = np.asarray(time_series, dtype=float)
     if data.ndim != 1:
         raise ValueError("Time series must be one-dimensional.")
-    if len(data) < 2:
-        raise ValueError("Time series must have at least two samples.")
     if not np.all(np.isfinite(data)):
         raise ValueError("Time series contains non-finite values.")
+    if len(data) < 2:
+        return 1.0
 
     # Check the range rather than the variance, which may be non-zero from rounding
     if np.ptp(data) == 0:
-        raise ValueError("Variance is zero, cannot compute statistical inefficiency.")
+        warnings.warn(
+            "Time series has zero variance, returning g = 1.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return 1.0
     autocov = autocovariance(data)
 
     # Lags 1 to n_samples - 2, matching the OpenFF loop
@@ -237,11 +243,7 @@ def estimate_mean(
         return TimeSeriesEstimate(mean=np.nan, sem=np.nan, n_eff=0.0, ci_95=np.nan)
 
     mean = float(data.mean())
-    try:
-        g = statistical_inefficiency(data)
-    except ValueError:
-        g = float(n_samples)
-    n_eff = n_samples / g
+    n_eff = n_samples / statistical_inefficiency(data)
 
     if n_eff < 2:
         warnings.warn(
