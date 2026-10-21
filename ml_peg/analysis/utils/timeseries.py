@@ -2,18 +2,18 @@
 Uncertainty estimates for time-averaged MD observables.
 
 The statistical inefficiency is estimated from the autocorrelation function, truncated
-at its first non-positive value after ``minimum_samples`` lags, as suggested by Swope and
-used in Chodera et al. [1]_. The autocovariance is calculated by FFT, adapted from the
-``"positive"`` sequence estimator in ``red.variance.get_variance_initial_sequence``
+at its first non-positive value after ``minimum_samples`` lags, as suggested by Swope
+and used in Chodera et al. [1]_. The autocovariance is calculated by FFT, adapted from
+the ``"positive"`` sequence estimator in ``red.variance.get_variance_initial_sequence``
 (https://github.com/fjclark/red, MIT licence). Similar functionality is used in OpenFF
 Evaluator (``openff/evaluator/utils/timeseries.py``, MIT licence), itself based on
 pymbar. The standard error, effective sample size and t-based confidence interval
-follow ``red.confidence_intervals.get_conf_int_init_seq``. Truncating at the first negative
-value is a fairly naive approach and can underestimate the uncertainty more than some more
-sophisticated methods, but is simple and sufficient when care has been taken to simulate
-systems for many times the correlation time of the observable of interest. When this isn't
-the case, all methods will underestimate the uncertainty anyway (though using independent
-replicas can help).
+follow ``red.confidence_intervals.get_conf_int_init_seq``. Truncating at the first
+negative value is a fairly naive approach and can underestimate the uncertainty more
+than some more sophisticated methods, but is simple and sufficient when care has been
+taken to simulate systems for many times the correlation time of the observable of
+interest. When this isn't the case, all methods will underestimate the uncertainty
+anyway (though using independent replicas can help).
 
 These estimates are only valid for the time average of a single scalar observable
 sampled from a stationary trajectory (e.g. the density from an NPT run, after
@@ -125,7 +125,8 @@ def get_autocovariance(time_series: Sequence[float]) -> np.ndarray:
     # Find the padding to avoid wrap-around correlation, and to make the FFT fast.
     n_fft = next_fast_len(2 * n_samples - 1, real=True)
 
-    # Wiener-Khinchin relation: the autocovariance is the inverse FFT of the power spectrum |X|^2.
+    # Wiener-Khinchin relation: the autocovariance is the inverse FFT of the power
+    # spectrum |X|^2.
     spectrum = np.fft.rfft(shifted, n_fft)
     autocov = np.fft.irfft(spectrum.real**2 + spectrum.imag**2, n_fft)[:n_samples]
     return autocov / n_samples
@@ -394,8 +395,8 @@ def bootstrap_metric(
 
     # Each row of pred_draws, with shape (n_boot, n_systems), is a plausible rerun of
     # every simulation: each mean is perturbed independently by its standard error,
-    # as time averages are normal by the central limit theorem (assuming reasonable n_eff).
-    # The fixed seed gives every model the same draws.
+    # as time averages are normal by the central limit theorem (assuming reasonable
+    # n_eff). The fixed seed gives every model the same draws.
     rng = np.random.default_rng(seed)
     pred_draws = means + sems * rng.standard_normal((n_boot, len(means)))
 
