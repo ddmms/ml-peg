@@ -17,6 +17,35 @@ from ml_peg.models.models import AIMNetCalc
 AIMNET_MODELS = ("aimnet2", "aimnet2-2025")
 AIMNET_ELEMENTS = set("H B C N O F Si P S Cl As Se Br I".split())
 
+# Reference predictions at the pinned aimnet revision for ``molecule(formula)``
+# with ``info["charge"] = charge``. Units: eV and eV/Å.
+REFERENCE = {
+    ("aimnet2", "H2O", 0): (
+        -2081.040875,
+        [
+            [0.0, 0.0, -0.684212],
+            [0.0, -0.348737, 0.342106],
+            [0.0, 0.348737, 0.342106],
+        ],
+    ),
+    ("aimnet2", "OH", -1): (
+        -2063.335538,
+        [[0.0, 0.0, -0.522833], [0.0, 0.0, 0.522833]],
+    ),
+    ("aimnet2-2025", "H2O", 0): (
+        -2078.904087,
+        [
+            [0.0, 0.0, -0.292685],
+            [0.0, -0.231222, 0.146343],
+            [0.0, 0.231221, 0.146343],
+        ],
+    ),
+    ("aimnet2-2025", "OH", -1): (
+        -2061.295099,
+        [[0.0, 0.0, -0.363737], [0.0, 0.0, 0.363737]],
+    ),
+}
+
 
 class _FakeAIMNet2Calculator:
     """Minimal stand-in for ``AIMNet2Calculator``."""
@@ -123,6 +152,21 @@ def test_registered_aimnet_model_evaluates(model_name):
     water.calc = calculator
     assert water.get_potential_energy() == pytest.approx(neutral_energy, abs=1e-5)
     assert water.calc.charge == 0
+
+
+@pytest.mark.parametrize(("model_name", "formula", "charge"), REFERENCE)
+def test_aimnet_reference_energy_and_forces(model_name, formula, charge):
+    """The pinned checkpoints reproduce reference energies and forces."""
+    pytest.importorskip("aimnet")
+    model = load_models((model_name,))[model_name]
+    energy, forces = REFERENCE[(model_name, formula, charge)]
+
+    atoms = molecule(formula)
+    atoms.info["charge"] = charge
+    atoms.calc = model.get_calculator(precision="low")
+
+    assert atoms.get_potential_energy() == pytest.approx(energy, abs=1e-4)
+    np.testing.assert_allclose(atoms.get_forces(), forces, atol=1e-4)
 
 
 def test_aimnet_reused_calculator_is_history_independent():
