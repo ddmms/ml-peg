@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+from math import nan
 from pathlib import Path
 
 from ase.io import Trajectory, write
-import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.timeseries import (
+    MetricEstimate,
+    TimeSeriesEstimate,
+    bootstrap_metric,
+    estimate_mean,
+)
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     get_struct_info,
@@ -41,6 +47,10 @@ EXPERIMENTAL_DATA = {
     "water_300.0_K": 0.9970,
     "water_330.0_K": 0.9802,
 }
+# Standard uncertainties (one standard deviation) of the experimental densities, in
+# the same order as INFO["filenames"]. None if not known.
+# TODO: Check if these are known and add them if so.
+REF_SIGMA_1SD = None
 
 
 INFO = get_struct_info(
@@ -57,9 +67,9 @@ INFO = get_struct_info(
 REF_DENSITIES = [EXPERIMENTAL_DATA[label] for label in INFO["filenames"]]
 
 
-def compute_density(fname, density_col=13):
+def compute_density(fname, density_col=13, label=None) -> TimeSeriesEstimate:
     """
-    Compute average density from NPT log file.
+    Compute average density, and its uncertainty, from NPT log file.
 
     Parameters
     ----------
@@ -67,11 +77,13 @@ def compute_density(fname, density_col=13):
         Path to the log file.
     density_col
         Which column the density numbers are in.
+    label
+        Label to identify the simulation in warnings.
 
     Returns
     -------
-    float
-        Average density in g/cm3.
+    TimeSeriesEstimate
+        Average density in g/cm3, with its uncertainty.
     """
     density_series = []
     with open(fname) as lines:
@@ -81,7 +93,35 @@ def compute_density(fname, density_col=13):
                 continue
             density_series.append(float(items[density_col]))
     skip_frames = int(EQUILIB_TIME_PS / INTERVAL_PS)
-    return np.mean(density_series[skip_frames:])
+    return estimate_mean(density_series[skip_frames:], label=label)
+
+
+@pytest.fixture
+def density_estimates() -> dict[str, list[TimeSeriesEstimate]]:
+    """
+    Get water density estimates for all models and temperatures.
+
+    Returns
+    -------
+    dict[str, list[TimeSeriesEstimate]]
+        Density estimates for each model, in the order of ``INFO["filenames"]``.
+        All values are NaN for systems with missing outputs.
+    """
+    estimates = {model_name: [] for model_name in MODELS}
+    for model_name in MODELS:
+        for label in INFO["filenames"]:
+            traj_path = CALC_PATH / model_name / f"{label}.traj"
+            log_path = CALC_PATH / model_name / f"{label}.log"
+            if not traj_path.exists() or not log_path.exists():
+                estimates[model_name].append(
+                    TimeSeriesEstimate(mean=nan, sem=nan, n_eff=0.0, ci_95=nan)
+                )
+                continue
+
+            estimates[model_name].append(
+                compute_density(log_path, label=f"{model_name}/{label}")
+            )
+    return estimates
 
 
 @pytest.fixture
@@ -94,29 +134,40 @@ def compute_density(fname, density_col=13):
         "Labels": INFO["filenames"],
     },
 )
-def water_density() -> dict[str, list]:
+def water_density(
+    density_estimates: dict[str, list[TimeSeriesEstimate]],
+) -> dict[str, list]:
     """
     Get water densities for all temperatures.
+
+    Parameters
+    ----------
+    density_estimates
+        Density estimates for each model.
 
     Returns
     -------
     dict[str, list]
-        Dictionary of all reference and predicted densities.
+        Dictionary of all reference and predicted densities, and their 95 %
+        confidence interval half-widths.
     """
-    results = {"ref": list(REF_DENSITIES)} | {mlip: [] for mlip in MODELS}
+    results = {"ref": list(REF_DENSITIES)}
+    results["pred_err"] = {}
+    if REF_SIGMA_1SD is not None:
+        results["ref_err"] = [1.96 * sigma for sigma in REF_SIGMA_1SD]
 
     for model_name in MODELS:
+        estimates = density_estimates[model_name]
+        results[model_name] = [estimate.mean for estimate in estimates]
+        results["pred_err"][model_name] = [estimate.ci_95 for estimate in estimates]
+
         structs_dir = OUT_PATH / model_name
         structs_dir.mkdir(parents=True, exist_ok=True)
 
         for label in INFO["filenames"]:
             traj_path = CALC_PATH / model_name / f"{label}.traj"
-            log_path = CALC_PATH / model_name / f"{label}.log"
-            if not traj_path.exists() or not log_path.exists():
-                results[model_name].append(float("nan"))
+            if not traj_path.exists():
                 continue
-
-            results[model_name].append(compute_density(log_path))
 
             # Write structures for app
             write(structs_dir / f"{label}.xyz", Trajectory(traj_path)[-1])
@@ -125,24 +176,34 @@ def water_density() -> dict[str, list]:
 
 
 @pytest.fixture
-def get_mae(water_density) -> dict[str, float]:
+def get_mae(
+    water_density: dict[str, list],
+    density_estimates: dict[str, list[TimeSeriesEstimate]],
+) -> dict[str, MetricEstimate]:
     """
-    Get mean absolute error for water densities.
+    Get mean absolute error for water densities, with confidence intervals.
 
     Parameters
     ----------
     water_density
         Dictionary of reference and predicted water densities.
+    density_estimates
+        Density estimates for each model.
 
     Returns
     -------
-    dict[str, float]
+    dict[str, MetricEstimate]
         Dictionary of predicted water density errors for all models.
     """
-    results = {}
-    for model_name in MODELS:
-        results[model_name] = mae(water_density["ref"], water_density[model_name])
-    return results
+    return {
+        model_name: bootstrap_metric(
+            mae,
+            water_density["ref"],
+            density_estimates[model_name],
+            ref_sigma_1sd=REF_SIGMA_1SD,
+        )
+        for model_name in MODELS
+    }
 
 
 @pytest.fixture
@@ -152,7 +213,7 @@ def get_mae(water_density) -> dict[str, float]:
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=D3_MODEL_NAMES,
 )
-def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(get_mae: dict[str, MetricEstimate]) -> dict[str, dict]:
     """
     Get all metrics.
 

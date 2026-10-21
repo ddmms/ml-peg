@@ -8,6 +8,7 @@ import pytest
 
 from ml_peg import models
 from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.timeseries import MetricEstimate
 
 pytestmark = pytest.mark.usefixtures("fake_models")
 
@@ -183,3 +184,89 @@ def test_update_new_table(tmp_path, update_model_2):
     build(filename, {"MAE": {"model_2": 5.0}})
 
     assert get_values(filename) == {"model_1": None, "model_2": 5.0}
+
+
+def get_uncertainties(filename):
+    """
+    Get saved metric uncertainties, keyed by model.
+
+    Parameters
+    ----------
+    filename
+        Filename of the saved table.
+
+    Returns
+    -------
+    dict[str, dict]
+        Saved uncertainties for each model.
+    """
+    with open(filename) as fp:
+        return json.load(fp)["uncertainties"]
+
+
+def test_build_table_uncertainties(tmp_path):
+    """
+    Test metric estimates are split into values and uncertainties.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved tables.
+    """
+    filename = tmp_path / "table.json"
+    estimate = MetricEstimate(
+        value=1.0,
+        ci_low=0.8,
+        ci_high=1.3,
+        method="autocorrelation (Chodera)",
+    )
+    build(filename, {"MAE": {"model_1": estimate, "model_2": 2.0}})
+
+    assert get_values(filename) == {"model_1": 1.0, "model_2": 2.0}
+    # None fields are omitted
+    assert get_uncertainties(filename) == {
+        "model_1": {
+            "MAE": {
+                "ci_low": 0.8,
+                "ci_high": 1.3,
+                "method": "autocorrelation (Chodera)",
+            }
+        }
+    }
+
+    # Scores are unchanged by uncertainties
+    plain_filename = tmp_path / "plain.json"
+    build(plain_filename, {"MAE": {"model_1": 1.0, "model_2": 2.0}})
+    with open(filename) as fp, open(plain_filename) as plain_fp:
+        scores = [row["Score"] for row in json.load(fp)["data"]]
+        plain_scores = [row["Score"] for row in json.load(plain_fp)["data"]]
+    assert scores == plain_scores
+
+
+def test_update_table_uncertainties(tmp_path, update_model_2):
+    """
+    Test updating a table preserves uncertainties for models not being analysed.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved table.
+    update_model_2
+        Fixture setting up an update run, analysing only `model_2`.
+    """
+    filename = tmp_path / "table.json"
+    build(
+        filename,
+        {
+            "MAE": {
+                "model_1": MetricEstimate(value=1.0, ci_low=0.9, ci_high=1.1),
+                "model_2": MetricEstimate(value=2.0, ci_low=1.9, ci_high=2.1),
+            }
+        },
+    )
+    build(filename, {"MAE": {"model_2": 5.0}})
+
+    assert get_values(filename) == {"model_1": 1.0, "model_2": 5.0}
+    assert get_uncertainties(filename) == {
+        "model_1": {"MAE": {"ci_low": 0.9, "ci_high": 1.1}}
+    }
