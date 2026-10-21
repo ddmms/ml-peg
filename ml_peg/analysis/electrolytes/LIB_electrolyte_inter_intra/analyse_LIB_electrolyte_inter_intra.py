@@ -40,7 +40,6 @@ SYSTEM_INFO = get_struct_info(
 property_metadata = {
     "Intra-Forces": ["arrays", "forces_intram"],
     "Inter-Forces": ["arrays", "forces_interm"],
-    "Intra-Energy": ["info", "energy_intram"],
     "Inter-Energy": ["info", "energy_interm"],
     "Intra-Virial": ["info", "virial_intram"],
     "Inter-Virial": ["info", "virial_interm"],
