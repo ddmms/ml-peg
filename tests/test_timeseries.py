@@ -112,8 +112,8 @@ def test_statistical_inefficiency_ar1():
     phi = 0.9
     expected = (1 + phi) / (1 - phi)
     g = get_statistical_inefficiency(ar_series(100_000, [phi]))
-    # Fairly wide tolerance -- there's a reasonable amount of noise and seed 0 happens to give a
-    # slightly high estimate.
+    # Fairly wide tolerance -- there's a reasonable amount of
+    # noise and seed 0 happens to give a slightly high estimate.
     assert g == pytest.approx(expected, rel=0.1)
 
 
