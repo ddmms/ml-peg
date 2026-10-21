@@ -144,10 +144,17 @@ def periodic_tables(adsorption_energies: dict[str, list]) -> None:
         if (pred_energies := adsorption_energies[model_name])
     }
 
-    # Share one colour scale across models, wide enough that no error is clipped
-    limit = max(
-        (abs(error) for errors in model_errors.values() for error in errors.values()),
-        default=DEFAULT_THRESHOLDS["MAE"]["bad"],
+    # Share one colour scale across models, wide enough that no error is clipped.
+    # Failed single points are NaN, which max() propagates if seen before any finite
+    # value, so drop non-finite errors first
+    all_errors = np.abs(
+        [error for errors in model_errors.values() for error in errors.values()]
+    )
+    finite_errors = all_errors[np.isfinite(all_errors)]
+    limit = (
+        np.max(finite_errors)
+        if finite_errors.size
+        else DEFAULT_THRESHOLDS["MAE"]["bad"]
     )
 
     ref_hover = {
