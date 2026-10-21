@@ -543,3 +543,61 @@ def test_model_colours():
     assert get_model_colour("model_2", colours) == "green"
     # Models that are not defined follow all defined models
     assert get_model_colour("model_3", colours) == "blue"
+
+
+def test_parity_error_bars(tmp_path):
+    """
+    Test prediction and reference uncertainties are plotted as error bars.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    """
+    filename = tmp_path / "parity.json"
+    results = {
+        "ref": [1.0, 2.0],
+        "ref_err": [0.05, 0.05],
+        "pred_err": {"model_1": [0.1, 0.2]},
+        "model_1": [1.1, 2.1],
+        "model_2": [1.2, 2.2],
+    }
+    parity(filename, results)
+    traces = get_traces(filename)
+
+    assert set(traces) == {"model_1", "model_2"}
+    assert list(traces["model_1"]["error_x"]["array"]) == [0.1, 0.2]
+    assert "error_x" not in traces["model_2"]
+    assert list(traces["model_2"]["error_y"]["array"]) == [0.05, 0.05]
+
+
+def test_scatter_error_bars(tmp_path):
+    """
+    Test optional x and y uncertainties are plotted as error bars.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory for the saved plot.
+    """
+    filename = tmp_path / "scatter.json"
+    results = {
+        "model_1": ([1.0, 2.0], [1.0, 2.0]),
+        "model_2": ([1.0, 2.0], [2.0, 3.0]),
+        "model_3": ([1.0, 2.0], [3.0, 4.0]),
+        "ref": ([1.0, 2.0], [4.0, 5.0]),
+        "y_err": {"model_1": [0.1, 0.2], "model_3": [0.1, 0.2]},
+        "x_err": {"model_3": [0.3, 0.4], "ref": [0.3, 0.4]},
+    }
+    plot_scatter(filename=str(filename))(lambda: results)()
+    traces = get_traces(filename)
+
+    assert list(traces["model_1"]["error_y"]["array"]) == [0.1, 0.2]
+    assert "error_x" not in traces["model_1"]
+    assert "error_y" not in traces["model_2"]
+    assert "error_x" not in traces["model_2"]
+    assert list(traces["model_3"]["error_y"]["array"]) == [0.1, 0.2]
+    assert list(traces["model_3"]["error_x"]["array"]) == [0.3, 0.4]
+    assert "error_y" not in traces["Reference"]
+    assert list(traces["Reference"]["error_x"]["array"]) == [0.3, 0.4]
+    assert set(traces) == {"model_1", "model_2", "model_3", "Reference"}
