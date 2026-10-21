@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated, Literal, get_args
 
-from typer import Context, Exit, Option, Typer
+from typer import Argument, Context, Exit, Option, Typer
 from yaml import safe_load
 
 from ml_peg import __version__
@@ -697,6 +697,94 @@ def upload(
         acl=acl,
     )
     print(f"Uploaded {filename}")
+
+
+@app.command(name="collect", help="Collect calculation outputs into one bundle")
+def collect(
+    output: Annotated[
+        Path, Option(help="Folder to collect into, or archive name with --archive.")
+    ] = Path("ml_peg_outputs"),
+    category: Annotated[
+        CalcCategories,
+        Option(
+            help="Category to collect outputs for. Default is all categories.",
+            case_sensitive=False,
+        ),
+    ] = "*",
+    test: Annotated[
+        str, Option(help="Test to collect outputs for. Default is all tests.")
+    ] = "*",
+    models: Annotated[
+        str | None,
+        Option(
+            help="Comma-separated models to collect. Default is all models.",
+            autocompletion=complete_models,
+        ),
+    ] = None,
+    archive: Annotated[
+        bool, Option(help="Whether to write a .tar.gz instead of a folder.")
+    ] = False,
+):
+    """
+    Collect calculation outputs into a folder or archive, e.g. to copy off an HPC.
+
+    Parameters
+    ----------
+    output
+        Folder to collect into, or the archive path without ``.tar.gz`` when
+        `archive` is True. Default is "ml_peg_outputs".
+    category
+        Category to collect outputs for. Default is all categories.
+    test
+        Test to collect outputs for. Default is all tests.
+    models
+        Comma-separated models to collect. Default is all models.
+    archive
+        Whether to write a ``.tar.gz`` instead of a folder. Default is False.
+    """
+    from ml_peg.data.outputs import collect_outputs
+
+    bundle = collect_outputs(
+        CALCS_ROOT,
+        output,
+        category=category,
+        test=test,
+        models=models.split(",") if models else None,
+        archive=archive,
+        on_benchmark=lambda benchmark, count: print(f"{benchmark}: {count} files"),
+    )
+    print(f"Collected outputs into {bundle}")
+
+
+@app.command(name="distribute", help="Distribute collected outputs into calcs")
+def distribute(
+    source: Annotated[Path, Argument(help="Folder or .tar.gz made by collect.")],
+):
+    """
+    Copy collected outputs into the calcs tree, skipping files that already exist.
+
+    Parameters
+    ----------
+    source
+        Folder or ``.tar.gz`` archive written by ``ml_peg collect``.
+    """
+    from ml_peg.data.outputs import distribute_outputs
+
+    summary = distribute_outputs(source, CALCS_ROOT)
+    for key in sorted(summary.copied.keys() | summary.skipped.keys()):
+        parts = []
+        if summary.copied[key]:
+            parts.append(f"copied {summary.copied[key]} files")
+        if summary.skipped[key]:
+            parts.append(f"skipped {summary.skipped[key]} existing")
+        print(f"{key}: {', '.join(parts)}")
+    for benchmark in summary.unknown:
+        print(f"{benchmark}: not in this checkout, skipped")
+    if summary.skipped:
+        print(
+            "Existing files were kept. Delete a model's outputs folder first to "
+            "replace it."
+        )
 
 
 @app.callback(invoke_without_command=True, help="")
