@@ -376,7 +376,7 @@ def bootstrap_metric(
 
     # The bootstrap cannot run if the metric is undefined (e.g. missing or
     # non-finite data), or if any standard error is NaN (fewer than two
-    # effective samples, a constant series, or invalid data)
+    # effective samples)
     n_no_sem = int(np.sum(~np.isfinite(sems)))
     if not np.isfinite(value) or n_no_sem:
         if not np.isfinite(value):
