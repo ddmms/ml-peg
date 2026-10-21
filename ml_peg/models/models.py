@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from ase.calculators.mixing import SumCalculator
 
 Precision = Literal["low", "high"]
+DeviceType = Literal["auto", "cpu", "cuda"]
 
 #: Keys read from a model's `dispersion_kwargs`. `label` is used to name
 #: dispersion-corrected models, the rest by `SumCalc.add_d3_calculator`.
@@ -507,7 +508,7 @@ class DpaCalc(SumCalc):
 
     module: str = "deepmd.calculator"
     class_name: str = "DP"
-    device: Device | str | None = None
+    device: DeviceType | None = None
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -637,7 +638,7 @@ class VivaceCalc(SumCalc):
 
     module: str = "simpoly.vivace.calculator"
     class_name: str = "MLFFCalculator"
-    device: Device | None = None
+    device: DeviceType | None = None
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -686,7 +687,7 @@ class OrbCalc(SumCalc):
     class_name: str = "ORBCalculator"
     #: Module providing the pretrained checkpoint loaders selected by `name`.
     pretrained_module: str = "orb_models.forcefield.pretrained"
-    device: Device | None = None
+    device: DeviceType | None = None
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -769,7 +770,7 @@ class FairChemCalc(SumCalc):
     task_name: str
     module: str = "fairchem.core"
     class_name: str = "FAIRChemCalculator"
-    device: Device | str = "cpu"
+    device: DeviceType = "cpu"
     default_dtype: str | None = None
     overrides: dict = dataclasses.field(default_factory=dict)
     kwargs: dict = dataclasses.field(default_factory=dict)
@@ -913,7 +914,7 @@ class SevenNetCalc(SumCalc):
 
     module: str = "sevenn.calculator"
     class_name: str = "SevenNetCalculator"
-    device: Device | None = None
+    device: DeviceType | None = None
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -954,7 +955,7 @@ class TaceCalc(SumCalc):
 
     module: str = "tace.interface.ase"
     class_name: str = "TACEAseCalc"
-    device: Device | None = None
+    device: DeviceType | None = None
     default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
@@ -1015,7 +1016,7 @@ class TaceCalc(SumCalc):
 class GraceCalc(GenericASECalc):
     """Dataclass for GRACE calculator."""
 
-    device: Device | None = None
+    device: DeviceType | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
