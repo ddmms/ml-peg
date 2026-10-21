@@ -273,3 +273,40 @@ def test_element_filter_round_trip(ready_page, page_errors):
     page.locator("#element-filter-clear").click()
     page.locator("#element-filter-apply").click()
     chain(page, 0.65, 0.475, 0.6875)
+
+
+def test_edits_while_element_filter_active(ready_page, page_errors):
+    """Filtered scores propagate new settings and clearing retains those edits."""
+    page = ready_page
+    score(page, "summary-table", 0.65)
+    page.locator("#element-filter-details summary").click()
+    page.get_by_role("button", name="O", exact=True).click()
+    page.locator("#element-filter-apply").click()
+    score(page, "summary-table", 0.7)
+    visit(page, "/category/alpha")
+    score(page, "Alpha-summary-table", 0.5)
+    edit(page, "B1-table-M1-input", 3)
+    score(page, "B1-table", 0.65)
+    edit(page, "B1-table-M1-bad-threshold", 20)
+    score(page, "B1-table", 0.725)
+    stored_score(page, "Alpha-summary-table", 0.725)
+    stored_score(page, "mace-multihead-framework-summary-table", 0.725)
+    stored_score(page, "mace-polar-1-framework-summary-table", 0.725)
+    visit(page, "/")
+    score(page, "summary-table", 0.8125)
+    page.locator("#element-filter-clear").click()
+    page.locator("#element-filter-apply").click()
+    chain(page, 0.725, 0.5125, 0.70625)
+
+
+def test_repeated_default_resets_preserve_scores(ready_page, page_errors):
+    """Resetting defaults repeatedly leaves controls and downstream scores intact."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    score(page, "B1-table", 0.5)
+    for _ in range(2):
+        page.locator("#B1-table-reset-button").click()
+        page.locator("#B1-table-reset-thresholds-button").click()
+        chain(page, 0.5, 0.4, 0.65)
+        expect(page.locator('[id="B1-table-M1-input"]')).to_have_value("1")
+        expect(page.locator('[id="B1-table-M1-bad-threshold"]')).to_have_value("10")
