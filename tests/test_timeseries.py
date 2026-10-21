@@ -51,7 +51,8 @@ def openff_statistical_inefficiency(
     Calculate the statistical inefficiency with the OpenFF Evaluator loop.
 
     Reference implementation, adapted from OpenFF Evaluator's
-    ``_statistical_inefficiency`` for one-dimensional data.
+    ``_statistical_inefficiency`` for one-dimensional data
+    (https://github.com/openforcefield/openff-evaluator/blob/main/openff/evaluator/utils/timeseries.py).
 
     Parameters
     ----------
