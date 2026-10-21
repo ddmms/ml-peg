@@ -262,7 +262,9 @@ def estimate_mean(
             stacklevel=2,
         )
 
-    sem = float(np.sqrt(data.var() / n_eff))
+    # Correct for bias due to unknown mean with n_eff - 1,
+    # though bias is small for reasonable n_eff. 
+    sem = float(np.sqrt(data.var() / (n_eff - 1)))
     t_val = float(t_dist.ppf(1 - alpha / 2, n_eff - 1))
     ci_95 = t_val * sem
 
