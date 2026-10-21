@@ -53,9 +53,9 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
         / "LIB_electrolyte_inter_intra"
     )
 
-    structure_paths = data_path.glob("*.xyz")
+    structure_paths = data_path.glob("output*.xyz")
 
-    for struct_path in tqdm(structure_paths, total=6):
+    for struct_path in tqdm(structure_paths, total=5):
         # Copy structure files to output directory
         shutil.copy(struct_path, ref_dir / struct_path.name)
 
