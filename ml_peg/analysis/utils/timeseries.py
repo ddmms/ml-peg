@@ -318,7 +318,7 @@ def bootstrap_metric(
         Standard uncertainty (one standard deviation) of each reference value. If
         given, a second interval that also includes these is returned.
     n_boot
-        Number of bootstrap draws. Default is 2000.
+        Number of bootstrap draws. Default is 10,000.
     alpha
         Two-tailed significance level. Default is 0.05.
     seed
