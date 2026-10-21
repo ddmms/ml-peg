@@ -19,12 +19,17 @@ MODELS_FILE = Path(__file__).parents[3] / "ml_peg" / "models" / "models.yml"
 NOTES_FILE = Path(__file__).parents[1] / "user_guide" / "model_notes.yml"
 
 
-def registry_entries() -> dict[str, str]:
+def registry_entries(models_file: Path = MODELS_FILE) -> dict[str, str]:
     """
     Read each model's configuration from the registry, as written.
 
-    Entries are read as text rather than parsed, so the documented configuration is
-    exactly what models.yml defines, including comments.
+    Read as text rather than parsed, so comments are kept. An entry runs until the
+    next top-level line.
+
+    Parameters
+    ----------
+    models_file
+        Path to the YAML file defining models. Default is models.yml.
 
     Returns
     -------
@@ -34,14 +39,13 @@ def registry_entries() -> dict[str, str]:
     entries: dict[str, list[str]] = {}
     name = None
 
-    for line in MODELS_FILE.read_text(encoding="utf8").split("\n"):
-        if line and not line[0].isspace() and line.rstrip().endswith(":"):
-            name = line.rstrip()[:-1]
-            entries[name] = [line]
-        elif name and line.startswith(" "):
+    for line in models_file.read_text(encoding="utf8").split("\n"):
+        if line and not line[0].isspace():
+            name = line.rstrip()[:-1] if line.rstrip().endswith(":") else None
+            if name is not None:
+                entries[name] = [line]
+        elif name is not None:
             entries[name].append(line)
-        elif not line.strip():
-            name = None
 
     return {name: "\n".join(lines).rstrip() for name, lines in entries.items()}
 
@@ -114,7 +118,7 @@ def build_rst(entries: dict[str, str], notes: dict[str, Any]) -> str:
         if family_note := notes["families"][family].get("notes"):
             lines += [family_note.strip(), ""]
 
-        # A family of one model named after it needs no section of its own.
+        # A family of one model named after it needs no section of its own
         named_after_family = names == [family]
 
         for name in names:
@@ -144,14 +148,14 @@ class ModelRegistry(SphinxDirective):
         list[Node]
             Documentation for each model in the registry.
         """
-        # Rebuild the page whenever the registry or its descriptions change.
+        # Rebuild when the registry or its descriptions change
         self.env.note_dependency(str(MODELS_FILE))
         self.env.note_dependency(str(NOTES_FILE))
 
         notes = yaml.safe_load(NOTES_FILE.read_text(encoding="utf8"))
         text = build_rst(registry_entries(), notes)
 
-        # Parsed with titles, as the generated text defines a section per model.
+        # Parsed with titles, as the text defines a section per model
         parsed = nodes.section()
         parsed.document = self.state.document
         nested_parse_with_titles(

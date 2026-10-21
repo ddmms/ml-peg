@@ -53,8 +53,8 @@ def validate_elements(name: str, cfg: dict[str, Any]) -> None:
     """
     Check that a model's recorded element coverage can be resolved.
 
-    Datasets and elements that are not recognised contribute nothing to the coverage
-    used by the app's element filter, so are rejected rather than ignored.
+    Unrecognised datasets and elements contribute nothing to the app's element
+    filter, so are rejected rather than ignored.
 
     Parameters
     ----------
@@ -129,8 +129,8 @@ def default_models_file() -> Path:
     """
     Get the models file set for the current run.
 
-    Looked up when needed, rather than bound when this module is imported, so the
-    file set by the CLI is used however late this module is first imported.
+    Looked up when needed, so the file set by the CLI is used whenever this module
+    is first imported.
 
     Returns
     -------
@@ -146,9 +146,8 @@ def validate_config(name: str, cfg: dict[str, Any]) -> None:
     """
     Check that a model's configuration only sets keys that are read.
 
-    Keys are read individually when models are loaded, so a misnamed or outdated key
-    would otherwise be ignored, and the model built with the default it was meant to
-    override.
+    Keys are read individually when loading, so a misnamed key would otherwise be
+    ignored, and the default it was meant to override used instead.
 
     Parameters
     ----------
@@ -183,8 +182,7 @@ def validate_config(name: str, cfg: dict[str, Any]) -> None:
             f"Valid keys are: {', '.join(sorted(DISPERSION_KWARGS))}"
         )
 
-    # Dispersion is only added for models not already trained with it, so only the
-    # display label is used for the rest.
+    # Dispersion is only added for models not already trained with it
     if cfg["trained_on_dispersion"] and set(dispersion_kwargs) - {"label"}:
         warn(
             f"'{name}' is trained on dispersion, so no correction is added and its "
@@ -347,7 +345,7 @@ def load_models(
     for name, cfg in get_subset(all_models, models).items():
         print(f"Loading model from {filepath}: {name}")
 
-        # Copy, as the parsed registry is cached and shared between loaded models.
+        # Copy, as the parsed registry is cached and shared between loaded models
         cfg = deepcopy(cfg)
         validate_config(name, cfg)
 

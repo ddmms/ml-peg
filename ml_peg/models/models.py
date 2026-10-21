@@ -22,14 +22,14 @@ if TYPE_CHECKING:
 
 Precision = Literal["low", "high"]
 
-#: Keys read from a model's `dispersion_kwargs`, by `SumCalc.add_d3_calculator` and,
-#: for `label`, by the analysis utilities that name dispersion-corrected models.
+#: Keys read from a model's `dispersion_kwargs`. `label` is used to name
+#: dispersion-corrected models, the rest by `SumCalc.add_d3_calculator`.
 DISPERSION_KWARGS = frozenset(
     {"device", "damping", "xc", "dtype", "cutoff", "label"},
 )
 
-#: Calculators that factory functions forward their `**kwargs` to, so arguments of
-#: these are valid too. Keyed by the registry's `class_name`.
+#: Calculators that each `class_name` forwards its `**kwargs` to, whose arguments
+#: are therefore valid too.
 FORWARDED_KWARGS = {
     "mace_mp": (("mace.calculators", "MACECalculator"),),
     "mace_off": (("mace.calculators", "MACECalculator"),),
@@ -41,8 +41,7 @@ FORWARDED_KWARGS = {
     ),
 }
 
-#: Keyword arguments read from `**kwargs` by a calculator, so absent from the
-#: signature of anything it is passed to. Keyed by the registry's `class_name`.
+#: Keyword arguments read from `**kwargs`, so absent from every signature.
 MACE_KWARGS = {"head", "compute_atomic_stresses"}
 PASSTHROUGH_KWARGS = {
     "mace_mp": MACE_KWARGS,
@@ -99,9 +98,8 @@ def accepted_kwargs(target: Callable, class_name: str) -> set[str]:
     """
     Get the keyword arguments a calculator accepts.
 
-    As well as its own parameters, this covers arguments it passes on to another
-    calculator, ASE parameters set through a calculator's class defaults, and
-    arguments it reads from `**kwargs` itself.
+    Covers its own parameters, those of calculators it forwards `**kwargs` to, ASE
+    class defaults, and arguments it reads from `**kwargs` itself.
 
     Parameters
     ----------
@@ -130,11 +128,11 @@ def accepted_kwargs(target: Callable, class_name: str) -> set[str]:
         if forwarded_target is not target:
             accepted |= _named_parameters(forwarded_target)
 
-        # Anything else is only reached through `**kwargs`.
+        # Anything else is only reached through `**kwargs`
         if not _takes_var_keyword(forwarded_target):
             continue
 
-        # ASE calculators also take their class defaults as keyword arguments.
+        # ASE calculators also take their class defaults as keyword arguments
         accepted |= set(getattr(forwarded_target, "default_parameters", None) or ())
         if isinstance(forwarded_target, type) and issubclass(
             forwarded_target, Calculator
@@ -153,9 +151,8 @@ def check_kwargs(
     """
     Check that configured keyword arguments are accepted by the calculator.
 
-    Most calculators end in `**kwargs`, which ASE's `Calculator` stores without
-    complaint, so a misnamed key would otherwise be ignored and the calculator built
-    with its defaults.
+    Most calculators end in `**kwargs`, which ASE stores without complaint, so a
+    misnamed key would otherwise be ignored.
 
     Parameters
     ----------
@@ -217,9 +214,6 @@ def import_calculator(module: str, class_name: str) -> Callable:
     """
     Import the calculator named by a model's registry entry.
 
-    Using the registry's `module` and `class_name` keeps the import in step with the
-    configuration, rather than the two drifting apart.
-
     Parameters
     ----------
     module
@@ -248,9 +242,8 @@ def split_kwargs(
     """
     Split keyword arguments between the callables that accept them.
 
-    Models are loaded in two stages for some calculators, so configured kwargs must be
-    routed to the stage that accepts them. Keys accepted by none of the targets are
-    rejected, rather than being silently swallowed by `**kwargs` further down the stack.
+    Some models are loaded in two stages, so each kwarg must be routed to the stage
+    that takes it.
 
     Parameters
     ----------
@@ -298,11 +291,7 @@ def split_kwargs(
 
 def warn_precision_unused(class_name: str, default_dtype: str | None) -> None:
     """
-    Warn that a calculator cannot be run at the precision set for it.
-
-    Only warns when `overwrite_dtype` asked for a precision, as calculators without a
-    dtype argument always run at their native precision, which their `get_calculator`
-    documents.
+    Warn that `overwrite_dtype` cannot be applied to a calculator.
 
     Parameters
     ----------
@@ -463,8 +452,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
             reserved=("default_dtype", "dtype"),
         )
 
-        # Drop the dtype set from the requested precision if the calculator has no
-        # such argument, rather than leaving ASE to ignore it silently.
+        # Drop the precision dtype if unsupported, rather than letting ASE ignore it
         accepted = accepted_kwargs(target, self.class_name)
         for dtype_arg in ("default_dtype", "dtype"):
             if dtype_arg in kwargs and dtype_arg not in accepted:
@@ -475,7 +463,7 @@ class GenericASECalc(SumCalc, MlipxGenericASECalc):
                 )
                 del kwargs[dtype_arg]
 
-        # mlipx passes `device` to every calculator, so drop it the same way.
+        # mlipx passes `device` to every calculator, so drop it the same way
         model = self
         if self.device is not None and "device" not in accepted:
             warn(
@@ -764,7 +752,7 @@ class OrbCalc(SumCalc):
             Whether the calculator can be loaded.
         """
         try:
-            # Same imports as `get_calculator`, so the check cannot drift from it.
+            # Same imports as `get_calculator`, so the check cannot drift from it
             import_calculator(self.module, self.class_name)
             import_calculator(self.pretrained_module, self.name)
 
@@ -1015,7 +1003,7 @@ class TaceCalc(SumCalc):
             Whether the calculator can be loaded.
         """
         try:
-            # Same import as `get_calculator`, so the check cannot drift from it.
+            # Same import as `get_calculator`, so the check cannot drift from it
             import_calculator(self.module, self.class_name)
 
             return True
@@ -1068,7 +1056,7 @@ class GraceCalc(GenericASECalc):
             )
             model_name = configured_model
 
-        # Set the model on a copy, as `self.kwargs` is shared with the model registry.
+        # Set on a copy, as `self.kwargs` is shared with the model registry
         model = dataclasses.replace(self, kwargs={**self.kwargs, "model": model_name})
 
         return model.load_calculator(**kwargs)
