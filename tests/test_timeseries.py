@@ -103,8 +103,6 @@ def test_statistical_inefficiency_invalid():
     """Test errors are raised for invalid time series."""
     with pytest.raises(ValueError, match="non-finite"):
         statistical_inefficiency([1.0, np.nan, 2.0])
-    with pytest.raises(ValueError, match="at least two"):
-        statistical_inefficiency([1.0])
     with pytest.raises(ValueError, match="one-dimensional"):
         statistical_inefficiency(np.ones((2, 3)))
 
@@ -119,9 +117,14 @@ def test_statistical_inefficiency_ar1():
 
 @pytest.mark.parametrize("value", [1.0, 0.1, 1003.7])
 def test_statistical_inefficiency_constant(value):
-    """Test an error is raised for a constant time series."""
-    with pytest.raises(ValueError, match="Variance is zero"):
-        statistical_inefficiency(np.full(100, value))
+    """Test a constant time series warns and gives g = 1."""
+    with pytest.warns(RuntimeWarning, match="zero variance"):
+        assert statistical_inefficiency(np.full(100, value)) == 1.0
+
+
+def test_statistical_inefficiency_single_sample():
+    """Test a single sample gives g = 1."""
+    assert statistical_inefficiency([1.0]) == 1.0
 
 
 def test_estimate_mean_white_noise():
@@ -150,12 +153,21 @@ def test_estimate_mean_low_samples_warns():
 
 def test_estimate_mean_insufficient_samples():
     """Test uncertainties are NaN with fewer than two effective samples."""
-    series = np.ones(100)
     with pytest.warns(RuntimeWarning, match="Insufficient sampling"):
-        estimate = estimate_mean(series)
+        estimate = estimate_mean([1.0])
     assert estimate.mean == pytest.approx(1.0)
     assert np.isnan(estimate.sem)
     assert np.isnan(estimate.ci_95)
+
+
+def test_estimate_mean_constant():
+    """Test a constant time series has zero uncertainty."""
+    with pytest.warns(RuntimeWarning, match="zero variance"):
+        estimate = estimate_mean(np.ones(100))
+    assert estimate.mean == pytest.approx(1.0)
+    assert estimate.n_eff == 100
+    assert estimate.sem == 0.0
+    assert estimate.ci_95 == 0.0
 
 
 @pytest.mark.parametrize("series", [[], [1.0, np.nan, 2.0], [1.0, np.inf]])
