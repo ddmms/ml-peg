@@ -112,9 +112,16 @@ def test_injected_table_uses_current_model_filter(ready_page: Page) -> None:
     # models with no category scores. Record the baseline after that resync.
     ready_page.wait_for_timeout(1000)
     initial_home = rows.count()
+    # Deselect a model that has a summary row: models without results are listed
+    # in the filter but have no row, so deselecting them changes nothing.
+    model = (
+        ready_page.locator('#summary-table td[data-dash-column="MLIP"]')
+        .first.inner_text()
+        .strip()
+    )
 
     ready_page.locator("#model-filter-checklist").click()
-    ready_page.locator('[role="option"][aria-selected="true"]:visible').first.click()
+    ready_page.get_by_role("option", name=model, exact=True).click()
     expect(rows).to_have_count(initial_home - 1, timeout=30_000)
     ready_page.keyboard.press("Escape")
 
