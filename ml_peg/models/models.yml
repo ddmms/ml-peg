@@ -134,7 +134,7 @@ orb-v3-consv-omol:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "cpu"
   trained_on_dispersion: true
-  level_of_theory: PBE
+  level_of_theory: ωB97M-V/def2-TZVPD
   kwargs:
     name: "orb_v3_conservative_omol"
 
