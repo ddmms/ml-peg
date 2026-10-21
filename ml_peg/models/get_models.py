@@ -7,10 +7,188 @@ from copy import deepcopy
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 import yaml
 
-from ml_peg.models import models_file
+#: Keys that may be set for a model in models.yml. Anything else would be ignored.
+MODEL_KEYS = frozenset(
+    {
+        "module",
+        "class_name",
+        "device",
+        "datasets",
+        "additional_supported_elements",
+        "level_of_theory",
+        "overwrite_dtype",
+        "trained_on_dispersion",
+        "dispersion_kwargs",
+        "kwargs",
+    }
+)
+
+#: Keys that must be set for a model in models.yml.
+REQUIRED_MODEL_KEYS = frozenset({"module", "class_name", "trained_on_dispersion"})
+
+
+@lru_cache(maxsize=1)
+def covered_datasets() -> frozenset[str]:
+    """
+    Get the datasets with recorded element coverage.
+
+    Returns
+    -------
+    frozenset[str]
+        Dataset names defined in element_coverage.json.
+    """
+    import json
+
+    from ml_peg.app import APP_ROOT
+
+    with open(APP_ROOT / "data" / "element_coverage.json", encoding="utf8") as file:
+        return frozenset(json.load(file).get("datasets", {}))
+
+
+def validate_elements(name: str, cfg: dict[str, Any]) -> None:
+    """
+    Check that a model's recorded element coverage can be resolved.
+
+    Unrecognised datasets and elements contribute nothing to the app's element
+    filter, so are rejected rather than ignored.
+
+    Parameters
+    ----------
+    name
+        Name of the model being checked.
+    cfg
+        Model configuration, as defined in models.yml.
+
+    Raises
+    ------
+    ValueError
+        If a dataset has no element coverage, or an element symbol is not an element.
+    """
+    from ml_peg.analysis.utils.periodic_table import PERIODIC_TABLE_SYMBOLS
+
+    datasets = cfg.get("datasets") or []
+    elements = cfg.get("additional_supported_elements") or []
+
+    for key, value in (
+        ("datasets", datasets),
+        ("additional_supported_elements", elements),
+    ):
+        if not isinstance(value, list):
+            raise ValueError(f"'{name}' must set '{key}' to a list, or null")
+
+    if unknown := sorted(set(datasets) - covered_datasets()):
+        raise ValueError(
+            f"'{name}' lists dataset(s) without element coverage: "
+            f"{', '.join(unknown)}. Names are case-sensitive, and each must be a key "
+            "in ml_peg/app/data/element_coverage.json"
+        )
+
+    unknown_elements = set(elements) - set(PERIODIC_TABLE_SYMBOLS)
+    if invalid := sorted(str(element) for element in unknown_elements):
+        raise ValueError(
+            f"'{name}' lists additional_supported_elements that are not elements: "
+            f"{', '.join(invalid)}. Symbols must be quoted, as YAML reads an "
+            "unquoted 'No' as false"
+        )
+
+
+def pop_required_kwarg(name: str, kwargs: dict[str, Any], key: str) -> Any:
+    """
+    Take a keyword argument that a model must set.
+
+    Parameters
+    ----------
+    name
+        Name of the model being loaded.
+    kwargs
+        Keyword arguments set by the model's `kwargs` key.
+    key
+        Keyword argument to take.
+
+    Returns
+    -------
+    Any
+        Value set for `key`.
+
+    Raises
+    ------
+    ValueError
+        If the keyword argument is not set.
+    """
+    if key not in kwargs:
+        raise ValueError(f"'{name}' must set '{key}' in its kwargs")
+
+    return kwargs.pop(key)
+
+
+def default_models_file() -> Path:
+    """
+    Get the models file set for the current run.
+
+    Looked up when needed, so the file set by the CLI is used whenever this module
+    is first imported.
+
+    Returns
+    -------
+    Path
+        Path to the YAML file defining models, defaulting to models.yml.
+    """
+    from ml_peg import models
+
+    return models.models_file
+
+
+def validate_config(name: str, cfg: dict[str, Any]) -> None:
+    """
+    Check that a model's configuration only sets keys that are read.
+
+    Keys are read individually when loading, so a misnamed key would otherwise be
+    ignored, and the default it was meant to override used instead.
+
+    Parameters
+    ----------
+    name
+        Name of the model being checked.
+    cfg
+        Model configuration, as defined in models.yml.
+
+    Raises
+    ------
+    ValueError
+        If a required key is missing, or an unrecognised key is set.
+    """
+    from ml_peg.models.models import DISPERSION_KWARGS
+
+    if missing := sorted(REQUIRED_MODEL_KEYS - set(cfg)):
+        raise ValueError(f"'{name}' is missing required key(s): {', '.join(missing)}")
+
+    if unknown := sorted(set(cfg) - MODEL_KEYS):
+        raise ValueError(
+            f"'{name}' sets key(s) that would be ignored: {', '.join(unknown)}. "
+            f"Valid keys are: {', '.join(sorted(MODEL_KEYS))}"
+        )
+
+    validate_elements(name, cfg)
+
+    dispersion_kwargs = cfg.get("dispersion_kwargs") or {}
+    if unknown := sorted(set(dispersion_kwargs) - DISPERSION_KWARGS):
+        raise ValueError(
+            f"'{name}' sets dispersion_kwargs that would be ignored: "
+            f"{', '.join(unknown)}. "
+            f"Valid keys are: {', '.join(sorted(DISPERSION_KWARGS))}"
+        )
+
+    # Dispersion is only added for models not already trained with it
+    if cfg["trained_on_dispersion"] and set(dispersion_kwargs) - {"label"}:
+        warn(
+            f"'{name}' is trained on dispersion, so no correction is added and its "
+            "dispersion_kwargs are unused, other than 'label'",
+            stacklevel=2,
+        )
 
 
 @lru_cache(maxsize=1)
@@ -30,7 +208,7 @@ def _load_models_yaml(
     dict[str, Any]
         Parsed models.yml registry.
     """
-    filepath = filepath if filepath else models_file
+    filepath = filepath if filepath else default_models_file()
     with open(filepath, encoding="utf8") as file:
         return yaml.safe_load(file) or {}
 
@@ -57,7 +235,7 @@ def load_model_configs(
         - model_levels: Dictionary mapping model names to their level of
           theory (or ``None``)
     """
-    filepath = filepath if filepath else models_file
+    filepath = filepath if filepath else default_models_file()
     all_models = _load_models_yaml(filepath)
 
     model_levels: dict[str, str | None] = {}
@@ -161,35 +339,53 @@ def load_models(
     if mock_only:
         return loaded_models
 
-    filepath = filepath if filepath else models_file
+    filepath = filepath if filepath else default_models_file()
     all_models = _load_models_yaml(filepath)
 
     for name, cfg in get_subset(all_models, models).items():
         print(f"Loading model from {filepath}: {name}")
 
+        # Copy, as the parsed registry is cached and shared between loaded models
+        cfg = deepcopy(cfg)
+        validate_config(name, cfg)
+
         match cfg["class_name"]:
             case "DP":
                 loaded_models[name] = DpaCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    device=cfg.get("device", None),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "FAIRChemCalculator":
                 kwargs = cfg.get("kwargs", {})
+                model_name = pop_required_kwarg(name, kwargs, "model_name")
+                task_name = kwargs.pop("task_name", "omat")
+                overrides = kwargs.pop("overrides", {})
                 loaded_models[name] = FairChemCalc(
-                    model_name=kwargs["model_name"],
-                    task_name=kwargs.get("task_name", "omat"),
-                    device=cfg.get("device", "cpu"),
-                    overrides=kwargs.get("overrides", {}),
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    model_name=model_name,
+                    task_name=task_name,
+                    device=cfg.get("device", "auto"),
+                    overrides=overrides,
+                    kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
-            case "OrbCalc":
+            case "ORBCalculator":
                 kwargs = cfg.get("kwargs", {})
+                orb_name = pop_required_kwarg(name, kwargs, "name")
                 loaded_models[name] = OrbCalc(
-                    name=kwargs["name"],
-                    device=cfg.get("device", "cpu"),
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    name=orb_name,
+                    device=cfg.get("device", "auto"),
+                    kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
@@ -208,7 +404,7 @@ def load_models(
                 loaded_models[name] = MatterSimCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -218,7 +414,7 @@ def load_models(
                 loaded_models[name] = UPETCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -226,14 +422,19 @@ def load_models(
                 )
             case "SevenNetCalculator":
                 loaded_models[name] = SevenNetCalc(
-                    device=cfg.get("device", "cpu"),
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    device=cfg.get("device", "auto"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case "TACEAseCalc":
                 loaded_models[name] = TaceCalc(
-                    device=cfg.get("device", "cpu"),
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
@@ -241,7 +442,10 @@ def load_models(
                 )
             case "MLFFCalculator":
                 loaded_models[name] = VivaceCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
                     device=cfg.get("device", "auto"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
@@ -250,7 +454,7 @@ def load_models(
                 loaded_models[name] = GraceCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
-                    device=cfg.get("device", "cpu"),
+                    device=cfg.get("device", "auto"),
                     kwargs=cfg.get("kwargs", {}),
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
@@ -291,7 +495,7 @@ def get_model_names(
     list[str]
         Loaded model names from `filepath`.
     """
-    filepath = filepath if filepath else models_file
+    filepath = filepath if filepath else default_models_file()
     all_models = _load_models_yaml(filepath)
 
     model_names = []
