@@ -6,6 +6,7 @@ overall=.65. All expected values below are independent of production scoring.
 
 from __future__ import annotations
 
+from conftest import set_model_visible
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 import pytest
@@ -25,33 +26,6 @@ def edit(page, field, value):
     control = page.locator(f'[id="{field}"]')
     control.fill(str(value))
     control.press("Enter")
-
-
-def set_model_visible(page, model, visible):
-    """Select by keyboard and await the exact backing-store selection."""
-    before = page.evaluate(
-        "JSON.parse(sessionStorage.getItem('selected-models-store'))"
-    )
-    assert (model in before) != visible
-    expected = sorted(set(before) | {model} if visible else set(before) - {model})
-    page.locator("#model-filter-checklist").click()
-    search = page.get_by_role("searchbox")
-    # Wait for the dropdown's opening autofocus before moving focus ourselves.
-    expect(search).to_be_focused()
-    search.fill(model)
-    expect(page.get_by_role("option")).to_have_count(1)
-    option = page.get_by_role("option", name=model, exact=True)
-    expect(option).to_have_attribute("aria-selected", str(not visible).lower())
-    # The dropdown can move while opening. Focus the named checkbox rather
-    # than clicking coordinates that can land on a neighbouring option.
-    option.get_by_role("checkbox").press("Space")
-    expect(option).to_have_attribute("aria-selected", str(visible).lower())
-    page.wait_for_function(
-        """expected => JSON.stringify(JSON.parse(sessionStorage.getItem(
-            'selected-models-store')).sort()) === JSON.stringify(expected)""",
-        arg=expected,
-    )
-    page.keyboard.press("Escape")
 
 
 def score(page, table, expected, model=A):
