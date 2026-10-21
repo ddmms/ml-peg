@@ -112,6 +112,8 @@ def test_statistical_inefficiency_ar1():
     phi = 0.9
     expected = (1 + phi) / (1 - phi)
     g = get_statistical_inefficiency(ar_series(100_000, [phi]))
+    # Fairly wide tolerance -- there's a reasonable amount of noise and seed 0 happens to give a
+    # slightly high estimate.
     assert g == pytest.approx(expected, rel=0.1)
 
 
@@ -136,6 +138,7 @@ def test_estimate_mean_white_noise():
 
     # No subsampling
     assert estimate.mean == pytest.approx(np.mean(series))
+    # Again, some fairly large tolerances due to noise.
     assert estimate.n_eff == pytest.approx(len(series), rel=0.1)
     expected_sem = np.std(series, ddof=1) / np.sqrt(len(series))
     assert estimate.sem == pytest.approx(expected_sem, rel=0.1)
@@ -184,12 +187,10 @@ def test_estimate_mean_coverage():
     """Test 95 % confidence intervals contain the true mean ~95 % of the time."""
     n_repeats = 200
     covered = 0
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", RuntimeWarning)
-        for seed in range(n_repeats):
-            estimate = estimate_mean(ar_series(2000, [0.7], seed=seed))
-            # True mean is zero so no need to subtract it
-            covered += abs(estimate.mean) <= estimate.ci_95
+    for seed in range(n_repeats):
+        estimate = estimate_mean(ar_series(2000, [0.7], seed=seed))
+        # True mean is zero so no need to subtract it
+        covered += abs(estimate.mean) <= estimate.ci_95
     assert 0.88 <= covered / n_repeats <= 0.98
 
 
@@ -260,7 +261,12 @@ def test_bootstrap_metric_no_time_series():
 def test_bootstrap_metric_insufficient_sampling():
     """Test no interval is given if any uncertainty could not be estimated."""
     result = bootstrap_metric(
-        mae, [1.0, 2.0], [estimate(1.5, 0.1), estimate(2.0, np.nan)]
+        mae,
+        [1.0, 2.0],
+        [
+            estimate(1.5, 0.1),
+            TimeSeriesEstimate(mean=2.0, sem=np.nan, n_eff=1.5, ci_95=np.nan),
+        ],
     )
 
     assert result.ci_low is None
