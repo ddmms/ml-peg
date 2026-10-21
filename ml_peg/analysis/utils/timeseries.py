@@ -296,7 +296,7 @@ def _percentile_interval(
 
 
 def bootstrap_metric(
-    statistic: Callable[[np.ndarray, np.ndarray], float],
+    statistic_fn: Callable[[np.ndarray, np.ndarray], float],
     ref: Sequence[float],
     pred: Sequence[TimeSeriesEstimate | float | None],
     ref_sigma_1sd: Sequence[float] | None = None,
@@ -308,18 +308,17 @@ def bootstrap_metric(
     """
     Estimate a confidence interval for a metric with a parametric bootstrap.
 
-    Each prediction is resampled from a normal distribution with its mean and
-    standard error, and the metric is recalculated for each draw. The interval is the
-    95 % range of the metric under sampling noise. For metrics such as the MAE, noise
-    biases the resampled values upwards, so the metric value may lie below the
-    interval when errors are comparable to the standard errors.
+    Each prediction is resampled from a normal distribution (we rely on the central
+    limit theorem here, assuming reasonable n_eff) with its mean and standard error,
+    and the metric is recalculated for each draw. The interval is the 95 % range of
+    the metric under sampling noise.
 
     The seed is fixed so that every model uses the same random draws, keeping the
     results reproducible and making comparisons between models fairer.
 
     Parameters
     ----------
-    statistic
+    statistic_fn
         Function of (reference, prediction) arrays, each with shape (n_systems,),
         returning the metric, e.g. ``lambda ref, pred: np.mean(np.abs(pred - ref))``.
     ref
@@ -352,7 +351,7 @@ def bootstrap_metric(
     # Reported value: the metric of the time-averaged predictions
     ref = np.asarray(ref, dtype=float)
     means = np.array([p.mean if isinstance(p, TimeSeriesEstimate) else p for p in pred])
-    value = float(statistic(ref, means))
+    value = float(statistic_fn(ref, means))
 
     # Standard errors, NaN where a prediction has no time series
     estimates = [p for p in pred if isinstance(p, TimeSeriesEstimate)]
@@ -388,24 +387,24 @@ def bootstrap_metric(
 
     # Each row of pred_draws, with shape (n_boot, n_systems), is a plausible rerun of
     # every simulation: each mean is perturbed independently by its standard error,
-    # as time averages are approximately normal. The fixed seed gives every model
-    # the same draws
+    # as time averages are normal by the central limit theorem (assuming reasonable n_eff).
+    # The fixed seed gives every model the same draws.
     rng = np.random.default_rng(seed)
     pred_draws = means + sems * rng.standard_normal((n_boot, len(means)))
 
     # Recompute the metric for each rerun, and take the percentile interval
-    samples = np.array([statistic(ref, draw) for draw in pred_draws])
+    samples = np.array([statistic_fn(ref, draw) for draw in pred_draws])
     ci_low, ci_high = _percentile_interval(samples, alpha)
 
     # Optionally also perturb the reference values by their uncertainties, reusing
     # the same prediction draws. Kept separate as the reference uncertainty is
-    # shared by all models, so would hide differences between them
+    # shared by all models, so could hide differences between them
     ci_low_ref = ci_high_ref = None
     if ref_sigma_1sd is not None:
         ref_sigma = np.asarray(ref_sigma_1sd, dtype=float)
         ref_draws = ref + ref_sigma * rng.standard_normal((n_boot, len(ref)))
         samples_ref = np.array(
-            [statistic(r, p) for r, p in zip(ref_draws, pred_draws, strict=True)]
+            [statistic_fn(r, p) for r, p in zip(ref_draws, pred_draws, strict=True)]
         )
         ci_low_ref, ci_high_ref = _percentile_interval(samples_ref, alpha)
 
