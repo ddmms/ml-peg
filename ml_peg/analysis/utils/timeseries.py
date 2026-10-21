@@ -121,7 +121,11 @@ def autocovariance(time_series: Sequence[float]) -> np.ndarray:
     shifted = np.asarray(time_series, dtype=float)
     shifted = shifted - shifted.mean()
     n_samples = len(shifted)
+
+    # Find the padding to avoid wrap-around correlation, and to make the FFT fast.
     n_fft = next_fast_len(2 * n_samples - 1, real=True)
+
+    # Wiener-Khinchin relation: the autocovariance is the inverse FFT of the power spectrum |X|^2.
     spectrum = np.fft.rfft(shifted, n_fft)
     autocov = np.fft.irfft(spectrum.real**2 + spectrum.imag**2, n_fft)[:n_samples]
     return autocov / n_samples
