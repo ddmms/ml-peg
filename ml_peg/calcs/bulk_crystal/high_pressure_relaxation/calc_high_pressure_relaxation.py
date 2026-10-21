@@ -197,7 +197,7 @@ def relax_with_pressure(
             geom_opt.run()
             relaxed = geom_opt.struct
             # asses forces to determine convergence
-            max_force = max(relaxed.get_forces().flatten(), key=abs)
+            max_force = np.abs(relaxed.get_forces()).max()
             if max_force < fmax:
                 converged = True
             counter += 1
