@@ -39,10 +39,6 @@ class LIBelectrolyteInterIntraApp(BaseApp):
                     model=model,
                     id=f"{BENCHMARK_NAME}-{model}-inter_forces-figure",
                 ),
-                "Intra-Energy": read_plot(
-                    DATA_PATH / f"intra-energy_parity_{model}.json",
-                    id=f"{BENCHMARK_NAME}-{model}-intra_energy-figure",
-                ),
                 "Inter-Energy": read_plot(
                     DATA_PATH / f"inter-energy_parity_{model}.json",
                     id=f"{BENCHMARK_NAME}-{model}-inter_energy-figure",
@@ -68,13 +64,12 @@ class LIBelectrolyteInterIntraApp(BaseApp):
         assets_dir = "/assets/electrolytes/LIB_electrolyte_inter_intra/"
 
         for model in MODELS:
-            for property in ("intra_energy", "inter_energy"):
-                struct_from_scatter(
-                    scatter_id=f"{BENCHMARK_NAME}-{model}-{property}-figure",
-                    struct_id=f"{BENCHMARK_NAME}-{model}-{property}-struct-placeholder",
-                    structs=f"{assets_dir}/{model}/{model}-intra_inter.extxyz",
-                    mode="traj",
-                )
+            struct_from_scatter(
+                scatter_id=f"{BENCHMARK_NAME}-{model}-inter_energy-figure",
+                struct_id=f"{BENCHMARK_NAME}-{model}-inter_energy-struct-placeholder",
+                structs=f"{assets_dir}/{model}/{model}-intra_inter.extxyz",
+                mode="traj",
+            )
 
             structs_dir = DATA_PATH / model
             struct_files = list(structs_dir.glob(f"{model}-intra_inter_*.extxyz"))
@@ -142,7 +137,6 @@ def get_app() -> LIBelectrolyteInterIntraApp:
                 for property in (
                     "intra_forces",
                     "inter_forces",
-                    "intra_energy",
                     "inter_energy",
                     "intra_virial",
                     "inter_virial",
