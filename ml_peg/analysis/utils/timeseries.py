@@ -140,8 +140,9 @@ def statistical_inefficiency(
     The autocorrelation function is summed up to, but not including, its first
     non-positive value after ``minimum_samples`` lags. This gives the same result as
     OpenFF Evaluator's ``_statistical_inefficiency``, but calculates the
-    autocorrelation function by FFT, so the cost does not grow with the correlation
-    time.
+    autocorrelation function by FFT, so it's faster for long time series with long
+    correlation times (for short time series with short correlation times, both methods
+    will be fast).
 
     Parameters
     ----------
