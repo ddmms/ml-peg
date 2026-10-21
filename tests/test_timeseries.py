@@ -11,7 +11,7 @@ from ml_peg.analysis.utils.timeseries import (
     TimeSeriesEstimate,
     bootstrap_metric,
     estimate_mean,
-    statistical_inefficiency,
+    get_statistical_inefficiency,
 )
 from ml_peg.analysis.utils.utils import mae
 
@@ -94,7 +94,7 @@ def openff_statistical_inefficiency(
 def test_statistical_inefficiency_matches_openff(n_samples, phis):
     """Test the FFT estimate matches the OpenFF Evaluator loop."""
     series = ar_series(n_samples, phis)
-    assert statistical_inefficiency(series) == pytest.approx(
+    assert get_statistical_inefficiency(series) == pytest.approx(
         openff_statistical_inefficiency(series), rel=1e-8
     )
 
@@ -102,16 +102,16 @@ def test_statistical_inefficiency_matches_openff(n_samples, phis):
 def test_statistical_inefficiency_invalid():
     """Test errors are raised for invalid time series."""
     with pytest.raises(ValueError, match="non-finite"):
-        statistical_inefficiency([1.0, np.nan, 2.0])
+        get_statistical_inefficiency([1.0, np.nan, 2.0])
     with pytest.raises(ValueError, match="one-dimensional"):
-        statistical_inefficiency(np.ones((2, 3)))
+        get_statistical_inefficiency(np.ones((2, 3)))
 
 
 def test_statistical_inefficiency_ar1():
     """Test the statistical inefficiency of an AR(1) process is recovered."""
     phi = 0.9
     expected = (1 + phi) / (1 - phi)
-    g = statistical_inefficiency(ar_series(100_000, [phi]))
+    g = get_statistical_inefficiency(ar_series(100_000, [phi]))
     assert g == pytest.approx(expected, rel=0.1)
 
 
@@ -119,12 +119,12 @@ def test_statistical_inefficiency_ar1():
 def test_statistical_inefficiency_constant(value):
     """Test a constant time series warns and gives g = 1."""
     with pytest.warns(RuntimeWarning, match="zero variance"):
-        assert statistical_inefficiency(np.full(100, value)) == 1.0
+        assert get_statistical_inefficiency(np.full(100, value)) == 1.0
 
 
 def test_statistical_inefficiency_single_sample():
     """Test a single sample gives g = 1."""
-    assert statistical_inefficiency([1.0]) == 1.0
+    assert get_statistical_inefficiency([1.0]) == 1.0
 
 
 def test_estimate_mean_white_noise():

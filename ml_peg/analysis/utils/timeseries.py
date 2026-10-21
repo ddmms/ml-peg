@@ -100,7 +100,7 @@ class MetricEstimate:
     note: str | None = None
 
 
-def autocovariance(time_series: Sequence[float]) -> np.ndarray:
+def get_autocovariance(time_series: Sequence[float]) -> np.ndarray:
     """
     Calculate the autocovariance function of a time series by FFT.
 
@@ -131,7 +131,7 @@ def autocovariance(time_series: Sequence[float]) -> np.ndarray:
     return autocov / n_samples
 
 
-def statistical_inefficiency(
+def get_statistical_inefficiency(
     time_series: Sequence[float], minimum_samples: int = 3
 ) -> float:
     """
@@ -180,7 +180,7 @@ def statistical_inefficiency(
             stacklevel=2,
         )
         return 1.0
-    autocov = autocovariance(data)
+    autocov = get_autocovariance(data)
 
     # Lags 1 to n_samples - 2, matching the OpenFF loop
     acf = autocov[1:-1] / autocov[0]
@@ -243,7 +243,7 @@ def estimate_mean(
         return TimeSeriesEstimate(mean=np.nan, sem=np.nan, n_eff=0.0, ci_95=np.nan)
 
     mean = float(data.mean())
-    n_eff = n_samples / statistical_inefficiency(data)
+    n_eff = n_samples / get_statistical_inefficiency(data)
 
     if n_eff < 2:
         warnings.warn(
@@ -271,7 +271,7 @@ def estimate_mean(
     return TimeSeriesEstimate(mean=mean, sem=sem, n_eff=n_eff, ci_95=ci_95)
 
 
-def _percentile_interval(
+def _get_percentile_interval(
     samples: np.ndarray, alpha: float
 ) -> tuple[float | None, float | None]:
     """
@@ -394,7 +394,7 @@ def bootstrap_metric(
 
     # Recompute the metric for each rerun, and take the percentile interval
     samples = np.array([statistic_fn(ref, draw) for draw in pred_draws])
-    ci_low, ci_high = _percentile_interval(samples, alpha)
+    ci_low, ci_high = _get_percentile_interval(samples, alpha)
 
     # Optionally also perturb the reference values by their uncertainties, reusing
     # the same prediction draws. Kept separate as the reference uncertainty is
@@ -406,7 +406,7 @@ def bootstrap_metric(
         samples_ref = np.array(
             [statistic_fn(r, p) for r, p in zip(ref_draws, pred_draws, strict=True)]
         )
-        ci_low_ref, ci_high_ref = _percentile_interval(samples_ref, alpha)
+        ci_low_ref, ci_high_ref = _get_percentile_interval(samples_ref, alpha)
 
     return MetricEstimate(
         value=value,
