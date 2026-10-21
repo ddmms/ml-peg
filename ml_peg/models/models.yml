@@ -365,7 +365,7 @@ Vivace:
   module: simpoly.vivace.calculator
   class_name: MLFFCalculator
   datasets: [OMol25, PolyCrop, PolyPack, PolyDiss]
-  device: "auto"
+  device: "cuda"  # SimPoly only supports CUDA
   trained_on_dispersion: true
   level_of_theory: r2SCAN+D3
   kwargs:
