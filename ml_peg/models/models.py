@@ -32,6 +32,7 @@ DISPERSION_KWARGS = frozenset(
 #: Calculators that each `class_name` forwards its `**kwargs` to, whose arguments
 #: are therefore valid too.
 FORWARDED_KWARGS = {
+    "AIMNet2ASE": (("aimnet.calculators", "AIMNet2Calculator"),),
     "mace_mp": (("mace.calculators", "MACECalculator"),),
     "mace_off": (("mace.calculators", "MACECalculator"),),
     "mace_omol": (("mace.calculators", "MACECalculator"),),
