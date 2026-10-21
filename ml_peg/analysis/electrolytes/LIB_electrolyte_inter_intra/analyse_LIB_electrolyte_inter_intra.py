@@ -149,8 +149,8 @@ def plot_density_parity_results(prop_key: str, results: dict[str, float]) -> Non
     @plot_density_scatter(
         filename=OUT_PATH / f"{prop_key.lower()}_density_parity.json",
         title=prop_key,
-        x_label=f"Predicted {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
-        y_label=f"DFT {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+        x_label=f"DFT {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+        y_label=f"Predicted {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
     )
     def plot_density_parity_result() -> dict[str, list[float]]:
         """
