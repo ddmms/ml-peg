@@ -60,7 +60,10 @@ Two more metrics check which crack-tip state the model prefers, and at which loa
    past K/K_G = 1.56. Each DFT state, at 11 loads per state, is relaxed at fixed K with
    the model (the clamped boundary atoms keep the load's K field); the metric is the RMS
    error of the model's E(5-7) - E(sharp) over the window, interpolated in K along each
-   state, per unit length of crack front (meV/Å). A relaxation that does not converge,
+   state, per unit length of crack front (meV/Å). The window ends at K/K_G = 1.745, below
+   the top loads (1.759 and 1.762): the DFT 5-7 state folds at K/K_G 1.762-1.764, so
+   scoring there would cost a whole load to a model whose 5-7 state folds a few
+   thousandths early. A relaxation that does not converge,
    or that leaves its state (the coordinate q = d(52, 53) - d(51, 53), about -1.35 Å
    sharp and +1.5 Å 5-7, moves by more than 0.5 Å), is not scored, and the loads it
    leaves uncovered count at the bad threshold. Its thresholds are physical rather than

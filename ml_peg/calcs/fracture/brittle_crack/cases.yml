@@ -58,4 +58,7 @@ orderings:
     states: ["5-7", "sharp"]
     q_triple: [51, 52, 53]
     q_tol: 0.5
-    n_grid: 11
+    # score the loads up to k_max: the DFT 5-7 state folds at K/K_G 1.762-1.764, just above the
+    # top frames (1.759, 1.762), so a model folding a few thousandths early would lose a load
+    k_max: 1.745
+    n_grid: 10

@@ -584,6 +584,30 @@ def test_a_state_that_leaves_its_basin_is_not_scored_at_that_load():
     assert an.ordering_curve(model, ref, ORDER)["coverage"] == pytest.approx(4 / 7)
 
 
+def test_loads_above_k_max_are_not_scored():
+    """
+    Score only the loads up to ``k_max``.
+
+    A 5-7 frame above k_max that leaves its basin (a state close to its own fold) costs
+    no coverage, and the window, grid and crossover fit stop at the last load kept.
+    """
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ks = (1.5, 1.6, 1.7, 1.8)
+    ref = _ramp_frames(_linear, "REF_energy", ks=ks)
+    model = _ramp_frames(lambda k: _linear(k) + 0.04, "model_energy", ks=ks)
+    model[3].info["model_q"] = -1.2  # the 5-7 frame at K 1.8 collapses
+    assert an.ordering_curve(model, ref, ORDER)["coverage"] < 1.0
+    c = an.ordering_curve(model, ref, {**ORDER, "k_max": 1.75})
+    assert c["coverage"] == 1.0 and c["error"] == pytest.approx(10.0)
+    assert c["k_cross_ref"] == pytest.approx(1.6)
+    ks3 = (1.5, 1.6, 1.7)
+    capped = _ramp_frames(_linear, "REF_energy", ks=ks3)
+    capped_model = _ramp_frames(lambda k: _linear(k) + 0.04, "model_energy", ks=ks3)
+    # as if the frames ended at K 1.7
+    assert c == an.ordering_curve(capped_model, capped, ORDER)
+
+
 def test_ordering_frames_that_differ_from_the_reference_raise():
     """Stale outputs (other states or loads) raise, as a topology mismatch does."""
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an

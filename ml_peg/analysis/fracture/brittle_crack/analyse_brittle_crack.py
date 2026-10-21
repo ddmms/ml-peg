@@ -333,10 +333,12 @@ def ordering_curve(model_frames: list, ref_frames: list, ordering: dict) -> dict
     Compare a model's energy ordering of two states with DFT's over a range of loads.
 
     E(first state) - E(second state) is interpolated in K along each state's frames, on
-    ``n_grid`` loads spanning the range where DFT has both. A model frame counts only if
-    its fixed-K relaxation converged and stayed in its state's basin (q within ``q_tol``
-    of the DFT frame's); a load is covered where both states have counted frames on
-    either side of it.
+    ``n_grid`` loads spanning the range where DFT has both. Frames above ``k_max`` (if
+    set) are not scored: they would put the window's edge at a state's own fold, where a
+    model that folds a little early loses the load. A model frame counts only if its
+    fixed-K relaxation converged and stayed in its state's basin (q within ``q_tol`` of
+    the DFT frame's); a load is covered where both states have counted frames on either
+    side of it.
 
     Parameters
     ----------
@@ -345,7 +347,8 @@ def ordering_curve(model_frames: list, ref_frames: list, ordering: dict) -> dict
     ref_frames
         DFT states (info ``state``, ``K_over_KG``, ``REF_energy``).
     ordering
-        Settings: ``states``, ``q_triple``, ``q_tol``, ``n_grid``.
+        Settings: ``states``, ``q_triple``, ``q_tol``, ``n_grid`` and optionally
+        ``k_max``.
 
     Returns
     -------
@@ -364,6 +367,10 @@ def ordering_curve(model_frames: list, ref_frames: list, ordering: dict) -> dict
         (f.info["state"], round(float(f.info["K_over_KG"]), 6)) for f in model_frames
     ] != key:
         raise ValueError("model ordering frames do not match the reference")
+    k_max = float(ordering.get("k_max", np.inf))
+    kept = [i for i, f in enumerate(ref_frames) if float(f.info["K_over_KG"]) <= k_max]
+    ref_frames = [ref_frames[i] for i in kept]
+    model_frames = [model_frames[i] for i in kept]
     first, second = ordering["states"]
     front = float(ref_frames[0].cell[2, 2])
     curves = {}
