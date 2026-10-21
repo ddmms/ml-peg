@@ -263,7 +263,9 @@ def estimate_mean(
         )
 
     sem = float(np.sqrt(data.var() / n_eff))
-    ci_95 = float(t_dist.ppf(1 - alpha / 2, n_eff - 1) * sem)
+    t_val = float(t_dist.ppf(1 - alpha / 2, n_eff - 1))
+    ci_95 = t_val * sem
+
     return TimeSeriesEstimate(mean=mean, sem=sem, n_eff=n_eff, ci_95=ci_95)
 
 
