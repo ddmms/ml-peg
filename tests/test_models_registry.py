@@ -132,21 +132,25 @@ def test_unknown_precision_rejected():
         model.get_calculator(precision="medium")
 
 
+#: Wrappers that apply the configured device themselves, rather than passing it to
+#: the calculator they build, so it need not be an argument of that calculator.
+DEVICE_HANDLED_BY_WRAPPER = ("ORBCalculator", "FAIRChemCalculator", "MLFFCalculator")
+
+
 @pytest.mark.parametrize("name", REGISTRY)
 def test_device_is_set_where_supported(name: str):
     """Models with an unsupported device say so, rather than setting one."""
     config = REGISTRY[name]
-    if config.get("device") is None:
+    if (
+        config.get("device") is None
+        or config["class_name"] in DEVICE_HANDLED_BY_WRAPPER
+    ):
         return
 
     try:
         target = import_calculator(config["module"], config["class_name"])
     except (ImportError, AttributeError):
         pytest.skip(f"{config['module']} is not installed")
-
-    # Wrappers that handle the device themselves, rather than passing it on.
-    if config["class_name"] in ("ORBCalculator", "FAIRChemCalculator"):
-        return
 
     assert "device" in accepted_kwargs(target, config["class_name"]), (
         f"'{name}' sets a device, but {config['class_name']} has no device argument. "

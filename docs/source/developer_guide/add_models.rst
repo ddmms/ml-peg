@@ -474,11 +474,20 @@ than ignored:
   misnamed option would otherwise be ignored and the default used instead.
 
   Any genuinely valid argument can still be passed. As well as the calculator's
-  own signature, the check accepts arguments of calculators it forwards
-  ``**kwargs`` to — listed in ``FORWARDED_KWARGS`` in
-  ``ml_peg/models/models.py``, so ``enable_cueq`` reaches ``MACECalculator``
-  through ``mace_mp`` — along with ASE class defaults such as ``LennardJones``'
-  ``epsilon``, standard ASE arguments such as ``directory``, and options a
-  calculator reads straight out of ``**kwargs``, which are listed in
-  ``PASSTHROUGH_KWARGS`` (``head`` for MACE, ``load_path`` for MatterSim). Add
-  to those lists if a valid argument is rejected.
+  own signature, the check accepts:
+
+  * arguments of whatever the calculator forwards its ``**kwargs`` to, listed
+    per ``class_name`` in ``FORWARDED_KWARGS`` in ``ml_peg/models/models.py``.
+    This is how ``enable_cueq`` reaches ``MACECalculator`` through ``mace_mp``,
+    and ``load_path`` reaches ``Potential.from_checkpoint`` through
+    ``MatterSimCalculator``.
+  * ASE class defaults, such as ``LennardJones``' ``epsilon``, and standard ASE
+    arguments such as ``directory``.
+  * arguments a calculator reads straight out of its own ``**kwargs``, so they
+    appear in no signature, listed in ``PASSTHROUGH_KWARGS``. These are
+    currently ``head`` and ``compute_atomic_stresses`` for MACE, and ``cutoff``
+    for ``grace_fm``.
+
+  If a valid argument is rejected, add it to whichever of those two tables
+  fits: ``FORWARDED_KWARGS`` when another calculator declares the argument,
+  ``PASSTHROUGH_KWARGS`` when nothing declares it.
