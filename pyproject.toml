@@ -114,8 +114,8 @@ Documentation = "https://ddmms.github.io/ml-peg/"
 #      "aimnet[ase]>=<fixed version>; python_version >= '3.11'".
 #   2. Remove the aimnet entry from [tool.uv.sources].
 #   3. Change { group = "aimnet" } back to { extra = "aimnet" } in [tool.uv] conflicts.
-#   4. Change "uv sync --group aimnet" back to "--extra aimnet" in
-#      docs/source/user_guide/models.rst and drop the pip caveat.
+#   4. Change "uv sync --group aimnet" back to "--extra aimnet" in the AIMNet2
+#      notes in docs/source/user_guide/model_notes.yml and drop the pip caveat.
 aimnet = [
     "aimnet[ase]; python_version >= '3.11'",
 ]

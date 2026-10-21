@@ -9,6 +9,7 @@ from yaml import safe_load
 
 from ml_peg.models.get_models import load_models, validate_config
 from ml_peg.models.models import (
+    AIMNetCalc,
     DpaCalc,
     FairChemCalc,
     GenericASECalc,
@@ -29,6 +30,7 @@ REGISTRY = safe_load(MODELS_FILE.read_text(encoding="utf8"))
 
 #: Wrapper each `class_name` in the registry is loaded through.
 WRAPPERS = {
+    "AIMNet2ASE": AIMNetCalc,
     "DP": DpaCalc,
     "FAIRChemCalculator": FairChemCalc,
     "ORBCalculator": OrbCalc,
