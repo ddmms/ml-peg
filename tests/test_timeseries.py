@@ -32,17 +32,16 @@ def ar_series(n_samples: int, phis: list[float], seed: int = 0) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        Time series, after discarding a burn-in period.
+        Time series.
     """
     rng = np.random.default_rng(seed)
-    burn_in = 1000
-    noise = rng.standard_normal(n_samples + burn_in)
-    series = np.zeros(n_samples + burn_in)
-    for i in range(len(phis), n_samples + burn_in):
+    noise = rng.standard_normal(n_samples)
+    series = np.zeros(n_samples)
+    for i in range(len(phis), n_samples):
         series[i] = noise[i] + sum(
             phi * series[i - lag - 1] for lag, phi in enumerate(phis)
         )
-    return series[burn_in:]
+    return series
 
 
 def openff_statistical_inefficiency(
