@@ -80,6 +80,7 @@ def compute_density(fname, density_col=13, label=None) -> TimeSeriesEstimate:
             items = line.strip().split()
             if len(items) != 15:
                 continue
+            density_series.append(float(items[density_col]))
     skip_frames = int(EQUILIB_TIME_PS / LOG_INTERVAL_PS)
     return estimate_mean(density_series[skip_frames:], label=label)
 
