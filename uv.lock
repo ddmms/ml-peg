@@ -6561,16 +6561,16 @@ requires-dist = [
     { name = "cuequivariance-torch", marker = "sys_platform != 'linux' and extra == 'vivace'", specifier = "==0.8.1" },
     { name = "dash", specifier = ">=4.0.0,<5" },
     { name = "deepmd-kit", extras = ["torch"], marker = "extra == 'dpa'", specifier = "==3.2.0" },
-    { name = "fairchem-core", marker = "python_full_version >= '3.11' and extra == 'uma'", specifier = "==2.19.0" },
+    { name = "fairchem-core", marker = "extra == 'uma'", specifier = "==2.19.0" },
     { name = "graph-longrange", marker = "extra == 'mace'", specifier = "==0.4.0" },
     { name = "janus-core", specifier = ">=0.9.2,<1.0.0" },
     { name = "kaleido", specifier = ">=1.0.0,<2" },
     { name = "mace-torch", marker = "extra == 'mace'", specifier = "==0.3.16" },
-    { name = "matcalc", marker = "python_full_version >= '3.11'", specifier = ">=0.4.7,<0.5" },
+    { name = "matcalc", specifier = ">=0.4.7,<0.5" },
     { name = "matminer", specifier = ">=0.9.3,<0.10" },
     { name = "mattersim", marker = "python_full_version >= '3.12' and extra == 'mattersim'", specifier = "==1.2.4" },
     { name = "mdanalysis", specifier = ">=2.9.0,<3" },
-    { name = "mlipaudit", marker = "python_full_version >= '3.11' and python_full_version < '3.14' and extra == 'mlipaudit'", specifier = "==0.1.8" },
+    { name = "mlipaudit", marker = "python_full_version < '3.14' and extra == 'mlipaudit'", specifier = "==0.1.8" },
     { name = "mlipx", specifier = ">=0.1.5,<0.2" },
     { name = "molify", specifier = ">=0.2.2,<0.3" },
     { name = "numpy", marker = "python_full_version < '3.13'", specifier = ">=1.26.4,<3" },
@@ -6592,12 +6592,12 @@ requires-dist = [
     { name = "torch-dftd", marker = "extra == 'd3'", specifier = "==0.5.1" },
     { name = "tqdm", specifier = ">=4.67.3,<5" },
     { name = "typer", specifier = ">=0.19.1,<1.0.0" },
-    { name = "upet", marker = "python_full_version >= '3.11' and extra == 'upet'", specifier = "==0.2.4" },
+    { name = "upet", marker = "extra == 'upet'", specifier = "==0.2.4" },
 ]
 provides-extras = ["asemolec", "chgnet", "d3", "dpa", "grace", "mace", "mattersim", "mlipaudit", "orb", "uma", "upet", "sevenn", "tace", "vivace"]
 
 [package.metadata.requires-dev]
-aimnet = [{ name = "aimnet", extras = ["ase"], marker = "python_full_version >= '3.11'", git = "https://github.com/isayevlab/aimnetcentral.git?rev=ffcd6366d822b565a0fd65d53048750c0abad6bc" }]
+aimnet = [{ name = "aimnet", extras = ["ase"], git = "https://github.com/isayevlab/aimnetcentral.git?rev=ffcd6366d822b565a0fd65d53048750c0abad6bc" }]
 dev = [
     { name = "coverage", extras = ["toml"], specifier = ">=7.4.1,<8.0.0" },
     { name = "ipykernel", specifier = ">=6.29.5" },
