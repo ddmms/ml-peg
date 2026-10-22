@@ -1,6 +1,5 @@
 """
-Calculate the energy response of linear organic molecules subject to an external
-electric field.
+Calculate energy responses of linear organic molecules to external electric fields.
 
 The reference calculations were made using ORCA at the wB97M-V/def2-TZVPD level.
 """

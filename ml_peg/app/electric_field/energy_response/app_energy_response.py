@@ -18,12 +18,12 @@ from ml_peg.models.get_models import get_model_names
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Energy response"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electric_field.html#energy_response"
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electric_field.html#energy-response"
 DATA_PATH = APP_ROOT / "data" / "electric_field" / "energy_response"
 
 
 class EnergyResponseApp(BaseApp):
-    """energy_response benchmark app layout and callbacks."""
+    """Energy response benchmark app layout and callbacks."""
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
@@ -84,16 +84,18 @@ class EnergyResponseApp(BaseApp):
 
 def get_app() -> EnergyResponseApp:
     """
-    Get energy_response benchmark app layout and callback registration.
+    Get energy response benchmark app layout and callback registration.
 
     Returns
     -------
-    energy_responseApp
+    EnergyResponseApp
         Benchmark layout and callback registration.
     """
     return EnergyResponseApp(
         name=BENCHMARK_NAME,
-        description="Energy responses of linear organic molecules to external electric fields.",
+        description=(
+            "Energy responses of linear organic molecules to external electric fields."
+        ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "energy_response_metrics_table.json",
         extra_components=[
