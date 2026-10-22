@@ -38,6 +38,11 @@ def get_system_names(dataset: str) -> list[str]:
     """
     Get list of system names from the linear hydrocarbon datasets.
 
+    Parameters
+    ----------
+    dataset
+        Name of dataset to get system names for.
+
     Returns
     -------
     list[str]
@@ -74,6 +79,15 @@ def get_energy_response(
 ) -> dict[str, list]:
     """
     Get electric field responses across a family of linear hydrocarbons.
+
+    Parameters
+    ----------
+    dataset
+        Name of dataset to get energy responses for.
+    calc_path
+        Path to calculation outputs.
+    out_path
+        Path to write outputs to.
 
     Returns
     -------
