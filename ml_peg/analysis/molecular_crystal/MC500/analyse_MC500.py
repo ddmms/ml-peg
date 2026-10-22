@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import json
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +10,6 @@ from ase import Atoms
 from ase.io import read, write
 import numpy as np
 import plotly.graph_objects as go
-from plotly.utils import PlotlyJSONEncoder
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table
@@ -264,9 +262,7 @@ def rmscd_figures(mc500_results: dict[str, dict[str, Any]]) -> None:
             yaxis_title="RMSCD / Å",
         )
         OUT_PATH.mkdir(parents=True, exist_ok=True)
-        figure_path = OUT_PATH / f"figure_rmscd_{model_name}.json"
-        with figure_path.open("w", encoding="utf-8") as f:
-            json.dump(fig.to_plotly_json(), f, cls=PlotlyJSONEncoder)
+        fig.write_json(OUT_PATH / f"figure_rmscd_{model_name}.json")
 
 
 @pytest.fixture
