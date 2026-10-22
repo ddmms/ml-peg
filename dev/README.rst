@@ -14,6 +14,13 @@ filters. Start the app, then run the profiler in another terminal:
     ml_peg app --no-debug
     python dev/profile_app.py --repeats 3 --headed
 
+``--headed`` shows a visible browser window. Omit it to run without a window.
+Use a populated app dataset with an interactive ``MAE`` benchmark plot (for
+example IONPI19) and at least two models for the full tour. Other metrics can be
+selected with ``--benchmark``, ``--benchmark-category`` and ``--metric``.
+Unavailable benchmark interactions are skipped, while model and element-filter
+steps still run. See ``docs/source/developer_guide/profiling.rst`` for details.
+
 Reports are saved under ``profiles/browser/``. Use ``--help`` for options.
 
 Element coverage
@@ -29,6 +36,7 @@ Element coverage
     python dev/element_coverage/find_supported_elements.py --models mace-mp-0a
     python dev/element_coverage/compare_supported_elements.py
 
-Probe results accumulate beside the scripts and are ignored by Git. Accepting
+Probe results accumulate beside the scripts. Error logs are ignored by Git, while
+``model_supported_elements.json`` remains available to review and commit. Accepting
 an element does not establish training coverage, so review the results before
 updating model metadata.
