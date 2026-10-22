@@ -10,18 +10,23 @@ table-cell clicks, model selection and element filtering using your data.
 It uses Playwright, a tool that controls a real Chromium browser. The script finds
 links and controls on the page, clicks sidebar links, types into input boxes and
 presses Enter, much as you would manually. It follows a predefined sequence in
-``dev/profile_app.py`` and discovers available pages from the sidebar.
+``ml_peg/app/utils/browser_profiling.py`` and discovers available pages from the sidebar.
 Before moving on, it waits for table data, pending updates and loading overlays
 to finish. The time spent performing each action and waiting is recorded.
 ``--headed`` means a visible browser window, so you can watch the steps.
 Without it, Chromium runs headlessly, with no visible window.
 
-Start the app, then run the script in another terminal:
+The command is available when Playwright and Matplotlib are installed. In a
+repository checkout, install the developer dependencies with ``uv sync --group dev``
+and Chromium with ``uv run playwright install chromium``. Environments without
+these Python dependencies do not list the command in ``ml_peg --help``.
+
+Start the app, then run the profiler in another terminal:
 
 .. code-block:: bash
 
     ml_peg app --no-debug
-    python dev/profile_app.py --repeats 3 --headed
+    ml_peg profile --repeats 3 --headed
 
 - Each repetition starts with fresh browser storage and waits for updates
   and visible loading overlays to finish.
@@ -48,7 +53,7 @@ Select a benchmark explicitly as below, changing ``--metric`` for other metrics:
 
 .. code-block:: bash
 
-    python dev/profile_app.py --category non_covalent_interactions \
+    ml_peg profile --category non_covalent_interactions \
         --benchmark-category non_covalent_interactions \
         --benchmark IONPI19 --metric MAE
 

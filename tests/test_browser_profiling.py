@@ -4,18 +4,12 @@ from __future__ import annotations
 
 import argparse
 from contextlib import nullcontext
-from importlib.util import module_from_spec, spec_from_file_location
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
-spec = spec_from_file_location(
-    "profile_app_metrics", Path(__file__).resolve().parents[1] / "dev/profile_app.py"
-)
-profiler = module_from_spec(spec)
-spec.loader.exec_module(profiler)
+from ml_peg.app.utils import browser_profiling as profiler
 
 
 @pytest.mark.parametrize("duration,expected", [(-1, None), (0, 0), (12.5, 12.5)])

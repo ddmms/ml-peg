@@ -6,13 +6,20 @@ Run these tools from the repository root in the project environment.
 Browser profiling
 -----------------
 
-``profile_app.py`` controls Chromium to time navigation, scoring edits and
-filters. Start the app, then run the profiler in another terminal:
+``ml_peg profile`` controls Chromium to time navigation, scoring edits and
+filters.
+
+The command is available when Playwright and Matplotlib are installed. In a
+repository checkout, install the developer dependencies with ``uv sync --group dev``
+and Chromium with ``uv run playwright install chromium``. Environments without
+these Python dependencies do not list the command in ``ml_peg --help``.
+
+Start the app, then run the profiler in another terminal:
 
 .. code-block:: bash
 
     ml_peg app --no-debug
-    python dev/profile_app.py --repeats 3 --headed
+    ml_peg profile --repeats 3 --headed
 
 ``--headed`` shows a visible browser window. Omit it to run without a window.
 Use a populated app dataset with an interactive ``MAE`` benchmark plot (for

@@ -2,14 +2,7 @@
 
 from __future__ import annotations
 
-from importlib.util import module_from_spec, spec_from_file_location
-from pathlib import Path
-
-spec = spec_from_file_location(
-    "profile_app", Path(__file__).resolve().parents[2] / "dev" / "profile_app.py"
-)
-profile_app = module_from_spec(spec)
-spec.loader.exec_module(profile_app)
+from ml_peg.app.utils import browser_profiling as profile_app
 
 
 def test_measure_waits_for_delayed_clientside_update(page, tmp_path):

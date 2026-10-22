@@ -1,4 +1,5 @@
-"""Time common ML-PEG interactions using Playwright Chromium.
+"""
+Time common ML-PEG interactions using Playwright Chromium.
 
 - Runs against an already-started app and its available data.
 - Loads summary, category and framework pages, edits weights and a threshold,
@@ -16,7 +17,7 @@
 Start the app, then run the browser tour in another terminal:
 
     ml_peg app --no-debug
-    python dev/profile_app.py --repeats 3 --headed
+    ml_peg profile --repeats 3 --headed
 
 Use --category to limit pages, --benchmark and --benchmark-category to select
 an interaction target, and --metric to select its metric (default: MAE).
@@ -61,9 +62,36 @@ class SkipActionError(Exception):
 
 
 class Journey:
-    """Measure actions through a short period of network and DOM inactivity."""
+    """
+    Measure actions through a short period of network and DOM inactivity.
+
+    Parameters
+    ----------
+    page
+        Playwright page used for browser interactions.
+    output
+        Directory for reports and failure screenshots.
+    timeout
+        Maximum wait in milliseconds.
+    quiet_ms
+        Required network and DOM inactivity in milliseconds.
+    """
 
     def __init__(self, page, output, timeout, quiet_ms):
+        """
+        Initialise request tracking and browser event listeners.
+
+        Parameters
+        ----------
+        page
+            Playwright page used for browser interactions.
+        output
+            Directory for reports and failure screenshots.
+        timeout
+            Maximum wait in milliseconds.
+        quiet_ms
+            Required network and DOM inactivity in milliseconds.
+        """
         self.page = page
         self.output = output
         self.timeout = timeout
@@ -79,13 +107,27 @@ class Journey:
         page.on("pageerror", lambda error: self.errors.append(str(error)))
 
     def started(self, request):
-        """Track active page and callback requests."""
+        """
+        Track active page and callback requests.
+
+        Parameters
+        ----------
+        request
+            Playwright request whose network activity is starting.
+        """
         if request.resource_type in {"fetch", "xhr", "document"}:
             self.pending.add(request)
             self.last_network = perf_counter()
 
     def finished(self, request):
-        """Collect completed Dash requests without storing payloads."""
+        """
+        Collect completed Dash requests without storing payloads.
+
+        Parameters
+        ----------
+        request
+            Completed or failed Playwright request to record.
+        """
         if request in self.pending:
             self.pending.remove(request)
             self.last_network = perf_counter()
@@ -145,7 +187,23 @@ class Journey:
         raise TimeoutError("Page did not settle within the timeout")
 
     def measure(self, name, action, repeat):
-        """Record one action and its rendering and request diagnostics."""
+        """
+        Record one action and its rendering and request diagnostics.
+
+        Parameters
+        ----------
+        name
+            Action label used in the report.
+        action
+            Callable performing the interaction to measure.
+        repeat
+            Repetition number associated with this measurement.
+
+        Returns
+        -------
+        bool
+            Whether the action completed successfully without diagnostic errors.
+        """
         start = perf_counter()
         browser_start = self.page.evaluate("performance.now()")
         request_start, error_start = len(self.requests), len(self.errors)
@@ -207,12 +265,33 @@ class Journey:
 
 
 def by_id(identifier):
-    """Quote component IDs safely for CSS selectors."""
+    """
+    Quote component IDs safely for CSS selectors.
+
+    Parameters
+    ----------
+    identifier
+        Component ID to quote for a CSS attribute selector.
+
+    Returns
+    -------
+    str
+        CSS selector matching the component ID.
+    """
     return f"[id={json.dumps(identifier)}]"
 
 
 def edit(page, selector):
-    """Commit a different value without assuming particular scoring defaults."""
+    """
+    Commit a different value without assuming particular scoring defaults.
+
+    Parameters
+    ----------
+    page
+        Playwright page used for browser interactions.
+    selector
+        CSS selector for the scoring input to edit.
+    """
     control = page.locator(selector).first
     expect(control).to_be_visible()
     expect(control).to_be_editable()
@@ -245,14 +324,34 @@ def edit(page, selector):
 
 
 def wait_for_table(page, selector):
-    """Wait for actual rendered data cells, rather than an empty table shell."""
+    """
+    Wait for actual rendered data cells, rather than an empty table shell.
+
+    Parameters
+    ----------
+    page
+        Playwright page used for browser interactions.
+    selector
+        CSS selector for the table whose data cells must be visible.
+    """
     table = page.locator(selector).first
     expect(table).to_be_visible()
     expect(table.locator("td[data-dash-column]").first).to_be_visible()
 
 
 def navigate(page, path, settle):
-    """Navigate through the sidebar so client state survives page changes."""
+    """
+    Navigate through the sidebar so client state survives page changes.
+
+    Parameters
+    ----------
+    page
+        Playwright page used for browser interactions.
+    path
+        Sidebar destination path.
+    settle
+        Callable that waits for pending rendering and callbacks to finish.
+    """
     link = page.locator(f"#sidebar-nav a[href={json.dumps(path)}]").first
     if not link.count():
         raise ValueError(f"No sidebar link for {path}")
@@ -278,7 +377,20 @@ def missing_benchmark():
 
 
 def open_benchmark(page, category, benchmark, settle):
-    """Open a benchmark card if lazy mounting has left it collapsed."""
+    """
+    Open a benchmark card if lazy mounting has left it collapsed.
+
+    Parameters
+    ----------
+    page
+        Playwright page used for browser interactions.
+    category
+        Sidebar path containing the benchmark.
+    benchmark
+        Benchmark component name.
+    settle
+        Callable that waits for pending rendering and callbacks to finish.
+    """
     navigate(page, category, settle)
     header = page.get_by_role("button", name=benchmark, exact=True)
     header.wait_for(state="visible")
@@ -288,7 +400,18 @@ def open_benchmark(page, category, benchmark, settle):
 
 
 def select_model(page, model, visible):
-    """Toggle one model and wait for its summary row to appear or disappear."""
+    """
+    Toggle one model and wait for its summary row to appear or disappear.
+
+    Parameters
+    ----------
+    page
+        Playwright page used for browser interactions.
+    model
+        Model label to select or deselect.
+    visible
+        Whether the model should be included in the displayed results.
+    """
     page.locator("#model-filter-checklist").click()
     option = page.get_by_role("option", name=model, exact=True)
     expect(option).to_be_visible()
@@ -305,7 +428,16 @@ def select_model(page, model, visible):
 
 
 def filter_elements(page, clear=False):
-    """Exclude hydrogen, or clear the filter, through the real Apply controls."""
+    """
+    Exclude hydrogen, or clear the filter, through the real Apply controls.
+
+    Parameters
+    ----------
+    page
+        Playwright page used for browser interactions.
+    clear
+        Whether to clear the filter instead of selecting an element.
+    """
     details = page.locator("#element-filter-details")
     if details.get_attribute("open") is None:
         details.locator("summary").click()
@@ -330,14 +462,45 @@ def filter_elements(page, clear=False):
 
 
 class Tee:
-    """Keep console output visible while also saving it to a text file."""
+    """
+    Keep console output visible while also saving it to a text file.
+
+    Parameters
+    ----------
+    console
+        Original console stream.
+    logfile
+        Writable text stream receiving a copy of console output.
+    """
 
     def __init__(self, console, logfile):
+        """
+        Store the console and log streams.
+
+        Parameters
+        ----------
+        console
+            Original console stream.
+        logfile
+            Writable text stream receiving a copy of console output.
+        """
         self.console = console
         self.logfile = logfile
 
     def write(self, text):
-        """Write each chunk to both destinations."""
+        """
+        Write each chunk to both destinations.
+
+        Parameters
+        ----------
+        text
+            Text chunk to write to both streams.
+
+        Returns
+        -------
+        int
+            Number of characters written.
+        """
         self.console.write(text)
         self.logfile.write(text)
         self.logfile.flush()
@@ -350,7 +513,19 @@ class Tee:
 
 
 def run(args):
-    """Save terminal output alongside the browser profiling artifacts."""
+    """
+    Save terminal output alongside the browser profiling artifacts.
+
+    Parameters
+    ----------
+    args
+        Parsed command-line options for the profiling run.
+
+    Returns
+    -------
+    int
+        Exit status, zero on success and one if any action failed.
+    """
     output = args.output / datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     output.mkdir(parents=True)
     with (output / "terminal.txt").open("w") as logfile:
@@ -362,7 +537,21 @@ def run(args):
 
 
 def run_journey(args, output):
-    """Exercise the live app, saving results even if a journey fails."""
+    """
+    Exercise the live app, saving results even if a journey fails.
+
+    Parameters
+    ----------
+    args
+        Parsed command-line options for the profiling run.
+    output
+        Directory for reports and failure screenshots.
+
+    Returns
+    -------
+    int
+        Exit status, zero on success and one if any action failed.
+    """
     results = []
     report = {
         "url": args.url,
@@ -572,7 +761,16 @@ def run_journey(args, output):
 
 
 def save_summary(report, output):
-    """Save a readable chart and text report, keeping failed actions explicit."""
+    """
+    Save a readable chart and text report, keeping failed actions explicit.
+
+    Parameters
+    ----------
+    report
+        Profiling metadata and action results to summarise.
+    output
+        Directory for reports and failure screenshots.
+    """
     import matplotlib
 
     matplotlib.use("Agg")
@@ -659,16 +857,37 @@ def save_summary(report, output):
 
 
 def category_path(value):
-    """Accept a category name or its sidebar path and reject malformed paths."""
+    """
+    Accept a category name or its sidebar path and reject malformed paths.
+
+    Parameters
+    ----------
+    value
+        Category name or sidebar path supplied on the command line.
+
+    Returns
+    -------
+    str
+        Normalised sidebar path of the form /category/name.
+    """
     name = value.removeprefix("/category/")
     if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
         raise argparse.ArgumentTypeError("use a category name or /category/<name>")
     return f"/category/{name}"
 
 
-def main():
-    """Parse the diagnostic runner's command-line options."""
-    parser = argparse.ArgumentParser(description=__doc__)
+def main(argv=None, *, prog=None):
+    """
+    Parse command-line options shared by the CLI and developer script.
+
+    Parameters
+    ----------
+    argv
+        Argument list to parse. None reads the process command line.
+    prog
+        Program name displayed in help. None uses the script name.
+    """
+    parser = argparse.ArgumentParser(prog=prog, description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8050")
     parser.add_argument("--output", type=Path, default=Path("profiles/browser"))
     parser.add_argument(
@@ -708,7 +927,7 @@ def main():
     parser.add_argument(
         "--trace", action="store_true", help="Save Playwright traces (adds overhead)"
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     if bool(args.benchmark) != bool(args.benchmark_category):
         parser.error("provide benchmark and benchmark-category together")
     if min(args.repeats, args.timeout, args.quiet_ms) <= 0:
