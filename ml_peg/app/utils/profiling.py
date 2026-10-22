@@ -56,8 +56,10 @@ def profile_startup(directory: Path | None):
         with profiler:
             yield
     finally:
-        profiler.dump_stats(str(directory / "startup.prof"))
-        (directory / "startup.json").write_text(
+        # Repeated builds must not replace the first, cold-start measurement.
+        identifier = f"startup-{uuid4().hex}"
+        profiler.dump_stats(str(directory / f"{identifier}.prof"))
+        (directory / f"{identifier}.json").write_text(
             json.dumps({"elapsed_seconds": perf_counter() - start}) + "\n"
         )
 

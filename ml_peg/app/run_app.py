@@ -88,7 +88,13 @@ def run_app(
     _build_full_app(app, category=category, test=test)
 
     print(f"Starting Dash app on port {port}...")
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    # The debug reloader starts a second process and duplicates startup profiles.
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=debug,
+        use_reloader=debug and PROFILE_DIRECTORY is None,
+    )
 
 
 if __name__ == "__main__":

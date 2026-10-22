@@ -98,7 +98,9 @@ class Journey:
                 {
                     "path": urlsplit(request.url).path,
                     "status": response.status if response else None,
-                    "duration_ms": timing["responseEnd"],
+                    "duration_ms": timing["responseEnd"]
+                    if timing["responseEnd"] >= 0
+                    else None,
                     "failure": request.failure,
                     "callback": (request.post_data_json or {}).get("output")
                     if request.method == "POST"
@@ -112,7 +114,6 @@ class Journey:
     def settle(self):
         """Wait for network, DOM and Dash loading indicators to settle."""
         deadline = perf_counter() + self.timeout / 1000
-        ready_since = None
         while perf_counter() < deadline:
             ready = self.page.evaluate(
                 """quiet => {
@@ -126,9 +127,11 @@ class Journey:
                     '.mlpeg-progress-ring')].some(ring =>
                         ring.getClientRects().length > 0 &&
                         getComputedStyle(ring).visibility !== 'hidden');
-                return !visibleRing && idle && p &&
-                    performance.now() - p.changed >= quiet &&
+                const ready = !visibleRing && idle && p &&
                     !document.querySelector('[data-dash-is-loading="true"]');
+                // Start one quiet window after both rendering and callbacks stop.
+                if (p && !ready) p.changed = performance.now();
+                return ready && performance.now() - p.changed >= quiet;
             }""",
                 self.quiet_ms,
             )
@@ -137,12 +140,7 @@ class Journey:
                 and not self.pending
                 and (perf_counter() - self.last_network) * 1000 >= self.quiet_ms
             ):
-                if ready_since is None:
-                    ready_since = perf_counter()
-                if (perf_counter() - ready_since) * 1000 >= self.quiet_ms:
-                    return
-            else:
-                ready_since = None
+                return
             self.page.wait_for_timeout(50)
         raise TimeoutError("Page did not settle within the timeout")
 
@@ -156,6 +154,10 @@ class Journey:
         try:
             if name != "initial load":
                 self.settle()
+            # Preparation belongs to the previous action, not this measurement.
+            start = perf_counter()
+            browser_start = self.page.evaluate("performance.now()")
+            request_start, error_start = len(self.requests), len(self.errors)
             action()
             self.settle()
         except SkipActionError as error:
@@ -183,13 +185,16 @@ class Journey:
         result["long_task_count"] = len(tasks)
         result["dash_requests"] = self.requests[request_start:]
         result["browser_errors"] = self.errors[error_start:]
-        if result["browser_errors"] or any(
-            (
-                r["failure"]
-                and not (r["status"] == 204 and r["failure"] == "net::ERR_ABORTED")
+        if result["status"] == "ok" and (
+            result["browser_errors"]
+            or any(
+                (
+                    r["failure"]
+                    and not (r["status"] == 204 and r["failure"] == "net::ERR_ABORTED")
+                )
+                or (r["status"] is not None and r["status"] >= 400)
+                for r in result["dash_requests"]
             )
-            or (r["status"] is not None and r["status"] >= 400)
-            for r in result["dash_requests"]
         ):
             result["status"] = "error"
         self.results.append(result)
@@ -249,6 +254,8 @@ def wait_for_table(page, selector):
 def navigate(page, path, settle):
     """Navigate through the sidebar so client state survives page changes."""
     link = page.locator(f"#sidebar-nav a[href={json.dumps(path)}]").first
+    if not link.count():
+        raise ValueError(f"No sidebar link for {path}")
     label = re.sub(r"^[^\w]+", "", link.inner_text().strip())
     link.click()
     page.wait_for_url(f"**{path}")
@@ -264,7 +271,7 @@ def navigate(page, path, settle):
 
 def missing_benchmark():
     """Explain how to select a benchmark when automatic discovery finds none."""
-    raise ValueError(
+    raise SkipActionError(
         "No compatible benchmark found. Set --benchmark, "
         "--benchmark-category and --metric for available plot data."
     )
@@ -457,48 +464,57 @@ def run_journey(args, output):
                             lambda: missing_benchmark(),
                             repeat,
                         )
-                        continue
-                    report["benchmark"] = benchmark
-                    report["benchmark_category"] = category
-                    if not journey.measure(
-                        "open benchmark category",
-                        partial(
-                            open_benchmark, page, category, benchmark, journey.settle
-                        ),
-                        repeat,
-                    ):
-                        continue
-                    table = f"[id={json.dumps(benchmark + '-table')}]"
-                    journey.measure(
-                        "benchmark weight",
-                        lambda page=page, benchmark=benchmark: edit(
-                            page,
-                            by_id(benchmark + "-table-" + args.metric + "-input"),
-                        ),
-                        repeat,
-                    )
-                    journey.measure(
-                        "good threshold",
-                        lambda page=page, benchmark=benchmark: edit(
-                            page,
-                            by_id(
-                                benchmark + "-table-" + args.metric + "-good-threshold"
+                    else:
+                        report["benchmark"] = benchmark
+                        report["benchmark_category"] = category
+                        if journey.measure(
+                            "open benchmark category",
+                            partial(
+                                open_benchmark,
+                                page,
+                                category,
+                                benchmark,
+                                journey.settle,
                             ),
-                        ),
-                        repeat,
-                    )
+                            repeat,
+                        ):
+                            table = f"[id={json.dumps(benchmark + '-table')}]"
+                            journey.measure(
+                                "benchmark weight",
+                                lambda page=page, benchmark=benchmark: edit(
+                                    page,
+                                    by_id(
+                                        benchmark + "-table-" + args.metric + "-input"
+                                    ),
+                                ),
+                                repeat,
+                            )
+                            journey.measure(
+                                "good threshold",
+                                lambda page=page, benchmark=benchmark: edit(
+                                    page,
+                                    by_id(
+                                        benchmark
+                                        + "-table-"
+                                        + args.metric
+                                        + "-good-threshold"
+                                    ),
+                                ),
+                                repeat,
+                            )
 
-                    def click_cell(page=page, table=table, benchmark=benchmark):
-                        wait_for_table(page, table)
-                        page.locator(
-                            f"{table} td[data-dash-column={json.dumps(args.metric)}]"
-                        ).first.click()
-                        page.locator(
-                            by_id(benchmark + "-figure-placeholder")
-                            + " .js-plotly-plot"
-                        ).first.wait_for(state="visible")
+                            def click_cell(page=page, table=table, benchmark=benchmark):
+                                wait_for_table(page, table)
+                                page.locator(
+                                    f"{table} "
+                                    f"td[data-dash-column={json.dumps(args.metric)}]"
+                                ).first.click()
+                                page.locator(
+                                    by_id(benchmark + "-figure-placeholder")
+                                    + " .js-plotly-plot"
+                                ).first.wait_for(state="visible")
 
-                    journey.measure("table cell to plot", click_cell, repeat)
+                            journey.measure("table cell to plot", click_cell, repeat)
                     journey.measure(
                         "return to summary",
                         lambda page=page, journey=journey: navigate(
@@ -642,6 +658,14 @@ def save_summary(report, output):
     plt.close(fig)
 
 
+def category_path(value):
+    """Accept a category name or its sidebar path and reject malformed paths."""
+    name = value.removeprefix("/category/")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+        raise argparse.ArgumentTypeError("use a category name or /category/<name>")
+    return f"/category/{name}"
+
+
 def main():
     """Parse the diagnostic runner's command-line options."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -655,11 +679,17 @@ def main():
     )
     parser.add_argument(
         "--category",
+        type=category_path,
         action="append",
-        help="Category path to visit, repeatable. Default: all sidebar categories",
+        help=(
+            "Category name or path to visit, repeatable. "
+            "Default: all sidebar categories"
+        ),
     )
     parser.add_argument(
-        "--benchmark-category", help="Category path for an explicit benchmark"
+        "--benchmark-category",
+        type=category_path,
+        help="Category name or path for an explicit benchmark",
     )
     parser.add_argument(
         "--benchmark", help="Benchmark component name. Default: auto-select"
@@ -674,7 +704,7 @@ def main():
         default=300,
         help="Network and DOM quiet window included in timings",
     )
-    parser.add_argument("--headed", action="store_true")
+    parser.add_argument("--headed", action="store_true", help="Show the browser window")
     parser.add_argument(
         "--trace", action="store_true", help="Save Playwright traces (adds overhead)"
     )

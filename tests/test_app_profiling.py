@@ -30,8 +30,9 @@ def test_startup_profile_survives_failure(tmp_path):
     """A failed build still produces readable diagnostic output."""
     with pytest.raises(ValueError, match="failed build"), profile_startup(tmp_path):
         raise ValueError("failed build")
-    assert pstats.Stats(str(tmp_path / "startup.prof")).total_calls > 0
-    assert json.loads((tmp_path / "startup.json").read_text())["elapsed_seconds"] > 0
+    (profile,) = tmp_path.glob("startup-*.prof")
+    assert pstats.Stats(str(profile)).total_calls > 0
+    assert json.loads(profile.with_suffix(".json").read_text())["elapsed_seconds"] > 0
 
 
 def test_request_profiles_preserve_responses(tmp_path):
@@ -78,3 +79,15 @@ def test_profile_runs_are_isolated(monkeypatch, tmp_path):
     assert first != second
     assert first.is_dir()
     assert second.is_dir()
+
+
+def test_repeated_startup_profiles_are_preserved(tmp_path):
+    """A warm build cannot overwrite the cold-start measurement."""
+    with profile_startup(tmp_path):
+        sum(range(10))
+    original = {path: path.read_bytes() for path in tmp_path.iterdir()}
+    with profile_startup(tmp_path):
+        sum(range(20))
+    assert len(list(tmp_path.glob("startup-*.prof"))) == 2
+    assert len(list(tmp_path.glob("startup-*.json"))) == 2
+    assert all(path.read_bytes() == content for path, content in original.items())
