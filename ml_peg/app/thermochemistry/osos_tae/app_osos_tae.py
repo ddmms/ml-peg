@@ -1,4 +1,4 @@
-"""Run MSR_ACC_TAE25 app."""
+"""Run OSOS_TAE app."""
 
 from __future__ import annotations
 
@@ -17,6 +17,9 @@ from ml_peg.models.get_models import get_model_names
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "osos_tae"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/thermochemistry.html#osos_tae"
+)
 DATA_PATH = APP_ROOT / "data" / "thermochemistry" / "osos_tae"
 INFO_PATH = DATA_PATH / "info.json"
 
@@ -31,10 +34,9 @@ class OSOSTAEAPP(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        # Assets dir will be parent directory - individual files for each system
-        structs_dir = DATA_PATH / MODELS[0]
+        structs_dir = DATA_PATH / "mock"
         structs = [
-            f"/assets/thermochemistry/osos_tae/{MODELS[0]}/{struct_file.stem}.xyz"
+            f"/assets/thermochemistry/osos_tae/mock/{struct_file.stem}.xyz"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 
@@ -64,6 +66,7 @@ def get_app() -> OSOSTAEAPP:
     return OSOSTAEAPP(
         name=BENCHMARK_NAME,
         description="Total atomization energy for organic doublet radical systems.",
+        docs_url=DOCS_URL,
         table_path=DATA_PATH / "osos_tae_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
