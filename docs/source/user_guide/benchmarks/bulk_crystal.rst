@@ -2,6 +2,43 @@
 Bulk Crystals
 =============
 
+Materials discovery evaluation
+==============================
+
+The materials-discovery evaluator computes Matbench Discovery classification and
+regression metrics from local tables. The reference table is indexed by
+``material_id`` and contains DFT hull distance, DFT formation energy, and a
+unique-prototype flag. The prediction table contains ``e_form_per_atom``.
+
+Results are reported for the full test set, unique prototypes, and the 10,000
+unique prototypes with the lowest predicted hull distances. They include F1,
+discovery acceleration factor (DAF), precision, recall, accuracy, class rates and
+counts, MAE, RMSE, R², and missing-prediction counts. Predictions with
+formation-energy errors above 5 eV/atom are masked before rounding to three decimal
+places. Leaderboard evaluation uses the fraction of unique prototypes with an
+unrounded hull distance at or below 0 eV/atom as prevalence, preventing rounding
+from changing DAF. Pass this value with ``canonical=True`` and
+``uniq_proto_prevalence=...``. Synthetic mode derives prevalence from the rounded
+reference values. ``calc_discovery_metrics`` and ``discovery_subset_indices`` apply
+the same masking and rounding as ``evaluate_discovery``.
+
+This is an evaluation library for existing predictions. It does not run MLIPs, download WBM data, or register an ML-PEG analysis command or app page. Those integration steps can be added separately. The ``framework`` marks in its unit tests only support test filtering.
+
+For local evaluation (the reference and prediction files are supplied by the caller):
+
+.. code-block:: python
+
+   from ml_peg.analysis.bulk_crystal.materials_discovery import (
+       evaluate_discovery_paths,
+       write_discovery_metrics_json,
+   )
+
+   results = evaluate_discovery_paths("reference.csv.gz", "predictions.csv.gz")
+   write_discovery_metrics_json(results, "discovery-metrics.json")
+
+JSON results include schema and source-framework versions. Canonical leaderboard comparisons additionally require the full benchmark reference and its unrounded unique-prototype prevalence, as described above; the example uses synthetic mode.
+
+
 Lattice constants
 =================
 
