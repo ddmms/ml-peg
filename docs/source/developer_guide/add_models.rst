@@ -128,9 +128,9 @@ The common fields are:
    coverage. Symbols are checked against the periodic table when the model is
    loaded, so a typo or an unquoted ``No`` is reported rather than silently
    changing the model's coverage. To determine coverage empirically, run
-   ``ml_peg/models/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
+   ``dev/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
    since model backends conflict), then
-   ``ml_peg/models/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
+   ``dev/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
    and which elements to record here as extras.
 
 ``kwargs``
