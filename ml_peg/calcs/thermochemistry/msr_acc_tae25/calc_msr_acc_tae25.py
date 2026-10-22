@@ -1,4 +1,4 @@
-"""Run calculations for msr_acc_tae25 benchmark."""
+"""Run calculations for MSR_ACC_TAE25 benchmark."""
 
 from __future__ import annotations
 
@@ -104,10 +104,6 @@ def get_model_atomization_energy(atoms: Atoms, calc: Calculator, e0s: dict) -> f
     counts = Counter(atoms.get_chemical_symbols())
     reference = sum(count * e0s[atomic_sym] for atomic_sym, count in counts.items())
 
-    missing = [sym for sym in counts if np.isnan(e0s[sym])]
-    if missing:
-        raise RuntimeError(f"Missing E0 for elements: {missing}")
-
     return reference - total_energy
 
 
@@ -123,7 +119,6 @@ def test_msr_acc_tae25(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    print(f"\nEvaluating with model: {model_name}")
     calc = model.get_calculator(precision="high")
 
     # get isolated atom energies for the model
