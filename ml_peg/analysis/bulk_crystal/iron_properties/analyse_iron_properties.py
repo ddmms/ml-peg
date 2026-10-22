@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pytest
+from scipy.integrate import trapezoid
 
 from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
@@ -32,108 +33,37 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "iron_properties" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "iron_properties"
-
+REFERENCE_PATH = Path(__file__).with_name("reference_data")
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
-DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
 
-# DFT reference values
+with (REFERENCE_PATH / "reference_values.json").open() as reference_file:
+    REFERENCE_METADATA = json.load(reference_file)
 DFT_REFERENCE = {
-    # EOS properties
-    "a0": 2.831,  # Lattice parameter (Å)
-    "B0": 178.0,  # Bulk modulus (GPa)
-    "E_bcc_fcc": 83.5,  # BCC-FCC energy difference (meV/atom)
-    # Elastic constants (GPa)
-    "C11": 296.7,
-    "C12": 151.4,
-    "C44": 104.7,
-    # Defect properties
-    "E_vac": 2.02,  # Vacancy formation energy (eV)
-    "gamma_100": 2.41,  # Surface energy (J/m²)
-    "gamma_110": 2.37,
-    "gamma_111": 2.58,
-    "gamma_112": 2.48,
-    "gamma_us_110": 0.75,  # Unstable SFE (J/m²)
-    "gamma_us_112": 1.12,
-    # Traction-separation properties
-    "max_traction_100": 35.0,  # Max traction for (100) cleavage (GPa)
-    "max_traction_110": 30.0,  # Max traction for (110) cleavage (GPa)
+    name: entry["value"] for name, entry in REFERENCE_METADATA["values"].items()
 }
 
-# DFT reference curves: (x_array, y_array) for plotting against MLIP results.
-# fmt: off
-DFT_CURVES = {
-    # Bain path: c/a ratio vs energy relative to BCC minimum (meV/atom)
-    "bain": (
-        np.array([
-            0.698931, 0.746072, 0.788498, 0.815211, 0.878064, 0.923633,
-            0.969202, 0.999057, 1.058768, 1.102766, 1.148334, 1.192332,
-            1.237901, 1.283470, 1.327467, 1.371464, 1.413891, 1.462602,
-            1.506600, 1.550597, 1.596166, 1.632307, 1.685732, 1.731301,
-            1.776870, 1.820867, 1.864865, 1.910434, 1.956003, 2.000000,
-        ]),
-        np.array([
-            318.348, 225.434, 168.930, 132.529,  58.100,  21.163,
-              3.248,   0.000,   9.265,  25.045,  45.717,  70.736,
-             97.387, 123.493, 144.164, 156.140, 162.137, 157.267,
-            144.242, 127.414, 116.020, 110.058, 111.168, 118.253,
-            135.121, 157.423, 186.246, 221.048, 261.829, 308.044,
-        ]),
-    ),
-    # SFE {110}<111>: displacement (Å) vs SFE (J/m²)
-    "sfe_110": (
-        np.array([0.24948, 0.49491, 0.73639, 0.97793, 1.22288,
-                  1.47228, 1.71376, 1.96316, 2.21261]),
-        np.array([0.13725, 0.44608, 0.74265, 0.91912, 0.97549,
-                  0.91422, 0.74510, 0.44608, 0.13480]),
-    ),
-    # SFE {112}<111>: displacement (Å) vs SFE (J/m²)
-    "sfe_112": (
-        np.array([0.24948, 0.48691, 0.73639, 0.97793, 1.22343,
-                  1.46893, 1.71031, 1.95971, 2.20911]),
-        np.array([0.16137, 0.51100, 0.83130, 1.00733, 1.09780,
-                  1.11980, 0.93399, 0.55990, 0.17604]),
-    ),
-    # Traction-separation (100): separation (Å) vs traction (GPa)
-    "ts_100": (
-        np.array([
-            0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-            1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
-            2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9,
-            3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0,
-        ]),
-        np.array([
-             0.022, 12.350, 21.600, 28.048, 32.251, 34.000,
-            35.045, 34.788, 33.604, 31.294, 27.635, 23.440,
-            20.571, 18.231, 16.387, 14.923, 13.783, 12.695,
-            11.477, 10.608,  9.565,  8.949,  8.095,  7.273,
-             6.499,  5.864,  5.176,  4.694,  4.101,  3.488,
-             3.372,  2.903,  2.691,  2.228,  1.831,  1.291,
-             1.270,  1.492,  0.971,  1.142,  0.629,
-        ]),
-    ),
-    # Traction-separation (110): separation (Å) vs traction (GPa)
-    "ts_110": (
-        np.array([
-            0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
-            1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
-            2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9,
-            3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0,
-        ]),
-        np.array([
-             0.043, 13.291, 22.902, 29.408, 33.134, 34.666,
-            34.930, 33.885, 32.144, 30.322, 28.024, 25.722,
-            22.988, 20.383, 18.169, 16.304, 14.363, 12.924,
-            11.271, 10.082,  8.839,  7.597,  6.480,  5.937,
-             5.520,  4.540,  3.986,  3.310,  3.177,  2.730,
-             2.518,  2.336,  1.620,  1.796,  1.625,  1.307,
-             1.171,  1.283,  0.892,  0.916,  0.320,
-        ]),
-    ),
+GROUPS = (
+    "Bulk response",
+    "Defect & phase energetics",
+    "Slip",
+    "Cleavage",
+)
+SCALAR_BAD_ERROR = {
+    "a0": 0.02,
+    "B0": 0.50,
+    "C11": 0.75,
+    "C12": 0.75,
+    "C44": 0.75,
+    "E_vac": 0.20,
 }
-# fmt: on
+SURFACE_BAD_ERROR = 0.20
+CURVE_BAD_ERROR = 0.30
+BAIN_ENDPOINT_BAD_ERROR = 0.50
+TS_LOCATION_BAD = 0.30
 
-
-# Curve file mapping for CSV loading
 CURVE_FILES = {
     "eos": "eos_curve.csv",
     "bain": "bain_path.csv",
@@ -142,47 +72,46 @@ CURVE_FILES = {
     "ts_100": "ts_100_curve.csv",
     "ts_110": "ts_110_curve.csv",
 }
-
 CURVE_CONFIG = {
     "eos": {
         "x": "volume",
-        "y": "energy",
+        "y": "energy_meV",
         "title": "Equation of State",
         "x_label": "Volume (Å³/atom)",
-        "y_label": "Energy (eV/atom)",
+        "y_label": "Relative energy (meV/atom)",
     },
     "bain": {
         "x": "ca_ratio",
         "y": "energy_meV",
         "title": "Bain Path",
         "x_label": "c/a ratio",
-        "y_label": "Energy (meV/atom)",
+        "y_label": "Energy relative to BCC (meV/atom)",
     },
     "sfe_110": {
-        "x": "displacement",
+        "x": "displacement_fraction",
         "y": "sfe_J_per_m2",
-        "title": "Stacking Fault Energy {110}<111>",
-        "x_label": "Displacement (Å)",
-        "y_label": "SFE (J/m²)",
+        "title": "GSFE {110}<111>",
+        "x_label": "Displacement (u/b)",
+        "y_label": "Stacking-fault energy (J/m²)",
     },
     "sfe_112": {
-        "x": "displacement",
+        "x": "displacement_fraction",
         "y": "sfe_J_per_m2",
-        "title": "Stacking Fault Energy {112}<111>",
-        "x_label": "Displacement (Å)",
-        "y_label": "SFE (J/m²)",
+        "title": "GSFE {112}<111>",
+        "x_label": "Displacement (u/b)",
+        "y_label": "Stacking-fault energy (J/m²)",
     },
     "ts_100": {
         "x": "separation",
         "y": "traction",
-        "title": "Traction-Separation Curve (100)",
+        "title": "Traction-Separation (100)",
         "x_label": "Separation (Å)",
         "y_label": "Traction (GPa)",
     },
     "ts_110": {
         "x": "separation",
         "y": "traction",
-        "title": "Traction-Separation Curve (110)",
+        "title": "Traction-Separation (110)",
         "x_label": "Separation (Å)",
         "y_label": "Traction (GPa)",
     },
@@ -231,141 +160,708 @@ def load_curve(model_name: str, curve_type: str) -> pd.DataFrame:
     csv_path = CALC_PATH / model_name / filename
     if not csv_path.exists():
         return pd.DataFrame()
-    return pd.read_csv(csv_path)
+
+    curve = pd.read_csv(csv_path)
+    if curve_type == "eos" and "energy_meV" not in curve and "energy" in curve:
+        energy = pd.to_numeric(curve["energy"], errors="coerce")
+        if energy.notna().any():
+            curve["energy_meV"] = (energy - energy.min()) * 1000
+    if (
+        curve_type.startswith("sfe_")
+        and "displacement_fraction" not in curve
+        and "displacement" in curve
+    ):
+        displacement = pd.to_numeric(curve["displacement"], errors="coerce")
+        endpoint = displacement.max()
+        if _finite(endpoint) and endpoint > 0:
+            curve["displacement_fraction"] = displacement / endpoint
+    return curve
 
 
-def compute_metrics(results: dict[str, Any]) -> dict[str, float]:
+def load_reference_curve(curve_type: str) -> pd.DataFrame:
     """
-    Compute metrics from model results.
+    Load and normalize one bundled DFT reference curve.
 
     Parameters
     ----------
-    results
-        Dictionary containing model calculation results.
+    curve_type
+        Curve identifier.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Normalized reference curve.
+    """
+    if curve_type == "eos":
+        curve = pd.read_csv(
+            REFERENCE_PATH / "eos.csv",
+            sep=";",
+            decimal=",",
+            header=None,
+            names=["volume", "energy_meV"],
+            skipinitialspace=True,
+        )
+        curve["energy_meV"] -= curve["energy_meV"].min()
+        return curve.sort_values("volume")
+    if curve_type == "bain":
+        curve = pd.read_csv(REFERENCE_PATH / "bain.csv")
+        bcc_index = (curve["ca_ratio"] - 1).abs().idxmin()
+        curve["energy_meV"] -= curve.loc[bcc_index, "energy_meV"]
+        return curve
+    if curve_type.startswith("sfe_"):
+        curve = pd.read_csv(REFERENCE_PATH / f"{curve_type}.csv")
+        endpoints = pd.DataFrame(
+            {"displacement_fraction": [0.0, 1.0], "sfe_J_per_m2": [0.0, 0.0]}
+        )
+        return pd.concat([endpoints.iloc[:1], curve, endpoints.iloc[1:]])
+    if curve_type.startswith("ts_"):
+        curve = pd.read_csv(REFERENCE_PATH / f"{curve_type}.csv")
+        return curve.rename(columns={"traction_GPa": "traction"})
+    raise KeyError(f"Unknown Iron reference curve: {curve_type}")
+
+
+def _finite(value: Any) -> bool:
+    """
+    Return whether a value is a finite scalar.
+
+    Parameters
+    ----------
+    value
+        Value to inspect.
+
+    Returns
+    -------
+    bool
+        Whether the value is finite.
+    """
+    try:
+        return bool(np.isfinite(value))
+    except TypeError:
+        return False
+
+
+def _penalty(error: float, bad_error: float) -> float:
+    """
+    Map a non-negative error to a clipped penalty.
+
+    Parameters
+    ----------
+    error
+        Non-negative error.
+    bad_error
+        Error mapped to a unit penalty.
+
+    Returns
+    -------
+    float
+        Penalty between zero and one.
+    """
+    if not _finite(error):
+        return 1.0
+    return float(np.clip(error / bad_error, 0.0, 1.0))
+
+
+def _rms_score(components: list[tuple[float, float]]) -> float:
+    """
+    Combine high-is-better component scores through RMS penalties.
+
+    Parameters
+    ----------
+    components
+        Score and weight pairs.
+
+    Returns
+    -------
+    float
+        Combined score between zero and one.
+    """
+    weight_sum = sum(weight for _, weight in components)
+    if weight_sum <= 0:
+        return 0.0
+    squared_penalty = sum(
+        weight * (1 - float(np.clip(score, 0.0, 1.0))) ** 2
+        for score, weight in components
+    )
+    return 1 - float(np.sqrt(squared_penalty / weight_sum))
+
+
+def _status_summary(status: Any) -> tuple[str, bool]:
+    """
+    Summarize nested convergence records and detect optimizer errors.
+
+    Parameters
+    ----------
+    status
+        Nested calculation diagnostics.
+
+    Returns
+    -------
+    tuple[str, bool]
+        Display summary and whether the result is usable.
+    """
+    converged: list[bool] = []
+    valid: list[bool] = []
+    errors: list[str] = []
+
+    def visit(value: Any) -> None:
+        """
+        Collect status fields recursively.
+
+        Parameters
+        ----------
+        value
+            Nested status value.
+        """
+        if isinstance(value, dict):
+            if isinstance(value.get("converged"), bool):
+                converged.append(value["converged"])
+            if isinstance(value.get("valid"), bool):
+                valid.append(value["valid"])
+            if value.get("error"):
+                errors.append(str(value["error"]))
+            for child in value.values():
+                visit(child)
+        elif isinstance(value, list):
+            for child in value:
+                visit(child)
+
+    visit(status)
+    if errors:
+        return f"error: {errors[0]}", False
+    if valid and not all(valid):
+        return f"{sum(valid)}/{len(valid)} finite points", False
+    if converged:
+        return f"{sum(converged)}/{len(converged)} relaxations converged", True
+    return "complete", True
+
+
+def _clean_curve(
+    frame: pd.DataFrame, x_column: str, y_column: str
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Extract sorted, finite, unique curve coordinates.
+
+    Parameters
+    ----------
+    frame
+        Source curve.
+    x_column
+        Horizontal coordinate column.
+    y_column
+        Vertical coordinate column.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray]
+        Sorted coordinate arrays.
+    """
+    if frame.empty or not {x_column, y_column}.issubset(frame.columns):
+        return np.array([]), np.array([])
+    values = frame[[x_column, y_column]].apply(pd.to_numeric, errors="coerce")
+    values = values.replace([np.inf, -np.inf], np.nan).dropna()
+    values = values.groupby(x_column, as_index=False)[y_column].mean()
+    values = values.sort_values(x_column)
+    return values[x_column].to_numpy(), values[y_column].to_numpy()
+
+
+def _integrated_curve_penalty(
+    model_x: np.ndarray,
+    model_y: np.ndarray,
+    reference_x: np.ndarray,
+    reference_y: np.ndarray,
+    domain: tuple[float, float],
+    valid_fraction: float = 1.0,
+) -> tuple[float, float, float]:
+    """
+    Return coverage-adjusted IAE penalty, relative IAE, and coverage.
+
+    Parameters
+    ----------
+    model_x
+        Model horizontal coordinates.
+    model_y
+        Model vertical coordinates.
+    reference_x
+        Reference horizontal coordinates.
+    reference_y
+        Reference vertical coordinates.
+    domain
+        Scoring-domain bounds.
+    valid_fraction
+        Fraction of sampled model points with finite values.
+
+    Returns
+    -------
+    tuple[float, float, float]
+        IAE penalty, relative IAE, and fractional coverage.
+    """
+    if len(model_x) < 3:
+        return 1.0, float("nan"), 0.0
+    domain_start, domain_end = domain
+    overlap_start = max(domain_start, float(model_x.min()))
+    overlap_end = min(domain_end, float(model_x.max()))
+    coverage = (
+        max(0.0, overlap_end - overlap_start)
+        / (domain_end - domain_start)
+        * float(np.clip(valid_fraction, 0.0, 1.0))
+    )
+    if coverage <= 0:
+        return 1.0, float("nan"), 0.0
+
+    grid = np.linspace(overlap_start, overlap_end, 501)
+    model_values = np.interp(grid, model_x, model_y)
+    reference_values = np.interp(grid, reference_x, reference_y)
+    denominator = float(trapezoid(np.abs(reference_values), grid))
+    relative_iae = (
+        float(trapezoid(np.abs(model_values - reference_values), grid)) / denominator
+        if denominator > 0
+        else float("nan")
+    )
+    penalty = coverage * _penalty(relative_iae, CURVE_BAD_ERROR) + (1 - coverage)
+    return penalty, relative_iae, coverage
+
+
+def _curve_score(
+    model: pd.DataFrame,
+    reference: pd.DataFrame,
+    x_column: str,
+    y_column: str,
+    domain: tuple[float, float],
+    location_bad: float | None = None,
+) -> dict[str, float]:
+    """
+    Score a curve using integrated and peak errors, optionally peak location.
+
+    Parameters
+    ----------
+    model
+        Model curve.
+    reference
+        DFT reference curve.
+    x_column
+        Horizontal coordinate column.
+    y_column
+        Vertical coordinate column.
+    domain
+        Scoring-domain bounds.
+    location_bad
+        Peak-location error mapped to a unit penalty. If None, omit its penalty
+        and renormalize the integrated and peak-height weights to 62.5% and 37.5%.
 
     Returns
     -------
     dict[str, float]
-        Dictionary mapping metric names to computed values.
+        Composite score and component errors.
     """
-    metrics: dict[str, float] = {}
+    model_x, model_y = _clean_curve(model, x_column, y_column)
+    reference_x, reference_y = _clean_curve(reference, x_column, y_column)
+    if model.empty or not {x_column, y_column}.issubset(model.columns):
+        valid_fraction = 0.0
+    else:
+        model_values = model[[x_column, y_column]].apply(pd.to_numeric, errors="coerce")
+        in_domain = model_values[x_column].between(*domain)
+        domain_values = model_values.loc[in_domain, y_column]
+        valid_fraction = (
+            float(domain_values.notna().mean()) if not domain_values.empty else 0.0
+        )
+    iae_penalty, relative_iae, coverage = _integrated_curve_penalty(
+        model_x,
+        model_y,
+        reference_x,
+        reference_y,
+        domain,
+        valid_fraction,
+    )
+    reference_mask = (reference_x >= domain[0]) & (reference_x <= domain[1])
+    reference_domain_x = reference_x[reference_mask]
+    reference_domain_y = reference_y[reference_mask]
+    reference_peak_index = int(np.argmax(reference_domain_y))
+    reference_peak = float(reference_domain_y[reference_peak_index])
+    reference_location = float(reference_domain_x[reference_peak_index])
 
-    # ==========================================================================
-    # EOS metrics
-    # ==========================================================================
+    model_mask = (model_x >= domain[0]) & (model_x <= domain[1])
+    model_domain_x = model_x[model_mask]
+    model_domain_y = model_y[model_mask]
+    peak_bracketed = (
+        len(model_domain_x) >= 3
+        and model_domain_x.min() <= reference_location <= model_domain_x.max()
+        and np.any(model_domain_y > 0)
+    )
+    if peak_bracketed:
+        model_peak_index = int(np.argmax(model_domain_y))
+        model_peak = float(model_domain_y[model_peak_index])
+        model_location = float(model_domain_x[model_peak_index])
+        peak_error = abs(model_peak - reference_peak) / abs(reference_peak)
+        location_error = abs(model_location - reference_location)
+        peak_penalty = _penalty(peak_error, CURVE_BAD_ERROR)
+    else:
+        model_peak = float("nan")
+        model_location = float("nan")
+        peak_error = float("nan")
+        location_error = float("nan")
+        peak_penalty = 1.0
+
+    squared_penalty = 0.50 * iae_penalty**2 + 0.30 * peak_penalty**2
+    weight_sum = 0.80
+    if location_bad is not None:
+        location_penalty = _penalty(location_error, location_bad)
+        squared_penalty += 0.20 * location_penalty**2
+        weight_sum += 0.20
+    score = 1 - float(np.sqrt(squared_penalty / weight_sum))
+    return {
+        "score": score,
+        "relative_iae": relative_iae,
+        "coverage": coverage,
+        "model_peak": model_peak,
+        "reference_peak": reference_peak,
+        "peak_error": peak_error,
+        "model_location": model_location,
+        "reference_location": reference_location,
+        "location_error": location_error,
+    }
+
+
+def _scalar_detail(
+    name: str,
+    predicted: Any,
+    reference: float,
+    bad_error: float,
+    unit: str,
+    status: Any,
+) -> dict[str, Any]:
+    """
+    Build one scalar component score and its display metadata.
+
+    Parameters
+    ----------
+    name
+        Component label.
+    predicted
+        Predicted scalar value.
+    reference
+        Reference scalar value.
+    bad_error
+        Relative error mapped to a unit penalty.
+    unit
+        Display unit.
+    status
+        Calculation diagnostics.
+
+    Returns
+    -------
+    dict[str, Any]
+        Component score and display metadata.
+    """
+    status_text, status_valid = _status_summary(status)
+    valid = _finite(predicted) and status_valid
+    error = (
+        abs(float(predicted) - reference) / abs(reference) if valid else float("nan")
+    )
+    score = 1 - _penalty(error, bad_error) if valid else 0.0
+    return {
+        "name": name,
+        "score": score,
+        "predicted": float(predicted) if _finite(predicted) else None,
+        "reference": reference,
+        "error": error,
+        "threshold": bad_error,
+        "unit": unit,
+        "status": status_text,
+    }
+
+
+def _curve_detail(
+    name: str, score: dict[str, float], unit: str, status: Any
+) -> dict[str, Any]:
+    """
+    Build display metadata for a composite curve score.
+
+    Parameters
+    ----------
+    name
+        Component label.
+    score
+        Curve score and errors.
+    unit
+        Peak-value display unit.
+    status
+        Calculation diagnostics.
+
+    Returns
+    -------
+    dict[str, Any]
+        Component display metadata.
+    """
+    status_text, _ = _status_summary(status)
+    return {
+        "name": name,
+        "score": score["score"],
+        "predicted": score["model_peak"],
+        "reference": score["reference_peak"],
+        "error": score["relative_iae"],
+        "threshold": CURVE_BAD_ERROR,
+        "unit": unit,
+        "status": status_text,
+        "peak_error": score["peak_error"],
+        "location_error": score["location_error"],
+        "coverage": score["coverage"],
+    }
+
+
+def _surface_detail(results: dict[str, Any]) -> dict[str, Any]:
+    """
+    Score the RMS error across the four surface orientations.
+
+    Parameters
+    ----------
+    results
+        Surface calculation results.
+
+    Returns
+    -------
+    dict[str, Any]
+        Composite surface score and display metadata.
+    """
+    components = []
+    predictions = []
+    references = []
+    for orientation in ("100", "110", "111", "112"):
+        detail = _scalar_detail(
+            orientation,
+            results.get(f"gamma_{orientation}"),
+            DFT_REFERENCE[f"gamma_{orientation}"],
+            SURFACE_BAD_ERROR,
+            "J/m²",
+            results.get("status", {}).get(orientation),
+        )
+        components.append((detail["score"], 0.25))
+        predictions.append(detail["predicted"])
+        references.append(detail["reference"])
+    status_text, _ = _status_summary(results.get("status"))
+    return {
+        "name": "Surface energies",
+        "score": _rms_score(components),
+        "predicted": predictions,
+        "reference": references,
+        "error": None,
+        "threshold": SURFACE_BAD_ERROR,
+        "unit": "J/m²",
+        "status": status_text,
+    }
+
+
+def _bain_detail(model_name: str, results: dict[str, Any]) -> dict[str, Any]:
+    """
+    Score Bain curve shape and the exact FCC endpoint.
+
+    Parameters
+    ----------
+    model_name
+        Registered model name.
+    results
+        Bain calculation results.
+
+    Returns
+    -------
+    dict[str, Any]
+        Composite Bain score and display metadata.
+    """
+    model = load_curve(model_name, "bain")
+    reference = load_reference_curve("bain")
+    model_x, model_y = _clean_curve(model, "ca_ratio", "energy_meV")
+    reference_x, reference_y = _clean_curve(reference, "ca_ratio", "energy_meV")
+    if model.empty or not {"ca_ratio", "energy_meV"}.issubset(model.columns):
+        valid_fraction = 0.0
+    else:
+        model_values = model[["ca_ratio", "energy_meV"]].apply(
+            pd.to_numeric, errors="coerce"
+        )
+        in_domain = model_values["ca_ratio"].between(0.72, 2.0)
+        domain_values = model_values.loc[in_domain, "energy_meV"]
+        valid_fraction = (
+            float(domain_values.notna().mean()) if not domain_values.empty else 0.0
+        )
+    curve_penalty, relative_iae, coverage = _integrated_curve_penalty(
+        model_x,
+        model_y,
+        reference_x,
+        reference_y,
+        (0.72, 2.0),
+        valid_fraction,
+    )
+    endpoint = results.get("delta_E_meV")
+    endpoint_reference = DFT_REFERENCE["E_bcc_fcc"]
+    endpoint_error = (
+        abs(float(endpoint) - endpoint_reference) / endpoint_reference
+        if _finite(endpoint)
+        else float("nan")
+    )
+    endpoint_penalty = _penalty(endpoint_error, BAIN_ENDPOINT_BAD_ERROR)
+    score = 1 - float(np.sqrt(0.70 * curve_penalty**2 + 0.30 * endpoint_penalty**2))
+    status_text, _ = _status_summary(results.get("status"))
+    return {
+        "name": "Bain path",
+        "score": score,
+        "predicted": float(endpoint) if _finite(endpoint) else None,
+        "reference": endpoint_reference,
+        "error": relative_iae,
+        "threshold": CURVE_BAD_ERROR,
+        "unit": "meV/atom",
+        "status": status_text,
+        "endpoint_error": endpoint_error,
+        "coverage": coverage,
+    }
+
+
+def compute_group_scores(
+    model_name: str, results: dict[str, Any]
+) -> tuple[dict[str, float], dict[str, list[dict[str, Any]]]]:
+    """
+    Compute four group scores and their drill-down details.
+
+    Parameters
+    ----------
+    model_name
+        Registered model name.
+    results
+        Calculation results.
+
+    Returns
+    -------
+    tuple[dict[str, float], dict[str, list[dict[str, Any]]]]
+        Group scores and component metadata.
+    """
     eos = results.get("eos", {})
-    if "a0" in eos:
-        a0_mlip = eos["a0"]
-        a0_error = abs(a0_mlip - DFT_REFERENCE["a0"]) / DFT_REFERENCE["a0"] * 100
-        metrics["a0 error"] = a0_error
-
-    if "B0" in eos:
-        B0_mlip = eos["B0"]  # noqa: N806
-        B0_error = abs(B0_mlip - DFT_REFERENCE["B0"]) / DFT_REFERENCE["B0"] * 100  # noqa: N806
-        metrics["B0 error"] = B0_error
-
-    # ==========================================================================
-    # Bain path metrics
-    # ==========================================================================
-    bain = results.get("bain_path", {})
-    if "delta_E_meV" in bain:
-        E_bcc_fcc_mlip = float(bain["delta_E_meV"])  # noqa: N806
-        E_bcc_fcc_error = abs(E_bcc_fcc_mlip - DFT_REFERENCE["E_bcc_fcc"])  # noqa: N806
-        metrics["BCC-FCC ΔE error"] = E_bcc_fcc_error
-
-    # ==========================================================================
-    # Elastic constants metrics
-    # ==========================================================================
     elastic = results.get("elastic", {})
-    if "C11" in elastic:
-        C11_error = (  # noqa: N806
-            abs(elastic["C11"] - DFT_REFERENCE["C11"]) / DFT_REFERENCE["C11"] * 100
-        )
-        metrics["C11 error"] = C11_error
-    if "C12" in elastic:
-        C12_error = (  # noqa: N806
-            abs(elastic["C12"] - DFT_REFERENCE["C12"]) / DFT_REFERENCE["C12"] * 100
-        )
-        metrics["C12 error"] = C12_error
-    if "C44" in elastic:
-        C44_error = (  # noqa: N806
-            abs(elastic["C44"] - DFT_REFERENCE["C44"]) / DFT_REFERENCE["C44"] * 100
-        )
-        metrics["C44 error"] = C44_error
-
-    # ==========================================================================
-    # Vacancy metrics
-    # ==========================================================================
     vacancy = results.get("vacancy", {})
-    if "E_vac" in vacancy:
-        E_vac_mlip = float(vacancy["E_vac"])  # noqa: N806
-        E_vac_error = (  # noqa: N806
-            abs(E_vac_mlip - DFT_REFERENCE["E_vac"]) / DFT_REFERENCE["E_vac"] * 100
-        )
-        metrics["E_vac error"] = E_vac_error
-
-    # ==========================================================================
-    # Surface energy metrics
-    # ==========================================================================
+    bain = results.get("bain_path", {})
     surfaces = results.get("surfaces", {})
-    surface_errors = []
 
-    for surface in ["100", "110", "111", "112"]:
-        key_mlip = f"gamma_{surface}"
-        if key_mlip in surfaces:
-            gamma_mlip = surfaces[key_mlip]
-            gamma_dft = DFT_REFERENCE[key_mlip]
-            error = abs(gamma_mlip - gamma_dft)
-            surface_errors.append(error)
-
-    if surface_errors:
-        metrics["Surface MAE"] = np.mean(surface_errors)
-
-    # ==========================================================================
-    # Stacking fault metrics
-    # ==========================================================================
-    sfe_110 = results.get("sfe_110", {})
-    if "max_sfe" in sfe_110:
-        max_sfe_110_mlip = sfe_110["max_sfe"]
-        max_sfe_110_error = (
-            abs(max_sfe_110_mlip - DFT_REFERENCE["gamma_us_110"])
-            / DFT_REFERENCE["gamma_us_110"]
-            * 100
+    bulk_details = [
+        _scalar_detail(
+            "Lattice parameter",
+            eos.get("a0"),
+            DFT_REFERENCE["a0"],
+            SCALAR_BAD_ERROR["a0"],
+            "Å",
+            eos.get("status"),
+        ),
+        _scalar_detail(
+            "Bulk modulus",
+            eos.get("B0"),
+            DFT_REFERENCE["B0"],
+            SCALAR_BAD_ERROR["B0"],
+            "GPa",
+            eos.get("status"),
+        ),
+    ]
+    for constant in ("C11", "C12", "C44"):
+        bulk_details.append(
+            _scalar_detail(
+                constant,
+                elastic.get(constant),
+                DFT_REFERENCE[constant],
+                SCALAR_BAD_ERROR[constant],
+                "GPa",
+                elastic.get("status"),
+            )
         )
-        metrics["Max SFE 110 error"] = max_sfe_110_error
+    bulk_score = _rms_score(
+        [
+            (bulk_details[0]["score"], 0.25),
+            (bulk_details[1]["score"], 0.25),
+            *((detail["score"], 1 / 6) for detail in bulk_details[2:]),
+        ]
+    )
 
-    sfe_112 = results.get("sfe_112", {})
-    if "max_sfe" in sfe_112:
-        max_sfe_112_mlip = sfe_112["max_sfe"]
-        max_sfe_112_error = (
-            abs(max_sfe_112_mlip - DFT_REFERENCE["gamma_us_112"])
-            / DFT_REFERENCE["gamma_us_112"]
-            * 100
+    vacancy_detail = _scalar_detail(
+        "Vacancy formation",
+        vacancy.get("E_vac"),
+        DFT_REFERENCE["E_vac"],
+        SCALAR_BAD_ERROR["E_vac"],
+        "eV",
+        vacancy.get("status"),
+    )
+    bain_detail = _bain_detail(model_name, bain)
+    defect_details = [vacancy_detail, bain_detail]
+    defect_score = _rms_score(
+        [(vacancy_detail["score"], 0.5), (bain_detail["score"], 0.5)]
+    )
+
+    slip_details = []
+    for orientation in ("110", "112"):
+        curve_score = _curve_score(
+            load_curve(model_name, f"sfe_{orientation}"),
+            load_reference_curve(f"sfe_{orientation}"),
+            "displacement_fraction",
+            "sfe_J_per_m2",
+            (0.0, 1.0),
         )
-        metrics["Max SFE 112 error"] = max_sfe_112_error
-
-    # ==========================================================================
-    # Traction-separation metrics
-    # ==========================================================================
-    ts_100 = results.get("ts_100", {})
-    if "max_traction" in ts_100:
-        traction_100_error = (
-            abs(ts_100["max_traction"] - DFT_REFERENCE["max_traction_100"])
-            / DFT_REFERENCE["max_traction_100"]
-            * 100
+        slip_details.append(
+            _curve_detail(
+                f"GSFE {{{orientation}}}<111>",
+                curve_score,
+                "J/m²",
+                results.get(f"sfe_{orientation}", {}).get("status"),
+            )
         )
-        metrics["Max traction (100) error"] = traction_100_error
+    slip_score = _rms_score(
+        [(slip_details[0]["score"], 0.5), (slip_details[1]["score"], 0.5)]
+    )
 
-    ts_110 = results.get("ts_110", {})
-    if "max_traction" in ts_110:
-        traction_110_error = (
-            abs(ts_110["max_traction"] - DFT_REFERENCE["max_traction_110"])
-            / DFT_REFERENCE["max_traction_110"]
-            * 100
+    surface_detail = _surface_detail(surfaces)
+    cleavage_details = [surface_detail]
+    for orientation in ("100", "110"):
+        curve_score = _curve_score(
+            load_curve(model_name, f"ts_{orientation}"),
+            load_reference_curve(f"ts_{orientation}"),
+            "separation",
+            "traction",
+            (0.0, 4.0),
+            location_bad=TS_LOCATION_BAD,
         )
-        metrics["Max traction (110) error"] = traction_110_error
+        cleavage_details.append(
+            _curve_detail(
+                f"Traction-separation ({orientation})",
+                curve_score,
+                "GPa",
+                results.get(f"ts_{orientation}", {}).get("status"),
+            )
+        )
+    cleavage_score = _rms_score(
+        [
+            (surface_detail["score"], 0.5),
+            (cleavage_details[1]["score"], 0.25),
+            (cleavage_details[2]["score"], 0.25),
+        ]
+    )
 
-    return metrics
+    scores = {
+        "Bulk response": bulk_score,
+        "Defect & phase energetics": defect_score,
+        "Slip": slip_score,
+        "Cleavage": cleavage_score,
+    }
+    details = {
+        "Bulk response": bulk_details,
+        "Defect & phase energetics": defect_details,
+        "Slip": slip_details,
+        "Cleavage": cleavage_details,
+        "Score": [
+            {
+                "name": group,
+                "score": score,
+                "predicted": None,
+                "reference": 1.0,
+                "error": 1 - score,
+                "threshold": 1.0,
+                "unit": "score",
+                "status": "complete",
+            }
+            for group, score in scores.items()
+        ],
+    }
+    return scores, details
 
 
 def _load_all_results() -> dict[str, dict[str, Any]]:
@@ -485,6 +981,100 @@ def iron_ts_110_curves() -> dict[str, pd.DataFrame]:
     return _load_curves_for_all_models("ts_110")
 
 
+def _format_value(value: Any) -> str:
+    """
+    Format a scalar or sequence for Plotly hover text.
+
+    Parameters
+    ----------
+    value
+        Value to format.
+
+    Returns
+    -------
+    str
+        Compact display string.
+    """
+    if value is None:
+        return "n/a"
+    if isinstance(value, list):
+        return ", ".join(_format_value(item) for item in value)
+    if _finite(value):
+        return f"{float(value):.5g}"
+    return "n/a"
+
+
+def create_breakdown_figure(
+    model_name: str, group: str, details: list[dict[str, Any]]
+) -> go.Figure:
+    """
+    Create a horizontal component-score drill-down plot.
+
+    Parameters
+    ----------
+    model_name
+        Registered model name.
+    group
+        Group display name.
+    details
+        Component metadata.
+
+    Returns
+    -------
+    plotly.graph_objects.Figure
+        Score-breakdown figure.
+    """
+    names = [detail["name"] for detail in details]
+    custom_data = [
+        [
+            _format_value(detail.get("predicted")),
+            _format_value(detail.get("reference")),
+            _format_value(detail.get("error")),
+            _format_value(detail.get("threshold")),
+            detail.get("unit", ""),
+            detail.get("status", ""),
+        ]
+        for detail in details
+    ]
+    scores = [detail["score"] for detail in details]
+    hovertemplate = (
+        "Score: %{x:.3f}<br>Predicted: %{customdata[0]} %{customdata[4]}"
+        "<br>Reference: %{customdata[1]} %{customdata[4]}"
+        "<br>Error: %{customdata[2]}<br>Bad threshold: %{customdata[3]}"
+        "<br>Status: %{customdata[5]}<extra></extra>"
+    )
+    figure = go.Figure(
+        go.Bar(
+            x=scores,
+            y=names,
+            orientation="h",
+            customdata=custom_data,
+            hovertemplate=hovertemplate,
+        )
+    )
+    zero_indices = [index for index, score in enumerate(scores) if score == 0]
+    if zero_indices:
+        figure.add_trace(
+            go.Scatter(
+                x=[0] * len(zero_indices),
+                y=[names[index] for index in zero_indices],
+                mode="markers",
+                marker={"size": 10},
+                customdata=[custom_data[index] for index in zero_indices],
+                hovertemplate=hovertemplate,
+                showlegend=False,
+            )
+        )
+    figure.update_layout(
+        title=f"{group} breakdown — {model_name}",
+        xaxis={"title": "Component score", "range": [0, 1]},
+        yaxis={"autorange": "reversed"},
+        template="plotly_white",
+        height=max(340, 80 + 55 * len(details)),
+    )
+    return figure
+
+
 def create_curve_figure(
     df: pd.DataFrame, curve_type: str, model_name: str
 ) -> go.Figure:
@@ -506,29 +1096,19 @@ def create_curve_figure(
         Plotly figure object.
     """
     config = CURVE_CONFIG[curve_type]
+    reference = load_reference_curve(curve_type)
 
     fig = go.Figure()
 
-    model_x_max = df[config["x"]].max()
-
-    dft_data = DFT_CURVES.get(curve_type)
-    if dft_data is not None:
-        x_dft, y_dft = dft_data[0].copy(), dft_data[1].copy()
-
-        if curve_type.startswith("sfe_"):
-            mask = x_dft <= model_x_max
-            x_dft = np.array(x_dft)[mask]
-            y_dft = np.array(y_dft)[mask]
-
-        fig.add_trace(
-            go.Scatter(
-                x=x_dft,
-                y=y_dft,
-                mode="lines",
-                name="DFT Reference",
-                line={"width": 2, "dash": "dash", "color": "gray"},
-            )
+    fig.add_trace(
+        go.Scatter(
+            x=reference[config["x"]],
+            y=reference[config["y"]],
+            mode="lines+markers",
+            name="DFT Reference",
+            line={"width": 2, "dash": "dash", "color": "gray"},
         )
+    )
 
     fig.add_trace(
         go.Scatter(
@@ -544,8 +1124,25 @@ def create_curve_figure(
     if curve_type == "bain":
         fig.add_vline(x=1.0, line_dash="dash", line_color="gray", annotation_text="BCC")
         fig.add_vline(
-            x=1.414, line_dash="dash", line_color="gray", annotation_text="FCC"
+            x=np.sqrt(2), line_dash="dash", line_color="gray", annotation_text="FCC"
         )
+    if curve_type.startswith(("sfe_", "ts_")):
+        for trace_name, data, color in (
+            ("DFT peak", reference, "gray"),
+            ("Model peak", df, "red"),
+        ):
+            x, y = _clean_curve(data, config["x"], config["y"])
+            if len(y) and np.any(y > 0):
+                peak = int(np.argmax(y))
+                fig.add_trace(
+                    go.Scatter(
+                        x=[x[peak]],
+                        y=[y[peak]],
+                        mode="markers",
+                        name=trace_name,
+                        marker={"size": 10, "color": color, "symbol": "x"},
+                    )
+                )
 
     fig.update_layout(
         title=f"{config['title']} - {model_name}",
@@ -559,7 +1156,9 @@ def create_curve_figure(
     return fig
 
 
-def save_figures_for_model(model_name: str) -> None:
+def save_figures_for_model(
+    model_name: str, details: dict[str, list[dict[str, Any]]]
+) -> None:
     """
     Pre-create and save all curve figures for a model as JSON.
 
@@ -567,6 +1166,8 @@ def save_figures_for_model(model_name: str) -> None:
     ----------
     model_name
         Name of the model.
+    details
+        Group and overall-score component metadata used for breakdown figures.
     """
     figures_dir = OUT_PATH / "figures" / model_name
     figures_dir.mkdir(parents=True, exist_ok=True)
@@ -579,6 +1180,12 @@ def save_figures_for_model(model_name: str) -> None:
         fig_path = figures_dir / f"{curve_type}.json"
         fig_path.write_text(json.dumps(fig.to_plotly_json()))
 
+    for group, group_details in details.items():
+        filename = group.lower().replace(" ", "_").replace("&", "and")
+        create_breakdown_figure(model_name, group, group_details).write_json(
+            figures_dir / f"breakdown_{filename}.json"
+        )
+
 
 def collect_metrics() -> pd.DataFrame:
     """
@@ -586,7 +1193,7 @@ def collect_metrics() -> pd.DataFrame:
 
     Returns
     -------
-    pd.DataFrame
+    pandas.DataFrame
         DataFrame containing metrics for all models.
     """
     metrics_rows: list[dict[str, float | str]] = []
@@ -596,10 +1203,10 @@ def collect_metrics() -> pd.DataFrame:
     all_results = _load_all_results()
 
     for model_name, results in all_results.items():
-        model_metrics = compute_metrics(results)
-        row = {"Model": model_name} | model_metrics
+        scores, details = compute_group_scores(model_name, results)
+        row = {"Model": model_name} | scores
         metrics_rows.append(row)
-        save_figures_for_model(model_name)
+        save_figures_for_model(model_name, details)
 
     columns = ["Model"] + list(DEFAULT_THRESHOLDS.keys())
 
@@ -613,7 +1220,7 @@ def iron_properties_collection() -> pd.DataFrame:
 
     Returns
     -------
-    pd.DataFrame
+    pandas.DataFrame
         DataFrame containing iron properties metrics for all models.
     """
     return collect_metrics()
@@ -644,7 +1251,7 @@ def iron_properties_metrics_dataframe(
     filename=OUT_PATH / "iron_properties_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
-    weights=None,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     iron_properties_metrics_dataframe: pd.DataFrame,
@@ -683,8 +1290,6 @@ def test_iron_properties(metrics: dict[str, dict]) -> None:
     metrics
         Dictionary of iron properties metrics from the metrics fixture.
     """
-    write_struct_info(
-        data_path=CALC_PATH / "mock" / "structures" / "equilibrium_bcc.extxyz",
-        out_path=OUT_PATH,
-        index=0,
-    )
+    structure_path = CALC_PATH / "mock" / "structures" / "equilibrium_bcc.extxyz"
+    if structure_path.exists():
+        write_struct_info(data_path=structure_path, out_path=OUT_PATH, index=0)
