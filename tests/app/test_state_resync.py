@@ -12,6 +12,7 @@ after the paint (the store write-back must not chain a stale re-render).
 
 from __future__ import annotations
 
+from conftest import set_model_visible
 from playwright.sync_api import Page, expect
 
 TIMEOUT = 60_000
@@ -48,6 +49,32 @@ def _goto_ionpi19(page: Page) -> None:
     # built now, so the first link in the nav is not this one.
     page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
     expect(page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
+
+
+def _bench_labels(model: str, bench_models: list[str]) -> list[str]:
+    """
+    Find a model's rows in a benchmark table.
+
+    Benchmark tables label dispersion-corrected models with a ``-D3``/``-D4``
+    suffix, while the summary table and the model filter use the bare name.
+
+    Parameters
+    ----------
+    model
+        Model name, as the filter spells it.
+    bench_models
+        Row labels in the benchmark table's first column.
+
+    Returns
+    -------
+    list[str]
+        Labels of the model's rows, empty if it has none.
+    """
+    return [
+        label
+        for label in bench_models
+        if label == model or label.startswith(f"{model}-D")
+    ]
 
 
 def _expand_scoring(page: Page) -> None:
@@ -102,8 +129,10 @@ def test_injected_table_uses_current_cmap(ready_page: Page) -> None:
 def test_injected_table_uses_current_model_filter(ready_page: Page) -> None:
     """A benchmark table injected after filtering must drop the filtered model."""
     _goto_ionpi19(ready_page)
-    initial_bench = ready_page.locator("#IONPI19-table tbody tr").count()
-    assert initial_bench > 1
+    bench_models = ready_page.locator(
+        "#IONPI19-table tbody tr td:first-child"
+    ).all_inner_texts()
+    assert len(bench_models) > 1
 
     ready_page.locator('#sidebar-nav a[href="/"]').first.click()
     rows = ready_page.locator("#summary-table tbody tr")
@@ -114,21 +143,30 @@ def test_injected_table_uses_current_model_filter(ready_page: Page) -> None:
     initial_home = rows.count()
     # Deselect a model that has a summary row: models without results are listed
     # in the filter but have no row, so deselecting them changes nothing.
-    model = (
+    target = (
         ready_page.locator('#summary-table td[data-dash-column="MLIP"]')
         .first.inner_text()
         .strip()
     )
 
-    ready_page.locator("#model-filter-checklist").click()
-    ready_page.get_by_role("option", name=model, exact=True).click()
+    set_model_visible(ready_page, target, False)
     expect(rows).to_have_count(initial_home - 1, timeout=30_000)
-    ready_page.keyboard.press("Escape")
 
     _goto_ionpi19(ready_page)
     ready_page.wait_for_timeout(1000)
-    final_bench = ready_page.locator("#IONPI19-table tbody tr").count()
-    assert final_bench < initial_bench, "injected table ignored the model filter"
+    final_models = ready_page.locator(
+        "#IONPI19-table tbody tr td:first-child"
+    ).all_inner_texts()
+    # Only the hidden rows should go: a shorter table alone would also pass if
+    # the wrong row went, or none rendered. Unordered, as renormalising resorts.
+    hidden = _bench_labels(target, bench_models)
+    expected = [label for label in bench_models if label not in hidden]
+    assert hidden, f"{target} has no benchmark row, so nothing should change"
+    assert expected, "target swallowed the table, so an empty one would pass"
+    assert sorted(final_models) == sorted(expected), (
+        f"injected table did not drop exactly the hidden model {target}: "
+        f"expected={expected} actual={final_models}"
+    )
 
 
 def test_reexpanded_card_keeps_session_edits(ready_page: Page) -> None:

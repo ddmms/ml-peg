@@ -18,6 +18,7 @@ import warnings
 import zipfile
 
 from botocore.exceptions import BotoCoreError, ClientError
+from playwright.sync_api import expect
 import pytest
 from werkzeug.serving import make_server
 
@@ -91,6 +92,58 @@ def wait_for_app_ready(page, timeout: int = READY_TIMEOUT) -> None:  # noqa: ANN
         }""",
         timeout=timeout,
     )
+
+
+def set_model_visible(page, model: str, visible: bool) -> None:  # noqa: ANN001
+    """
+    Show or hide one model through the "Visible models" dropdown.
+
+    Searching avoids scrolling to the option, and the checkbox is toggled by key
+    rather than clicked, as the opening dropdown can move a click onto a
+    neighbour. Returns once the backing store holds the new selection.
+
+    Parameters
+    ----------
+    page
+        Playwright page with the app loaded.
+    model
+        Model name, as the model filter spells it.
+    visible
+        Whether the model should be selected once this returns.
+    """
+    # Written when the app hydrates, so it is briefly absent on a fresh page.
+    page.wait_for_function(
+        "() => sessionStorage.getItem('selected-models-store') !== null"
+    )
+    before = page.evaluate(
+        "JSON.parse(sessionStorage.getItem('selected-models-store'))"
+    )
+    assert (model in before) != visible, (
+        f"'{model}' is already {'visible' if visible else 'hidden'}, so toggling it "
+        "would not test anything"
+    )
+    expected = sorted(set(before) | {model} if visible else set(before) - {model})
+
+    page.locator("#model-filter-checklist").click()
+    search = page.get_by_role("searchbox")
+    # Wait for the dropdown's opening autofocus before moving focus ourselves.
+    expect(search).to_be_focused()
+    search.fill(model)
+    # Wait for the list to narrow: the wanted option renders before it does.
+    expect(page.get_by_role("option").filter(has_not_text=model)).to_have_count(0)
+    # Search matches substrings, so name the wanted option exactly.
+    option = page.get_by_role("option", name=model, exact=True)
+    expect(option).to_have_count(1)
+    expect(option).to_have_attribute("aria-selected", str(not visible).lower())
+
+    option.get_by_role("checkbox").press("Space")
+    expect(option).to_have_attribute("aria-selected", str(visible).lower())
+    page.wait_for_function(
+        """expected => JSON.stringify(JSON.parse(sessionStorage.getItem(
+            'selected-models-store')).sort()) === JSON.stringify(expected)""",
+        arg=expected,
+    )
+    page.keyboard.press("Escape")
 
 
 def _sha256(path: Path) -> str:
