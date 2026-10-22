@@ -296,13 +296,19 @@ def _add_missing_error_rows(
     Returns
     -------
     pd.DataFrame
-        Prediction results with a raw-conductivity column and any missing rows.
+        Prediction results with conductivity and phonon-status columns and missing rows.
     """
-    # All-failure records can omit this entire column. Supply missing input data
+    # All-failure records can omit entire columns. Supply missing input data
     # so the existing metric functions apply their established failure penalties.
-    if tc.TCKeys.kappa_tot_rta not in df:
+    missing_columns = [
+        column
+        for column in (tc.TCKeys.kappa_tot_rta, tc.TCKeys.has_imag_ph_modes)
+        if column not in df
+    ]
+    if missing_columns:
         df = df.copy()
-        df[tc.TCKeys.kappa_tot_rta] = np.nan
+        for column in missing_columns:
+            df[column] = np.nan
 
     missing = ref_df.index.difference(df.index)
     if len(missing):

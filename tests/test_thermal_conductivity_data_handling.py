@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import ast
+from io import StringIO
 import json
 from pathlib import Path
 from types import SimpleNamespace
 import warnings
 
+from ase import Atoms
+from ase.io import read, write
 import h5py
 import numpy as np
 import pandas as pd
@@ -102,6 +105,8 @@ def conductivity_functions(tmp_path):
         ANALYSIS_PATH,
         {
             "_add_missing_error_rows",
+            "failure",
+            "instability",
             "_first_value",
             "status_parity",
             "_write_srme_violin",
@@ -283,3 +288,76 @@ def test_conductivity_plot_bundles_respect_update_mode(
     assert saved["model_2"] != original["model_2"]
     if update:
         assert saved["model_1"] == original["model_1"]
+
+
+@pytest.mark.parametrize("separate_fc2", [False, True])
+def test_reference_supercells_survive_extxyz_round_trip(separate_fc2) -> None:
+    """Both shared and separate fc2 supercells retain valid matrices on disk."""
+    # Evaluate the production metadata expression without running downloads or
+    # reference calculations from this standalone generation script.
+    path = CALC_PATH / "data/reference_generation.py"
+    assignment = next(
+        node
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "info_dict"
+            for target in node.targets
+        )
+    )
+    fc3 = np.diag([2, 2, 2])
+    fc2 = np.diag([4, 4, 4]) if separate_fc2 else None
+    namespace = {
+        "ph3": SimpleNamespace(
+            phonon_supercell_matrix=fc2,
+            supercell_matrix=fc3,
+            primitive_matrix=np.eye(3),
+            symmetry=SimpleNamespace(dataset=SimpleNamespace(number=1)),
+        ),
+        "tc": SimpleNamespace(TCKeys=SimpleNamespace(mat_id="material_id")),
+        "name": "Si",
+        "mat_id": "mp-1",
+        "original_qmesh": [9, 9, 9],
+        "fast_qmesh": [3, 3, 3],
+    }
+    exec(
+        compile(ast.Module(body=[assignment], type_ignores=[]), str(path), "exec"),
+        namespace,
+    )
+    atoms = Atoms("Si", cell=np.eye(3), pbc=True)
+    atoms.info.update(namespace["info_dict"])
+    stream = StringIO()
+    write(stream, atoms, format="extxyz")
+    stream.seek(0)
+    restored = read(stream, format="extxyz")
+    np.testing.assert_array_equal(
+        restored.info["fc2_supercell"], fc2 if separate_fc2 else fc3
+    )
+    np.testing.assert_array_equal(restored.info["fc3_supercell"], fc3)
+
+
+def test_all_failed_materials_receive_failure_penalty(conductivity_functions) -> None:
+    """Missing phonon status counts as failure without asserting imaginary modes."""
+    reference = pd.DataFrame(index=["mp-1", "mp-2"])
+    predictions = pd.DataFrame({"error": ["failed", "failed"]}, index=reference.index)
+    aligned = conductivity_functions["_add_missing_error_rows"](
+        predictions, reference, "model"
+    )
+    stats = {"ref": reference, "model": aligned}
+    assert conductivity_functions["failure"](stats) == {"model": 1.0}
+    assert conductivity_functions["instability"](stats) == {"model": 0.0}
+    assert "has_imag_ph_modes" not in predictions
+
+
+def test_existing_phonon_status_is_preserved(conductivity_functions) -> None:
+    """Known stable and unstable results remain distinct from missing results."""
+    reference = pd.DataFrame(index=["mp-1", "mp-2", "mp-3"])
+    predictions = pd.DataFrame(
+        {"has_imag_ph_modes": [False, True, np.nan]}, index=reference.index
+    )
+    aligned = conductivity_functions["_add_missing_error_rows"](
+        predictions, reference, "model"
+    )
+    stats = {"ref": reference, "model": aligned}
+    assert conductivity_functions["failure"](stats)["model"] == pytest.approx(1 / 3)
+    assert conductivity_functions["instability"](stats)["model"] == pytest.approx(1 / 3)
