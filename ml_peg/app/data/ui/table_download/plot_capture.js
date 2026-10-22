@@ -75,6 +75,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         });
         const asArray = (value) =>
           isArray(value) ? value : value == null ? [] : [value];
+        // Scalar text applies to every point, while arrays supply per-point values.
         const pointValue = (value, index) =>
           isArray(value) ? value[index] : value;
         const textFields = ["text", "hovertext"].filter((field) =>
@@ -89,6 +90,8 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           const templates = asArray(trace.hovertemplate);
           templates.forEach((template) => {
             String(template || "").split(/<br\s*\/?\s*>|\n/i).forEach((line) => {
+              // Extract labels like "Energy" from "<b>Energy:</b> %{customdata[0]:.3f}".
+              // Ignore format specifiers so CSV values retain their full precision.
               const match = line.match(
                 /^([^%]*?)%\{customdata(?:\[(\d+)\])?(?::[^}]*|\|[^}]*)?\}/,
               );
@@ -109,10 +112,12 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           const used = new Set(reserved);
           return Array.from({ length: width }, (_, index) => {
             const candidates = labels.get(index);
+            // Per-point templates can disagree on a label. Fall back if ambiguous.
             const label = candidates?.size === 1
               ? [...candidates][0] : `customdata[${index}]`;
             let header = label;
             let suffix = 2;
+            // Disambiguate duplicate labels and names reserved for base columns.
             while (used.has(header)) header = `${label} (${suffix++})`;
             used.add(header);
             if (!headers.includes(header)) headers.push(header);
@@ -140,6 +145,7 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
             traceColumns[traceIndex].forEach((header, index) => {
               values.set(header, isArray(custom) ? custom[index] : index === 0 ? custom : "");
             });
+            // Use the shared column order, leaving absent fields blank via csvValue.
             rows.push(headers.map((header) => values.get(header)));
           }
         });
