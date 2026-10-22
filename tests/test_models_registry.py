@@ -18,6 +18,7 @@ from ml_peg.models.models import (
     OrbCalc,
     SevenNetCalc,
     TaceCalc,
+    TorchMDNetCalc,
     UPETCalc,
     VivaceCalc,
     accepted_kwargs,
@@ -38,6 +39,7 @@ WRAPPERS = {
     "UPETCalculator": UPETCalc,
     "SevenNetCalculator": SevenNetCalc,
     "TACEAseCalc": TaceCalc,
+    "TMDNETCalculator": TorchMDNetCalc,
     "MLFFCalculator": VivaceCalc,
     "grace_fm": GraceCalc,
     "mace_mp": GenericASECalc,
@@ -97,7 +99,15 @@ def test_kwargs_are_accepted(name: str):
 
     kwargs = dict(config.get("kwargs") or {})
     # Taken by the loader before the calculator is built.
-    for key in ("name", "model_name", "task_name", "overrides"):
+    for key in (
+        "name",
+        "model_name",
+        "task_name",
+        "overrides",
+        "repo_id",
+        "filename",
+        "revision",
+    ):
         kwargs.pop(key, None)
 
     check_kwargs(kwargs, target, config["class_name"])

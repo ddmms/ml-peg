@@ -119,3 +119,14 @@ mace-mp:
   tooltip: "Benchmark from the MACE-MP foundation model paper (JCP 163, 184110), click to read"
   description: "Benchmarks from 'A foundation model for atomistic materials chemistry'."
   paper_url: "https://pubs.aip.org/aip/jcp/article/163/18/184110/3372267/A-foundation-model-for-atomistic-materials"
+
+aceff:
+  label: AceFF
+  type: paper
+  color: "#b45309"
+  text_color: "#fffbeb"
+  url: "https://arxiv.org/abs/2601.00581"
+  icon: "📄"
+  tooltip: "Benchmark from the AceFF paper (arXiv:2601.00581), click to read"
+  description: "Benchmarks from 'AceFF: A State-of-the-Art Machine Learning Potential for Small Molecules'."
+  paper_url: "https://arxiv.org/abs/2601.00581"

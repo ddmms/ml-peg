@@ -1149,3 +1149,104 @@ class GraceCalc(GenericASECalc):
         model = dataclasses.replace(self, kwargs={**self.kwargs, "model": model_name})
 
         return model.load_calculator(**kwargs)
+
+
+@dataclasses.dataclass(kw_only=True)
+class TorchMDNetCalc(SumCalc):
+    """Dataclass for TorchMD-Net calculators, such as AceFF."""
+
+    repo_id: str
+    filename: str
+    revision: str | None = None
+    module: str = "torchmdnet.calculators"
+    class_name: str = "TMDNETCalculator"
+    device: Device | str = Device.AUTO
+    default_dtype: str | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
+        """
+        Prepare and load the TorchMD-Net ASE calculator.
+
+        Parameters
+        ----------
+        precision
+            Requested ML-PEG precision. ``TMDNETCalculator`` always builds its input
+            tensors in float32, so the model only runs in float32 (``dtype=float64``
+            fails with a dtype mismatch). Both ``low`` and ``high`` use float32, and
+            ``overwrite_dtype`` has no effect.
+        **kwargs
+            Keyword arguments that override the registry calculator options.
+
+        Returns
+        -------
+        Calculator
+            Loaded TorchMD-Net ASE calculator.
+        """
+        from ase.calculators.calculator import all_changes
+        from huggingface_hub import hf_hub_download
+
+        check_precision(precision)
+        if self.default_dtype is not None:
+            warn(
+                f"{self.class_name} builds float32 inputs, so overwrite_dtype "
+                f"'{self.default_dtype}' has no effect",
+                stacklevel=2,
+            )
+
+        tmdnet_calculator = import_calculator(self.module, self.class_name)
+        calculator_kwargs = {**self.kwargs, **kwargs}
+        check_kwargs(
+            calculator_kwargs,
+            tmdnet_calculator,
+            self.class_name,
+            reserved=("model_file", "device", "dtype"),
+        )
+
+        class DefaultChargeTMDNETCalculator(tmdnet_calculator):
+            """TorchMD-Net calculator that defaults to a neutral total charge."""
+
+            def calculate(
+                self, atoms=None, properties=None, system_changes=all_changes
+            ):
+                """
+                Calculate properties, defaulting to a neutral charge if unset.
+
+                Parameters
+                ----------
+                atoms
+                    Structure to evaluate.
+                properties
+                    Properties to calculate.
+                system_changes
+                    Changes since the last calculation.
+                """
+                # TMDNETCalculator raises KeyError without info["charge"]. Set it on
+                # atoms in place so check_state sees matching info and reuses results.
+                atoms.info.setdefault("charge", 0)
+                super().calculate(atoms, properties, system_changes)
+
+        model_file = hf_hub_download(
+            repo_id=self.repo_id, filename=self.filename, revision=self.revision
+        )
+        device = Device.resolve_auto() if self.device == Device.AUTO else self.device
+        return DefaultChargeTMDNETCalculator(
+            model_file=model_file, device=device, **calculator_kwargs
+        )
+
+    @property
+    def available(self) -> bool:
+        """
+        Check whether the TorchMD-Net ASE calculator is available.
+
+        Returns
+        -------
+        bool
+            Whether the calculator can be imported.
+        """
+        try:
+            import_calculator(self.module, self.class_name)
+
+            return True
+        except (ImportError, AttributeError):
+            return False

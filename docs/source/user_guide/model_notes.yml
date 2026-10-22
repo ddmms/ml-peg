@@ -82,7 +82,21 @@ families:
       focused on non-covalent interactions,
       `doi:10.1184/R1/31141138.v1 <https://doi.org/10.1184/R1/31141138.v1>`_.
 
+  AceFF:
+    class_names: [TMDNETCalculator]
+    notes: |
+      Install with ``uv sync --extra aceff``. AceFF runs through TorchMD-Net's
+      ``TMDNETCalculator``, which always passes float32 inputs to the model, so both
+      ``low`` and ``high`` precision run in float32 (the model itself also supports
+      float64), and ``overwrite_dtype`` has no effect. The checkpoint is downloaded
+      from Hugging Face at the pinned ``revision``. Structures without
+      ``atoms.info["charge"]`` are evaluated as neutral. The model includes its own
+      dispersion correction, and covers H, B, C, N, O, F, Si, P, S, Cl, Br and I.
+
 models:
+  aceff-2p0: |
+    AceFF-2.0, described in *AceFF: A State-of-the-Art Machine Learning Potential
+    for Small Molecules*, `arXiv:2601.00581 <https://arxiv.org/abs/2601.00581>`_.
   aimnet2: |
     Described in Anstine, Zubatyuk and Isayev, *Chem. Sci.*, 2025, **16**,
     10228–10244, `doi:10.1039/d4sc08572h <https://doi.org/10.1039/d4sc08572h>`_.

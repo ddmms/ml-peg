@@ -47,6 +47,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+aceff = [
+    "torchmd-net == 3.0.3",
+    "huggingface-hub >= 0.20.0",
+]
 asemolec = [
     "asemolec"
 ]
@@ -256,6 +260,18 @@ conflicts = [
     ],
     [
         { group = "aimnet" },
+        { extra = "uma" },
+    ],
+    [
+        { extra = "aceff" },
+        { extra = "dpa" },
+    ],
+    [
+        { extra = "aceff" },
+        { extra = "mlipaudit" },
+    ],
+    [
+        { extra = "aceff" },
         { extra = "uma" },
     ],
     [
