@@ -7,5 +7,45 @@ contributors:
     github: "ElliottKasoar"
     email: "elliott.kasoar@stfc.ac.uk"
 
-# TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - key: "cavignac-2026-alexandria"
+    role: reference_data
+    title: "AI-Driven expansion and application of the Alexandria database"
+    authors:
+      - "Théo Cavignac"
+      - "Jonathan Schmidt"
+      - "Pierre-Paul De Breuck"
+      - "Antoine Loew"
+      - "Tiago F. T. Cerqueira"
+      - "Hai-Chen Wang"
+      - "Anton Bochkarev"
+      - "Yury Lysogorskiy"
+      - "Aldo H. Romero"
+      - "Ralf Drautz"
+      - "Silvana Botti"
+      - "Miguel A. L. Marques"
+    year: 2026
+    doi: "10.1088/2515-7639/ae6620"
+    url: "https://doi.org/10.1088/2515-7639/ae6620"
+  - key: "wang-2023-2d-materials"
+    role: reference_data
+    title: "Symmetry-based computational search for novel binary and ternary 2D materials"
+    authors:
+      - "Hai-Chen Wang"
+      - "Jonathan Schmidt"
+      - "Miguel A. L. Marques"
+      - "Ludger Wirtz"
+      - "Aldo H. Romero"
+    year: 2023
+    doi: "10.1088/2053-1583/accc43"
+  - key: "schmidt-2021-crystal-graph"
+    role: reference_method
+    title: "Crystal graph attention networks for the prediction of stable materials"
+    authors:
+      - "Jonathan Schmidt"
+      - "Love Pettersson"
+      - "Claudio Verdozzi"
+      - "Silvana Botti"
+      - "Miguel A. L. Marques"
+    year: 2021
+    doi: "10.1126/sciadv.abi7948"

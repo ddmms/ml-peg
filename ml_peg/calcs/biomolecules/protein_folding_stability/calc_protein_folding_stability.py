@@ -39,6 +39,7 @@ BENCHMARK_DATA_DIR = (
 )
 
 
+@pytest.mark.framework("mlip_audit")
 @pytest.mark.multi_day
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_protein_folding_stability(mlip: tuple[str, Any]) -> None:

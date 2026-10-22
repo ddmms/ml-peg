@@ -4,5 +4,20 @@ implementers:
 
 contributors: []
 
-# TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - key: "parker-2026-false-metallization"
+    role: benchmark_method
+    title: "False Metallization in Short-Ranged Machine Learned Interatomic Potentials"
+    authors:
+      - "Isaac J. Parker"
+      - "Mandy J. Hoffmann"
+      - "William J. Baldwin"
+      - "Shuang Han"
+      - "Srishti Gupta"
+      - "Kara D. Fong"
+      - "Angelos Michaelides"
+      - "Christoph Schran"
+      - "Sandip De"
+      - "Gábor Csányi"
+    year: 2026
+    url: "https://arxiv.org/abs/2603.04228"

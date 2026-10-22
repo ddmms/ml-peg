@@ -10,5 +10,16 @@ contributors:
     github: "ElliottKasoar"
     email: "elliott.kasoar@stfc.ac.uk"
 
-# TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - key: marianski2016assessing
+    role: reference_data
+    title: Assessing the accuracy of across-the-scale methods for predicting carbohydrate conformational
+      energies for the examples of glucose and α-maltose
+    authors:
+      - Mateusz Marianski
+      - Adriana Supady
+      - Teresa Ingram
+      - Markus Schneider
+      - Carsten Baldauf
+    year: 2016
+    doi: "10.1021/acs.jctc.6b00876"
