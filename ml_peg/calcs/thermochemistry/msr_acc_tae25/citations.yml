@@ -6,7 +6,7 @@ implementers:
 contributors: []
 
 citations:             # what a user of this benchmark must cite
-  - key: "ehlert-2025-msr_acc_tae25"
+  - key: "ehlert-2026-msr_acc_tae25"
     role: reference_data
     title: "Accurate Chemistry Collection: Coupled cluster atomization energies for broad chemical space"
     authors:
@@ -24,6 +24,6 @@ citations:             # what a user of this benchmark must cite
       - "R. van den Berg"
       - "P. Gori-Giorgi"
       - "A. Karton"
-    year: 2025
+    year: 2026
     doi: 10.1038/s41597-026-07200-8
     url: https://doi.org/10.1038/s41597-026-07200-8
