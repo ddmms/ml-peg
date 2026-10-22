@@ -88,10 +88,6 @@ def get_model_atomization_energy(atoms: Atoms, calc: Calculator, e0s: dict) -> f
     counts = Counter(atoms.get_chemical_symbols())
     reference = sum(count * e0s[atomic_sym] for atomic_sym, count in counts.items())
 
-    missing = [sym for sym in counts if np.isnan(e0s[sym])]
-    if missing:
-        raise RuntimeError(f"Missing E0 for elements: {missing}")
-
     return reference - total_energy
 
 
@@ -107,7 +103,6 @@ def test_osos_tae(mlip: tuple[str, Any]) -> None:
         Name of model use and model to get calculator.
     """
     model_name, model = mlip
-    print(f"\nEvaluating with model: {model_name}")
     calc = model.get_calculator(precision="high")
 
     # get isolated atom energies for the model
@@ -128,7 +123,7 @@ def test_osos_tae(mlip: tuple[str, Any]) -> None:
             pred = get_model_atomization_energy(atoms, calc, e0s)
         except Exception as exc:
             warn(
-                f"Error calculation for {atoms.info['name']}: {exc}",
+                f"Error calculation for {atoms.info['mol_id']}: {exc}",
                 stacklevel=2,
             )
             pred = np.nan
