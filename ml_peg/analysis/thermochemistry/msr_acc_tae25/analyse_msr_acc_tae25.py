@@ -1,4 +1,4 @@
-"""Analyse msr_acc_tae25 benchmark results."""
+"""Analyse MSR_ACC_TAE25 benchmark results."""
 
 from __future__ import annotations
 
@@ -14,10 +14,12 @@ from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
 
+MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "thermochemistry" / "msr_acc_tae25" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "thermochemistry" / "msr_acc_tae25"
-MODELS = sorted(d.name for d in CALC_PATH.iterdir() if d.is_dir())
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
@@ -37,28 +39,11 @@ PRED_KEY = "tae_pred"
 REF_KEY = "tae_ref"
 
 
-def _get_xyz_files(model_dir: Path) -> list[Path]:
-    """
-    Return `.xyz` files for a model sorted by filename index.
-
-    Parameters
-    ----------
-    model_dir : Path
-        Directory containing per-model Wiggle150 outputs.
-
-    Returns
-    -------
-    list[Path]
-        Sorted list of `.xyz` files.
-    """
-    return model_dir.glob("*.xyz")
-
-
 @pytest.fixture
 @plot_parity(
     title="Total Atomization Energy",
-    x_label="Reference TAE (kcal/mol)",
-    y_label="Predicted TAE (kcal/mol)",
+    x_label="Predicted TAE (kcal/mol)",
+    y_label="Reference TAE (kcal/mol)",
     filename=OUT_PATH / "msr_acc_tae25_parity_plot.json",
     hoverdata={
         "Molecule": INFO["name"],
@@ -73,8 +58,15 @@ def tae() -> dict[str, list]:
     dict[str, list]
         Dictionary of reference and predicted tae.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    ref_files = sorted((CALC_PATH / "mock").glob("*.xyz"))
+    results = {
+        "ref": [float(read(f).info[REF_KEY]) * EV_TO_KCAL_PER_MOL for f in ref_files]
+    }
+
+    dest_dir = OUT_PATH / "mock"
+    shutil.copytree(CALC_PATH / "mock", dest_dir, dirs_exist_ok=True)
+
+    mol_names = [f.stem for f in ref_files]
 
     for model_name in MODELS:
         model_path = CALC_PATH / model_name
@@ -82,23 +74,17 @@ def tae() -> dict[str, list]:
             results[model_name] = []
             continue
 
-        xyz_files = _get_xyz_files(model_path)
-        if not xyz_files:
-            results[model_name] = []
-            continue
+        preds = []
+        for mol_name in mol_names:
+            xyz_file = model_path / f"{mol_name}.xyz"
+            if not xyz_file.exists():
+                results[model_name].append(np.nan)
+                continue
 
-        for xyz_file in xyz_files:
             atoms = read(xyz_file)
-            results[model_name].append(float(atoms.info[PRED_KEY]) * EV_TO_KCAL_PER_MOL)
+            preds.append(float(atoms.info[PRED_KEY]) * EV_TO_KCAL_PER_MOL)
 
-            if not ref_stored:
-                results["ref"].append(float(atoms.info[REF_KEY]) * EV_TO_KCAL_PER_MOL)
-
-            dest_dir = OUT_PATH / model_name
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy(xyz_file, dest_dir / xyz_file.name)
-
-        ref_stored = True
+        results[model_name] = preds
 
     return results
 

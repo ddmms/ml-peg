@@ -1,4 +1,4 @@
-"""Analyse osos_tae benchmark results."""
+"""Analyse OSOS_TAE benchmark results."""
 
 from __future__ import annotations
 
@@ -15,9 +15,9 @@ from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, ma
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
-from ml_peg.models.get_models import load_models
+from ml_peg.models.get_models import get_model_names
 
-MODELS = load_models(current_models)
+MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "thermochemistry" / "osos_tae" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "thermochemistry" / "osos_tae"
 
@@ -39,28 +39,11 @@ PRED_KEY = "tae_pred"
 REF_KEY = "tae_ref"
 
 
-def _get_xyz_files(model_dir: Path) -> list[Path]:
-    """
-    Return `.xyz` files for a model sorted by filename index.
-
-    Parameters
-    ----------
-    model_dir : Path
-        Directory containing per-model Wiggle150 outputs.
-
-    Returns
-    -------
-    list[Path]
-        Sorted list of `.xyz` files.
-    """
-    return model_dir.glob("*.xyz")
-
-
 @pytest.fixture
 @plot_parity(
     title="Total Atomization Energy",
-    x_label="Reference TAE (kcal/mol)",
-    y_label="Predicted TAE (kcal/mol)",
+    x_label="Predicted TAE (kcal/mol)",
+    y_label="Reference TAE (kcal/mol)",
     filename=OUT_PATH / "osos_tae_parity_plot.json",
     hoverdata={
         "Molecule": INFO["mol_id"],
@@ -75,8 +58,16 @@ def tae() -> dict[str, list[float]]:
     dict[str, list]
         Dictionary of reference and predicted tae.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    # read reference from xyz files in mock directory.
+    ref_files = sorted((CALC_PATH / "mock").glob("*.xyz"))
+    results = {
+        "ref": [float(read(f).info[REF_KEY]) * EV_TO_KCAL_PER_MOL for f in ref_files]
+    }
+
+    dest_dir = OUT_PATH / "mock"
+    shutil.copytree(CALC_PATH / "mock", dest_dir, dirs_exist_ok=True)
+
+    mol_ids = [f.stem for f in ref_files]
 
     for model_name in MODELS:
         model_path = CALC_PATH / model_name
@@ -84,23 +75,17 @@ def tae() -> dict[str, list[float]]:
             results[model_name] = []
             continue
 
-        xyz_files = _get_xyz_files(model_path)
-        if not xyz_files:
-            results[model_name] = []
-            continue
+        preds = []
+        for mol_id in mol_ids:
+            xyz_file = model_path / f"{mol_id}.xyz"
+            if not xyz_file.exists():
+                results[model_name].append(np.nan)
+                continue
 
-        for xyz_file in xyz_files:
             atoms = read(xyz_file)
-            results[model_name].append(float(atoms.info[PRED_KEY]) * EV_TO_KCAL_PER_MOL)
+            preds.append(float(atoms.info[PRED_KEY]) * EV_TO_KCAL_PER_MOL)
 
-            if not ref_stored:
-                results["ref"].append(float(atoms.info[REF_KEY]) * EV_TO_KCAL_PER_MOL)
-
-            dest_dir = OUT_PATH / model_name
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy(xyz_file, dest_dir / xyz_file.name)
-
-        ref_stored = True
+        results[model_name] = preds
 
     return results
 
