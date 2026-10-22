@@ -1184,7 +1184,6 @@ class TorchMDNetCalc(SumCalc):
             Loaded TorchMD-Net ASE calculator.
         """
         from ase.calculators.calculator import all_changes
-        from huggingface_hub import hf_hub_download
 
         check_precision(precision)
         if self.default_dtype is not None:
@@ -1225,6 +1224,8 @@ class TorchMDNetCalc(SumCalc):
                 # atoms in place so check_state sees matching info and reuses results.
                 atoms.info.setdefault("charge", 0)
                 super().calculate(atoms, properties, system_changes)
+
+        from huggingface_hub import hf_hub_download
 
         model_file = hf_hub_download(
             repo_id=self.repo_id, filename=self.filename, revision=self.revision
