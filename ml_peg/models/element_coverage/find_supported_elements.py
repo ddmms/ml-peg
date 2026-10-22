@@ -104,8 +104,8 @@ def probe_model(model_name: str, device: str) -> list[str] | None:
     errors: list[dict] = []
     for symbol in PERIODIC_TABLE_SYMBOLS:
         atoms = make_dimer(symbol)
-        atoms.calc = calc
         try:
+            atoms.calc = calc
             energy = atoms.get_potential_energy()
             if not np.isfinite(energy):
                 raise ValueError("non-finite energy")

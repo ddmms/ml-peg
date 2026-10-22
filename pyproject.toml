@@ -105,6 +105,21 @@ Repository = "https://github.com/ddmms/ml-peg/"
 Documentation = "https://ddmms.github.io/ml-peg/"
 
 [dependency-groups]
+# uv-only until an aimnet release includes the neighbour-list fix
+# (https://github.com/isayevlab/aimnetcentral/pull/127) which 0.2.0 doesn't.
+# pip ignores [tool.uv.sources], so publishing this as an extra would
+# install the unfixed release.
+# When a fixed release becomes available:
+#   1. Move this to [project.optional-dependencies] as
+#      "aimnet[ase]>=<fixed version>; python_version >= '3.11'".
+#   2. Remove the aimnet entry from [tool.uv.sources].
+#   3. Change { group = "aimnet" } back to { extra = "aimnet" } in [tool.uv] conflicts.
+#   4. Change "uv sync --group aimnet" back to "--extra aimnet" in the AIMNet2
+#      notes in docs/source/user_guide/model_notes.yml and drop the pip caveat.
+aimnet = [
+    "aimnet[ase]; python_version >= '3.11'",
+]
+
 dev = [
     "coverage[toml]<8.0.0,>=7.4.1",
     "ipykernel>=6.29.5",
@@ -219,6 +234,7 @@ override-dependencies = [
     "mpich; sys_platform != 'win32'",
 ]
 
+# aimnet is a group, not an extra, until a fixed release becomes available (see [dependency-groups]).
 conflicts = [
     # deepmd-kit 3.2.0 pins torch==2.11.0.
     [
@@ -233,6 +249,14 @@ conflicts = [
     # UMA requires torch~=2.8.0; TACE AOTI uses newer export APIs.
     [
         { extra = "tace" },
+        { extra = "uma" },
+    ],
+    [
+        { group = "aimnet" },
+        { extra = "upet" },
+    ],
+    [
+        { group = "aimnet" },
         { extra = "uma" },
     ],
     [
@@ -274,5 +298,9 @@ constraint-dependencies = [
 module-root = ""
 
 [tool.uv.sources]
+# Pinned to main for the neighbour-list truncation fix (https://github.com/isayevlab/aimnetcentral/pull/127),
+# which is not in the 0.2.0 release. Remove once an aimnet release includes it (see the
+# aimnet entry in [dependency-groups]).
+aimnet = { git = "https://github.com/isayevlab/aimnetcentral.git", rev = "ffcd6366d822b565a0fd65d53048750c0abad6bc" }
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
 simpoly = { git = "https://github.com/microsoft/simpoly.git", rev = "da100ad32d971214cf9343d9d853e8ce61604dc0" }

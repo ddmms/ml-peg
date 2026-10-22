@@ -323,9 +323,10 @@ constituents are also listed individually so their known domains and element
 coverage remain visible. Its coverage entry is the verified union of its
 constituent datasets, not the checkpoint's broader executable type map.
 
-GRACE, SevenNet, MatterSim and Vivace entries similarly select their wrappers
-through ``class_name`` (``grace_fm``, ``SevenNetCalculator``,
-``MatterSimCalculator`` and ``MLFFCalculator`` respectively).
+AIMNet2, GRACE, SevenNet, MatterSim and Vivace entries similarly select their
+wrappers through ``class_name`` (``AIMNet2ASE``, ``grace_fm``,
+``SevenNetCalculator``, ``MatterSimCalculator`` and ``MLFFCalculator``
+respectively).
 
 Other ASE-compatible MLIP calculators can usually be added by specifying their
 ``module``, ``class_name`` and constructor ``kwargs``. Any ``class_name`` that

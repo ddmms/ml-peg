@@ -314,6 +314,7 @@ def load_models(
         Loaded models from models.yml and/or loaded mock model.
     """
     from ml_peg.models.models import (
+        AIMNetCalc,
         DpaCalc,
         FairChemCalc,
         GenericASECalc,
@@ -350,6 +351,13 @@ def load_models(
         validate_config(name, cfg)
 
         match cfg["class_name"]:
+            case "AIMNet2ASE":
+                loaded_models[name] = AIMNetCalc(
+                    device=cfg.get("device", "auto"),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", True),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
             case "DP":
                 loaded_models[name] = DpaCalc(
                     module=cfg["module"],
