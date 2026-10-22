@@ -120,6 +120,25 @@ def test_aimnet_passes_model_and_device(fake_aimnet, precision):
     assert calculator.base_calc.kwargs == {"model": "aimnet2", "device": "cpu"}
 
 
+def test_aimnet_rejects_device_in_kwargs(fake_aimnet):
+    """The device is only set by ``device``, not by configured or passed kwargs."""
+    model = AIMNetCalc(device="cpu", kwargs={"model": "aimnet2", "device": "cuda"})
+    with pytest.raises(ValueError, match="device is set by ML-PEG"):
+        model.get_calculator(precision="low")
+
+    model = AIMNetCalc(device="cpu", kwargs={"model": "aimnet2"})
+    with pytest.raises(ValueError, match="device is set by ML-PEG"):
+        model.get_calculator(precision="low", device="cuda")
+
+
+def test_aimnet_rejects_unknown_kwargs():
+    """Misspelled keyword arguments are rejected rather than silently ignored."""
+    pytest.importorskip("aimnet")
+    model = AIMNetCalc(device="cpu", kwargs={"modle": "aimnet2"})
+    with pytest.raises(ValueError, match="modle would be ignored"):
+        model.get_calculator(precision="low")
+
+
 def test_aimnet_rejects_unknown_precision(fake_aimnet):
     """The AIMNet2 wrapper rejects unknown ML-PEG precision choices."""
     model = AIMNetCalc(kwargs={"model": "aimnet2"})

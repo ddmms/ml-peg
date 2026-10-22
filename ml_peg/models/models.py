@@ -564,9 +564,12 @@ class AIMNetCalc(SumCalc):
                         self.mult = mult
                         self._t_mult = None
 
+        calc_kwargs = {**self.kwargs, **kwargs}
+        check_kwargs(calc_kwargs, AIMNet2Calculator, "AIMNet2ASE", reserved=("device",))
+
         check_precision(precision)
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
-        base_calc = AIMNet2Calculator(device=device, **{**self.kwargs, **kwargs})
+        base_calc = AIMNet2Calculator(device=device, **calc_kwargs)
         return _StatelessChargeAIMNet2ASE(base_calc)
 
     @property
