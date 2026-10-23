@@ -41,7 +41,9 @@ Input structures:
 
 Reference data:
 
-* Same as input data
+* F. Della Pia, A. Zen, D. Alfè, and A. Michaelides, How Accurate Are Simulations
+  and Experiments for the Lattice Energies of Molecular Crystals?, Physical Review
+  Letters 133, 046401 (2024). https://doi.org/10.1103/PhysRevLett.133.046401
 * DMC
 
 

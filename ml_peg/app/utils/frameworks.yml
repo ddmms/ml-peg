@@ -8,6 +8,7 @@ ml_peg:
   project_url: "https://github.com/ddmms/ml-peg"
 
 mlip_arena:
+  bibtex_key: chiang-2025-mlip-arena
   label: MLIP Arena
   type: framework
   color: "#0f766e"

@@ -13,3 +13,5 @@ contributors:
 citations:
   - bibtex_key: Mehdizadeh_2025
     role: benchmark_method
+  - bibtex_key: schindler2024cleavage-data
+    role: reference_data

@@ -11,43 +11,14 @@ contributors:
 citations:
   - bibtex_key: alhamdani2017bnwater
     role: benchmark_method
-  - key: "brandenburg-2019-water-graphene"
+  - bibtex_key: brandenburg-2019-water-graphene
     role: benchmark_method
-    title: "Physisorption of water on graphene: Subchemical accuracy from many-body electronic structure methods"
-    authors:
-      - "J. G. Brandenburg"
-      - "A. Zen"
-      - "M. Fitzner"
-      - "B. Ramberger"
-      - "G. Kresse"
-      - "T. Tsatsoulis"
-      - "A. Grüneis"
-      - "A. Michaelides"
-      - "D. Alfè"
-    year: 2019
-    doi: null
-    url: null
   - bibtex_key: ehlert2023co2graphene
     role: benchmark_method
   - bibtex_key: tsatsoulis2018hydrogensi
     role: benchmark_method
-  - key: "tsatsoulis-2017-water-lih"
+  - bibtex_key: tsatsoulis-2017-water-lih
     role: benchmark_method
-    title: "A comparison between quantum chemistry and quantum Monte Carlo techniques for the adsorption of water on the (001) LiH surface"
-    authors:
-      - "T. Tsatsoulis"
-      - "F. Hummel"
-      - "D. Usvyat"
-      - "M. Schütz"
-      - "G. H. Booth"
-      - "S. S. Binnie"
-      - "M. J. Gillan"
-      - "D. Alfè"
-      - "A. Michaelides"
-      - "A. Grüneis"
-    year: 2017
-    doi: null
-    url: null
   - bibtex_key: ye2024abinitiosurfacechemistry
     role: benchmark_method
   - bibtex_key: PhysRevLett.125.256101

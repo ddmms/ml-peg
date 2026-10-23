@@ -60,7 +60,8 @@ def citation_fields(key: str) -> dict[str, Any]:
     entry = data.entries[key]
     render = LatexNodes2Text().latex_to_text
     authors = []
-    for person in entry.persons.get("author", []):
+    # Edited books credit their editors when no authors are listed.
+    for person in entry.persons.get("author") or entry.persons.get("editor", []):
         name = " ".join(
             person.first_names
             + person.middle_names

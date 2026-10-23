@@ -17,3 +17,5 @@ citations:
     role: reference_data
   - bibtex_key: wang-2018-fe-bain
     role: reference_data
+  - bibtex_key: lejaeghere2016reproducibility
+    role: benchmark_method

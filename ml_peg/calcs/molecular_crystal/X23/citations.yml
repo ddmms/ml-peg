@@ -11,3 +11,5 @@ contributors:
 citations:
   - bibtex_key: reilly2013understanding
     role: benchmark_method
+  - bibtex_key: dellapia2024x23dmc
+    role: reference_data

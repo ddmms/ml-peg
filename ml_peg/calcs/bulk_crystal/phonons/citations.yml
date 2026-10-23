@@ -8,7 +8,5 @@ contributors:
     github: "bpota"
 
 citations:
-  - bibtex_key: togo-2023-mdr-phonons
-    role: reference_data
   - bibtex_key: Loew2025
-    role: benchmark_method
+    role: reference_data

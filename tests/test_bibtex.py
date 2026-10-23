@@ -377,3 +377,27 @@ def test_imported_html_is_removed_from_display_and_exports():
     assert LatexNodes2Text().latex_to_text(entry.fields["journal"]) == (
         "Journal of Chemical & Engineering Data"
     )
+
+
+@pytest.mark.parametrize("author", [None, "Writer, Alice"])
+def test_edited_book_credits_and_export(library, tmp_path, author):
+    """Use editors for authorless books and retain their roles in BibTeX exports."""
+    record = (
+        "@book{handbook, title={Handbook}, editor={Green, Don W. and Southard, "
+        "Marylee Z.}, year={2018}"
+    )
+    if author:
+        record += f", author={{{author}}}"
+    bibliography.BIBTEX_FILE.write_text(record + "}\n")
+    metadata = tmp_path / "citations.yml"
+    metadata.write_text(
+        "citations:\n  - bibtex_key: handbook\n    role: reference_data\n"
+    )
+    loaded = load_benchmark_credits(metadata)
+    expected = ("Alice Writer",) if author else ("Don W. Green", "Marylee Z. Southard")
+    assert loaded.citations[0].authors == expected
+    export = collect_bibtex(loaded)
+    assert not export.missing
+    entry = parse_string(export.text, "bibtex").entries["handbook"]
+    assert len(entry.persons["editor"]) == 2
+    assert bool(entry.persons.get("author")) is bool(author)

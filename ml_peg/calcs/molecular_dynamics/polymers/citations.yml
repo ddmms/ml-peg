@@ -13,3 +13,5 @@ contributors:
 citations:
   - bibtex_key: simm2025simpoly
     role: benchmark_method
+  - bibtex_key: abbott2013polymatic
+    role: benchmark_method
