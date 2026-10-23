@@ -33,7 +33,8 @@ factor of 30 larger than the longest alkane.
     for every system, because the two structures of each pair differ only in their
     recorded field. This benchmark therefore discriminates only between field-aware
     models; for all other models it reports the magnitude of the reference response
-    itself.
+    itself, giving an ``Alkanes MAE`` of 0.005 eV, a ``Cumulenes MAE`` of 0.087 eV and
+    an overall ``Score`` of 0.00.
 
 Metrics
 -------
@@ -50,18 +51,51 @@ The mean absolute error of :math:`\Delta E` against the reference responses is r
 in three columns: ``Alkanes MAE`` and ``Cumulenes MAE`` over each family separately,
 and ``Total MAE`` over all 40 systems.
 
-For all three columns the ``good`` threshold is 0.01 eV and the ``bad`` threshold is
-5.0 eV. Each MAE is converted to a normalised score in :math:`[0, 1]` by linear
-interpolation between ``good`` (score = 1) and ``bad`` (score = 0). The overall
-``Score`` is the weighted average of the per-family scores: ``Alkanes MAE`` and
-``Cumulenes MAE`` carry weight 1, and ``Total MAE`` is reported for information only,
-with weight 0.
+Each MAE is converted to a normalised score in :math:`[0, 1]` by linear interpolation
+between ``good`` (score = 1) and ``bad`` (score = 0), clipped at both ends. The
+``good`` threshold is 0 eV for every column, so a score of 1 requires exact agreement
+with the reference and no model is credited for falling inside an arbitrary tolerance
+band.
+
+The ``bad`` threshold is set per column to the mean reference response of that column,
+since the two families differ in response magnitude by a factor of roughly 18 and no
+single absolute threshold is meaningful for both:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 40 30 30
+
+    * - Column
+      - ``good`` / eV
+      - ``bad`` / eV
+    * - ``Alkanes MAE``
+      - 0
+      - 0.005
+    * - ``Cumulenes MAE``
+      - 0
+      - 0.087
+    * - ``Total MAE``
+      - 0
+      - 0.046
+
+A score of 0 therefore means the error is as large as the effect being predicted, and
+the score itself reads as the fraction of the reference response that the model gets
+right. The overall ``Score`` is the weighted average of the per-family scores:
+``Alkanes MAE`` and ``Cumulenes MAE`` carry weight 1, and ``Total MAE`` is reported for
+information only, with weight 0.
 
 Computational cost
 ------------------
 
-Low: 80 single-point energy calculations, with no geometry optimisation. The largest
-system is :math:`\mathrm{C_{40}H_{82}}` at 122 atoms.
+Low: tests are likely to take seconds to minutes to run on CPU for each model.
+
+The workload is fixed and the same for every model: 80 single-point energy
+calculations, 40 per family, with no geometry optimisation and no dynamics. Systems
+range from 6 atoms (:math:`\mathrm{C_2H_4}`) to 122 atoms
+(:math:`\mathrm{C_{40}H_{82}}`), for 3600 atoms evaluated in total. Because nothing is
+iterated, elapsed time is just this workload divided by the single-point throughput of
+the model under test, and so is governed by the model and the hardware rather than by
+the benchmark.
 
 Data availability
 -----------------
