@@ -78,6 +78,26 @@ jobs:
       - name: Run AIMNet2 tests
         run: uv run --no-sync pytest tests/test_aimnet_models.py
 
+  aceff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install AceFF dependencies
+        run: uv sync --extra aceff
+
+      - name: Run AceFF tests
+        run: uv run --no-sync pytest tests/test_aceff_models.py
+
   coverage:
     needs: tests
     runs-on: ubuntu-latest
