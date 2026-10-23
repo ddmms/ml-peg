@@ -37,9 +37,14 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     clean_calc = model.get_calculator(precision="high")
 
+    # Pinned to an immutable revision: downloads are cached by filename with no
+    # checksum, so a mutable branch ref could change the reference data unnoticed
     data_path = download_github_data(
         filename="energy_response.zip",
-        github_uri="https://github.com/viktorsvahn/teoroo_ML-PEG/raw/refs/heads/main/data/source",
+        github_uri=(
+            "https://github.com/viktorsvahn/teoroo_ML-PEG/raw/"
+            "4afd22c1741b696f52c9608777ffb0f82e9a2f0d/data/source"
+        ),
     )
     datasets = sorted(f.name for f in (data_path / "energy_response").glob("*.xyz"))
 
@@ -53,6 +58,14 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
         if out_file.exists():
             continue
 
+        # Build the dataset in a temporary file and promote it only once every
+        # molecule is written. Writing straight to out_file would let an interrupted
+        # run leave a truncated dataset that the check above then treats as complete.
+        # The ".tmp" suffix keeps a leftover file out of the analysis' "*.xyz" globs,
+        # but means the format can no longer be inferred from the name
+        tmp_file = write_dir / f"{dataset}.tmp"
+        tmp_file.unlink(missing_ok=True)
+
         for i, mol in enumerate(mols):
             mol.info["REF_energy"] = mol.get_potential_energy()
             mol_calc = copy(clean_calc)
@@ -64,9 +77,11 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
             except Exception as exc:
                 warn(f"Error calculating energy: {exc}", stacklevel=2)
                 mol.info["energy"] = np.nan
-            write(out_file, mol, append=(i > 0))
+            write(tmp_file, mol, append=(i > 0), format="extxyz")
             mol.calc = None
             del mol_calc
+
+        tmp_file.replace(out_file)
 
         del mols
         gc.collect()

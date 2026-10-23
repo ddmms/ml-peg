@@ -1,18 +1,26 @@
+# Thresholds are set per family, because the two families differ in response
+# magnitude by a factor of ~18. `bad` is the mean reference response of the
+# column, so an MAE as large as the effect being predicted scores 0; a model
+# that ignores the field predicts zero response and lands exactly there.
 metrics:
   Total MAE:
-    good: 0.01
-    bad: 5.0
+    good: 0
+    bad: 0.046
     unit: eV
     tooltip: "Mean Absolute Error for all systems"
     level_of_theory: wB97M-V
     weight: 0
-  Alkanes MAE: &dataset_mae
-    good: 0.01
-    bad: 5.0
+  Alkanes MAE:
+    good: 0
+    bad: 0.005
     unit: eV
     tooltip: "Mean Absolute Error for Alkanes"
     level_of_theory: wB97M-V
     weight: 1
   Cumulenes MAE:
-    <<: *dataset_mae
+    good: 0
+    bad: 0.087
+    unit: eV
     tooltip: "Mean Absolute Error for Cumulenes"
+    level_of_theory: wB97M-V
+    weight: 1

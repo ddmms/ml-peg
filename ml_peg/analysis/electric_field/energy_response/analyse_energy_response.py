@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 from warnings import warn
 
+from ase import Atoms
 from ase.io import read, write
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    load_metrics_config,
+    mae,
+    write_struct_info,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -26,6 +32,111 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
+def pair_by_formula(dataset_path: Path) -> dict[str, tuple[Atoms, Atoms]]:
+    """
+    Pair zero-field and field structures in one dataset by chemical formula.
+
+    Structures are not stored in a consistent order, and ``config_type`` is shared by
+    every structure in a dataset, so the chemical formula is the only reliable key.
+    Each formula must appear exactly once with a field and once without; anything
+    unpaired or duplicated is reported and dropped rather than mispaired.
+
+    Parameters
+    ----------
+    dataset_path
+        Path to the dataset file to read.
+
+    Returns
+    -------
+    dict[str, tuple[Atoms, Atoms]]
+        Zero-field and field structure for each formula, ordered by increasing
+        number of atoms.
+    """
+    no_field: dict[str, Atoms] = {}
+    field: dict[str, Atoms] = {}
+
+    for struct in read(dataset_path, index=":"):
+        if "external_field" not in struct.info:
+            warn(
+                f"Structure in {dataset_path.name} has no recorded external_field, "
+                "skipping.",
+                stacklevel=2,
+            )
+            continue
+
+        formula = struct.get_chemical_formula()
+        structs = field if np.any(struct.info["external_field"]) else no_field
+
+        if formula in structs:
+            warn(
+                f"Duplicate {formula} structure in {dataset_path.name}, keeping the "
+                "first.",
+                stacklevel=2,
+            )
+            continue
+
+        structs[formula] = struct
+
+    for formula in sorted(set(no_field) ^ set(field)):
+        warn(
+            f"{formula} in {dataset_path.name} has no field or zero-field "
+            "counterpart, skipping.",
+            stacklevel=2,
+        )
+
+    return {
+        formula: (no_field[formula], field[formula])
+        for formula in sorted(
+            set(no_field) & set(field), key=lambda f: (len(no_field[f]), f)
+        )
+    }
+
+
+@cache
+def get_datasets() -> tuple[str, ...]:
+    """
+    Get dataset filenames, taken from the first model with results.
+
+    Returns
+    -------
+    tuple[str, ...]
+        Dataset filenames, in sorted order.
+    """
+    for model_name in MODELS:
+        model_dir = CALC_PATH / model_name
+        if not model_dir.exists():
+            continue
+        datasets = tuple(sorted(path.name for path in model_dir.glob("*.xyz")))
+        if datasets:
+            return datasets
+    return ()
+
+
+@cache
+def get_reference_pairs(dataset: str) -> dict[str, tuple[Atoms, Atoms]]:
+    """
+    Get paired structures for one dataset, from the first model with results.
+
+    These pairs fix the formula order used for every model, the reference values and
+    the hover labels, so all three stay aligned.
+
+    Parameters
+    ----------
+    dataset
+        Dataset filename (e.g. ``"ALKANES.xyz"``).
+
+    Returns
+    -------
+    dict[str, tuple[Atoms, Atoms]]
+        Zero-field and field structure for each formula.
+    """
+    for model_name in MODELS:
+        dataset_path = CALC_PATH / model_name / dataset
+        if dataset_path.exists():
+            return pair_by_formula(dataset_path)
+    return {}
+
+
 def get_molecule_labels(dataset: str | None = None) -> list[str]:
     """
     Get molecule labels for field structures, optionally filtered to one dataset.
@@ -39,25 +150,10 @@ def get_molecule_labels(dataset: str | None = None) -> list[str]:
     Returns
     -------
     list[str]
-        Chemical formula for each field-structure, across the requested datasets.
+        Chemical formula for each paired structure, across the requested datasets.
     """
-    labels = []
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            continue
-        dataset_paths = sorted(model_dir.glob("*.xyz"))
-        if dataset is not None:
-            dataset_paths = [p for p in dataset_paths if p.name == dataset]
-        for dataset_path in dataset_paths:
-            structs = read(dataset_path, index=":")
-            labels.extend(
-                s.get_chemical_formula()
-                for s in structs
-                if any(s.info.get("external_field", [0, 0, 0]))
-            )
-        break  # labels only needed from one model
-    return labels
+    datasets = get_datasets() if dataset is None else (dataset,)
+    return [formula for name in datasets for formula in get_reference_pairs(name)]
 
 
 @pytest.fixture
@@ -72,68 +168,97 @@ def energy_response() -> dict[str, dict]:
         response arrays.
     """
     results = {"ref": {}} | {mlip: {} for mlip in MODELS}
-    ref_stored = False
 
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
+    for dataset in get_datasets():
+        ref_pairs = get_reference_pairs(dataset)
+        if not ref_pairs:
+            warn(
+                f"No paired field structures found in {dataset}, skipping.",
+                stacklevel=2,
+            )
             continue
 
-        datasets = sorted(f.name for f in model_dir.glob("*.xyz"))
-        if not datasets:
-            continue
+        results["ref"][dataset] = np.array(
+            [
+                abs(field.info["REF_energy"] - no_field.info["REF_energy"])
+                for no_field, field in ref_pairs.values()
+            ]
+        )
 
-        for dataset in datasets:
-            structs = read(CALC_PATH / model_name / dataset, index=":")
-
-            no_field_structs = [s for s in structs if not any(s.info["external_field"])]
-            field_structs = [s for s in structs if any(s.info["external_field"])]
-
-            if not field_structs:
-                warn(f"No field structures found in {dataset}, skipping.", stacklevel=2)
+        for model_name in MODELS:
+            dataset_path = CALC_PATH / model_name / dataset
+            if not dataset_path.exists():
                 continue
 
-            # Model predictions
-            no_field = np.array([s.get_potential_energy() for s in no_field_structs])
-            field = np.array([s.get_potential_energy() for s in field_structs])
-            valid = ~(np.isnan(no_field) | np.isnan(field))
+            pairs = pair_by_formula(dataset_path)
 
-            if not np.any(valid):
+            # Keep the reference formula order, recording NaN for anything missing,
+            # so every model aligns with the reference values and hover labels
+            responses = []
+            for formula in ref_pairs:
+                if formula not in pairs:
+                    warn(
+                        f"{formula} missing from {model_name}/{dataset}, "
+                        "recording NaN.",
+                        stacklevel=2,
+                    )
+                    responses.append(np.nan)
+                    continue
+                no_field, field = pairs[formula]
+                responses.append(
+                    abs(field.get_potential_energy() - no_field.get_potential_energy())
+                )
+
+            # Record the dataset even when every energy is NaN, so that the failure
+            # reaches the metrics as NaN. Dropping it instead leaves the column empty,
+            # and an empty column is excluded from the weighted score rather than
+            # invalidating it, which would reward a model for failing outright
+            if np.all(np.isnan(responses)):
                 warn(
-                    f"All energies NaN for {model_name}/{dataset}, skipping.",
+                    f"All energies NaN for {model_name}/{dataset}.",
                     stacklevel=2,
                 )
-                continue
 
-            results[model_name][dataset] = np.abs(field[valid] - no_field[valid])
-
-            # Write structures to app data (once, alongside computing results)
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / dataset, structs)
-
-            # Write one xyz file per field structure for the structure viewer
-            dataset_stem = Path(dataset).stem
-            valid_field_structs = [
-                s for s, v in zip(field_structs, valid, strict=True) if v
-            ]
-            for i, s in enumerate(valid_field_structs):
-                out_file = structs_dir / f"{dataset_stem}_{i:04d}.xyz"
-                if not out_file.exists():
-                    write(out_file, [s])
-
-            # Reference values from ORCA — computed once, aligned to same valid mask
-            if not ref_stored:
-                ref_no_field = np.array(
-                    [s.info["REF_energy"] for s in no_field_structs]
-                )
-                ref_field = np.array([s.info["REF_energy"] for s in field_structs])
-                results["ref"][dataset] = np.abs(ref_field[valid] - ref_no_field[valid])
-
-        if results[model_name]:
-            ref_stored = True
+            results[model_name][dataset] = np.array(responses)
+            write_app_structs(model_name, dataset, ref_pairs, pairs)
 
     return results
+
+
+def write_app_structs(
+    model_name: str,
+    dataset: str,
+    ref_pairs: dict[str, tuple[Atoms, Atoms]],
+    pairs: dict[str, tuple[Atoms, Atoms]],
+) -> None:
+    """
+    Write structures to app data, one file per field structure for the viewer.
+
+    Files follow the reference formula order, falling back to the reference structure
+    for anything the model is missing, because the app maps a clicked parity point to
+    a structure file by index. Existing files are overwritten so that the numbering
+    never outlives the order it was written for.
+
+    Parameters
+    ----------
+    model_name
+        Name of the model the structures were calculated with.
+    dataset
+        Dataset filename (e.g. ``"ALKANES.xyz"``).
+    ref_pairs
+        Zero-field and field structure for each formula, fixing the order.
+    pairs
+        Zero-field and field structure for each formula, for this model.
+    """
+    structs_dir = OUT_PATH / model_name
+    structs_dir.mkdir(parents=True, exist_ok=True)
+
+    ordered = [pairs.get(formula, ref_pairs[formula]) for formula in ref_pairs]
+    write(structs_dir / dataset, [struct for pair in ordered for struct in pair])
+
+    dataset_stem = Path(dataset).stem
+    for i, (_, field) in enumerate(ordered):
+        write(structs_dir / f"{dataset_stem}_{i:04d}.xyz", [field])
 
 
 @pytest.fixture
@@ -160,10 +285,22 @@ def energy_responses(energy_response: dict[str, dict]) -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted energy responses.
     """
+    ref = energy_response["ref"]
+    datasets = [dataset for dataset in get_datasets() if dataset in ref]
+
     flattened = {}
     for key, res in energy_response.items():
-        arrays = list(res.values())
-        flattened[key] = np.concatenate(arrays).tolist() if arrays else None
+        if not res:
+            flattened[key] = None
+            continue
+
+        # Pad any dataset this model is missing, so that every model stays the same
+        # length as the reference, and so aligns with the hover labels
+        arrays = [
+            res[dataset] if dataset in res else np.full(len(ref[dataset]), np.nan)
+            for dataset in datasets
+        ]
+        flattened[key] = np.concatenate(arrays).tolist()
     return flattened
 
 
@@ -354,4 +491,9 @@ def test_energy_response(
     cumulene_energy_responses
         Cumulene energy responses for parity plot.
     """
-    return
+    # Element info for the app's periodic table filter. Without it the benchmark is
+    # left out of filtering entirely, rather than being filtered on C and H
+    write_struct_info(
+        data_path=[CALC_PATH / "mock" / dataset for dataset in get_datasets()],
+        out_path=OUT_PATH,
+    )
