@@ -1,0 +1,54 @@
+implementers:
+  - name: "Théo Jaffrelot Inizan"
+    github: "tjaffrel"
+
+contributors: []
+
+citations:
+  - key: "inizan-2026-umof"
+    role: benchmark_method
+    title: "uMOF: A Universal Database, Benchmark, and Machine Learning Interatomic Potentials for Metal-Organic Frameworks"
+    authors:
+      - "Théo Jaffrelot Inizan"
+      - "Prathami Divakar Kamath"
+      - "Alin Marin Elena"
+      - "Kristin A. Persson"
+    year: 2026
+    doi: null
+    url: "https://arxiv.org/abs/2608.28100"
+
+  - key: "oliveira-2026-flames"
+    role: benchmark_method
+    title: "FLAMES - A flexible and extensible code for Monte Carlo simulations of nanoporous materials"
+    authors:
+      - "Felipe L. Oliveira"
+      - "Holger-Dietrich Saßnick"
+      - "Guillaume Maurin"
+    year: 2026
+    doi: "10.26434/chemrxiv.15004623/v1"
+    url: "https://github.com/lipelopesoliveira/flames"
+
+  - key: "queen-2014-m2dobdc"
+    role: reference_data
+    title: "Comprehensive study of carbon dioxide adsorption in the metal-organic frameworks M2(dobdc) (M = Mg, Mn, Fe, Co, Ni, Cu, Zn)"
+    authors:
+      - "Wendy L. Queen"
+      - "Matthew R. Hudson"
+      - "Eric D. Bloch"
+      - "Jarad A. Mason"
+      - "Miguel I. Gonzalez"
+      - "Jason S. Lee"
+      - "David Gygi"
+      - "Joshua D. Howe"
+      - "Kyuho Lee"
+      - "Tamim A. Darwish"
+      - "Michael James"
+      - "Vanessa K. Peterson"
+      - "Simon J. Teat"
+      - "Berend Smit"
+      - "Jeffrey B. Neaton"
+      - "Jeffrey R. Long"
+      - "Craig M. Brown"
+    year: 2014
+    doi: "10.1039/c4sc02064b"
+    url: null
