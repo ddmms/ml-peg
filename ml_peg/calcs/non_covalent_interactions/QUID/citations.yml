@@ -8,16 +8,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: puleva2025quid
+  - bibtex_key: puleva2025quid
     role: reference_data
-    title: Extending quantum-mechanical benchmark accuracy to biological ligand-pocket interactions
-    authors:
-      - Mirela Puleva
-      - Leonardo Medrano Sandonas
-      - Balázs D. Lörincz
-      - Jorge Charry
-      - David M. Rogers
-      - Péter R. Nagy
-      - Alexandre Tkatchenko
-    year: 2025
-    doi: "10.1038/s41467-025-63587-9"

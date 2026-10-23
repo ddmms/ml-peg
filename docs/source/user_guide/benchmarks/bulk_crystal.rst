@@ -823,9 +823,9 @@ where :math:`\kappa_i^{\mathrm{pred}}(q)_s` and
 conductivity contributions from phonon mode :math:`s` at wavevector :math:`q` for
 material :math:`i`. The mean SRME is calculated across all materials in the dataset.
 
-Both metrics are based on Póta, B., Ahlawat, P., Csányi, G., & Simoncelli, M. (2024).
-Thermal conductivity predictions with foundation atomistic models. arXiv preprint
-arXiv:2408.00755.
+Both metrics are based on Póta, B., Ahlawat, P., Csányi, G., & Simoncelli, M. (2026).
+Thermal conductivity predictions with foundation atomistic models. Nature
+Communications 17, 10566. https://doi.org/10.1038/s41467-026-76391-w
 
 Computational cost
 ------------------
@@ -979,7 +979,7 @@ Data availability
 
 Input structures:
 
-* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2024 16 015018
+* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2014 16 015018
 
 Reference data:
 

@@ -6,44 +6,11 @@ implementers:
     email: "jh2536@cam.ac.uk"
 
 citations:
-  - key: "pota-2024-thermal-conductivity"
+  - bibtex_key: pota-2024-thermal-conductivity
     role: benchmark_method
-    title: "Thermal Conductivity Predictions with Foundation Atomistic Models"
-    authors:
-      - "Balázs Póta"
-      - "Paramvir Ahlawat"
-      - "Gábor Csányi"
-      - "Michele Simoncelli"
-    year: 2024
-    doi: "10.48550/arXiv.2408.00755"
-    url: "https://arxiv.org/abs/2408.00755"
-  - key: "togo-phonondb-103-compounds-pbe"
+  - bibtex_key: togo-phonondb-103-compounds-pbe
     role: reference_data
-    title: "Lattice thermal conductivity calculation datasets for 103 binary compounds by finite displacement method (PBE)"
-    authors:
-      - "Atsushi Togo"
-    doi: "10.48505/nims.5823"
-    url: "https://doi.org/10.48505/nims.5823"
-  - key: "togo-2015-phonon-lifetimes"
+  - bibtex_key: togo-2015-phonon-lifetimes
     role: reference_method
-    title: "Distributions of phonon lifetimes in Brillouin zones"
-    authors:
-      - "Atsushi Togo"
-      - "Laurent Chaput"
-      - "Isao Tanaka"
-    year: 2015
-    doi: "10.1103/PhysRevB.91.094306"
-    url: "https://doi.org/10.1103/PhysRevB.91.094306"
-  - key: "seko-2015-low-thermal-conductivity"
+  - bibtex_key: seko-2015-low-thermal-conductivity
     role: reference_data
-    title: "Prediction of Low-Thermal-Conductivity Compounds with First-Principles Anharmonic Lattice-Dynamics Calculations and Bayesian Optimization"
-    authors:
-      - "Atsuto Seko"
-      - "Atsushi Togo"
-      - "Hiroyuki Hayashi"
-      - "Koji Tsuda"
-      - "Laurent Chaput"
-      - "Isao Tanaka"
-    year: 2015
-    doi: "10.1103/PhysRevLett.115.205901"
-    url: "https://doi.org/10.1103/PhysRevLett.115.205901"

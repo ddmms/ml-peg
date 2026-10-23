@@ -12,4 +12,6 @@ contributors:
   - name: "Joao Morado"
     github: "jmorado"
 
-citations: []
+citations:
+  - bibtex_key: berman2000pdb
+    role: reference_data

@@ -262,7 +262,7 @@ Input data:
 
 * Structures were taken from:
 
-  * D. W. Lim, X. R. Advincula, W. C. Witt, F. L. Thiemann, C. Schran, “Revealing Strain Effects on the Graphene-Water Contact Angle Using a Machine Learning Potential,” *awaiting publication* (arXiv:2601.20134)
+  * D. W. Lim, X. R. Advincula, W. C. Witt, F. L. Thiemann, C. Schran, “Strain-Dependent Wetting of Graphene,” Chemical Science (2026). https://doi.org/10.1039/d6sc05377g
 
 Reference data:
 
@@ -320,7 +320,7 @@ Publication:
 
 * A. Mehdizadeh and P. Schindler, "Surface stability modeling with universal
   machine learning interatomic potentials: a comprehensive cleavage energy
-  benchmarking study," Mach. Learn.: Sci. Technol., 2025.
+  benchmarking study," AI for Science 1, 025002 (2025).
   https://iopscience.iop.org/article/10.1088/3050-287X/ae1408
 
 

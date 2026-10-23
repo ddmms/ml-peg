@@ -4,4 +4,6 @@ implementers:
 
 contributors: []
 
-citations: []
+citations:
+  - bibtex_key: bigi2025dark
+    role: benchmark_method

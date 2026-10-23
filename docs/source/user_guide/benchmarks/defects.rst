@@ -214,7 +214,7 @@ Input structures:
 
 * Subset ``cawo4`` of the ``Relastab`` dataset (:math:`\mathrm{CaWO_4}` interstitial configurations, PBE functional).
 
-  * G. Soum-Sidikov, A. Boisard, D. L010, M. Loidl, O. Stézowski, A. Music, G. Music, Y. Zeng, R. Cong, T. Yang, A. Echeverria, L. Music, D. Music, V. Music,
+  * G. Soum-Sidikov, J. P. Crocombette, M. C. Marinica, C. Doutre, D. Lhuillier, L. Thulliez,
     Calculation of crystal defects induced in :math:`\mathrm{CaWO_4}` cryogenic detector by 100 eV displacement cascades using a data driven force field,
     Phys. Rev. D 111, 085021 (2025).
 

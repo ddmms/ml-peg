@@ -45,7 +45,7 @@ from ml_peg.app.utils.utils import (
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.utils.citations import BenchmarkCredits, add_framework_citations
+from ml_peg.utils.citations import BenchmarkCredits
 
 # Width (px) of the docs-link column of the summary table (see build_app.py).
 # kept so the weights row can be translated to align with cols
@@ -1789,7 +1789,9 @@ def build_test_layout(
             H3(description),
             *([build_disclaimer(disclaimer)] if disclaimer else []),
             build_benchmark_credit_components(
-                add_framework_citations(credits, framework_ids)
+                credits,
+                framework_ids=framework_ids,
+                name=name,
             ),
         ]
     )
