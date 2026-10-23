@@ -122,6 +122,26 @@ def test_duplicate_formula_warns(tmp_path: Path) -> None:
     with pytest.warns(UserWarning, match="Duplicate C2H6"):
         pairs = pair_by_formula(dataset)
 
+    # Pairing an arbitrary one of the two field structures could mispair isomers
+    assert list(pairs) == []
+
+
+def test_duplicate_formula_does_not_drop_others(tmp_path: Path) -> None:
+    """Test only the duplicated formula is dropped, not the rest of the dataset."""
+    dataset = write_dataset(
+        tmp_path / "ONE_DUPLICATE.xyz",
+        [
+            build_struct("C2H6", [0.0, 0.0, 0.0]),
+            build_struct("C2H6", FIELD),
+            build_struct("C4H10", [0.0, 0.0, 0.0]),
+            build_struct("C4H10", FIELD),
+            build_struct("C4H10", FIELD),
+        ],
+    )
+
+    with pytest.warns(UserWarning, match="Duplicate C4H10"):
+        pairs = pair_by_formula(dataset)
+
     assert list(pairs) == ["C2H6"]
 
 
