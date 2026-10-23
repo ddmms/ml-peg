@@ -26,14 +26,19 @@ class MOFAdsorptionEnthalpyApp(BaseApp):
             DATA_PATH / "figure_enthalpy_rigid.json",
             id=f"{BENCHMARK_NAME}-rigid-figure",
         )
-        nvt = read_plot(
-            DATA_PATH / "figure_enthalpy_nvt.json",
-            id=f"{BENCHMARK_NAME}-nvt-figure",
+        npt = read_plot(
+            DATA_PATH / "figure_enthalpy_npt.json",
+            id=f"{BENCHMARK_NAME}-npt-figure",
         )
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"Rigid MAE": rigid, "NVT MAE": nvt},
+            column_to_plot={
+                "Rigid MAE": rigid,
+                "Rigid RMSE": rigid,
+                "NPT MAE": npt,
+                "NPT RMSE": npt,
+            },
         )
 
 

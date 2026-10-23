@@ -14,7 +14,7 @@ from ase.build import molecule
 from ase.data import vdw_radii
 from ase.io import read, write
 from janus_core.calculations.geom_opt import GeomOpt
-from janus_core.calculations.md import NVT
+from janus_core.calculations.md import NPT_MTK
 import numpy as np
 import pytest
 import torch
@@ -45,7 +45,8 @@ N_INSERTIONS = 20_000
 CUTOFF = 6.0
 SEED = 42
 
-# NVT sampling of the empty framework for the flexible framework estimate
+# NPT sampling of the empty framework for the flexible framework estimate
+PRESSURE = 1e-4  # GPa
 TIMESTEP = 1.0
 EQUIL_STEPS = 5_000
 N_SNAPSHOTS = 5
@@ -151,7 +152,7 @@ def run_framework(
     name: str, struct: Atoms, calc: Any, temperature: float, out_dir: Path
 ) -> None:
     """
-    Relax a framework, then run Widom insertion on rigid and NVT structures.
+    Relax a framework, then run Widom insertion on rigid and NPT structures.
 
     Parameters
     ----------
@@ -192,21 +193,22 @@ def run_framework(
     md_struct = relaxed.copy()
     set_neutral(md_struct)
     md_struct.calc = copy(calc)
-    NVT(
+    NPT_MTK(
         struct=md_struct,
         temp=temperature,
+        pressure=PRESSURE,
         steps=EQUIL_STEPS + N_SNAPSHOTS * SNAPSHOT_EVERY,
         timestep=TIMESTEP,
         traj_every=SNAPSHOT_EVERY,
         traj_start=EQUIL_STEPS + SNAPSHOT_EVERY,
-        file_prefix=out_dir / "nvt",
+        file_prefix=out_dir / "npt",
         restart_every=EQUIL_STEPS + N_SNAPSHOTS * SNAPSHOT_EVERY + 1,
         seed=SEED,
     ).run()
-    snapshots = read(out_dir / "nvt-traj.extxyz", index=":")
+    snapshots = read(out_dir / "npt-traj.extxyz", index=":")[:N_SNAPSHOTS]
 
     md_energies = []
-    for i, snapshot in enumerate(snapshots[:N_SNAPSHOTS]):
+    for i, snapshot in enumerate(snapshots):
         set_neutral(snapshot)
         md_energies.append(
             run_widom(
@@ -215,11 +217,11 @@ def run_framework(
                 calc,
                 temperature,
                 N_INSERTIONS_SNAPSHOT,
-                out_dir / f"flames_nvt_{i}",
+                out_dir / f"flames_npt_{i}",
             )
         )
-    np.save(out_dir / "widom_nvt.npy", np.concatenate(md_energies))
-    info["n_snapshots"] = len(md_energies)
+    np.save(out_dir / "widom_npt.npy", np.concatenate(md_energies))
+    info["npt_volumes"] = [snapshot.get_volume() for snapshot in snapshots]
 
     with open(out_dir / "info.json", "w", encoding="utf8") as file:
         json.dump(info, file, indent=2)

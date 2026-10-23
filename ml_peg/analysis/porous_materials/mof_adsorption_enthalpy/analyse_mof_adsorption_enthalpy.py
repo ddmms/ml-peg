@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import json
 from pathlib import Path
 
@@ -10,7 +11,12 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import (
+    get_struct_info,
+    load_metrics_config,
+    mae,
+    rmse,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.porous_materials.mof_adsorption_enthalpy.widom_utils import (
@@ -44,7 +50,7 @@ def get_estimates(model_name: str, name: str, kind: str) -> dict[str, float] | N
     name
         Name of framework.
     kind
-        Either "rigid" or "nvt".
+        Either "rigid" or "npt".
 
     Returns
     -------
@@ -58,7 +64,8 @@ def get_estimates(model_name: str, name: str, kind: str) -> dict[str, float] | N
         return None
     with open(out_dir / "info.json", encoding="utf8") as file:
         info = json.load(file)
-    density = info["mass"] / units.kg / (info["volume"] * 1e-30)
+    volume = info["volume"] if kind == "rigid" else np.mean(info["npt_volumes"])
+    density = info["mass"] / units.kg / (volume * 1e-30)
     return widom_estimates(np.load(energies_file), TEMPERATURE, density)
 
 
@@ -69,7 +76,7 @@ def get_enthalpies(kind: str) -> dict[str, list]:
     Parameters
     ----------
     kind
-        Either "rigid" or "nvt".
+        Either "rigid" or "npt".
 
     Returns
     -------
@@ -87,6 +94,29 @@ def get_enthalpies(kind: str) -> dict[str, list]:
                 np.nan if estimates is None else estimates["enthalpy"]
             )
     return results
+
+
+def get_errors(error_func: Callable, enthalpies: dict[str, list]) -> dict:
+    """
+    Get error of enthalpies for each model.
+
+    Parameters
+    ----------
+    error_func
+        Error function, such as ``mae`` or ``rmse``.
+    enthalpies
+        Reference and predicted enthalpies.
+
+    Returns
+    -------
+    dict
+        Error for each model, or None if any scored framework is missing.
+    """
+    errors = {}
+    for model_name in MODELS:
+        error = error_func(enthalpies["ref"], enthalpies[model_name])
+        errors[model_name] = None if np.isnan(error) else error
+    return errors
 
 
 @pytest.fixture
@@ -112,15 +142,15 @@ def enthalpies_rigid() -> dict[str, list]:
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "figure_enthalpy_nvt.json",
-    title="Enthalpy of adsorption (NVT snapshots)",
+    filename=OUT_PATH / "figure_enthalpy_npt.json",
+    title="Enthalpy of adsorption (NPT snapshots)",
     x_label="Predicted enthalpy / kJ/mol",
     y_label="Experimental enthalpy / kJ/mol",
     hoverdata={"Framework": FRAMEWORKS},
 )
-def enthalpies_nvt() -> dict[str, list]:
+def enthalpies_npt() -> dict[str, list]:
     """
-    Get enthalpies of adsorption averaged over NVT snapshots.
+    Get enthalpies of adsorption averaged over NPT snapshots.
 
     Returns
     -------
@@ -128,7 +158,7 @@ def enthalpies_nvt() -> dict[str, list]:
         Reference and predicted enthalpies in kJ/mol.
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
-    return get_enthalpies("nvt")
+    return get_enthalpies("npt")
 
 
 @pytest.fixture
@@ -148,7 +178,7 @@ def unphysical_insertions() -> dict[str, float | None]:
         fractions = [
             estimates["unphysical_fraction"]
             for name in REFERENCE["frameworks"]
-            for kind in ("rigid", "nvt")
+            for kind in ("rigid", "npt")
             if (estimates := get_estimates(model_name, name, kind)) is not None
         ]
         results[model_name] = 100 * float(np.mean(fractions)) if fractions else None
@@ -164,7 +194,7 @@ def unphysical_insertions() -> dict[str, float | None]:
 )
 def metrics(
     enthalpies_rigid: dict[str, list],
-    enthalpies_nvt: dict[str, list],
+    enthalpies_npt: dict[str, list],
     unphysical_insertions: dict[str, float | None],
 ) -> dict[str, dict]:
     """
@@ -174,8 +204,8 @@ def metrics(
     ----------
     enthalpies_rigid
         Enthalpies for the relaxed framework.
-    enthalpies_nvt
-        Enthalpies averaged over NVT snapshots.
+    enthalpies_npt
+        Enthalpies averaged over NPT snapshots.
     unphysical_insertions
         Percentage of unphysical insertions.
 
@@ -185,13 +215,10 @@ def metrics(
         Metric names and values for all models.
     """
     return {
-        "Rigid MAE": {
-            model: mae(enthalpies_rigid["ref"], enthalpies_rigid[model])
-            for model in MODELS
-        },
-        "NVT MAE": {
-            model: mae(enthalpies_nvt["ref"], enthalpies_nvt[model]) for model in MODELS
-        },
+        "Rigid MAE": get_errors(mae, enthalpies_rigid),
+        "Rigid RMSE": get_errors(rmse, enthalpies_rigid),
+        "NPT MAE": get_errors(mae, enthalpies_npt),
+        "NPT RMSE": get_errors(rmse, enthalpies_npt),
         "Unphysical insertions": unphysical_insertions,
     }
 

@@ -66,9 +66,9 @@ metric.
 Each framework is relaxed (positions and cell) with janus-core, and CO2 is relaxed
 in vacuum. Widom insertion is then run with FLAMES [2] at 298 K, with 20,000
 random insertions of the rigid CO2 molecule into the relaxed framework. To include
-framework flexibility, a 10 ps NVT (Langevin) simulation of the empty framework is
-run, and Widom insertion is repeated on five snapshots taken every 1 ps after 5 ps
-of equilibration, with 4,000 insertions each.
+framework flexibility, a 10 ps NPT simulation (isotropic MTK barostat, 1 bar) of the
+empty framework is run, and Widom insertion is repeated on five snapshots taken every
+1 ps after 5 ps of equilibration, with 4,000 insertions each.
 
 The interaction energy of every insertion is saved, and the Henry coefficient and
 enthalpy of adsorption are calculated in the analysis:
@@ -86,14 +86,16 @@ overlaps with framework atoms.
 Metrics
 -------
 
-1. Rigid MAE
+1. Rigid MAE and RMSE
 
-Mean absolute error of the enthalpy of adsorption for the relaxed framework. If any
-framework with a reference value fails, the metric is not calculated.
+Mean absolute error and root mean square error of the enthalpy of adsorption for the
+relaxed framework. If any framework with a reference value fails, the metrics are not
+calculated.
 
-2. NVT MAE
+2. NPT MAE and RMSE
 
-Mean absolute error of the enthalpy of adsorption averaged over the NVT snapshots.
+Mean absolute error and root mean square error of the enthalpy of adsorption averaged
+over the NPT snapshots.
 
 3. Unphysical insertions
 
@@ -126,7 +128,7 @@ for Metal-Organic Frameworks, arXiv:2608.28100 (2026)
 
 [2] Oliveira F L, Saßnick H-D, Maurin G
 FLAMES - A flexible and extensible code for Monte Carlo simulations of nanoporous
-materials (2026), https://github.com/lipelopesoliveira/flames
+materials, ChemRxiv (2026), https://doi.org/10.26434/chemrxiv.15004623/v1
 
 [3] Queen W L, et al.
 Comprehensive study of carbon dioxide adsorption in the metal-organic frameworks
