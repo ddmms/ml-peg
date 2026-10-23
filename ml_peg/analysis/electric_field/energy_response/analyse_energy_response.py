@@ -24,6 +24,9 @@ from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "electric_field" / "energy_response" / "outputs"
+# The mock calculation is the canonical source of structures: it is not a model
+# under test, so it cannot be dropped or truncated by a failed model run
+MOCK_PATH = CALC_PATH / "mock"
 OUT_PATH = APP_ROOT / "data" / "electric_field" / "energy_response"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -54,6 +57,7 @@ def pair_by_formula(dataset_path: Path) -> dict[str, tuple[Atoms, Atoms]]:
     """
     no_field: dict[str, Atoms] = {}
     field: dict[str, Atoms] = {}
+    duplicated: set[str] = set()
 
     for struct in read(dataset_path, index=":"):
         if "external_field" not in struct.info:
@@ -69,10 +73,11 @@ def pair_by_formula(dataset_path: Path) -> dict[str, tuple[Atoms, Atoms]]:
 
         if formula in structs:
             warn(
-                f"Duplicate {formula} structure in {dataset_path.name}, keeping the "
-                "first.",
+                f"Duplicate {formula} structure in {dataset_path.name}, which cannot "
+                "be paired unambiguously, skipping.",
                 stacklevel=2,
             )
+            duplicated.add(formula)
             continue
 
         structs[formula] = struct
@@ -84,41 +89,47 @@ def pair_by_formula(dataset_path: Path) -> dict[str, tuple[Atoms, Atoms]]:
             stacklevel=2,
         )
 
+    # Drop duplicated formulas rather than pairing an arbitrary first structure:
+    # constitutional isomers share a formula, so the right partner is not knowable
+    paired = (set(no_field) & set(field)) - duplicated
+
     return {
         formula: (no_field[formula], field[formula])
-        for formula in sorted(
-            set(no_field) & set(field), key=lambda f: (len(no_field[f]), f)
-        )
+        for formula in sorted(paired, key=lambda f: (len(no_field[f]), f))
     }
 
 
 @cache
 def get_datasets() -> tuple[str, ...]:
     """
-    Get dataset filenames, taken from the first model with results.
+    Get dataset filenames from the mock calculation.
+
+    Taken from the mock outputs rather than from a model, so that an incomplete or
+    failed model run cannot drop a dataset from the benchmark for every model.
 
     Returns
     -------
     tuple[str, ...]
         Dataset filenames, in sorted order.
     """
-    for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            continue
-        datasets = tuple(sorted(path.name for path in model_dir.glob("*.xyz")))
-        if datasets:
-            return datasets
-    return ()
+    datasets = tuple(sorted(path.name for path in MOCK_PATH.glob("*.xyz")))
+    if not datasets:
+        warn(
+            f"No datasets found in {MOCK_PATH}. Please run mock calculation.",
+            stacklevel=2,
+        )
+    return datasets
 
 
 @cache
 def get_reference_pairs(dataset: str) -> dict[str, tuple[Atoms, Atoms]]:
     """
-    Get paired structures for one dataset, from the first model with results.
+    Get paired structures for one dataset from the mock calculation.
 
     These pairs fix the formula order used for every model, the reference values and
-    the hover labels, so all three stay aligned.
+    the hover labels, so all three stay aligned. Taking them from the mock outputs
+    rather than from a model keeps an incomplete model run from omitting a formula
+    for everyone; each model's own output is then compared against this set.
 
     Parameters
     ----------
@@ -130,11 +141,36 @@ def get_reference_pairs(dataset: str) -> dict[str, tuple[Atoms, Atoms]]:
     dict[str, tuple[Atoms, Atoms]]
         Zero-field and field structure for each formula.
     """
-    for model_name in MODELS:
-        dataset_path = CALC_PATH / model_name / dataset
-        if dataset_path.exists():
-            return pair_by_formula(dataset_path)
-    return {}
+    dataset_path = MOCK_PATH / dataset
+    if not dataset_path.exists():
+        warn(
+            f"{dataset_path} does not exist. Please run mock calculation.",
+            stacklevel=2,
+        )
+        return {}
+    return pair_by_formula(dataset_path)
+
+
+@cache
+def get_model_datasets(model_name: str) -> frozenset[str]:
+    """
+    Get the datasets one model has output for.
+
+    Parameters
+    ----------
+    model_name
+        Name of the model to look for output from.
+
+    Returns
+    -------
+    frozenset[str]
+        Dataset filenames this model has written output for.
+    """
+    return frozenset(
+        dataset
+        for dataset in get_datasets()
+        if (CALC_PATH / model_name / dataset).exists()
+    )
 
 
 def get_molecule_labels(dataset: str | None = None) -> list[str]:
@@ -186,11 +222,28 @@ def energy_response() -> dict[str, dict]:
         )
 
         for model_name in MODELS:
-            dataset_path = CALC_PATH / model_name / dataset
-            if not dataset_path.exists():
+            model_datasets = get_model_datasets(model_name)
+
+            # No output at all means the model has not been run, so leave it
+            # unreported rather than claiming a result for it
+            if not model_datasets:
                 continue
 
-            pairs = pair_by_formula(dataset_path)
+            # Some datasets but not all means the calculation stage did not finish:
+            # a calculation error is caught per molecule and written as NaN, so it
+            # still leaves a complete file. Record NaN rather than skipping, because
+            # a skipped column is dropped from the weighted score instead of
+            # invalidating it, which would score the model on half the benchmark
+            if dataset not in model_datasets:
+                warn(
+                    f"{dataset} missing from {model_name}, so its calculation is "
+                    "unfinished. Recording NaN.",
+                    stacklevel=2,
+                )
+                results[model_name][dataset] = np.full(len(ref_pairs), np.nan)
+                continue
+
+            pairs = pair_by_formula(CALC_PATH / model_name / dataset)
 
             # Keep the reference formula order, recording NaN for anything missing,
             # so every model aligns with the reference values and hover labels
@@ -439,6 +492,28 @@ def cumulene_mae(energy_response: dict[str, dict]) -> dict[str, float]:
 
 
 @pytest.fixture
+def incomplete_models() -> dict[str, frozenset[str]]:
+    """
+    Get models whose calculations covered some datasets but not all.
+
+    A model with no output at all has simply not been run, and is not reported here.
+
+    Returns
+    -------
+    dict[str, frozenset[str]]
+        Datasets missing for each model that ran only part of the benchmark.
+    """
+    datasets = frozenset(get_datasets())
+
+    incomplete = {}
+    for model_name in MODELS:
+        model_datasets = get_model_datasets(model_name)
+        if model_datasets and model_datasets != datasets:
+            incomplete[model_name] = datasets - model_datasets
+    return incomplete
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "energy_response_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -478,6 +553,7 @@ def test_energy_response(
     metrics: dict[str, dict],
     alkane_energy_responses: dict[str, list],
     cumulene_energy_responses: dict[str, list],
+    incomplete_models: dict[str, frozenset[str]],
 ) -> None:
     """
     Run energy response analysis.
@@ -490,10 +566,20 @@ def test_energy_response(
         Alkane energy responses for parity plot.
     cumulene_energy_responses
         Cumulene energy responses for parity plot.
+    incomplete_models
+        Datasets missing for each model that ran only part of the benchmark.
     """
     # Element info for the app's periodic table filter. Without it the benchmark is
     # left out of filtering entirely, rather than being filtered on C and H
     write_struct_info(
-        data_path=[CALC_PATH / "mock" / dataset for dataset in get_datasets()],
+        data_path=[MOCK_PATH / dataset for dataset in get_datasets()],
         out_path=OUT_PATH,
+    )
+
+    # A model is only scored once it has covered every dataset, since a partial run
+    # cannot be compared against one that completed. Asserted after the outputs are
+    # written, so the table still shows how far each model got
+    assert not incomplete_models, "Unfinished calculations: " + "; ".join(
+        f"{model} missing {', '.join(sorted(datasets))}"
+        for model, datasets in sorted(incomplete_models.items())
     )
