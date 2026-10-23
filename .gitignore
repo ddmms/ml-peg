@@ -26,6 +26,7 @@
 *.txt
 *.csv
 *.npz
+*.npy
 ~*
 *~
 .project

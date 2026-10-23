@@ -119,3 +119,14 @@ mace-mp:
   tooltip: "Benchmark from the MACE-MP foundation model paper (JCP 163, 184110), click to read"
   description: "Benchmarks from 'A foundation model for atomistic materials chemistry'."
   paper_url: "https://pubs.aip.org/aip/jcp/article/163/18/184110/3372267/A-foundation-model-for-atomistic-materials"
+
+umof:
+  label: uMOF
+  type: paper
+  color: "#9a3412"
+  text_color: "#fff7ed"
+  url: "https://arxiv.org/abs/2608.28100"
+  icon: "📄"
+  tooltip: "Benchmark from the uMOF paper (arXiv:2608.28100), click to read"
+  description: "Benchmarks from 'uMOF: A Universal Database, Benchmark, and Machine Learning Interatomic Potentials for Metal-Organic Frameworks'."
+  paper_url: "https://arxiv.org/abs/2608.28100"

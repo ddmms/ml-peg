@@ -1,0 +1,19 @@
+metrics:
+  Rigid MAE:
+    good: 4.0
+    bad: 15.0
+    unit: kJ/mol
+    tooltip: "Mean absolute error of the CO2 enthalpy of adsorption from Widom insertion in the relaxed framework, for frameworks with an experimental reference"
+    level_of_theory: Experimental
+  NVT MAE:
+    good: 4.0
+    bad: 15.0
+    unit: kJ/mol
+    tooltip: "Mean absolute error of the CO2 enthalpy of adsorption from Widom insertion averaged over NVT snapshots of the empty framework, for frameworks with an experimental reference"
+    level_of_theory: Experimental
+  Unphysical insertions:
+    good: 0.0
+    bad: 1.0
+    unit: "%"
+    tooltip: "Percentage of evaluated insertions with an interaction energy below -1.25 eV, excluded from the averages"
+    level_of_theory: null

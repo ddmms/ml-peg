@@ -119,6 +119,12 @@ aimnet = [
     "aimnet[ase]",
 ]
 
+# FLAMES (Widom insertion / GCMC with any ASE calculator) is not published on PyPI;
+# the PyPI package called "flames" is unrelated. uv-only until a PyPI release exists.
+flames = [
+    "flames",
+]
+
 dev = [
     "coverage[toml]<8.0.0,>=7.4.1",
     "ipykernel>=6.29.5",
@@ -303,3 +309,6 @@ module-root = ""
 aimnet = { git = "https://github.com/isayevlab/aimnetcentral.git", rev = "ffcd6366d822b565a0fd65d53048750c0abad6bc" }
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
 simpoly = { git = "https://github.com/microsoft/simpoly.git", rev = "da100ad32d971214cf9343d9d853e8ce61604dc0" }
+# Pinned to the v0.4.9 release tag. Required by the porous_materials
+# mof_adsorption_enthalpy benchmark (see the flames entry in [dependency-groups]).
+flames = { git = "https://github.com/lipelopesoliveira/flames.git", tag = "v0.4.9" }
