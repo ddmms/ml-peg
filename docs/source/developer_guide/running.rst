@@ -56,6 +56,14 @@ This is effectively equivalent to:
     pytest -vvv ml_peg/calcs/surfaces/S24/calc_S24.py --models mace-mp-0b3
 
 
+Import failures and environments
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Import failures include a reminder to run ``uv sync --extra <model-extra>``.
+For tests using D3, install both extras together:
+``uv sync --extra <model-extra> --extra d3``.
+
+
 Speed markers
 ~~~~~~~~~~~~~
 

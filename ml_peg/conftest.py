@@ -188,6 +188,39 @@ def pytest_configure(config: Config) -> None:
     config.pluginmanager.register(CitationReporter(config))
 
 
+def pytest_terminal_summary(terminalreporter: TerminalReporter) -> None:
+    """
+    Show environment diagnostics when collection or a test fails to import a package.
+
+    Parameters
+    ----------
+    terminalreporter
+        Pytest terminal reporter containing the completed test reports.
+    """
+    reports = terminalreporter.stats.get("failed", []) + terminalreporter.stats.get(
+        "error", []
+    )
+    # Inspect the reported exception, not source lines containing import statements.
+    import_failed = any(
+        getattr(getattr(report.longrepr, "reprcrash", None), "message", "").startswith(
+            ("ModuleNotFoundError:", "ImportError:")
+        )
+        # Pytest wraps module-import errors in a plain-text collection report.
+        or str(report.longrepr).startswith("ImportError while importing test module ")
+        for report in reports
+    )
+    if not import_failed:
+        return
+
+    terminalreporter.write_sep("=", "ML-PEG environment hint", yellow=True)
+    terminalreporter.write_line(
+        "Missing model dependencies? Run: uv sync --extra <model-extra>"
+    )
+    terminalreporter.write_line(
+        "For tests using D3, include both: uv sync --extra <model-extra> --extra d3"
+    )
+
+
 def pytest_collection_modifyitems(config: Config, items: list[Item]) -> None:
     """
     Deselect tests outside the requested framework(s).
