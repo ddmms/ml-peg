@@ -556,6 +556,8 @@ def test_import_failure_environment_hint(tmp_path, body, expected_hint):
     if expected_hint:
         assert result.returncode != 0
         assert result.stdout.count("ML-PEG environment hint") == 1
+        assert f"Python: {sys.executable}" in result.stdout
+        assert "Import failed. Install dependencies for your model:" in result.stdout
         assert "uv sync --extra <model-extra>" in result.stdout
         assert "uv sync --extra <model-extra> --extra d3" in result.stdout
         assert "ImportError" in result.stdout or "ModuleNotFoundError" in result.stdout

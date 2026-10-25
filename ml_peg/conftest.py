@@ -7,6 +7,7 @@ Based on https://docs.pytest.org/en/latest/example/simple.html.
 from __future__ import annotations
 
 from pathlib import Path
+import sys
 from typing import TYPE_CHECKING
 
 from pytest import Config, Item, Parser
@@ -213,8 +214,10 @@ def pytest_terminal_summary(terminalreporter: TerminalReporter) -> None:
         return
 
     terminalreporter.write_sep("=", "ML-PEG environment hint", yellow=True)
+    terminalreporter.write_line(f"Python: {sys.executable}")
     terminalreporter.write_line(
-        "Missing model dependencies? Run: uv sync --extra <model-extra>"
+        "Import failed. Install dependencies for your model: "
+        "uv sync --extra <model-extra>"
     )
     terminalreporter.write_line(
         "For tests using D3, include both: uv sync --extra <model-extra> --extra d3"

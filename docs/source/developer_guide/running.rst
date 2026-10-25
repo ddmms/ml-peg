@@ -59,7 +59,9 @@ This is effectively equivalent to:
 Import failures and environments
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Import failures include a reminder to run ``uv sync --extra <model-extra>``.
+Import failures show the Python executable in use and a reminder to run
+``uv sync --extra <model-extra>``. They can indicate missing dependencies or
+incompatible package versions.
 For tests using D3, install both extras together:
 ``uv sync --extra <model-extra> --extra d3``.
 
