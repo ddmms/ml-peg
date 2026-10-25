@@ -12,42 +12,56 @@ citations:
   # Benchmark and DFT reference data.
   - bibtex_key: batatia2025foundation
     role: reference_data
+    detail: PBE
   # Pd, Rh, Li, Na, Sr and Ba: Crystal Structures, volume 1, second edition.
   - bibtex_key: wyckoff1963structures
     role: reference_data
+    detail: Experiment
   # K: bcc lattice constant at zero pressure.
   - bibtex_key: liu1986potassium
     role: reference_data
+    detail: Experiment
   # Rb: recommended bcc lattice constant at 293.15 K, Table 37a (p. 298).
   - bibtex_key: arblaster2018crystallographic
     role: reference_data
+    detail: Experiment
   # Ca: fcc lattice constant at 299.15 K.
   - bibtex_key: bernstein1959calcium
     role: reference_data
+    detail: Experiment
   # Al: fcc lattice constant at 298.15 K, converted from kX to angstroms.
   - bibtex_key: straumanis1949lattice
     role: reference_data
+    detail: Experiment
   # Cu: fcc lattice constant.
   - bibtex_key: otte1961lattice
     role: reference_data
+    detail: Experiment
   # Cs: ambient bcc lattice constant.
   - bibtex_key: weir1971cesium
     role: reference_data
+    detail: Experiment
   # Ag: fcc lattice constant at 293 K.
   - bibtex_key: suh1988expansion
     role: reference_data
+    detail: Experiment
   # C (diamond), Si and Ge: experimental lattice constants.
   - bibtex_key: hom1975lattice
     role: reference_data
+    detail: Experiment
   # GaAs: experimental lattice constant at 300 K.
   - bibtex_key: ioffe-gaas-parameters
     role: reference_data
+    detail: Experiment
   # LiF, LiCl, NaF and NaCl: room-temperature lattice constants from Table 3.
   - bibtex_key: joung2008ions
     role: reference_data
+    detail: Experiment
   # MgO: experimental lattice constant at 300 K and zero pressure, Table I.
   - bibtex_key: oganov2003mgo
     role: reference_data
+    detail: Experiment
   # 2H-SiC: experimental a and c from Table 1.
   - bibtex_key: li2014sic
     role: reference_data
+    detail: Experiment

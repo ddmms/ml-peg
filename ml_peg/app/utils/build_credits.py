@@ -48,7 +48,7 @@ def _citation_reference(citation: Citation) -> Component:
     ]
     # Roles say what a source contributed. Benchmark papers are left untagged, as
     # they are the default kind of benchmark reference
-    if citation.role_label and citation.role != "benchmark_method":
+    if citation.role_label and (citation.role != "benchmark_method" or citation.detail):
         contents.append(html.Span(f" ({citation.role_label})", style=CREDIT_NOTE_STYLE))
     if citation.doi:
         # Shown in full so the DOI can be read and copied, not just followed

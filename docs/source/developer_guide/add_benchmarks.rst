@@ -109,6 +109,18 @@ references as empty lists until verified; an empty list does not claim that the
 benchmark was devised for ML-PEG. An empty ``contributors`` list simply means no
 additional contributors have been recorded.
 
+Add an optional ``detail`` string to describe how the benchmark uses a source:
+
+.. code-block:: yaml
+
+    - bibtex_key: Author2025Data
+      role: reference_data
+      detail: PBE
+
+This displays as ``(reference data, PBE)`` in the app and terminal guidance.
+Use short descriptions such as ``Experiment`` or ``DFT-D3``. The field works with
+any role, may be omitted or ``null``, and does not alter the exported BibTeX.
+
 ``role`` can be one of:
 
 - ``benchmark_method``: the paper defining the benchmark protocol.
