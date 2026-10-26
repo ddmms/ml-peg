@@ -150,6 +150,7 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``DLPNO-CCSD(T)/CBS``
 - ``DLPNO-CCSD(T)/cc-pVTZ``
 - ``PNO-LCCSD(T)-F12/AVQZ``
+- ``ωB97X/6-31G(d)``
 - ``DMC``
 - ``ph-AFQMC``
 - ``wb97md3 + 1b CCSD(T)``

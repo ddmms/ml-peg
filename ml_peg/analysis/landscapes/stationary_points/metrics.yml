@@ -1,0 +1,80 @@
+metrics:
+  Energy RMSE:
+    good: 0.02
+    bad: 0.2
+    unit: eV
+    tooltip: "RMSE between MLIP and DFT energies at the Landscape17 stationary points, relative to each molecule's global minimum."
+    level_of_theory: ωB97X/6-31G(d)
+  Force RMSE:
+    good: 0.05
+    bad: 0.5
+    unit: eV/Å
+    tooltip: "RMSE between MLIP and DFT forces at the Landscape17 stationary points, over all atoms and components."
+    level_of_theory: ωB97X/6-31G(d)
+  Minima drift (median):
+    good: 0.02
+    bad: 0.3
+    unit: Å
+    tooltip: "Median RMSD a reference minimum moves when relaxed under the MLIP. Below ~0.02 Å the difference is not chemically meaningful; by 0.3 Å it is a different conformer."
+    level_of_theory: ωB97X/6-31G(d)
+  Minima drift (90th pct):
+    good: 0.05
+    bad: 0.5
+    unit: Å
+    tooltip: "90th percentile of the same distribution, so a model that holds most minima but loses a few is distinguished from one that is uniformly imprecise."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddle drift (median):
+    good: 0.02
+    bad: 0.3
+    unit: Å
+    tooltip: "Median RMSD a reference transition state moves when reconverged under the MLIP by eigenvector following. The thresholds match those for minima: what counts as the same structure is a geometric question, and does not change because a saddle is harder to locate."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddle drift (90th pct):
+    good: 0.05
+    bad: 0.5
+    unit: Å
+    tooltip: "90th percentile of the saddle drift. The distribution is expected to be bimodal, separating saddles the model holds in place from those it migrates away from."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddles reconverged:
+    good: 0.95
+    bad: 0.5
+    unit: fraction
+    tooltip: "Fraction of reference transition states for which eigenvector following converges to a saddle at all. A coverage figure, reported beside the drift distribution rather than instead of it."
+    level_of_theory: ωB97X/6-31G(d)
+  Connectivity preserved:
+    good: 0.9
+    bad: 0.4
+    unit: fraction
+    tooltip: "Fraction of reconverged saddles whose steepest-descent paths reach the same two minima as in the DFT landscape. A saddle can sit in the right place and still rewire the network. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
+    level_of_theory: ωB97X/6-31G(d)
+  Normal mode overlap (median):
+    good: 0.99
+    bad: 0.8
+    unit: cosine
+    tooltip: "Median overlap between MLIP and DFT normal modes at the reference geometries, matched one to one. Translations and rotations are projected out first, since their near-zero curvature makes individual eigenvectors arbitrary."
+    level_of_theory: ωB97X/6-31G(d)
+  Reaction coordinate overlap (median):
+    good: 0.99
+    bad: 0.8
+    unit: cosine
+    tooltip: "Median overlap between the MLIP and DFT imaginary modes at the reference transition states: whether the model agrees about the direction of the reaction."
+    level_of_theory: ωB97X/6-31G(d)
+  Curvature scaling error:
+    good: 0.02
+    bad: 0.2
+    unit: fraction
+    tooltip: "Deviation from 1 of the slope of MLIP against DFT eigenvalues. Separates a uniform stiffness error, which is correctable and leaves every mode direction intact, from disagreement about the shape of the surface."
+    level_of_theory: ωB97X/6-31G(d)
+  # TODO: not yet implemented. Mean first passage time between a chosen pair of
+  # minima, derived from the reconverged network and compared with the same
+  # quantity from the DFT landscape. This is the first metric here that tests
+  # the kinetics the landscape implies rather than its geometry, so a model can
+  # reproduce every structure and still fail it. Thresholds to be set once the
+  # spread across models is known: an order of magnitude is the obvious scale,
+  # but that should be justified rather than assumed.
+  # MFPT error (log10):
+  #   good:
+  #   bad:
+  #   unit: log10 ratio
+  #   tooltip: ""
+  #   level_of_theory: ωB97X/6-31G(d)

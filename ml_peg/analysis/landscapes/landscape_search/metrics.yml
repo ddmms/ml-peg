@@ -1,0 +1,63 @@
+metrics:
+  Minima recovered:
+    good: 0.95
+    bad: 0.5
+    unit: fraction
+    tooltip: "Fraction of the DFT minima found by a landscape built from scratch under the MLIP. Reported with the search settings used, which control it strongly."
+    level_of_theory: ωB97X/6-31G(d)
+  Minima RMSD (median):
+    good: 0.02
+    bad: 0.3
+    unit: Å
+    tooltip: "Median RMSD between each DFT minimum and the model minimum matched to it, one to one. Accuracy given recovery, reported separately from coverage."
+    level_of_theory: ωB97X/6-31G(d)
+  Minima RMSD (90th pct):
+    good: 0.05
+    bad: 0.5
+    unit: Å
+    tooltip: "90th percentile of the same distribution, distinguishing a model that places most minima well but loses a few from one that is uniformly imprecise."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddles recovered:
+    good: 0.9
+    bad: 0.3
+    unit: fraction
+    tooltip: "Fraction of the DFT transition states found from scratch. Strongly dependent on how many pairs of minima the search attempts to connect, which is recorded with the result."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddle RMSD (median):
+    good: 0.02
+    bad: 0.3
+    unit: Å
+    tooltip: "Median RMSD between each DFT transition state and the model saddle matched to it."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddle RMSD (90th pct):
+    good: 0.05
+    bad: 0.5
+    unit: Å
+    tooltip: "90th percentile of the saddle RMSD distribution."
+    level_of_theory: ωB97X/6-31G(d)
+  Connectivity preserved:
+    good: 0.9
+    bad: 0.4
+    unit: fraction
+    tooltip: "Fraction of matched transition states joining the two minima that their DFT counterparts join. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
+    level_of_theory: ωB97X/6-31G(d)
+  Off-reference minima:
+    good: 0.0
+    bad: 0.2
+    unit: fraction
+    tooltip: "Fraction of the model's minima whose bonding differs from the reference molecule. Not necessarily errors of structure: a model may find a genuine isomer and merely place it at the wrong energy."
+    level_of_theory: ωB97X/6-31G(d)
+  # TODO: not yet implemented. Mean first passage time between a chosen pair of
+  # minima, derived from the landscape the model built and compared with the
+  # same quantity from the DFT landscape. The kinetics are what a landscape is
+  # ultimately for, and they depend on the whole network rather than on any one
+  # structure, so a model can match every geometry here and still get this
+  # wrong -- through a missing pathway, or a barrier that is individually
+  # plausible and collectively decisive. Thresholds to be set once the spread
+  # across models is known.
+  # MFPT error (log10):
+  #   good:
+  #   bad:
+  #   unit: log10 ratio
+  #   tooltip: ""
+  #   level_of_theory: ωB97X/6-31G(d)
