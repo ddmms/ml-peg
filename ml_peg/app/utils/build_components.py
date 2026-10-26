@@ -570,6 +570,7 @@ def build_weight_input(
             value=default_value,
             step=0.01,
             debounce=True,
+            className="mlpeg-weight-input",
             style=weight_input_style(),
         )
     )
