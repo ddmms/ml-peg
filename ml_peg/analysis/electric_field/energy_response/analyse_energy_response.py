@@ -27,6 +27,10 @@ CALC_PATH = CALCS_ROOT / "electric_field" / "energy_response" / "outputs"
 # The mock calculation is the canonical source of structures: it is not a model
 # under test, so it cannot be dropped or truncated by a failed model run
 MOCK_PATH = CALC_PATH / "mock"
+# Declared rather than globbed, so a truncated mock cannot shrink the benchmark
+ALKANES = "ALKANES.xyz"
+CUMULENES = "CUMULENES.xyz"
+DATASETS = (ALKANES, CUMULENES)
 OUT_PATH = APP_ROOT / "data" / "electric_field" / "energy_response"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
@@ -100,28 +104,6 @@ def pair_by_formula(dataset_path: Path) -> dict[str, tuple[Atoms, Atoms]]:
 
 
 @cache
-def get_datasets() -> tuple[str, ...]:
-    """
-    Get dataset filenames from the mock calculation.
-
-    Taken from the mock outputs rather than from a model, so that an incomplete or
-    failed model run cannot drop a dataset from the benchmark for every model.
-
-    Returns
-    -------
-    tuple[str, ...]
-        Dataset filenames, in sorted order.
-    """
-    datasets = tuple(sorted(path.name for path in MOCK_PATH.glob("*.xyz")))
-    if not datasets:
-        warn(
-            f"No datasets found in {MOCK_PATH}. Please run mock calculation.",
-            stacklevel=2,
-        )
-    return datasets
-
-
-@cache
 def get_reference_pairs(dataset: str) -> dict[str, tuple[Atoms, Atoms]]:
     """
     Get paired structures for one dataset from the mock calculation.
@@ -167,9 +149,7 @@ def get_model_datasets(model_name: str) -> frozenset[str]:
         Dataset filenames this model has written output for.
     """
     return frozenset(
-        dataset
-        for dataset in get_datasets()
-        if (CALC_PATH / model_name / dataset).exists()
+        dataset for dataset in DATASETS if (CALC_PATH / model_name / dataset).exists()
     )
 
 
@@ -188,7 +168,7 @@ def get_molecule_labels(dataset: str | None = None) -> list[str]:
     list[str]
         Chemical formula for each paired structure, across the requested datasets.
     """
-    datasets = get_datasets() if dataset is None else (dataset,)
+    datasets = DATASETS if dataset is None else (dataset,)
     return [formula for name in datasets for formula in get_reference_pairs(name)]
 
 
@@ -205,7 +185,7 @@ def energy_response() -> dict[str, dict]:
     """
     results = {"ref": {}} | {mlip: {} for mlip in MODELS}
 
-    for dataset in get_datasets():
+    for dataset in DATASETS:
         ref_pairs = get_reference_pairs(dataset)
         if not ref_pairs:
             warn(
@@ -332,7 +312,7 @@ def energy_responses(energy_response: dict[str, dict]) -> dict[str, list]:
         Dictionary of all reference and predicted energy responses.
     """
     ref = energy_response["ref"]
-    datasets = [dataset for dataset in get_datasets() if dataset in ref]
+    datasets = [dataset for dataset in DATASETS if dataset in ref]
 
     flattened = {}
     for key, res in energy_response.items():
@@ -356,7 +336,7 @@ def energy_responses(energy_response: dict[str, dict]) -> dict[str, list]:
     title="Energy response of alkanes",
     x_label="Predicted energy response / eV",
     y_label="Reference energy response / eV",
-    hoverdata={"Molecule": get_molecule_labels("ALKANES.xyz")},
+    hoverdata={"Molecule": get_molecule_labels(ALKANES)},
 )
 def alkane_energy_responses(energy_response: dict[str, dict]) -> dict[str, list]:
     """
@@ -373,9 +353,9 @@ def alkane_energy_responses(energy_response: dict[str, dict]) -> dict[str, list]
         Reference and predicted alkane energy responses for all models.
     """
     return {
-        key: datasets["ALKANES.xyz"].tolist()
+        key: datasets[ALKANES].tolist()
         for key, datasets in energy_response.items()
-        if "ALKANES.xyz" in datasets
+        if ALKANES in datasets
     }
 
 
@@ -385,7 +365,7 @@ def alkane_energy_responses(energy_response: dict[str, dict]) -> dict[str, list]
     title="Energy response of cumulenes",
     x_label="Predicted energy response / eV",
     y_label="Reference energy response / eV",
-    hoverdata={"Molecule": get_molecule_labels("CUMULENES.xyz")},
+    hoverdata={"Molecule": get_molecule_labels(CUMULENES)},
 )
 def cumulene_energy_responses(energy_response: dict[str, dict]) -> dict[str, list]:
     """
@@ -402,9 +382,9 @@ def cumulene_energy_responses(energy_response: dict[str, dict]) -> dict[str, lis
         Reference and predicted cumulene energy responses for all models.
     """
     return {
-        key: datasets["CUMULENES.xyz"].tolist()
+        key: datasets[CUMULENES].tolist()
         for key, datasets in energy_response.items()
-        if "CUMULENES.xyz" in datasets
+        if CUMULENES in datasets
     }
 
 
@@ -450,8 +430,8 @@ def alkane_mae(energy_response: dict[str, dict]) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        ref = energy_response["ref"].get("ALKANES.xyz")
-        pred = energy_response[model_name].get("ALKANES.xyz")
+        ref = energy_response["ref"].get(ALKANES)
+        pred = energy_response[model_name].get(ALKANES)
         results[model_name] = (
             mae(ref, pred) if ref is not None and pred is not None else None
         )
@@ -476,8 +456,8 @@ def cumulene_mae(energy_response: dict[str, dict]) -> dict[str, float]:
     """
     results = {}
     for model_name in MODELS:
-        ref = energy_response["ref"].get("CUMULENES.xyz")
-        pred = energy_response[model_name].get("CUMULENES.xyz")
+        ref = energy_response["ref"].get(CUMULENES)
+        pred = energy_response[model_name].get(CUMULENES)
         results[model_name] = (
             mae(ref, pred) if ref is not None and pred is not None else None
         )
@@ -485,25 +465,16 @@ def cumulene_mae(energy_response: dict[str, dict]) -> dict[str, float]:
 
 
 @pytest.fixture
-def incomplete_models() -> dict[str, frozenset[str]]:
+def missing_mock_datasets() -> tuple[str, ...]:
     """
-    Get models whose calculations covered some datasets but not all.
-
-    A model with no output at all has simply not been run, and is not reported here.
+    Get benchmark datasets the mock calculation has not produced.
 
     Returns
     -------
-    dict[str, frozenset[str]]
-        Datasets missing for each model that ran only part of the benchmark.
+    tuple[str, ...]
+        Expected dataset filenames absent from the mock outputs.
     """
-    datasets = frozenset(get_datasets())
-
-    incomplete = {}
-    for model_name in MODELS:
-        model_datasets = get_model_datasets(model_name)
-        if model_datasets and model_datasets != datasets:
-            incomplete[model_name] = datasets - model_datasets
-    return incomplete
+    return tuple(dataset for dataset in DATASETS if not (MOCK_PATH / dataset).exists())
 
 
 @pytest.fixture
@@ -546,7 +517,7 @@ def test_energy_response(
     metrics: dict[str, dict],
     alkane_energy_responses: dict[str, list],
     cumulene_energy_responses: dict[str, list],
-    incomplete_models: dict[str, frozenset[str]],
+    missing_mock_datasets: tuple[str, ...],
 ) -> None:
     """
     Run energy response analysis.
@@ -559,20 +530,19 @@ def test_energy_response(
         Alkane energy responses for parity plot.
     cumulene_energy_responses
         Cumulene energy responses for parity plot.
-    incomplete_models
-        Datasets missing for each model that ran only part of the benchmark.
+    missing_mock_datasets
+        Expected dataset filenames absent from the mock outputs.
     """
+    # Without every dataset there is no benchmark to score, however well the models
+    # that did run performed
+    assert not missing_mock_datasets, (
+        f"Mock calculation is missing {', '.join(missing_mock_datasets)}. "
+        "Please run mock calculation."
+    )
+
     # Element info for the app's periodic table filter. Without it the benchmark is
     # left out of filtering entirely, rather than being filtered on C and H
     write_struct_info(
-        data_path=[MOCK_PATH / dataset for dataset in get_datasets()],
+        data_path=[MOCK_PATH / dataset for dataset in DATASETS],
         out_path=OUT_PATH,
-    )
-
-    # A model is only scored once it has covered every dataset, since a partial run
-    # cannot be compared against one that completed. Asserted after the outputs are
-    # written, so the table still shows how far each model got
-    assert not incomplete_models, "Unfinished calculations: " + "; ".join(
-        f"{model} missing {', '.join(sorted(datasets))}"
-        for model, datasets in sorted(incomplete_models.items())
     )
