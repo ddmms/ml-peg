@@ -58,11 +58,7 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
         if out_file.exists():
             continue
 
-        # Build the dataset in a temporary file and promote it only once every
-        # molecule is written. Writing straight to out_file would let an interrupted
-        # run leave a truncated dataset that the check above then treats as complete.
-        # The ".tmp" suffix keeps a leftover file out of the analysis' "*.xyz" globs,
-        # but means the format can no longer be inferred from the name
+        # Written via a temp file so out_file only ever exists when complete
         tmp_file = write_dir / f"{dataset}.tmp"
         tmp_file.unlink(missing_ok=True)
 
