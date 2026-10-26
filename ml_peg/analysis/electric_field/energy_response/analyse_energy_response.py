@@ -229,11 +229,7 @@ def energy_response() -> dict[str, dict]:
             if not model_datasets:
                 continue
 
-            # Some datasets but not all means the calculation stage did not finish:
-            # a calculation error is caught per molecule and written as NaN, so it
-            # still leaves a complete file. Record NaN rather than skipping, because
-            # a skipped column is dropped from the weighted score instead of
-            # invalidating it, which would score the model on half the benchmark
+            # Record NaN rather than skip: a skipped column is dropped from the score
             if dataset not in model_datasets:
                 warn(
                     f"{dataset} missing from {model_name}, so its calculation is "
@@ -262,10 +258,7 @@ def energy_response() -> dict[str, dict]:
                     abs(field.get_potential_energy() - no_field.get_potential_energy())
                 )
 
-            # Record the dataset even when every energy is NaN, so that the failure
-            # reaches the metrics as NaN. Dropping it instead leaves the column empty,
-            # and an empty column is excluded from the weighted score rather than
-            # invalidating it, which would reward a model for failing outright
+            # Record even when all-NaN, so the failure reaches the metrics
             if np.all(np.isnan(responses)):
                 warn(
                     f"All energies NaN for {model_name}/{dataset}.",
