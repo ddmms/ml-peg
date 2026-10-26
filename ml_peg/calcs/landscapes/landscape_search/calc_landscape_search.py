@@ -1,7 +1,7 @@
 """Build a Landscape17 landscape from scratch under an MLIP and compare it to DFT.
 
 The companion ``stationary_points`` benchmark hands the model the DFT answer
-and asks what it does with it. This one gives the model a single 
+and asks what it does with it. This one gives the model a single
 conformer and asks it to find the landscape itself: basin hopping for the
 minima, then double-ended searches between selected pairs for the transition
 states, then a comparison of the resulting network with the DFT one.

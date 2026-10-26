@@ -1,29 +1,25 @@
 implementers:
-  - name: A. Vlad Cărare
-    github: VladCarare
-  - name: B. Luke Dicks
-    github: LukeDicks
+  - name: "Vlad Cărare"
+    github: "VladCarare"
+  - name: "Luke Dicks"
+    github: "LukeDicks"
 
-contributors:          # other substantive contributions to the benchmark
-  - name: A. Edward O. Pyzer-Knapp
-    github: ed-xyme
+contributors:
+  - name: "Edward O. Pyzer-Knapp"
+    github: "ed-xyme"
+  - name: "Fabian L. Thiemann"
+    github: "flt17"
 
-benchmark:
-  - title: >-
-      Global properties of the energy landscape: a testing and training arena
-      for machine learned potentials
+citations:
+  - key: "carare-2025-landscape17"
+    role: reference_data
+    title: "Global properties of the energy landscape: a testing and training arena for machine learned potentials"
     authors:
-      - A. Vlad Cărare
-      - B. Fabian L. Thiemann
-      - C. Joe D. Morrow
-      - D. David J. Wales
-      - E. Edward O. Pyzer-Knapp
-      - F. Luke Dicks
-    journal: npj Computational Materials
+      - "Vlad Cărare"
+      - "Fabian L. Thiemann"
+      - "Joe D. Morrow"
+      - "David J. Wales"
+      - "Edward O. Pyzer-Knapp"
+      - "Luke Dicks"
     year: 2025
-    volume: 12
-    article: 9
-    doi: 10.1038/s41524-025-01878-x
-    note: >-
-      Introduces the energy landscape as a benchmark for machine-learned
-      potentials, and the Landscape17 reference landscapes used here.
+    doi: "10.1038/s41524-025-01878-x"

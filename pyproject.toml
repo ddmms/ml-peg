@@ -70,6 +70,13 @@ mace = [
     "graph-longrange == 0.4.0",
 ]
 
+# Landscape exploration, for the `landscapes` benchmarks. Not on PyPI, so it is
+# pinned to a tag rather than a version; the benchmarks skip via importorskip
+# if it is absent, so this extra is only needed to run them.
+topsearch = [
+    "topsearch @ git+https://github.com/VladCarare/topography-searcher@v0.1.2",
+]
+
 mattersim = [
     "mattersim==1.2.4; python_version >= '3.12'",
 ]
