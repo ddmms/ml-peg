@@ -49,6 +49,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Preserve the Wigner API and mode-resolved outputs used by the benchmark.
+thermal-conductivity = [
+    "phono3py==3.19.4",
+    "spglib<2.7",
+]
 asemolec = [
     "asemolec"
 ]

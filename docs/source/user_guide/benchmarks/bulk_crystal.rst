@@ -874,6 +874,12 @@ Summary
 Performance in evaluating lattice thermal conductivity for 103 binary compounds in
 rocksalt, zincblende, and wurtzite structures.
 
+Install the calculation dependencies with
+``uv sync --extra thermal-conductivity --extra <model-extra>``.
+For reference generation alone, omit ``--extra <model-extra>``.
+The extra pins phono3py 3.19.4 to retain the original Wigner transport
+implementation used by this benchmark.
+
 Metrics
 -------
 

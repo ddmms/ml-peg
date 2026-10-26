@@ -33,7 +33,7 @@ import spglib
 from tqdm import tqdm
 
 if TYPE_CHECKING:
-    from phono3py.conductivity.calculators import RTACalculator
+    from phono3py.conductivity.wigner_rta import ConductivityWignerRTA
 
 
 # Backport-ish "StrEnum" behavior that works in Python 3.11
@@ -383,7 +383,7 @@ def calculate_conductivity(
     boundary_mfp: float = 1e6,
     mode_kappa_thresh: float = 1e-6,
     **kwargs: Any,
-) -> tuple[Phono3py, dict[str, np.ndarray], RTACalculator]:
+) -> tuple[Phono3py, dict[str, np.ndarray], ConductivityWignerRTA]:
     """
     Calculate thermal conductivity.
 
@@ -404,7 +404,7 @@ def calculate_conductivity(
 
     Returns
     -------
-    tuple[Phono3py, dict[str, np.ndarray], RTACalculator]
+    tuple[Phono3py, dict[str, np.ndarray], ConductivityWignerRTA]
         (Phono3py object,
         conductivity dict, conductivity object).
     """
@@ -414,8 +414,7 @@ def calculate_conductivity(
         **kwargs,
         temperatures=temperatures,
         is_isotope=True,
-        # use type="wigner" to include both wave-like coherence (kappa_c) and
-        # particle-like (kappa_p) conductivity contributions
+        # Original Wigner formulation in the pinned phono3py release.
         conductivity_type="wigner",
         boundary_mfp=boundary_mfp,
     )
