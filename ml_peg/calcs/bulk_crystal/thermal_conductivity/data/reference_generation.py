@@ -189,6 +189,7 @@ def scrape_phono3py_data(
     params_link_regex = r"\[\s*phono3py_params\.yaml\.xz\s*\]\((https?://[^)\s]+)\)"
     name_regex = r"(?m)^\|\s*[A-Za-z0-9]+-([A-Z][a-z]?(?:[A-Z][a-z]?|\d+)*)\s*\|"
 
+    PH3_PARAMS_PATH.mkdir(parents=True, exist_ok=True)
     phonondb_readme_path = PH3_PARAMS_PATH / "phonon3db_readme.md"
     if os.path.exists(phonondb_readme_path):
         print(
