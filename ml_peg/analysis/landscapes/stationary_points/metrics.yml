@@ -1,80 +1,108 @@
+# Only the metrics that `analyse_stationary_points.py` actually produces are
+# declared here. The rest of the benchmark -- reconvergence, connectivity and
+# Hessians -- is held in the commented block at the bottom and moves up as each
+# calculation lands, so this file never promises a number nothing computes.
 metrics:
   Energy RMSE:
-    good: 0.02
-    bad: 0.2
-    unit: eV
-    tooltip: "RMSE between MLIP and DFT energies at the Landscape17 stationary points, relative to each molecule's global minimum."
+    good: 1.0
+    bad: 10.0
+    unit: meV/atom
+    tooltip: "RMSE between MLIP and DFT energies at the Landscape17 minima and transition states, each method measured from its own mean so that an overall offset cancels. The mean rather than the lowest structure: a model that badly over-stabilises one structure would otherwise take that structure as its zero, measuring every other energy from its own worst error. Divided by atom count so the six molecules, 9 to 21 atoms, contribute on the same scale."
     level_of_theory: ωB97X/6-31G(d)
-  Force RMSE:
-    good: 0.05
-    bad: 0.5
-    unit: eV/Å
-    tooltip: "RMSE between MLIP and DFT forces at the Landscape17 stationary points, over all atoms and components."
+  Residual force (median):
+    good: 10.0
+    bad: 100.0
+    unit: meV/Å
+    tooltip: "Median of the largest force component the MLIP reports at the DFT stationary points. DFT forces are zero there by construction, so this is not an error against a reference but a measure of how far the DFT geometry is from being stationary under the model, which is what decides whether it survives reconvergence. The thresholds are the scale at which a geometry optimiser would consider a structure converged (good) and the scale at which it will certainly migrate (bad); they are provisional until the spread across models is known."
     level_of_theory: ωB97X/6-31G(d)
-  Minima drift (median):
-    good: 0.02
-    bad: 0.3
-    unit: Å
-    tooltip: "Median RMSD a reference minimum moves when relaxed under the MLIP. Below ~0.02 Å the difference is not chemically meaningful; by 0.3 Å it is a different conformer."
+  Residual force (90th pct):
+    good: 50.0
+    bad: 500.0
+    unit: meV/Å
+    tooltip: "90th percentile of the same distribution, so a model that is uniformly good is distinguished from one that holds most of the landscape and is badly wrong about a tenth of it. The median cannot separate those two, and only the second loses structures under reconvergence. Thresholds are provisional, like the median's: good means nine structures in ten sit where an optimiser would call them converged, bad means one in ten sits where it will certainly migrate."
     level_of_theory: ωB97X/6-31G(d)
-  Minima drift (90th pct):
-    good: 0.05
-    bad: 0.5
-    unit: Å
-    tooltip: "90th percentile of the same distribution, so a model that holds most minima but loses a few is distinguished from one that is uniformly imprecise."
+  Path energy RMSE:
+    good: 1.0
+    bad: 10.0
+    unit: meV/atom
+    tooltip: "The same quantity along the steepest-descent paths joining the stationary points. Thresholds match those for the stationary points so the two can be read against each other: the stationary points test the depths of the wells and the heights of the barriers, the paths test the shape of the surface in between."
     level_of_theory: ωB97X/6-31G(d)
-  Saddle drift (median):
-    good: 0.02
-    bad: 0.3
-    unit: Å
-    tooltip: "Median RMSD a reference transition state moves when reconverged under the MLIP by eigenvector following. The thresholds match those for minima: what counts as the same structure is a geometric question, and does not change because a saddle is harder to locate."
+  Path force RMSE:
+    good: 10.0
+    bad: 100.0
+    unit: meV/Å
+    tooltip: "RMSE between MLIP and DFT forces over all 11,173 path frames and every component. These are ordinary points on the surface with non-zero forces, so this is a conventional accuracy test -- but sampled along the reaction coordinates rather than from a thermal distribution."
     level_of_theory: ωB97X/6-31G(d)
-  Saddle drift (90th pct):
-    good: 0.05
-    bad: 0.5
-    unit: Å
-    tooltip: "90th percentile of the saddle drift. The distribution is expected to be bimodal, separating saddles the model holds in place from those it migrates away from."
-    level_of_theory: ωB97X/6-31G(d)
-  Saddles reconverged:
-    good: 0.95
-    bad: 0.5
-    unit: fraction
-    tooltip: "Fraction of reference transition states for which eigenvector following converges to a saddle at all. A coverage figure, reported beside the drift distribution rather than instead of it."
-    level_of_theory: ωB97X/6-31G(d)
-  Connectivity preserved:
-    good: 0.9
-    bad: 0.4
-    unit: fraction
-    tooltip: "Fraction of reconverged saddles whose steepest-descent paths reach the same two minima as in the DFT landscape. A saddle can sit in the right place and still rewire the network. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
-    level_of_theory: ωB97X/6-31G(d)
-  Normal mode overlap (median):
-    good: 0.99
-    bad: 0.8
-    unit: cosine
-    tooltip: "Median overlap between MLIP and DFT normal modes at the reference geometries, matched one to one. Translations and rotations are projected out first, since their near-zero curvature makes individual eigenvectors arbitrary."
-    level_of_theory: ωB97X/6-31G(d)
-  Reaction coordinate overlap (median):
-    good: 0.99
-    bad: 0.8
-    unit: cosine
-    tooltip: "Median overlap between the MLIP and DFT imaginary modes at the reference transition states: whether the model agrees about the direction of the reaction."
-    level_of_theory: ωB97X/6-31G(d)
-  Curvature scaling error:
-    good: 0.02
-    bad: 0.2
-    unit: fraction
-    tooltip: "Deviation from 1 of the slope of MLIP against DFT eigenvalues. Separates a uniform stiffness error, which is correctable and leaves every mode direction intact, from disagreement about the shape of the surface."
-    level_of_theory: ωB97X/6-31G(d)
-  # TODO: not yet implemented. Mean first passage time between a chosen pair of
-  # minima, derived from the reconverged network and compared with the same
-  # quantity from the DFT landscape. This is the first metric here that tests
-  # the kinetics the landscape implies rather than its geometry, so a model can
-  # reproduce every structure and still fail it. Thresholds to be set once the
-  # spread across models is known: an order of magnitude is the obvious scale,
-  # but that should be justified rather than assumed.
-  # MFPT error (log10):
-  #   good:
-  #   bad:
-  #   unit: log10 ratio
-  #   tooltip: ""
-  #   level_of_theory: ωB97X/6-31G(d)
+
+# Pending. Each of these moves into `metrics` above when its calculation lands
+# in `calc_stationary_points.py`. Thresholds are kept here so the reasoning is
+# not lost, not because they are settled.
+#
+#  Minima drift (median):
+#    good: 0.02
+#    bad: 0.3
+#    unit: Å
+#    tooltip: "Median RMSD a reference minimum moves when relaxed under the MLIP. Below ~0.02 Å the difference is not chemically meaningful; by 0.3 Å it is a different conformer."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Minima drift (90th pct):
+#    good: 0.05
+#    bad: 0.5
+#    unit: Å
+#    tooltip: "90th percentile of the same distribution, so a model that holds most minima but loses a few is distinguished from one that is uniformly imprecise."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Saddle drift (median):
+#    good: 0.02
+#    bad: 0.3
+#    unit: Å
+#    tooltip: "Median RMSD a reference transition state moves when reconverged under the MLIP by eigenvector following. The thresholds match those for minima: what counts as the same structure is a geometric question, and does not change because a saddle is harder to locate."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Saddle drift (90th pct):
+#    good: 0.05
+#    bad: 0.5
+#    unit: Å
+#    tooltip: "90th percentile of the saddle drift. The distribution is expected to be bimodal, separating saddles the model holds in place from those it migrates away from."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Saddles reconverged:
+#    good: 0.95
+#    bad: 0.5
+#    unit: fraction
+#    tooltip: "Fraction of reference transition states for which eigenvector following converges to a saddle at all. A coverage figure, reported beside the drift distribution rather than instead of it. It must be read with the iteration budget beside it: on this reference, raising the budget from 300 to 3000 steps moved it from 13 of 67 to 62 of 67, so at too low a budget this measures the protocol and not the model."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Connectivity preserved:
+#    good: 0.9
+#    bad: 0.4
+#    unit: fraction
+#    tooltip: "Fraction of reconverged saddles whose steepest-descent paths reach the same two minima as in the DFT landscape. A saddle can sit in the right place and still rewire the network. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Normal mode overlap (median):
+#    good: 0.99
+#    bad: 0.8
+#    unit: cosine
+#    tooltip: "Median overlap between MLIP and DFT normal modes at the reference geometries, matched one to one. Translations and rotations are projected out first, since their near-zero curvature makes individual eigenvectors arbitrary."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Reaction coordinate overlap (median):
+#    good: 0.99
+#    bad: 0.8
+#    unit: cosine
+#    tooltip: "Median overlap between the MLIP and DFT imaginary modes at the reference transition states: whether the model agrees about the direction of the reaction."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Curvature scaling error:
+#    good: 0.02
+#    bad: 0.2
+#    unit: fraction
+#    tooltip: "Deviation from 1 of the slope of MLIP against DFT eigenvalues. Separates a uniform stiffness error, which is correctable and leaves every mode direction intact, from disagreement about the shape of the surface."
+#    level_of_theory: ωB97X/6-31G(d)
+#
+# Mean first passage time between a chosen pair of minima, derived from the
+# reconverged network and compared with the same quantity from the DFT
+# landscape. This is the first metric here that tests the kinetics the
+# landscape implies rather than its geometry, so a model can reproduce every
+# structure and still fail it. Thresholds to be set once the spread across
+# models is known: an order of magnitude is the obvious scale, but that should
+# be justified rather than assumed.
+#  MFPT error (log10):
+#    good:
+#    bad:
+#    unit: log10 ratio
+#    tooltip: ""
+#    level_of_theory: ωB97X/6-31G(d)
