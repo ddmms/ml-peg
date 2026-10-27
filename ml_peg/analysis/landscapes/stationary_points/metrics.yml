@@ -38,41 +38,55 @@ metrics:
 # in `calc_stationary_points.py`. Thresholds are kept here so the reasoning is
 # not lost, not because they are settled.
 #
+# None of these binarise a distance. An earlier design counted a structure as
+# "held" if it stayed within 0.3 A, which cut straight through a populated part
+# of the measured distribution: on MACE-OFF the drifts run continuously from
+# 0.010 to 0.303 A and only then jump to 0.458. One aspirin saddle was measured
+# twice, 0.2991 and 0.3031 A, and the threshold put the two measurements of the
+# same structure on opposite sides. Reporting the distribution instead removes
+# that cliff. 0.3 A survives only inside the endpoint identification, where
+# some cutoff is unavoidable.
+#
+# Median and mean are both reported because the difference between them is the
+# skew: the drift distribution has a long tail of structures the model moved a
+# long way, and a mean well above the median is how that tail shows up without
+# a percentile.
+#
 #  Minima drift (median):
 #    good: 0.02
 #    bad: 0.3
 #    unit: Å
-#    tooltip: "Median RMSD a reference minimum moves when relaxed under the MLIP. Below ~0.02 Å the difference is not chemically meaningful; by 0.3 Å it is a different conformer."
+#    tooltip: "Median RMSD a reference minimum moves when relaxed under the MLIP. Below ~0.02 A the difference is not chemically meaningful; by 0.3 A it is a different conformer. A minimum whose relaxation stopped on the iteration limit has no valid drift and is recorded as NaN, which makes this metric and the model's score NaN: relaxing a minimum should always converge, so failing to is a protocol fault rather than a property of the model."
 #    level_of_theory: ωB97X/6-31G(d)
-#  Minima drift (90th pct):
-#    good: 0.05
-#    bad: 0.5
+#  Minima drift (mean):
+#    good: 0.02
+#    bad: 0.3
 #    unit: Å
-#    tooltip: "90th percentile of the same distribution, so a model that holds most minima but loses a few is distinguished from one that is uniformly imprecise."
+#    tooltip: "Mean of the same distribution. Read against the median: a mean well above it means a few minima moved a long way while most did not."
+#    level_of_theory: ωB97X/6-31G(d)
+#  Saddles converged:
+#    good: 0.95
+#    bad: 0.3
+#    unit: fraction
+#    tooltip: "Fraction of all 67 reference transition states for which eigenvector following reaches a saddle at all within the step budget. No distance threshold: this counts whether the model has a saddle there to find, and the drift metrics say how far away it was. Unlike the minima, failing to converge here is a result rather than a fault -- it means the model has no saddle near the DFT one -- so it is counted instead of invalidating the drift of the saddles that did converge."
 #    level_of_theory: ωB97X/6-31G(d)
 #  Saddle drift (median):
 #    good: 0.02
 #    bad: 0.3
 #    unit: Å
-#    tooltip: "Median RMSD a reference transition state moves when reconverged under the MLIP by eigenvector following. The thresholds match those for minima: what counts as the same structure is a geometric question, and does not change because a saddle is harder to locate."
+#    tooltip: "Median RMSD a reference transition state moves when reconverged by eigenvector following, over the saddles that converged. Thresholds match those for minima: what counts as the same structure is a geometric question and does not change because a saddle is harder to locate."
 #    level_of_theory: ωB97X/6-31G(d)
-#  Saddle drift (90th pct):
-#    good: 0.05
-#    bad: 0.5
+#  Saddle drift (mean):
+#    good: 0.02
+#    bad: 0.3
 #    unit: Å
-#    tooltip: "90th percentile of the saddle drift. The distribution is expected to be bimodal, separating saddles the model holds in place from those it migrates away from."
-#    level_of_theory: ωB97X/6-31G(d)
-#  Saddles reconverged:
-#    good: 0.95
-#    bad: 0.5
-#    unit: fraction
-#    tooltip: "Fraction of reference transition states for which eigenvector following converges to a saddle at all. A coverage figure, reported beside the drift distribution rather than instead of it. It must be read with the iteration budget beside it: on this reference, raising the budget from 300 to 3000 steps moved it from 13 of 67 to 62 of 67, so at too low a budget this measures the protocol and not the model."
+#    tooltip: "Mean of the same distribution, read against the median as for the minima. Expected to sit well above it: the saddles the model does not hold tend to land a long way off, around 1 A rather than 0.1."
 #    level_of_theory: ωB97X/6-31G(d)
 #  Connectivity preserved:
 #    good: 0.9
 #    bad: 0.4
 #    unit: fraction
-#    tooltip: "Fraction of reconverged saddles whose steepest-descent paths reach the same two minima as in the DFT landscape. A saddle can sit in the right place and still rewire the network. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
+#    tooltip: "Fraction of all 67 reference transition states whose steepest-descent paths reach the same two minima as in the DFT landscape. The denominator is every reference saddle rather than only the ones that converged, so a model that reconverges few of them cannot score well on the few it manages. A saddle can sit in the right place and still rewire the network, which changes the kinetics while leaving every structure looking right. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
 #    level_of_theory: ωB97X/6-31G(d)
 #  Normal mode overlap (median):
 #    good: 0.99
