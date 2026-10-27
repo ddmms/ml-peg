@@ -51,6 +51,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 POINTS_GLOB = "*_stationary_points.extxyz"
 PATHS_GLOB = "*_paths.extxyz"
+MINIMA_GLOB = "*_reconverged_minima.extxyz"
+SADDLES_GLOB = "*_reconverged_saddles.extxyz"
 
 # Labels for the stationary points, read from the mock outputs so that hover
 # data lines up with the per-structure value lists. The path frames are
@@ -62,6 +64,24 @@ INFO = get_struct_info(
     info_keys=["molecule", "kind", "label"],
     write_info=True,
     write_structs=True,
+    out_path=OUT_PATH,
+)
+# The reconverged structures are separate sets of 28 and 67, so they need their
+# own labels rather than reusing the 95 above.
+MINIMA_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern=MINIMA_GLOB,
+    info_keys=["molecule", "label"],
+    write_info=False,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
+SADDLE_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern=SADDLES_GLOB,
+    info_keys=["molecule", "label", "connects"],
+    write_info=False,
+    write_structs=False,
     out_path=OUT_PATH,
 )
 
@@ -373,6 +393,255 @@ def get_path_force_rmse() -> dict[str, float]:
 
 
 @pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_minima_drift.json",
+    title="How far a reference minimum moves when relaxed",
+    y_label="RMSD from the DFT minimum / Å",
+    hoverdata={
+        "Molecule": MINIMA_INFO["molecule"],
+        "Label": MINIMA_INFO["label"],
+    },
+)
+def minima_drift() -> dict[str, list]:
+    """
+    Get the distance each reference minimum travels under the model.
+
+    A relaxation that stopped on the iteration limit contributes NaN rather
+    than a distance, because how far it got is not a measurement of where the
+    model's minimum is.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-structure drift in Å.
+    """
+    return {
+        model_name: [a.info["drift"] for a in _read_frames(model_name, MINIMA_GLOB)]
+        for model_name in MODELS
+    }
+
+
+@pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_saddle_drift.json",
+    title="How far a reference transition state moves when reconverged",
+    y_label="RMSD from the DFT saddle / Å",
+    hoverdata={
+        "Molecule": SADDLE_INFO["molecule"],
+        "Label": SADDLE_INFO["label"],
+        "Connects": SADDLE_INFO["connects"],
+    },
+)
+def saddle_drift() -> dict[str, list]:
+    """
+    Get the distance each reference saddle travels under the model.
+
+    Saddles the search did not reach within its step budget are left out of
+    this distribution and counted by ``Saddles converged`` instead.
+
+    They are left out rather than carried through as NaN because NaN would
+    make the median and mean NaN for every model: typically half the reference
+    saddles are not reached, so the metric would never produce a number. That
+    is the opposite of the minima, where a single failure should void the
+    result, and the difference is deliberate -- a minimum that will not relax
+    is a broken measurement, while a saddle the model has nowhere near is a
+    finding about the model.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-structure drift in Å, NaN where the search did not converge.
+    """
+    return {
+        model_name: [a.info["drift"] for a in _read_frames(model_name, SADDLES_GLOB)]
+        for model_name in MODELS
+    }
+
+
+def _summarise_over_all(values: dict[str, list], statistic) -> dict[str, float]:
+    """
+    Summarise every structure, so a single missing value voids the result.
+
+    The counterpart to ``_summarise_over_reached``. The two differ only in what
+    they do with a structure that produced no value, and that difference is the
+    reason both exist: here a missing value makes the whole metric NaN.
+
+    Parameters
+    ----------
+    values
+        Per-structure values for each model.
+    statistic
+        ``numpy.median`` or ``numpy.mean``.
+
+    Returns
+    -------
+    dict[str, float]
+        One number per model, NaN if any value is NaN.
+    """
+    return {
+        model_name: float(statistic(np.asarray(values[model_name], dtype=float)))
+        if values[model_name]
+        else np.nan
+        for model_name in MODELS
+    }
+
+
+def _summarise_over_reached(values: dict[str, list], statistic) -> dict[str, float]:
+    """
+    Summarise only the structures that produced a value.
+
+    The counterpart to ``_summarise_over_all``: here a structure the search never
+    reached is left out rather than voiding the metric, and is counted by a
+    separate coverage number instead.
+
+    Parameters
+    ----------
+    values
+        Per-structure values for each model.
+    statistic
+        ``numpy.median`` or ``numpy.mean``.
+
+    Returns
+    -------
+    dict[str, float]
+        One number per model over the finite entries.
+    """
+    results = {}
+    for model_name in MODELS:
+        finite = np.asarray(values[model_name], dtype=float)
+        finite = finite[np.isfinite(finite)]
+        results[model_name] = float(statistic(finite)) if finite.size else np.nan
+    return results
+
+
+@pytest.fixture
+def get_minima_drift_median(minima_drift: dict[str, list]) -> dict[str, float]:
+    """
+    Get the median distance a reference minimum travels.
+
+    Parameters
+    ----------
+    minima_drift
+        Per-structure drift for each model.
+
+    Returns
+    -------
+    dict[str, float]
+        Median in Å for each model.
+    """
+    return _summarise_over_all(minima_drift, np.median)
+
+
+@pytest.fixture
+def get_minima_drift_mean(minima_drift: dict[str, list]) -> dict[str, float]:
+    """
+    Get the mean distance a reference minimum travels.
+
+    Parameters
+    ----------
+    minima_drift
+        Per-structure drift for each model.
+
+    Returns
+    -------
+    dict[str, float]
+        Mean in Å for each model.
+    """
+    return _summarise_over_all(minima_drift, np.mean)
+
+
+@pytest.fixture
+def get_saddles_converged() -> dict[str, float]:
+    """
+    Get the fraction of reference saddles the search reaches.
+
+    The denominator is every reference saddle, not the ones that converged, so
+    this and the drift metrics cannot be read as flattering each other: a model
+    that reaches only a handful cannot hide behind their small drift.
+
+    Returns
+    -------
+    dict[str, float]
+        Fraction for each model.
+    """
+    results = {}
+    for model_name in MODELS:
+        frames = _read_frames(model_name, SADDLES_GLOB)
+        results[model_name] = (
+            float(np.mean([bool(a.info["converged"]) for a in frames]))
+            if frames
+            else np.nan
+        )
+    return results
+
+
+@pytest.fixture
+def get_saddle_drift_median(saddle_drift: dict[str, list]) -> dict[str, float]:
+    """
+    Get the median distance a reached saddle sits from the reference one.
+
+    Parameters
+    ----------
+    saddle_drift
+        Per-structure drift for each model.
+
+    Returns
+    -------
+    dict[str, float]
+        Median in Å over the saddles that converged.
+    """
+    return _summarise_over_reached(saddle_drift, np.median)
+
+
+@pytest.fixture
+def get_saddle_drift_mean(saddle_drift: dict[str, list]) -> dict[str, float]:
+    """
+    Get the mean distance a reached saddle sits from the reference one.
+
+    Read against the median: a mean well above it means a few saddles landed a
+    long way off. The step budget truncates the slowest searches, which are
+    disproportionately the far-drifting ones, so this understates the skew of
+    the distribution that an unlimited search would produce.
+
+    Parameters
+    ----------
+    saddle_drift
+        Per-structure drift for each model.
+
+    Returns
+    -------
+    dict[str, float]
+        Mean in Å over the saddles that converged.
+    """
+    return _summarise_over_reached(saddle_drift, np.mean)
+
+
+@pytest.fixture
+def get_connectivity() -> dict[str, float]:
+    """
+    Get the fraction of reference saddles that join the same two minima.
+
+    Over every reference saddle rather than only the reconverged ones. A saddle
+    can sit in the right place and still rewire the network, which changes the
+    kinetics the landscape implies while leaving every structure looking right.
+
+    Returns
+    -------
+    dict[str, float]
+        Fraction for each model.
+    """
+    results = {}
+    for model_name in MODELS:
+        frames = _read_frames(model_name, SADDLES_GLOB)
+        results[model_name] = (
+            float(np.mean([bool(a.info["connectivity_preserved"]) for a in frames]))
+            if frames
+            else np.nan
+        )
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "stationary_points_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -386,6 +655,12 @@ def metrics(
     get_residual_force_p90: dict[str, float],
     get_path_energy_rmse: dict[str, float],
     get_path_force_rmse: dict[str, float],
+    get_minima_drift_median: dict[str, float],
+    get_minima_drift_mean: dict[str, float],
+    get_saddles_converged: dict[str, float],
+    get_saddle_drift_median: dict[str, float],
+    get_saddle_drift_mean: dict[str, float],
+    get_connectivity: dict[str, float],
 ) -> dict[str, dict]:
     """
     Collect all metrics.
@@ -405,6 +680,18 @@ def metrics(
         Energy RMSE along the paths.
     get_path_force_rmse
         Force RMSE along the paths.
+    get_minima_drift_median
+        Median distance a reference minimum travels.
+    get_minima_drift_mean
+        Mean distance a reference minimum travels.
+    get_saddles_converged
+        Fraction of reference saddles the search reaches.
+    get_saddle_drift_median
+        Median distance a reached saddle sits from the reference one.
+    get_saddle_drift_mean
+        Mean distance a reached saddle sits from the reference one.
+    get_connectivity
+        Fraction of reference saddles joining the same two minima.
 
     Returns
     -------
@@ -417,6 +704,12 @@ def metrics(
         "Residual force (90th pct)": get_residual_force_p90,
         "Path energy RMSE": get_path_energy_rmse,
         "Path force RMSE": get_path_force_rmse,
+        "Minima drift (median)": get_minima_drift_median,
+        "Minima drift (mean)": get_minima_drift_mean,
+        "Saddles converged": get_saddles_converged,
+        "Saddle drift (median)": get_saddle_drift_median,
+        "Saddle drift (mean)": get_saddle_drift_mean,
+        "Connectivity preserved": get_connectivity,
     }
 
 
