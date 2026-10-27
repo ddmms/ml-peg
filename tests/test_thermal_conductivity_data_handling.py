@@ -361,3 +361,112 @@ def test_existing_phonon_status_is_preserved(conductivity_functions) -> None:
     stats = {"ref": reference, "model": aligned}
     assert conductivity_functions["failure"](stats)["model"] == pytest.approx(1 / 3)
     assert conductivity_functions["instability"](stats)["model"] == pytest.approx(1 / 3)
+
+
+@pytest.mark.parametrize("existing_alias", [False, True])
+@pytest.mark.parametrize("missing_plugin", [False, True])
+def test_wte_registration_cleans_up_grid_alias(existing_alias, missing_plugin):
+    """Register explicitly without replacing or leaking the legacy grid module."""
+    grid = object()
+    previous = object()
+    alias = "phono3py.phonon.grid"
+    modules = {alias: previous} if existing_alias else {}
+    calls = []
+
+    def import_plugin(name):
+        if name == "phonopy.phonon.grid":
+            return grid
+        assert name == "wte"
+        assert modules[alias] is (previous if existing_alias else grid)
+        if missing_plugin:
+            raise ModuleNotFoundError(name="wte")
+        return SimpleNamespace(register=lambda: calls.append("registered"))
+
+    namespace = {
+        "sys": SimpleNamespace(modules=modules),
+        "import_module": import_plugin,
+    }
+    _load_functions(CALC_PATH / "thermal_conductivity.py", {"register_wte"}, namespace)
+    if missing_plugin:
+        with pytest.raises(ModuleNotFoundError, match="uv sync"):
+            namespace["register_wte"]()
+    else:
+        namespace["register_wte"]()
+        assert calls == ["registered"]
+    assert modules == ({alias: previous} if existing_alias else {})
+
+
+def test_wte_mode_outputs_preserve_total_conductivity():
+    """Use the plugin API while retaining mode contributions and output keys."""
+    from copy import deepcopy
+
+    keys = SimpleNamespace(
+        **{
+            name: name
+            for name in (
+                "kappa_tot_rta",
+                "kappa_p_rta",
+                "kappa_c",
+                "mode_weights",
+                "q_points",
+                "ph_freqs",
+                "mode_kappa_tot_rta",
+            )
+        }
+    )
+    population = np.ones((1, 1, 1, 2, 6))
+    coherence = np.zeros((1, 1, 1, 2, 2, 6))
+    coherence[:, :, :, 0, 1] = 0.25
+    coherence[:, :, :, 1, 0] = 0.25
+    kappa = SimpleNamespace(
+        kappa_TOT_RTA=np.full((1, 1, 6), 1.25),
+        kappa_P_RTA=np.ones((1, 1, 6)),
+        kappa_C=np.full((1, 1, 6), 0.25),
+        mode_kappa=population,
+        mode_kappa_C=coherence,
+        mode_heat_capacities=np.ones((1, 1, 2)),
+        grid_weights=np.array([2]),
+        qpoints=np.zeros((1, 3)),
+        frequencies=np.ones((1, 2)),
+    )
+    calls = []
+    ph3 = SimpleNamespace(
+        thermal_conductivity=kappa,
+        init_phph_interaction=lambda **kw: calls.append(("init", kw)),
+        run_thermal_conductivity=lambda **kw: calls.append(("run", kw)),
+    )
+    namespace = {
+        "np": np,
+        "deepcopy": deepcopy,
+        "warnings": warnings,
+        "TCKeys": keys,
+        "register_wte": lambda: calls.append(("register", {})),
+    }
+    _load_functions(
+        CALC_PATH / "thermal_conductivity.py",
+        {"calculate_conductivity", "calc_mode_kappa_tot"},
+        namespace,
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result_ph3, result, result_kappa = namespace["calculate_conductivity"](
+            ph3,
+            [300],
+            boundary_mfp=123,
+            log_level=0,
+        )
+    assert result_ph3 is ph3
+    assert result_kappa is kappa
+    assert [name for name, _ in calls] == ["register", "init", "run"]
+    assert calls[-1][1] == {
+        "transport_type": "WTE",
+        "temperatures": [300],
+        "is_isotope": True,
+        "boundary_mfp": 123,
+        "log_level": 0,
+    }
+    np.testing.assert_allclose(result["mode_kappa_tot_rta"], 1.25)
+    np.testing.assert_allclose(
+        result["mode_kappa_tot_rta"].sum(axis=(1, 2)) / 2,
+        result["kappa_tot_rta"],
+    )

@@ -874,11 +874,12 @@ Summary
 Performance in evaluating lattice thermal conductivity for 103 binary compounds in
 rocksalt, zincblende, and wurtzite structures.
 
-Install the calculation dependencies with
-``uv sync --extra thermal-conductivity --extra <model-extra>``.
-For reference generation alone, omit ``--extra <model-extra>``.
-The extra pins phono3py 3.19.4 to retain the original Wigner transport
-implementation used by this benchmark.
+The default ``uv sync`` environment includes the ``phono3py-wte`` plugin for
+the original Wigner transport implementation. Add ``--extra <model-extra>``
+for model calculations. The plugin is sourced from a fixed GitHub revision
+because it is not yet released on PyPI. The experimental built-in ``SMM19``
+implementation is not used. Pip installations must install the plugin separately
+from the revision recorded in ``pyproject.toml``.
 
 Metrics
 -------

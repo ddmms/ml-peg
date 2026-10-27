@@ -14,6 +14,7 @@ from collections.abc import Sequence
 from contextlib import contextmanager
 from copy import deepcopy
 from enum import Enum
+from importlib import import_module
 from pathlib import Path
 import re
 import sys
@@ -33,7 +34,7 @@ import spglib
 from tqdm import tqdm
 
 if TYPE_CHECKING:
-    from phono3py.conductivity.wigner_rta import ConductivityWignerRTA
+    from phono3py.conductivity.calculators import RTACalculator
 
 
 # Backport-ish "StrEnum" behavior that works in Python 3.11
@@ -377,13 +378,44 @@ def load_force_sets(
     return ph3
 
 
+def register_wte() -> None:
+    """
+    Register the Wigner plugin with its legacy grid import supported.
+
+    Raises
+    ------
+    ModuleNotFoundError
+        If the WTE plugin or one of its dependencies is unavailable.
+    """
+    # The pinned plugin imports grid helpers from phono3py. They moved to
+    # phonopy in v4. Supply the old name only while importing the plugin.
+    module_name = "phono3py.phonon.grid"
+    added_alias = module_name not in sys.modules
+    if added_alias:
+        sys.modules[module_name] = import_module("phonopy.phonon.grid")
+    try:
+        plugin = import_module("wte")
+    except ModuleNotFoundError as exc:
+        if exc.name == "wte":
+            raise ModuleNotFoundError(
+                "The Wigner plugin is missing. Install dependencies with uv sync."
+            ) from exc
+        raise
+    finally:
+        if added_alias:
+            sys.modules.pop(module_name, None)
+    # phono3py silently skips failed entry-point imports. Register explicitly
+    # so the earlier discovery failure cannot leave WTE unavailable.
+    plugin.register()
+
+
 def calculate_conductivity(
     ph3: Phono3py,
     temperatures: Sequence[float],
     boundary_mfp: float = 1e6,
     mode_kappa_thresh: float = 1e-6,
     **kwargs: Any,
-) -> tuple[Phono3py, dict[str, np.ndarray], ConductivityWignerRTA]:
+) -> tuple[Phono3py, dict[str, np.ndarray], RTACalculator]:
     """
     Calculate thermal conductivity.
 
@@ -404,18 +436,18 @@ def calculate_conductivity(
 
     Returns
     -------
-    tuple[Phono3py, dict[str, np.ndarray], ConductivityWignerRTA]
+    tuple[Phono3py, dict[str, np.ndarray], RTACalculator]
         (Phono3py object,
         conductivity dict, conductivity object).
     """
+    register_wte()
     ph3.init_phph_interaction(symmetrize_fc3q=False)
 
     ph3.run_thermal_conductivity(
         **kwargs,
         temperatures=temperatures,
         is_isotope=True,
-        # Original Wigner formulation in the pinned phono3py release.
-        conductivity_type="wigner",
+        transport_type="WTE",
         boundary_mfp=boundary_mfp,
     )
 
@@ -430,7 +462,8 @@ def calculate_conductivity(
         TCKeys.ph_freqs: deepcopy(kappa.frequencies),
     }
     mode_kappa_total = kappa_dict[TCKeys.mode_kappa_tot_rta] = calc_mode_kappa_tot(
-        deepcopy(kappa.mode_kappa_P_RTA[0]),
+        # The plugin exposes the population contribution as mode_kappa.
+        deepcopy(kappa.mode_kappa[0]),
         deepcopy(kappa.mode_kappa_C[0]),
         deepcopy(kappa.mode_heat_capacities),
     )
