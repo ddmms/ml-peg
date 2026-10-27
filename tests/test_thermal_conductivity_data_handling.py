@@ -396,7 +396,11 @@ def test_wte_registration_cleans_up_grid_alias(existing_alias, missing_plugin):
     assert modules == ({alias: previous} if existing_alias else {})
 
 
-def test_wte_mode_outputs_preserve_total_conductivity():
+@pytest.mark.parametrize(
+    "scattering_settings",
+    [{}, {"average_degenerate_weights": False, "exclude_gamma_acoustic": False}],
+)
+def test_wte_mode_outputs_preserve_total_conductivity(scattering_settings):
     """Use the plugin API while retaining mode contributions and output keys."""
     from copy import deepcopy
 
@@ -454,10 +458,20 @@ def test_wte_mode_outputs_preserve_total_conductivity():
             [300],
             boundary_mfp=123,
             log_level=0,
+            **scattering_settings,
         )
     assert result_ph3 is ph3
     assert result_kappa is kappa
     assert [name for name, _ in calls] == ["register", "init", "run"]
+    assert calls[1][1] == {
+        "symmetrize_fc3q": False,
+        "average_degenerate_weights": scattering_settings.get(
+            "average_degenerate_weights", True
+        ),
+        "exclude_gamma_acoustic": scattering_settings.get(
+            "exclude_gamma_acoustic", True
+        ),
+    }
     assert calls[-1][1] == {
         "transport_type": "WTE",
         "temperatures": [300],
