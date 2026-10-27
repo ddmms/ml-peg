@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import pytest
 
@@ -84,6 +84,41 @@ SADDLE_INFO = get_struct_info(
     write_structs=False,
     out_path=OUT_PATH,
 )
+
+
+def _stage_structures(model_name: str, pattern: str, subdirectory: str) -> None:
+    """
+    Write one file per structure so the app can show the one that was clicked.
+
+    ``get_struct_info`` can stage structures, but it writes one file per input
+    file -- six, one per molecule -- while the plots have one point per
+    structure. Its ``struct_name_key`` option writes one file per structure
+    instead, named by an info key, and no key here is unique: ``min00`` exists
+    once per molecule and the files would overwrite each other.
+
+    Naming by position rather than by label avoids inventing a unique key and
+    guarantees the ordering the app depends on: it globs this directory and
+    sorts, so zero-padded indices put the files in exactly the order the
+    points appear in the figure. The structure's identity is on the point's
+    hover text.
+
+    Parameters
+    ----------
+    model_name
+        Model whose outputs to stage.
+    pattern
+        Glob matching the output files, which fixes the order.
+    subdirectory
+        Directory under the model's app data, one per figure.
+    """
+    frames = _read_frames(model_name, pattern)
+    if not frames:
+        return
+    out_dir = OUT_PATH / model_name / subdirectory
+    out_dir.mkdir(parents=True, exist_ok=True)
+    width = len(str(len(frames) - 1))
+    for index, atoms in enumerate(frames):
+        write(out_dir / f"{index:0{width}d}.xyz", atoms)
 
 
 def _read_frames(model_name: str, pattern: str) -> list:
@@ -178,6 +213,9 @@ def stationary_energies() -> dict[str, list]:
     dict[str, list]
         Reference and predicted relative energies in meV/atom.
     """
+    for model_name in MODELS:
+        _stage_structures(model_name, POINTS_GLOB, "points")
+
     results: dict[str, list] = {"ref": []}
     for model_name in MODELS:
         frames = _read_frames(model_name, POINTS_GLOB)
@@ -415,6 +453,9 @@ def minima_drift() -> dict[str, list]:
     dict[str, list]
         Per-structure drift in Å.
     """
+    for model_name in MODELS:
+        _stage_structures(model_name, MINIMA_GLOB, "minima")
+
     return {
         model_name: [a.info["drift"] for a in _read_frames(model_name, MINIMA_GLOB)]
         for model_name in MODELS
@@ -452,6 +493,9 @@ def saddle_drift() -> dict[str, list]:
     dict[str, list]
         Per-structure drift in Å, NaN where the search did not converge.
     """
+    for model_name in MODELS:
+        _stage_structures(model_name, SADDLES_GLOB, "saddles")
+
     return {
         model_name: [a.info["drift"] for a in _read_frames(model_name, SADDLES_GLOB)]
         for model_name in MODELS
