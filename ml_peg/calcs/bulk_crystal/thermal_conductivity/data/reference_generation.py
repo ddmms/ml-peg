@@ -22,19 +22,17 @@ DATA_PATH = Path(__file__).parent
 sys.path.append(str(DATA_PATH.parent))
 tc = importlib.import_module("thermal_conductivity")
 
-MAX_MATERIALS = 3  # Set to None to generate the full reference dataset.
-OUTPUT_PATH = DATA_PATH / f"quick-test-{MAX_MATERIALS}" if MAX_MATERIALS else DATA_PATH
-PH3_PARAMS_PATH = OUTPUT_PATH / "PBE"
+PH3_PARAMS_PATH = DATA_PATH / "PBE"
 
 MAT_ID_FILE = DATA_PATH / "mat_id-phonondb.txt"
-STRUCTURE_FILE = OUTPUT_PATH / "phononDB-PBE-structures.extxyz"
+STRUCTURE_FILE = DATA_PATH / "phononDB-PBE-structures.extxyz"
 SCRAPED_YAMLS_FILE = PH3_PARAMS_PATH / "scraped_yamls.txt"
 
 PHONONDB_COMMIT = "8cabbe0aee3dde48a19f1235864b0d3ab5cb9330"
 
 SCRAPE = False
 
-FAST_ONLY = True
+FAST_ONLY = False
 
 SKIP_EXISTING = True
 
@@ -209,8 +207,6 @@ def scrape_phono3py_data(
 
     params_links = re.findall(params_link_regex, phonondb_readme)
     name_list = re.findall(name_regex, phonondb_readme)
-    params_links = params_links[:MAX_MATERIALS]
-    name_list = name_list[:MAX_MATERIALS]
 
     if os.path.exists(SCRAPED_YAMLS_FILE):
         print(
