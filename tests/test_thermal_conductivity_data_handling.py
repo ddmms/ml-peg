@@ -470,3 +470,70 @@ def test_wte_mode_outputs_preserve_total_conductivity():
         result["mode_kappa_tot_rta"].sum(axis=(1, 2)) / 2,
         result["kappa_tot_rta"],
     )
+
+
+@pytest.mark.parametrize("failure", ["none", "transient", "persistent"])
+def test_reference_download_order_and_resume(tmp_path, failure):
+    """Keep material order and reuse completed downloads after a failed batch."""
+    from concurrent.futures import ThreadPoolExecutor
+    from hashlib import sha256
+    import lzma
+    import re
+
+    names = ["NaCl", "MgO", "SiC"]
+    links = [f"https://example.test/{name}.yaml.xz" for name in names]
+    readme = "\n".join(
+        f"| mp{i}-{name} | [phono3py_params.yaml.xz]({link}) |"
+        for i, (name, link) in enumerate(zip(names, links, strict=True))
+    )
+    (tmp_path / "phonon3db_readme.md").write_text(readme)
+    calls = []
+    fail = failure != "none"
+
+    def get(url, timeout):
+        calls.append(url)
+        assert timeout == (10, 120)
+        if (
+            fail
+            and url == links[0]
+            and (failure == "persistent" or calls.count(url) <= 3)
+        ):
+            raise OSError("interrupted download")
+        return SimpleNamespace(
+            content=lzma.compress(names[links.index(url)].encode()),
+            raise_for_status=lambda: None,
+        )
+
+    namespace = {
+        "Path": Path,
+        "PH3_PARAMS_PATH": tmp_path,
+        "PHONONDB_COMMIT": "fixed-revision",
+        "SCRAPED_YAMLS_FILE": tmp_path / "scraped_yamls.txt",
+        "os": __import__("os"),
+        "re": re,
+        "sha256": sha256,
+        "requests": SimpleNamespace(get=get),
+        "time": SimpleNamespace(sleep=lambda _: None),
+        "ThreadPoolExecutor": ThreadPoolExecutor,
+        # Force results to be consumed in reverse order to check name alignment.
+        "as_completed": lambda futures: reversed(list(futures)),
+        "tqdm": lambda items, **kwargs: items,
+    }
+    _load_functions(
+        CALC_PATH / "data/reference_generation.py", {"scrape_phono3py_data"}, namespace
+    )
+    download = namespace["scrape_phono3py_data"]
+    if failure == "persistent":
+        with pytest.raises(RuntimeError, match="Failed to download"):
+            download()
+        assert calls.count(links[0]) == 6
+        fail = False
+    yaml_list, name_list = download()
+    assert yaml_list == names
+    assert name_list == names
+    assert calls.count(links[1]) == 1
+    assert calls.count(links[2]) == 1
+    before = list(calls)
+    assert download() == (names, names)
+    assert calls == before
+    assert not list(tmp_path.rglob("*.tmp"))

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from hashlib import sha256
 import importlib
 from io import BytesIO
 import os
@@ -159,9 +160,7 @@ def create_yaml(mat_id: str, yaml_str: str) -> Path:
     return PH3_PARAMS_PATH / mat_id / "phono3py_params.yaml"
 
 
-def scrape_phono3py_data(
-    phono3py_yaml_path: str = "data/DFT",
-) -> tuple[list[str], list[str]]:
+def scrape_phono3py_data(max_threads: int = 8) -> tuple[list[str], list[str]]:
     """
     Scrape phono3py parameters from the phonondb README and save them as YAML files.
 
@@ -173,8 +172,8 @@ def scrape_phono3py_data(
 
     Parameters
     ----------
-    phono3py_yaml_path : str, optional
-        Local directory to save the scraped YAML files, by default "data/DFT".
+    max_threads : int, optional
+        Maximum number of concurrent downloads, by default 8.
 
     Returns
     -------
@@ -223,6 +222,9 @@ def scrape_phono3py_data(
     except ImportError:
         raise ImportError("lzma module is required to decompress .xz files.") from None
 
+    download_cache = PH3_PARAMS_PATH / "downloads" / PHONONDB_COMMIT
+    download_cache.mkdir(parents=True, exist_ok=True)
+
     def _download_one(link: str) -> str:
         """
         Download and decompress one phono3py params YAML, retrying on failure.
@@ -237,27 +239,54 @@ def scrape_phono3py_data(
         str
             Decompressed YAML content.
         """
+        cache_file = download_cache / f"{sha256(link.encode()).hexdigest()}.yaml"
+        if cache_file.exists():
+            return cache_file.read_text()
+
         last_exc: Exception | None = None
         for attempt in range(3):
             try:
-                response = requests.get(link, timeout=30)
+                response = requests.get(link, timeout=(10, 120))
                 response.raise_for_status()
                 xz_bytes = response.content
-                return lzma.decompress(xz_bytes).decode("utf-8")
+                yaml_str = lzma.decompress(xz_bytes).decode("utf-8")
+                # Save each completed download so interrupted runs can resume.
+                temporary = cache_file.with_suffix(".tmp")
+                temporary.write_text(yaml_str)
+                temporary.replace(cache_file)
+                return yaml_str
             except Exception as exc:
                 last_exc = exc
-                time.sleep(2**attempt)
+                if attempt < 2:
+                    time.sleep(2**attempt)
         raise RuntimeError(f"Failed to download {link} after 3 attempts") from last_exc
 
-    # Downloads are I/O-bound, so thread them. map preserves order so yaml_list
-    # stays aligned with params_links.
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        yaml_list = list(
-            tqdm(
-                executor.map(_download_one, params_links),
-                total=len(params_links),
-                desc="Download",
-            )
+    yaml_list = [""] * len(params_links)
+    failed = []
+    with ThreadPoolExecutor(max_workers=max_threads) as executor:
+        futures = {
+            executor.submit(_download_one, link): i
+            for i, link in enumerate(params_links)
+        }
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Download"):
+            # Completion order drives progress, but material order stays unchanged.
+            i = futures[future]
+            try:
+                yaml_list[i] = future.result()
+            except RuntimeError:
+                failed.append(i)
+
+    # Let the parallel batch finish, then retry stragglers without server contention.
+    remaining = []
+    for i in tqdm(failed, desc="Retrying downloads", disable=not failed):
+        try:
+            yaml_list[i] = _download_one(params_links[i])
+        except RuntimeError:
+            remaining.append(params_links[i])
+    if remaining:
+        raise RuntimeError(
+            f"Failed to download {len(remaining)} files. Completed files are cached; "
+            "rerun the script to retry only missing downloads:\n" + "\n".join(remaining)
         )
 
     return yaml_list, name_list
