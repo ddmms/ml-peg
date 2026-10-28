@@ -8,33 +8,7 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: "kocer-2024-redox"
+  - bibtex_key: kocer2024machinelearningpotentialsredox
     role: reference_data
-    title: "Machine learning potentials for redox chemistry in solution"
-    authors:
-      - "Emir Kocer"
-      - "Redouan El Haouari"
-      - "Christoph Dellago"
-      - "Jörg Behler"
-    year: 2024
-    doi: null
-    url: "https://arxiv.org/abs/2410.03299"
-  - key: "batatia-2026-mace-polar"
+  - bibtex_key: batatia2026mace
     role: benchmark_method
-    title: "MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry"
-    authors:
-      - "Ilyes Batatia"
-      - "William J. Baldwin"
-      - "Domantas Kuryla"
-      - "Joseph Hart"
-      - "Elliott Kasoar"
-      - "Alin M. Elena"
-      - "Harry Moore"
-      - "Mikołaj J. Gawkowski"
-      - "Benjamin X. Shi"
-      - "Venkat Kapil"
-      - "Panagiotis Kourtis"
-      - "Ioan-Bogdan Magdău"
-      - "Gábor Csányi"
-    year: 2026
-    url: "https://arxiv.org/abs/2602.19411"

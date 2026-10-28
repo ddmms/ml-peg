@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from yaml import YAMLError, safe_load
 
 from ml_peg.app import APP_ROOT
+from ml_peg.citations.bibliography import citation_fields
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -88,6 +89,8 @@ class Citation:
     role: str | None = None
     doi: str | None = None
     url: str | None = None
+    bibtex_key: str | None = None
+    detail: str | None = None
 
     @property
     def link(self) -> str | None:
@@ -119,14 +122,15 @@ class Citation:
     @property
     def role_label(self) -> str | None:
         """
-        Return a concise human-readable source role, if one is set.
+        Return the source role with any benchmark-specific detail.
 
         Returns
         -------
         str | None
             Display label for the role, or None if the citation has no role.
         """
-        return CITATION_ROLE_LABELS[self.role] if self.role else None
+        label = CITATION_ROLE_LABELS[self.role] if self.role else None
+        return ", ".join(part for part in (label, self.detail) if part) or None
 
 
 @dataclass(frozen=True)
@@ -301,6 +305,14 @@ def _parse_citation(value: Any, location: str) -> Citation:
         The parsed citation.
     """
     item = _mapping(value, location)
+    bibtex_key = _optional_string(item.get("bibtex_key"), f"{location}.bibtex_key")
+    if bibtex_key:
+        try:
+            defaults = citation_fields(bibtex_key)
+        except ValueError as err:
+            raise CitationMetadataError(f"{location}.bibtex_key: {err}") from err
+        # Explicit YAML values, including null, override bibliography defaults.
+        item = {**defaults, **item}
     role = item.get("role")
     if role not in CITATION_ROLES:
         raise CitationMetadataError(
@@ -309,10 +321,12 @@ def _parse_citation(value: Any, location: str) -> Citation:
 
     return Citation(
         key=_non_empty_string(item.get("key"), f"{location}.key"),
+        bibtex_key=bibtex_key,
         title=_non_empty_string(item.get("title"), f"{location}.title"),
         authors=_authors(item.get("authors"), f"{location}.authors"),
         year=_year(item.get("year"), f"{location}.year"),
         role=role,
+        detail=_optional_string(item.get("detail"), f"{location}.detail"),
         doi=_optional_string(item.get("doi"), f"{location}.doi"),
         url=_optional_string(item.get("url"), f"{location}.url"),
     )
@@ -641,7 +655,7 @@ def _citation_lines(citation: Citation, indent: str, number: str = "") -> list[s
     """
     text = citation.reference
     # Benchmark papers are the default kind of reference. Other roles are tagged.
-    if citation.role_label and citation.role != "benchmark_method":
+    if citation.role_label and (citation.role != "benchmark_method" or citation.detail):
         # Non-breaking spaces keep a tag such as "(inspired by)" on one line
         tag = citation.role_label.replace(" ", NBSP)
         text = f"{text[:-1]} ({tag})."

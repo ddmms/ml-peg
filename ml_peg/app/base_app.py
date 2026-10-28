@@ -133,6 +133,7 @@ class BaseApp(ABC):
             except CitationMetadataError as err:
                 warnings.warn(f"Invalid citations for {self.name}: {err}", stacklevel=2)
                 self.credits = None
+        self.table.citation_credits = self.credits
         self.metrics = [
             col["id"]
             for col in self.table.columns

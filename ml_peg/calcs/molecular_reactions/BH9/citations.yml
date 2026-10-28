@@ -11,15 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: Prasad2021
+  - bibtex_key: Prasad2021
     role: reference_data
-    title: 'BH9, a New Comprehensive Benchmark Data Set for Barrier Heights and Reaction Energies: Assessment
-      of Density Functional Approximations and Basis Set Incompleteness Potentials'
-    authors:
-      - Viki Kumar Prasad
-      - Zhipeng Pei
-      - Simon Edelmann
-      - Alberto Otero-de-la-Roza
-      - Gino A. DiLabio
-    year: 2022
-    doi: "10.1021/acs.jctc.1c00694"

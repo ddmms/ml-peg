@@ -9,17 +9,5 @@ contributors:
     email: "jh2536@cam.ac.uk"
 
 citations:
-  - key: "batatia-2025-cross-learning"
+  - bibtex_key: batatia2025crosslearningelectronicstructure
     role: benchmark_method
-    title: "Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields"
-    authors:
-      - "Ilyes Batatia"
-      - "Chen Lin"
-      - "Joseph Hart"
-      - "Elliott Kasoar"
-      - "Alin M. Elena"
-      - "Sam Walton Norwood"
-      - "Thomas Wolf"
-      - "Gábor Csányi"
-    year: 2025
-    url: "https://arxiv.org/abs/2510.25380"

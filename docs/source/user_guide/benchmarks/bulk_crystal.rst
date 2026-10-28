@@ -45,13 +45,108 @@ Data availability
 
 Input structures:
 
-* Built from experimental lattice constants from various sources
+* Built from experimental lattice constants in
+  ``lattice_constants_ref_exp.json`` inside the S3 archive
+  ``inputs/bulk_crystal/lattice_constants/lattice_constants.zip``.
+  The same archive contains the MACE-MP PBE reference values in
+  ``lattice_constants_ref.json`` and crystal types in
+  ``lattice_constants_ref_types.json``.
 
 Reference data:
 
-* Experimental data same as input data
+* Experimental data are the same as the input data, using the following sources:
 
-* DFT data
+  * Ag, Pd, Rh, Li, Na, K, Rb, Ca, Sr, Ba, Al and Cu: the publications below.
+    Values are rounded to three decimal places in Å.
+
+    .. list-table:: Elemental lattice-constant references
+       :header-rows: 1
+       :widths: 10 15 20 55
+
+       * - Element
+         - a (Å)
+         - Temperature (K)
+         - Source
+       * - Ag
+         - 4.086
+         - 293
+         - `Suh, Ohta and Waseda (1988) <https://doi.org/10.1007/BF01174717>`_
+       * - Pd
+         - 3.8898
+         - Not recorded
+         - Wyckoff (1963)
+       * - Rh
+         - 3.8031
+         - Not recorded
+         - Wyckoff (1963)
+       * - Li
+         - 3.5093
+         - 293
+         - Wyckoff (1963)
+       * - Na
+         - 4.2906
+         - 293
+         - Wyckoff (1963)
+       * - K
+         - 5.328
+         - Not recorded
+         - `Liu (1986) <https://doi.org/10.1016/0022-3697(86)90073-9>`_, 0 GPa
+       * - Rb
+         - 5.699
+         - 293.15
+         - `Arblaster (2018), Table 37a, p. 298
+           <https://my.asminternational.org/asm-store?store-path=/products/05244G>`_
+       * - Ca
+         - 5.5884
+         - 299.15
+         - `Bernstein and Smith (1959) <https://doi.org/10.1107/S0365110X59001268>`_
+       * - Sr
+         - 6.0847
+         - Not recorded
+         - Wyckoff (1963)
+       * - Ba
+         - 5.025
+         - 300
+         - Wyckoff (1963)
+       * - Al
+         - 4.04961
+         - 298.15
+         - `Straumanis (1949) <https://doi.org/10.1063/1.1698520>`_
+       * - Cu
+         - 3.6150
+         - Not recorded
+         - `Otte (1961) <https://doi.org/10.1063/1.1728392>`_
+
+    Ag, Pd, Rh, Ca, Sr, Al and Cu use fcc cells. Li, Na, K, Rb and Ba use
+    bcc cells. Wyckoff refers to *Crystal Structures*, volume 1, second edition
+    (Interscience Publishers, 1963). Except for Rb, values and available measurement
+    conditions were cross-checked against COD records. Missing conditions are not
+    assumed to imply ambient conditions. Rb uses Arblaster's recommended value
+    of 5.699 ± 0.002 Å at 20 °C.
+    The Al value includes the kX-to-Å conversion documented in
+    `COD entry 9012002 <https://www.crystallography.net/cod/9012002.cif>`_.
+  * Cs: `Weir, Piermarini and Block (1971)
+    <https://doi.org/10.1063/1.1675251>`_, ambient bcc Cs, 6.141 Å.
+    This value is also tabulated in the
+    `NIST-hosted review, Table 3, reference 413
+    <https://srd.nist.gov/jpcrdreprint/1.3253148.pdf>`_.
+  * C (diamond), Si and Ge: `Hom, Kiszenik and Post (1975)
+    <https://doi.org/10.1107/S0021889875010965>`_. Their measured lattice
+    constants round to the values used here.
+  * GaAs: `Ioffe Institute NSM Archive
+    <https://www.ioffe.ru/SVA/NSM/Semicond/GaAs/basic.html>`_, 300 K.
+  * LiF, LiCl, NaF and NaCl: `Joung and Cheatham (2008), Table 3
+    <https://doi.org/10.1021/jp8001614>`_, room-temperature lattice constants.
+  * MgO: the experimental column of `Oganov, Gillan and Price (2003), Table I
+    <https://doi.org/10.1063/1.1570394>`_, 300 K and zero pressure.
+  * 2H-SiC: `Li et al. (2014), Table 1
+    <https://doi.org/10.1088/2053-1591/1/4/045023>`_, which reproduces ICSD
+    entry 41487.
+
+  LiF, LiCl, NaF and NaCl use 4.027, 5.140, 4.634 and 5.640 Å, respectively.
+  For 2H-SiC, ``a = 3.076 Å`` and ``c = 5.048 Å``.
+
+* Benchmark and DFT data
 
   * Batatia, I., Benner, P., Chiang, Y., Elena, A.M., Kovács, D.P., Riebesell, J.,
     Advincula, X.R., Asta, M., Avaylon, M., Baldwin, W.J. and Berger, F., 2025. A
@@ -823,9 +918,9 @@ where :math:`\kappa_i^{\mathrm{pred}}(q)_s` and
 conductivity contributions from phonon mode :math:`s` at wavevector :math:`q` for
 material :math:`i`. The mean SRME is calculated across all materials in the dataset.
 
-Both metrics are based on Póta, B., Ahlawat, P., Csányi, G., & Simoncelli, M. (2024).
-Thermal conductivity predictions with foundation atomistic models. arXiv preprint
-arXiv:2408.00755.
+Both metrics are based on Póta, B., Ahlawat, P., Csányi, G., & Simoncelli, M. (2026).
+Thermal conductivity predictions with foundation atomistic models. Nature
+Communications 17, 10566. https://doi.org/10.1038/s41467-026-76391-w
 
 Computational cost
 ------------------
@@ -979,7 +1074,7 @@ Data availability
 
 Input structures:
 
-* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2024 16 015018
+* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2014 16 015018
 
 Reference data:
 

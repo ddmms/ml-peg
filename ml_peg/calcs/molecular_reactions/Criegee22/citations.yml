@@ -11,11 +11,5 @@ contributors:
     email: "elliott.kasoar@stfc.ac.uk"
 
 citations:
-  - key: "smith-2020-criegee"
+  - bibtex_key: smith-2020-criegee
     role: reference_data
-    title: "Kinetics and thermodynamics of reactions involving Criegee intermediates: An assessment of density functional theory and ab initio methods through comparison with CCSDT(Q)/CBS data"
-    authors:
-      - "Cameron D. Smith"
-      - "Amir Karton"
-    year: 2020
-    doi: "10.1002/jcc.26106"
