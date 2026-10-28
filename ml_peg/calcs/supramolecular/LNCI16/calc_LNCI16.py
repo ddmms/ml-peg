@@ -15,6 +15,7 @@ import pytest
 from tqdm import tqdm
 import zntrack
 
+from ml_peg.calcs.utils.run_log import log_run
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -271,32 +272,33 @@ class LNCI16Benchmark(zntrack.Node):
 
     def run(self):
         """Run LNCI16 benchmark calculations."""
-        calc = self.model.get_calculator(precision="high")
+        with log_run(OUT_PATH, self.model_name):
+            calc = self.model.get_calculator(precision="high")
 
-        # Get benchmark data
-        data_dir = (
-            download_s3_data(
-                filename="LNCI16.zip", key="inputs/supramolecular/LNCI16/LNCI16.zip"
+            # Get benchmark data
+            data_dir = (
+                download_s3_data(
+                    filename="LNCI16.zip", key="inputs/supramolecular/LNCI16/LNCI16.zip"
+                )
+                / "LNCI16_data/benchmark-LNCI16-main"
             )
-            / "LNCI16_data/benchmark-LNCI16-main"
-        )
 
-        # Run benchmark
-        complex_atoms = self.benchmark_lnci16(calc, self.model_name, data_dir)
+            # Run benchmark
+            complex_atoms = self.benchmark_lnci16(calc, self.model_name, data_dir)
 
-        # Write output structures
-        write_dir = OUT_PATH / self.model_name
-        write_dir.mkdir(parents=True, exist_ok=True)
+            # Write output structures
+            write_dir = OUT_PATH / self.model_name
+            write_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save individual complex atoms files for each system
-        for i, atoms in enumerate(complex_atoms):
-            # Temp fix: Clear calculator to avoid array broadcasting issues
-            atoms_copy = atoms.copy()
-            atoms_copy.calc = None
+            # Save individual complex atoms files for each system
+            for i, atoms in enumerate(complex_atoms):
+                # Temp fix: Clear calculator to avoid array broadcasting issues
+                atoms_copy = atoms.copy()
+                atoms_copy.calc = None
 
-            # Write each system to its own file
-            system_file = write_dir / f"{i}.xyz"
-            write(system_file, atoms_copy, format="extxyz")
+                # Write each system to its own file
+                system_file = write_dir / f"{i}.xyz"
+                write(system_file, atoms_copy, format="extxyz")
 
 
 def build_project(repro: bool = False) -> None:

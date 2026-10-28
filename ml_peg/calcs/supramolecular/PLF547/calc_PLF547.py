@@ -10,6 +10,7 @@ import pytest
 import zntrack
 
 from ml_peg.calcs.supramolecular.utils.plf547_pla15_utils import run_benchmark
+from ml_peg.calcs.utils.run_log import log_run
 from ml_peg.calcs.utils.utils import chdir
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -27,7 +28,8 @@ class PLF547Benchmark(zntrack.Node):
 
     def run(self):
         """Run new benchmark."""
-        run_benchmark(self, "PLF547", OUT_PATH)
+        with log_run(OUT_PATH, self.model_name):
+            run_benchmark(self, "PLF547", OUT_PATH)
 
 
 def build_project(repro: bool = False) -> None:

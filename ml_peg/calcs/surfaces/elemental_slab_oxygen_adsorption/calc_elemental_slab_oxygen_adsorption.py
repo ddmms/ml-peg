@@ -16,6 +16,7 @@ import pytest
 from tqdm import tqdm
 import zntrack
 
+from ml_peg.calcs.utils.run_log import log_run
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -116,30 +117,31 @@ class ElementalSlabOxygenAdsorptionBenchmark(zntrack.Node):
 
     def run(self):
         """Run oxygen adsorption energy calculations."""
-        calc = self.model.get_calculator(precision="high")
-        # Get benchmark data
-        data_dir = (
-            download_s3_data(
-                filename="elemental_slab_oxygen_adsorption.zip",
-                key="inputs/surfaces/elemental_slab_oxygen_adsorption/elemental_slab_oxygen_adsorption.zip",
+        with log_run(OUT_PATH, self.model_name):
+            calc = self.model.get_calculator(precision="high")
+            # Get benchmark data
+            data_dir = (
+                download_s3_data(
+                    filename="elemental_slab_oxygen_adsorption.zip",
+                    key="inputs/surfaces/elemental_slab_oxygen_adsorption/elemental_slab_oxygen_adsorption.zip",
+                )
+                / "elemental_slab_oxygen_adsorption_pbe"
             )
-            / "elemental_slab_oxygen_adsorption_pbe"
-        )
 
-        triplets_list = [read(xyz_path, ":") for xyz_path in data_dir.glob("*.xyz")]
+            triplets_list = [read(xyz_path, ":") for xyz_path in data_dir.glob("*.xyz")]
 
-        for triplet in tqdm(
-            triplets_list,
-            desc=f"Processing Triplets for model: {self.model_name}",
-        ):
-            self.evaluate_energies(triplet, calc)
+            for triplet in tqdm(
+                triplets_list,
+                desc=f"Processing Triplets for model: {self.model_name}",
+            ):
+                self.evaluate_energies(triplet, calc)
 
-        # Write all structures organized by system
-        write_dir = OUT_PATH / self.model_name
-        write_dir.mkdir(parents=True, exist_ok=True)
-        for triplet in triplets_list:
-            system_name = triplet[0].info["system_name"]
-            write(write_dir / f"{system_name}.xyz", triplet)
+            # Write all structures organized by system
+            write_dir = OUT_PATH / self.model_name
+            write_dir.mkdir(parents=True, exist_ok=True)
+            for triplet in triplets_list:
+                system_name = triplet[0].info["system_name"]
+                write(write_dir / f"{system_name}.xyz", triplet)
 
 
 def build_project(repro: bool = False) -> None:

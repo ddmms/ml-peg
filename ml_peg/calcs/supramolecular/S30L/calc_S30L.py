@@ -15,6 +15,7 @@ import pytest
 from tqdm import tqdm
 import zntrack
 
+from ml_peg.calcs.utils.run_log import log_run
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -230,33 +231,34 @@ class S30LBenchmark(zntrack.Node):
 
     def run(self):
         """Run S30L benchmark calculations."""
-        calc = self.model.get_calculator(precision="high")
+        with log_run(OUT_PATH, self.model_name):
+            calc = self.model.get_calculator(precision="high")
 
-        # Add D3 calculator for this test
-        calc = self.model.add_d3_calculator(calc)
+            # Add D3 calculator for this test
+            calc = self.model.add_d3_calculator(calc)
 
-        # Get benchmark data
-        base_dir = (
-            download_s3_data(
-                filename="S30L.zip", key="inputs/supramolecular/S30L/S30L.zip"
+            # Get benchmark data
+            base_dir = (
+                download_s3_data(
+                    filename="S30L.zip", key="inputs/supramolecular/S30L/S30L.zip"
+                )
+                / "S30L/s30l_test_set"
             )
-            / "S30L/s30l_test_set"
-        )
 
-        # Run benchmark
-        complex_atoms = self.benchmark_s30l(calc, self.model_name, base_dir)
+            # Run benchmark
+            complex_atoms = self.benchmark_s30l(calc, self.model_name, base_dir)
 
-        # Write output structures
-        write_dir = OUT_PATH / self.model_name
-        write_dir.mkdir(parents=True, exist_ok=True)
+            # Write output structures
+            write_dir = OUT_PATH / self.model_name
+            write_dir.mkdir(parents=True, exist_ok=True)
 
-        # Save individual complex atoms files for each system
-        for i, atoms in enumerate(complex_atoms):
-            atoms_copy = atoms.copy()
+            # Save individual complex atoms files for each system
+            for i, atoms in enumerate(complex_atoms):
+                atoms_copy = atoms.copy()
 
-            # Write each system to its own file
-            system_file = write_dir / f"{i}.xyz"
-            write(system_file, atoms_copy, format="extxyz")
+                # Write each system to its own file
+                system_file = write_dir / f"{i}.xyz"
+                write(system_file, atoms_copy, format="extxyz")
 
 
 def build_project(repro: bool = False) -> None:
