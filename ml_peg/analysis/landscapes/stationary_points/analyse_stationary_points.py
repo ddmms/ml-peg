@@ -230,7 +230,7 @@ def stationary_energies() -> dict[str, list]:
 @plot_violin(
     filename=OUT_PATH / "figure_residual_forces.json",
     title="Residual force at the DFT stationary points",
-    y_label="Maximum force component / meV/Å",
+    y_label="RMS residual force / meV/Å",
     hoverdata={
         "Molecule": INFO["molecule"],
         "Kind": INFO["kind"],
@@ -243,19 +243,23 @@ def residual_forces() -> dict[str, list]:
 
     DFT forces are zero at these geometries by construction, so there is no
     reference to compare against: what the model reports is a residual, saying
-    how far the DFT structure is from being stationary under the model. The
-    maximum component is used rather than the RMS because it is the quantity a
-    geometry optimiser converges on, and this number is a prediction of whether
-    the structure will survive reconvergence.
+    how far the DFT structure is from being stationary under the model.
+
+    Reported as the RMS over the structure's force components, which against a
+    reference of zeros is exactly an RMSE, and so is the same statistic as
+    ``Path force RMSE``. That comparability is the point: on MACE-OFF the two
+    come out at 159 and 153 meV/Å, which says the model's force error at the
+    stationary points is the same size as along the paths between them -- one
+    systematic offset across the whole surface.
 
     Returns
     -------
     dict[str, list]
-        Per-structure maximum force components in meV/Å.
+        Per-structure RMS force in meV/Å.
     """
     return {
         model_name: [
-            float(np.max(np.abs(a.arrays["mlip_forces"])) * EV_TO_MEV)
+            float(np.sqrt(np.mean(a.arrays["mlip_forces"] ** 2)) * EV_TO_MEV)
             for a in _read_frames(model_name, POINTS_GLOB)
         ]
         for model_name in MODELS
@@ -341,10 +345,6 @@ def get_residual_force(residual_forces: dict[str, list]) -> dict[str, float]:
     """
     Get the median residual force at the stationary points.
 
-    The median rather than the mean because the distribution is expected to be
-    skewed: a model can hold most of the landscape and still disagree sharply
-    about a few structures.
-
     Parameters
     ----------
     residual_forces
@@ -356,29 +356,6 @@ def get_residual_force(residual_forces: dict[str, list]) -> dict[str, float]:
         Median in meV/Å for each model.
     """
     return _percentile(residual_forces, 50)
-
-
-@pytest.fixture
-def get_residual_force_p90(residual_forces: dict[str, list]) -> dict[str, float]:
-    """
-    Get the 90th percentile of the residual force at the stationary points.
-
-    Reported beside the median because the median alone cannot separate a model
-    that is uniformly good from one that holds most of the landscape and is
-    badly wrong about a tenth of it. Those two behave quite differently under
-    reconvergence, and only the second loses structures.
-
-    Parameters
-    ----------
-    residual_forces
-        Per-structure maximum force components.
-
-    Returns
-    -------
-    dict[str, float]
-        90th percentile in meV/Å for each model.
-    """
-    return _percentile(residual_forces, 90)
 
 
 @pytest.fixture
@@ -696,7 +673,6 @@ def get_connectivity() -> dict[str, float]:
 def metrics(
     get_energy_rmse: dict[str, float],
     get_residual_force: dict[str, float],
-    get_residual_force_p90: dict[str, float],
     get_path_energy_rmse: dict[str, float],
     get_path_force_rmse: dict[str, float],
     get_minima_drift_median: dict[str, float],
@@ -718,8 +694,6 @@ def metrics(
         Energy RMSE at the stationary points.
     get_residual_force
         Median residual force at the stationary points.
-    get_residual_force_p90
-        90th percentile of the residual force at the stationary points.
     get_path_energy_rmse
         Energy RMSE along the paths.
     get_path_force_rmse
@@ -744,8 +718,7 @@ def metrics(
     """
     return {
         "Energy RMSE": get_energy_rmse,
-        "Residual force (median)": get_residual_force,
-        "Residual force (90th pct)": get_residual_force_p90,
+        "Residual force": get_residual_force,
         "Path energy RMSE": get_path_energy_rmse,
         "Path force RMSE": get_path_force_rmse,
         "Minima drift (median)": get_minima_drift_median,

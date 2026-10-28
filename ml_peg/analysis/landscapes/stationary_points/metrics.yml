@@ -9,17 +9,11 @@ metrics:
     unit: meV/atom
     tooltip: "RMSE between MLIP and DFT energies at the Landscape17 minima and transition states, each method measured from its own mean so that an overall offset cancels. The mean rather than the lowest structure: a model that badly over-stabilises one structure would otherwise take that structure as its zero, measuring every other energy from its own worst error. Divided by atom count so the six molecules, 9 to 21 atoms, contribute on the same scale."
     level_of_theory: ωB97X/6-31G(d)
-  Residual force (median):
+  Residual force:
     good: 10.0
     bad: 100.0
     unit: meV/Å
-    tooltip: "Median of the largest force component the MLIP reports at the DFT stationary points. DFT forces are zero there by construction, so this is not an error against a reference but a measure of how far the DFT geometry is from being stationary under the model, which is what decides whether it survives reconvergence. The thresholds are the scale at which a geometry optimiser would consider a structure converged (good) and the scale at which it will certainly migrate (bad); they are provisional until the spread across models is known."
-    level_of_theory: ωB97X/6-31G(d)
-  Residual force (90th pct):
-    good: 50.0
-    bad: 500.0
-    unit: meV/Å
-    tooltip: "90th percentile of the same distribution, so a model that is uniformly good is distinguished from one that holds most of the landscape and is badly wrong about a tenth of it. The median cannot separate those two, and only the second loses structures under reconvergence. Thresholds are provisional, like the median's: good means nine structures in ten sit where an optimiser would call them converged, bad means one in ten sits where it will certainly migrate."
+    tooltip: "Median over structures of the RMS force the MLIP reports at the DFT stationary points. DFT forces are zero there, so this is an RMSE against zero, the same statistic as Path force RMSE and directly comparable with it. DFT forces are zero there by construction, so this is not an error against a reference but a measure of how far the DFT geometry is from being stationary under the model, which is what decides whether it survives reconvergence. The thresholds are the scale at which a geometry optimiser would consider a structure converged (good) and the scale at which it will certainly migrate (bad); they are provisional until the spread across models is known."
     level_of_theory: ωB97X/6-31G(d)
   Path energy RMSE:
     good: 1.0
