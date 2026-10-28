@@ -44,8 +44,6 @@ Everything that searches runs the model in float64, via
 preference: eigenvector following takes its curvature from finite differences
 of forces, which in float32 is noise-dominated, and the search wanders.
 
-Still to come:
-
 ``test_hessians``
     Compare the model's Hessian at each reference geometry with the DFT one:
     the overlap of the normal modes, the overlap of the reaction coordinate at
@@ -77,9 +75,11 @@ from typing import Any
 from warnings import warn
 
 from ase.atoms import Atoms
+from ase.data import atomic_masses, atomic_numbers
 from ase.io import read, write
 import numpy as np
 import pytest
+from scipy.optimize import linear_sum_assignment
 from tqdm.auto import tqdm
 
 from ml_peg.calcs.utils.utils import download_github_data
@@ -806,3 +806,264 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
         write(out_dir / f"{molecule.key}_reconverged_saddles.extxyz", results)
         if endpoints:
             write(out_dir / f"{molecule.key}_saddle_endpoints.extxyz", endpoints)
+
+
+# Displacement for the finite-difference Hessian, in A. Small enough that the
+# third-order term stays negligible, large enough that the force difference is
+# not dominated by the model's own numerical noise. Each structure costs 6N
+# force evaluations, so the whole reference set is a few thousand calls.
+HESSIAN_STEP = 1e-3
+HESSIAN_FILENAME = "landscape17_hessians.zip"
+
+
+def _hessian_dir() -> Path:
+    """
+    Fetch and extract the reference Hessians.
+
+    Returns
+    -------
+    pathlib.Path
+        Directory holding one subdirectory per molecule.
+    """
+    return download_github_data(filename=HESSIAN_FILENAME, github_uri=DATA_URI) / (
+        "landscape17_hessians"
+    )
+
+
+def _reference_hessian(folder: Path, atoms: Atoms) -> np.ndarray:
+    """
+    Read the reference Hessian for a structure, checking it is that structure.
+
+
+    Parameters
+    ----------
+    folder
+        Reference directory for this structure.
+    atoms
+        The structure it should contain.
+
+    Returns
+    -------
+    numpy.ndarray
+        The reference Hessian in eV/A^2.
+    """
+    if not folder.is_dir():
+        raise FileNotFoundError(f"No reference Hessian at {folder}")
+
+    reference = read(folder / "geometry.xyz")
+    difference = np.abs(reference.get_positions() - atoms.get_positions()).max()
+    if difference > 1e-4:
+        raise ValueError(
+            f"{folder} holds a different structure from the one labelled "
+            f"{atoms.info['label']}: coordinates differ by {difference:.3g} A."
+        )
+    return np.load(folder / "hessian_eV_per_A2.npy")
+
+
+def _internal_basis(positions: np.ndarray, symbols: list[str]) -> np.ndarray:
+    """
+    Build a basis spanning internal motion, excluding translation and rotation.
+
+    Six modes sit at essentially zero curvature, and within that near-degenerate
+    subspace the individual eigenvectors are arbitrary: comparing them one to
+    one produces cosines near zero that look like total disagreement and mean
+    nothing. Both Hessians are projected into this basis first, leaving 3N-6
+    real modes. The same basis serves both because they share a geometry.
+
+    Parameters
+    ----------
+    positions
+        Atomic positions, N by 3.
+    symbols
+        Chemical symbols.
+
+    Returns
+    -------
+    numpy.ndarray
+        Columns spanning internal motion.
+    """
+    masses = np.array([atomic_masses[atomic_numbers[s]] for s in symbols])
+    shifted = positions - np.average(positions, axis=0, weights=masses)
+
+    rigid = []
+    for axis in range(3):
+        translation = np.zeros_like(positions)
+        translation[:, axis] = 1.0
+        rigid.append(translation.flatten())
+    for axis in range(3):
+        unit = np.zeros(3)
+        unit[axis] = 1.0
+        rigid.append(np.cross(unit, shifted).flatten())
+
+    basis, upper = np.linalg.qr(np.array(rigid).T)
+    independent = basis[:, np.abs(np.diag(upper)) > 1e-8]
+    left, singular, _ = np.linalg.svd(independent, full_matrices=True)
+    return left[:, (singular > 1e-8).sum() :]
+
+
+def _model_hessian(calc, symbols: list[str], positions: np.ndarray) -> np.ndarray:
+    """
+    Compute the model's Hessian by central differences of its forces.
+
+    Parameters
+    ----------
+    calc
+        ASE calculator to evaluate with.
+    symbols
+        Chemical symbols.
+    positions
+        Atomic positions, N by 3.
+
+    Returns
+    -------
+    numpy.ndarray
+        Symmetrised Hessian in eV/A^2.
+    """
+    flat = np.asarray(positions, dtype=float).flatten()
+    hessian = np.zeros((flat.size, flat.size))
+    for i in range(flat.size):
+        gradients = []
+        for sign in (1, -1):
+            shifted = flat.copy()
+            shifted[i] += sign * HESSIAN_STEP
+            atoms = Atoms(symbols, shifted.reshape(-1, 3))
+            atoms.info.update(charge=CHARGE, spin=SPIN)
+            atoms.calc = calc
+            gradients.append(-np.asarray(atoms.get_forces(), dtype=float).flatten())
+        hessian[i] = (gradients[0] - gradients[1]) / (2 * HESSIAN_STEP)
+    # The two halves differ only by finite-difference error; a Hessian is
+    # symmetric by construction, so averaging them is free accuracy.
+    return 0.5 * (hessian + hessian.T)
+
+
+def _match_modes(
+    reference: np.ndarray, model: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Pair every reference mode with a model mode, one to one, by overlap.
+
+    An eigenvalue window cannot do this job. A model whose stiff modes come
+    back uniformly softer than DFT -- GFN2-xTB is 15 to 20% soft on this
+    reference -- puts the correct partner outside any window tight enough to
+    be meaningful, and the mode is scored zero although the model has its
+    direction right. Matching on the overlap itself is indifferent to a
+    systematic scaling, which is then reported separately instead of silently
+    destroying the comparison.
+
+    One to one also handles degeneracy: modes free to mix within a degenerate
+    set are assigned among themselves rather than all claiming one partner.
+
+    Parameters
+    ----------
+    reference
+        Reference eigenvectors as columns.
+    model
+        Model eigenvectors as columns.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray]
+        The matched overlap for each reference mode, and the model mode index
+        it was matched to.
+    """
+    overlap = np.abs(reference.T @ model)
+    rows, columns = linear_sum_assignment(-overlap)
+    matched = np.zeros(reference.shape[1])
+    partner = np.zeros(reference.shape[1], dtype=int)
+    matched[rows] = overlap[rows, columns]
+    partner[rows] = columns
+    return matched, partner
+
+
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_hessians(mlip: tuple[str, Any]) -> None:
+    """
+    Compare the model's curvature with DFT at each reference stationary point.
+
+    Both Hessians are evaluated at the same DFT geometry, so this measures the
+    curvature the model assigns to the reference structure rather than
+    curvature at some nearby structure the model happened to find. That keeps
+    it a test of the potential and not of the search.
+
+    Parameters
+    ----------
+    mlip
+        Tuple of ``(model_name, model)`` as provided by ``MODELS.items()``.
+    """
+    model_name, model = mlip
+    calc = model.get_calculator(precision="high")
+    hessian_dir = _hessian_dir()
+    out_dir = OUT_PATH / model_name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    data_dir = _data_dir()
+
+    for molecule in MOLECULES:
+        results: list[Atoms] = []
+        frames = _stationary_points(data_dir, molecule)
+        for atoms in tqdm(
+            frames,
+            desc=f"{model_name} {molecule.key} hessians",
+            unit="pt",
+            disable=not sys.stderr.isatty(),
+        ):
+            folder = hessian_dir / molecule.key / atoms.info["label"]
+            symbols = atoms.get_chemical_symbols()
+            positions = atoms.get_positions()
+            reference = _reference_hessian(folder, atoms)
+
+            out_atoms = Atoms(symbols, positions)
+            out_atoms.info.update(
+                molecule=molecule.key,
+                kind=atoms.info["kind"],
+                label=atoms.info["label"],
+            )
+            try:
+                predicted = _model_hessian(calc, symbols, positions)
+            except Exception as exc:
+                warn(f"Hessian failed on {atoms.info['label']}: {exc}", stacklevel=2)
+                out_atoms.info.update(
+                    mode_overlap_median=np.nan,
+                    reaction_coordinate_overlap=np.nan,
+                    eigenvalue_scaling=np.nan,
+                )
+                results.append(out_atoms)
+                continue
+
+            basis = _internal_basis(positions, symbols)
+            ref_values, ref_vectors = np.linalg.eigh(basis.T @ reference @ basis)
+            model_values, model_vectors = np.linalg.eigh(basis.T @ predicted @ basis)
+            matched, partner = _match_modes(ref_vectors, model_vectors)
+
+            # The slope of model against reference eigenvalues, through the
+            # origin: 1 means the model agrees about curvature, and a uniform
+            # departure is a stiffness error that leaves every mode direction
+            # intact.
+            paired = model_values[partner]
+            scaling = float(np.dot(ref_values, paired) / np.dot(ref_values, ref_values))
+
+            out_atoms.info.update(
+                mode_overlap_median=float(np.median(matched)),
+                mode_overlap_min=float(matched.min()),
+                eigenvalue_scaling=scaling,
+                # Diagnostic, not a metric. Counting negative eigenvalues is
+                # unreliable near zero: paracetamol's softest torsions sit at
+                # a few times 1e-3 eV/A^2 and three reference structures have
+                # one dip just below zero -- min01 at -7e-4, and two saddles
+                # with a spurious -1e-3 alongside their genuine -0.5. The real
+                # imaginary mode is still the most negative in every case, so
+                # the reaction coordinate below is unaffected.
+                n_negative_reference=int((ref_values < 0).sum()),
+                n_negative_model=int((model_values < 0).sum()),
+                # At a transition state the lowest mode is the reaction
+                # coordinate; whether the model agrees about the direction of
+                # the reaction is a sharper question than the average mode.
+                reaction_coordinate_overlap=(
+                    float(matched[0])
+                    if atoms.info["kind"] == "transition_state"
+                    else np.nan
+                ),
+            )
+            results.append(out_atoms)
+
+        if results:
+            write(out_dir / f"{molecule.key}_hessians.extxyz", results)
