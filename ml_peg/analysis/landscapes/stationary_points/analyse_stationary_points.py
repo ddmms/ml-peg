@@ -53,6 +53,7 @@ POINTS_GLOB = "*_stationary_points.extxyz"
 PATHS_GLOB = "*_paths.extxyz"
 MINIMA_GLOB = "*_reconverged_minima.extxyz"
 SADDLES_GLOB = "*_reconverged_saddles.extxyz"
+HESSIANS_GLOB = "*_hessians.extxyz"
 
 # Labels for the stationary points, read from the mock outputs so that hover
 # data lines up with the per-structure value lists. The path frames are
@@ -72,6 +73,14 @@ MINIMA_INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern=MINIMA_GLOB,
     info_keys=["molecule", "label"],
+    write_info=False,
+    write_structs=False,
+    out_path=OUT_PATH,
+)
+HESSIAN_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern=HESSIANS_GLOB,
+    info_keys=["molecule", "kind", "label"],
     write_info=False,
     write_structs=False,
     out_path=OUT_PATH,
@@ -663,6 +672,414 @@ def get_connectivity() -> dict[str, float]:
 
 
 @pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_mode_overlaps.json",
+    title="Agreement with the DFT normal modes",
+    y_label="Median mode overlap (cosine)",
+    hoverdata={
+        "Molecule": HESSIAN_INFO["molecule"],
+        "Kind": HESSIAN_INFO["kind"],
+        "Label": HESSIAN_INFO["label"],
+    },
+)
+def mode_overlaps() -> dict[str, list]:
+    """
+    Get how closely the model's normal modes match the DFT ones.
+
+    One number per structure: the median over its 3N-6 modes, each matched to
+    a DFT mode one to one. Both Hessians are taken at the same geometry, so
+    this is a statement about the curvature the model assigns to the reference
+    structure, not about where the model would put that structure.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-structure median mode overlap, from 0 to 1.
+    """
+    return {
+        model_name: [
+            a.info["mode_overlap_median"]
+            for a in _read_frames(model_name, HESSIANS_GLOB)
+        ]
+        for model_name in MODELS
+    }
+
+
+@pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_reaction_coordinates.json",
+    title="Agreement with the DFT reaction coordinate",
+    y_label="Imaginary mode overlap (cosine)",
+    hoverdata={
+        "Molecule": HESSIAN_INFO["molecule"],
+        "Kind": HESSIAN_INFO["kind"],
+        "Label": HESSIAN_INFO["label"],
+    },
+)
+def reaction_coordinate_overlaps() -> dict[str, list]:
+    """
+    Get whether the model agrees about the direction of each reaction.
+
+    Only transition states have one, so minima contribute NaN and drop out of
+    the plot. A sharper question than the average mode: a model can reproduce
+    every ordinary vibration and still disagree about which way the reaction
+    proceeds, and only this mode decides that.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-structure imaginary mode overlap, NaN at minima.
+    """
+    return {
+        model_name: [
+            _reaction_overlap(a) for a in _read_frames(model_name, HESSIANS_GLOB)
+        ]
+        for model_name in MODELS
+    }
+
+
+def _reaction_overlap(atoms) -> float:
+    """
+    Get the overlap with the DFT reaction coordinate, where the model has one.
+
+    Counted only when the model's matched mode is also negative. Without that
+    condition the overlap is taken against a mode the model considers uphill,
+    which credits it for agreeing about a reaction it does not believe has a
+    barrier: on MACE-OFF, ethanol ts0_1_0 overlaps 0.98 while the model's
+    lowest eigenvalue there is +0.10. Those 32 of 67 structures scored 0.974
+    against the 35 real ones at 0.989, so including them moved the metric
+    barely at all while halving what it described.
+
+    Parameters
+    ----------
+    atoms
+        A structure carrying the overlap and the paired eigenvalues.
+
+    Returns
+    -------
+    float
+        The overlap, or NaN where the model has no imaginary mode.
+    """
+    overlap = atoms.info.get("reaction_coordinate_overlap", np.nan)
+    if not np.isfinite(overlap):
+        return np.nan
+    model = np.asarray(atoms.info["model_eigenvalues"], dtype=float)
+    reference = np.asarray(atoms.info["reference_eigenvalues"], dtype=float)
+    return overlap if reference[0] < 0 and model[0] < 0 else np.nan
+
+
+def _scaling(atoms) -> float:
+    """
+    Fit one factor relating the model's curvature to the reference's.
+
+    The least-squares slope through the origin, which weights each mode by the
+    square of its reference eigenvalue and so is a statement about the stiff
+    modes: on this reference the eigenvalues span four orders of magnitude, and
+    the ten stiffest modes of aspirin carry 76% of the fit.
+
+    Weighting every mode equally instead was tried and is worse. The softest
+    modes have reference eigenvalues near zero -- 1% of them below 0.05 eV/A^2
+    -- so a small absolute error becomes an enormous ratio, and the resulting
+    statistic is governed by where the cutoff is put rather than by the model:
+    over the soft half it reads 1.12 with no floor and 1.00 with a floor of
+    2 eV/A^2, while the stiff half holds at 0.959 to 0.953 throughout. The
+    ratio-weighted version measures the cutoff; this one measures the model.
+
+    Parameters
+    ----------
+    atoms
+        A structure carrying paired reference and model eigenvalues.
+
+    Returns
+    -------
+    float
+        The scaling, 1 meaning agreement.
+    """
+    reference = np.asarray(atoms.info["reference_eigenvalues"], dtype=float)
+    model = np.asarray(atoms.info["model_eigenvalues"], dtype=float)
+    # Real modes only. At a saddle the negative eigenvalue is the reaction
+    # coordinate, which has its own metric, and leaving it here would put one
+    # mode in two. It makes no numerical difference -- the slope agrees to six
+    # decimals either way, since its weight is 3e-5 of the stiffest mode's --
+    # so this is about the metrics not overlapping, not about the number.
+    real = reference > 0
+    reference, model = reference[real], model[real]
+    return float(np.dot(reference, model) / np.dot(reference, reference))
+
+
+def _soft_mode_error(atoms) -> float:
+    """
+    Get the model's curvature error on the softest modes, in absolute terms.
+
+    Absolute rather than relative, because a ratio is unusable here. The
+    softest modes have reference eigenvalues near zero -- paracetamol's
+    lowest is 0.0026 eV/A^2 -- so an error of 0.18 eV/A^2, small beside the
+    16 eV/A^2 the model is out on its stiffest mode, reads as a factor of 67.
+    Averaging such ratios produces a number that tracks wherever the near-zero
+    modes are cut off: 1.19 with no floor against 1.01 at 2 eV/A^2. The
+    absolute error holds at 0.076, 0.074, 0.075 across the same range.
+
+    The softest third is taken because that is where a landscape lives: the
+    torsions that decide barrier heights and whether two minima are distinct,
+    rather than the X-H stretches that dominate a least-squares slope.
+
+    Parameters
+    ----------
+    atoms
+        A structure carrying paired reference and model eigenvalues.
+
+    Returns
+    -------
+    float
+        Median absolute eigenvalue error over the softest third, in eV/A^2.
+    """
+    reference = np.asarray(atoms.info["reference_eigenvalues"], dtype=float)
+    model = np.asarray(atoms.info["model_eigenvalues"], dtype=float)
+    positive = reference > 0
+    reference, model = reference[positive], model[positive]
+    if reference.size < 3:
+        return np.nan
+    softest = reference < np.percentile(reference, 33)
+    return float(np.median(np.abs(model - reference)[softest]))
+
+
+def _reaction_curvature(atoms) -> float:
+    """
+    Get how steeply the model falls away from the barrier top, against DFT.
+
+    The imaginary eigenvalue sets the curvature along the reaction coordinate,
+    which fixes the tunnelling correction and the transition state theory
+    prefactor. A ratio is sound here where it is not for the soft modes: the
+    reference imaginary eigenvalue is never near zero, ranging from -0.08 to
+    -9.18 eV/A^2 across this reference.
+
+    NaN unless both are negative. Where the model has no imaginary mode at the
+    DFT geometry there is no curvature to compare, and that is not a small
+    disagreement but a statement that the model does not see a barrier top
+    here at all -- counted by ``Saddles converged``, which agrees with this
+    condition on 65 of 67 structures.
+
+    Parameters
+    ----------
+    atoms
+        A structure carrying paired reference and model eigenvalues.
+
+    Returns
+    -------
+    float
+        Model imaginary eigenvalue over the reference one, 1 meaning
+        agreement.
+    """
+    if atoms.info["kind"] != "transition_state":
+        return np.nan
+    reference = np.asarray(atoms.info["reference_eigenvalues"], dtype=float)
+    model = np.asarray(atoms.info["model_eigenvalues"], dtype=float)
+    if reference[0] >= 0 or model[0] >= 0:
+        return np.nan
+    return float(model[0] / reference[0])
+
+
+@pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_soft_mode_error.json",
+    title="Curvature error on the softest modes",
+    y_label="Median absolute eigenvalue error / eV/Å²",
+    hoverdata={
+        "Molecule": HESSIAN_INFO["molecule"],
+        "Kind": HESSIAN_INFO["kind"],
+        "Label": HESSIAN_INFO["label"],
+    },
+)
+def soft_mode_errors() -> dict[str, list]:
+    """
+    Get the curvature error on the soft modes of each structure.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-structure median absolute error over the softest third, eV/A^2.
+    """
+    return {
+        model_name: [
+            _soft_mode_error(a) for a in _read_frames(model_name, HESSIANS_GLOB)
+        ]
+        for model_name in MODELS
+    }
+
+
+@pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_reaction_curvature.json",
+    title="Curvature along the reaction coordinate",
+    y_label="Model imaginary eigenvalue / DFT (1 = agreement)",
+    hoverdata={
+        "Molecule": HESSIAN_INFO["molecule"],
+        "Kind": HESSIAN_INFO["kind"],
+        "Label": HESSIAN_INFO["label"],
+    },
+)
+def reaction_curvatures() -> dict[str, list]:
+    """
+    Get how the model's barrier curvature compares with DFT, saddle by saddle.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-structure ratio, NaN where the model has no imaginary mode.
+    """
+    return {
+        model_name: [
+            _reaction_curvature(a) for a in _read_frames(model_name, HESSIANS_GLOB)
+        ]
+        for model_name in MODELS
+    }
+
+
+@pytest.fixture
+def get_soft_mode_error(soft_mode_errors: dict[str, list]) -> dict[str, float]:
+    """
+    Get the median curvature error on the soft modes.
+
+    Parameters
+    ----------
+    soft_mode_errors
+        Per-structure soft mode error.
+
+    Returns
+    -------
+    dict[str, float]
+        Median over structures, in eV/A^2.
+    """
+    return _summarise_over_reached(soft_mode_errors, np.median)
+
+
+@pytest.fixture
+def get_reaction_curvature(reaction_curvatures: dict[str, list]) -> dict[str, float]:
+    """
+    Get the median curvature ratio along the reaction coordinate.
+
+    Over the saddles where the model has an imaginary mode. How many it has one
+    for is ``Saddles converged``, so the two are read together: this says how
+    wrong the barrier shape is where the model sees a barrier at all.
+
+    Parameters
+    ----------
+    reaction_curvatures
+        Per-structure ratio.
+
+    Returns
+    -------
+    dict[str, float]
+        Median ratio, 1 meaning agreement.
+    """
+    return _summarise_over_reached(reaction_curvatures, np.median)
+
+
+@pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_curvature_scaling.json",
+    title="Curvature relative to DFT",
+    y_label="Eigenvalue scaling (1 = agreement)",
+    hoverdata={
+        "Molecule": HESSIAN_INFO["molecule"],
+        "Kind": HESSIAN_INFO["kind"],
+        "Label": HESSIAN_INFO["label"],
+    },
+)
+def curvature_scaling() -> dict[str, list]:
+    """
+    Get the slope of the model's eigenvalues against the DFT ones.
+
+    Plotted as the raw scaling rather than its deviation from 1, because the
+    direction matters: every model measured so far is soft, not stiff --
+    MACE-OFF by 6 to 8%, GFN2-xTB by 15% -- and a plot of the absolute
+    deviation would hide that they all err the same way.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-structure eigenvalue scaling, 1 meaning agreement.
+    """
+    return {
+        model_name: [_scaling(a) for a in _read_frames(model_name, HESSIANS_GLOB)]
+        for model_name in MODELS
+    }
+
+
+@pytest.fixture
+def get_mode_overlap(mode_overlaps: dict[str, list]) -> dict[str, float]:
+    """
+    Get the median agreement with the DFT normal modes.
+
+    Parameters
+    ----------
+    mode_overlaps
+        Per-structure median mode overlap.
+
+    Returns
+    -------
+    dict[str, float]
+        Median over structures, from 0 to 1.
+    """
+    return _summarise_over_all(mode_overlaps, np.median)
+
+
+@pytest.fixture
+def get_reaction_coordinate_overlap(
+    reaction_coordinate_overlaps: dict[str, list],
+) -> dict[str, float]:
+    """
+    Get the median agreement with the DFT reaction coordinates.
+
+    Over the transition states only, since minima have no imaginary mode.
+
+    Parameters
+    ----------
+    reaction_coordinate_overlaps
+        Per-structure imaginary mode overlap, NaN at minima.
+
+    Returns
+    -------
+    dict[str, float]
+        Median over transition states, from 0 to 1.
+    """
+    return _summarise_over_reached(reaction_coordinate_overlaps, np.median)
+
+
+@pytest.fixture
+def get_curvature_scaling_error(
+    curvature_scaling: dict[str, list],
+) -> dict[str, float]:
+    """
+    Get how far the model's curvature is from the DFT curvature.
+
+    The median of the per-structure distance from a scaling of 1, so a model
+    uniformly 6% soft scores 0.06 whichever way it errs. Reported apart from
+    the mode overlaps on purpose: a model can have every mode direction right
+    and still be systematically soft, and those are different failures.
+    Matching modes by overlap rather than by eigenvalue is what keeps the two
+    separable.
+
+    Parameters
+    ----------
+    curvature_scaling
+        Per-structure eigenvalue scaling.
+
+    Returns
+    -------
+    dict[str, float]
+        Median absolute deviation from 1.
+    """
+    results = {}
+    for model_name in MODELS:
+        values = np.asarray(curvature_scaling[model_name], dtype=float)
+        results[model_name] = (
+            float(np.median(np.abs(values - 1.0))) if values.size else np.nan
+        )
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "stationary_points_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -681,6 +1098,11 @@ def metrics(
     get_saddle_drift_median: dict[str, float],
     get_saddle_drift_mean: dict[str, float],
     get_connectivity: dict[str, float],
+    get_mode_overlap: dict[str, float],
+    get_reaction_coordinate_overlap: dict[str, float],
+    get_curvature_scaling_error: dict[str, float],
+    get_soft_mode_error: dict[str, float],
+    get_reaction_curvature: dict[str, float],
 ) -> dict[str, dict]:
     """
     Collect all metrics.
@@ -710,6 +1132,16 @@ def metrics(
         Mean distance a reached saddle sits from the reference one.
     get_connectivity
         Fraction of reference saddles joining the same two minima.
+    get_mode_overlap
+        Median agreement with the DFT normal modes.
+    get_reaction_coordinate_overlap
+        Median agreement with the DFT reaction coordinates.
+    get_curvature_scaling_error
+        Median distance of the curvature from the DFT curvature.
+    get_soft_mode_error
+        Median curvature error on the soft modes.
+    get_reaction_curvature
+        Median curvature ratio along the reaction coordinate.
 
     Returns
     -------
@@ -727,6 +1159,11 @@ def metrics(
         "Saddle drift (median)": get_saddle_drift_median,
         "Saddle drift (mean)": get_saddle_drift_mean,
         "Connectivity preserved": get_connectivity,
+        "Normal mode overlap": get_mode_overlap,
+        "Reaction coordinate overlap": get_reaction_coordinate_overlap,
+        "Curvature scaling error": get_curvature_scaling_error,
+        "Soft mode curvature error": get_soft_mode_error,
+        "Reaction mode curvature": get_reaction_curvature,
     }
 
 

@@ -834,6 +834,15 @@ def _reference_hessian(folder: Path, atoms: Atoms) -> np.ndarray:
     """
     Read the reference Hessian for a structure, checking it is that structure.
 
+    The directory is found by name, because the archive's directories carry the
+    same labels this module uses. That was not always so: the original archive
+    numbered transition states by a position in the edge list that networkx
+    does not reproduce, so names could not be trusted and the pairing had to be
+    recovered from the coordinates.
+
+    The geometry check is what makes the name safe to rely on. It costs one
+    array comparison and turns a renumbered or rebuilt reference from a silent
+    comparison against the wrong Hessian into an error.
 
     Parameters
     ----------
@@ -1024,7 +1033,6 @@ def test_hessians(mlip: tuple[str, Any]) -> None:
                 out_atoms.info.update(
                     mode_overlap_median=np.nan,
                     reaction_coordinate_overlap=np.nan,
-                    eigenvalue_scaling=np.nan,
                 )
                 results.append(out_atoms)
                 continue
@@ -1034,17 +1042,19 @@ def test_hessians(mlip: tuple[str, Any]) -> None:
             model_values, model_vectors = np.linalg.eigh(basis.T @ predicted @ basis)
             matched, partner = _match_modes(ref_vectors, model_vectors)
 
-            # The slope of model against reference eigenvalues, through the
-            # origin: 1 means the model agrees about curvature, and a uniform
-            # departure is a stiffness error that leaves every mode direction
-            # intact.
             paired = model_values[partner]
-            scaling = float(np.dot(ref_values, paired) / np.dot(ref_values, ref_values))
 
             out_atoms.info.update(
                 mode_overlap_median=float(np.median(matched)),
                 mode_overlap_min=float(matched.min()),
-                eigenvalue_scaling=scaling,
+                # The eigenvalues themselves, paired mode by mode, rather than
+                # a scaling derived from them. How to summarise the curvature
+                # is a real choice -- a least-squares slope is dominated by the
+                # stiffest modes, which on this reference span four orders of
+                # magnitude -- and keeping the pairs means that choice can be
+                # revisited in the analysis without recomputing any Hessian.
+                reference_eigenvalues=ref_values,
+                model_eigenvalues=paired,
                 # Diagnostic, not a metric. Counting negative eigenvalues is
                 # unreliable near zero: paracetamol's softest torsions sit at
                 # a few times 1e-3 eV/A^2 and three reference structures have
@@ -1055,8 +1065,11 @@ def test_hessians(mlip: tuple[str, Any]) -> None:
                 n_negative_reference=int((ref_values < 0).sum()),
                 n_negative_model=int((model_values < 0).sum()),
                 # At a transition state the lowest mode is the reaction
-                # coordinate; whether the model agrees about the direction of
-                # the reaction is a sharper question than the average mode.
+                # coordinate; whether the model agrees about its direction is
+                # a sharper question than the average mode. Stored raw: whether
+                # to count it when the model has no imaginary mode there is a
+                # judgement, and the eigenvalues beside it let the analysis
+                # make that judgement without recomputing a Hessian.
                 reaction_coordinate_overlap=(
                     float(matched[0])
                     if atoms.info["kind"] == "transition_state"
