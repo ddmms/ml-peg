@@ -116,6 +116,8 @@ def test_missing_benchmark_keeps_independent_steps(tmp_path, monkeypatch):
     playwright = Mock()
     playwright.chromium.launch.return_value = browser
     monkeypatch.setattr(profiler, "sync_playwright", lambda: nullcontext(playwright))
+    mock_expect = Mock()
+    monkeypatch.setattr(profiler, "expect", mock_expect)
     monkeypatch.setattr(profiler, "wait_for_table", lambda *args: None)
     monkeypatch.setattr(profiler, "edit", lambda *args: None)
     monkeypatch.setattr(profiler, "navigate", lambda *args: None)
@@ -160,6 +162,7 @@ def test_missing_benchmark_keeps_independent_steps(tmp_path, monkeypatch):
         category=None,
     )
     assert profiler.run_journey(args, tmp_path) == 0
+    mock_expect.set_options.assert_called_once_with(timeout=args.timeout)
     assert actions == ["model", "model", "filter", "filter"]
     assert (
         next(r for r in reports[0]["results"] if r["action"] == "select benchmark")[
