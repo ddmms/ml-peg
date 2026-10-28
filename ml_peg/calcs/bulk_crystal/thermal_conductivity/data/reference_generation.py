@@ -281,8 +281,8 @@ def scrape_phono3py_data(max_threads: int = 8) -> tuple[list[str], list[str]]:
     for i in tqdm(failed, desc="Retrying downloads", disable=not failed):
         try:
             yaml_list[i] = _download_one(params_links[i])
-        except RuntimeError:
-            remaining.append(params_links[i])
+        except RuntimeError as exc:
+            remaining.append(f"{params_links[i]}: {exc.__cause__ or exc!r}")
     if remaining:
         raise RuntimeError(
             f"Failed to download {len(remaining)} files. Completed files are cached; "

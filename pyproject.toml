@@ -109,7 +109,7 @@ Documentation = "https://ddmms.github.io/ml-peg/"
 # The WTE plugin is only available from GitHub, so use a uv group rather than
 # a pip extra whose source override would be ignored.
 thermal-conductivity = [
-    "phono3py>=4.8.2",
+    "phono3py>=4.8.2,<5",
     "phono3py-wte",
 ]
 

@@ -396,11 +396,7 @@ def test_wte_registration_cleans_up_grid_alias(existing_alias, missing_plugin):
     assert modules == ({alias: previous} if existing_alias else {})
 
 
-@pytest.mark.parametrize(
-    "scattering_settings",
-    [{}, {"average_degenerate_weights": False, "exclude_gamma_acoustic": False}],
-)
-def test_wte_mode_outputs_preserve_total_conductivity(scattering_settings):
+def test_wte_mode_outputs_preserve_total_conductivity():
     """Use the plugin API while retaining mode contributions and output keys."""
     from copy import deepcopy
 
@@ -458,19 +454,14 @@ def test_wte_mode_outputs_preserve_total_conductivity(scattering_settings):
             [300],
             boundary_mfp=123,
             log_level=0,
-            **scattering_settings,
         )
     assert result_ph3 is ph3
     assert result_kappa is kappa
     assert [name for name, _ in calls] == ["register", "init", "run"]
     assert calls[1][1] == {
         "symmetrize_fc3q": False,
-        "average_degenerate_weights": scattering_settings.get(
-            "average_degenerate_weights", True
-        ),
-        "exclude_gamma_acoustic": scattering_settings.get(
-            "exclude_gamma_acoustic", True
-        ),
+        "average_degenerate_weights": True,
+        "exclude_gamma_acoustic": True,
     }
     assert calls[-1][1] == {
         "transport_type": "WTE",
@@ -486,13 +477,15 @@ def test_wte_mode_outputs_preserve_total_conductivity(scattering_settings):
     )
 
 
-@pytest.mark.parametrize("failure", ["none", "transient", "persistent"])
+@pytest.mark.parametrize("failure", ["none", "transient", "persistent", "http"])
 def test_reference_download_order_and_resume(tmp_path, failure):
     """Keep material order and reuse completed downloads after a failed batch."""
     from concurrent.futures import ThreadPoolExecutor
     from hashlib import sha256
     import lzma
     import re
+
+    from requests import HTTPError
 
     names = ["NaCl", "MgO", "SiC"]
     links = [f"https://example.test/{name}.yaml.xz" for name in names]
@@ -510,8 +503,10 @@ def test_reference_download_order_and_resume(tmp_path, failure):
         if (
             fail
             and url == links[0]
-            and (failure == "persistent" or calls.count(url) <= 3)
+            and (failure in {"persistent", "http"} or calls.count(url) <= 3)
         ):
+            if failure == "http":
+                raise HTTPError(f"404 Client Error: Not Found for url: {url}")
             raise OSError("interrupted download")
         return SimpleNamespace(
             content=lzma.compress(names[links.index(url)].encode()),
@@ -537,9 +532,16 @@ def test_reference_download_order_and_resume(tmp_path, failure):
         CALC_PATH / "data/reference_generation.py", {"scrape_phono3py_data"}, namespace
     )
     download = namespace["scrape_phono3py_data"]
-    if failure == "persistent":
-        with pytest.raises(RuntimeError, match="Failed to download"):
+    if failure in {"persistent", "http"}:
+        with pytest.raises(RuntimeError, match="Failed to download") as exc_info:
             download()
+        assert links[0] in str(exc_info.value)
+        expected = (
+            "404 Client Error: Not Found"
+            if failure == "http"
+            else ("OSError('interrupted download')")
+        )
+        assert expected in str(exc_info.value)
         assert calls.count(links[0]) == 6
         fail = False
     yaml_list, name_list = download()

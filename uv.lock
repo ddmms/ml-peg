@@ -6633,7 +6633,7 @@ pre-commit = [
 ]
 prod = [{ name = "gunicorn", specifier = ">=23" }]
 thermal-conductivity = [
-    { name = "phono3py", specifier = ">=4.8.2" },
+    { name = "phono3py", specifier = ">=4.8.2,<5" },
     { name = "phono3py-wte", git = "https://github.com/MSimoncelli/phono3py-wte.git?rev=6463b233a350a842c5238a2efeade80428c99ecf" },
 ]
 

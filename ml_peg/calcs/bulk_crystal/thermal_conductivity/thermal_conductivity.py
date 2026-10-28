@@ -414,12 +414,15 @@ def calculate_conductivity(
     temperatures: Sequence[float],
     boundary_mfp: float = 1e6,
     mode_kappa_thresh: float = 1e-6,
-    average_degenerate_weights: bool = True,
-    exclude_gamma_acoustic: bool = True,
     **kwargs: Any,
 ) -> tuple[Phono3py, dict[str, np.ndarray], RTACalculator]:
     """
     Calculate thermal conductivity.
+
+    The benchmark averages degenerate tetrahedron weights and excludes Gamma
+    acoustic modes from conductivity and isotope scattering. Stability screening
+    uses the unmodified frequencies earlier. References must be regenerated with
+    this protocol when migrating from the legacy WTE implementation.
 
     Parameters
     ----------
@@ -433,12 +436,6 @@ def calculate_conductivity(
     mode_kappa_thresh : float
         Threshold for mode kappa consistency check. Defaults
         to 1e-6.
-    average_degenerate_weights : bool
-        Average tetrahedron weights over degenerate modes. Defaults to True.
-    exclude_gamma_acoustic : bool
-        Set Gamma acoustic frequencies to zero for conductivity and isotope
-        scattering. Defaults to True. Stability screening is performed earlier
-        on the unmodified phonon frequencies.
     **kwargs : Any
         Passed to Phono3py.run_thermal_conductivity().
 
@@ -451,8 +448,8 @@ def calculate_conductivity(
     register_wte()
     ph3.init_phph_interaction(
         symmetrize_fc3q=False,
-        average_degenerate_weights=average_degenerate_weights,
-        exclude_gamma_acoustic=exclude_gamma_acoustic,
+        average_degenerate_weights=True,
+        exclude_gamma_acoustic=True,
     )
 
     ph3.run_thermal_conductivity(
