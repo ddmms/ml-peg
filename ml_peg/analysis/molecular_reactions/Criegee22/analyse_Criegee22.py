@@ -1,7 +1,7 @@
 """
 Analyse Criegee22 reaction barrier benchmark.
 
-10.1021/acs.jpca.8b09349
+10.1002/jcc.26106
 """
 
 from __future__ import annotations

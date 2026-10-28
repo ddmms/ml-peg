@@ -48,7 +48,7 @@ def register_shell_callbacks() -> None:
     # hamburger, closes on a scrim tap or on navigation. Clientside: no server load.
     clientside_callback(
         """
-        function(nToggle, nScrim, pathname) {
+        function(nToggle, nScrim, href) {
             var ctx = window.dash_clientside.callback_context;
             var trig = (ctx.triggered[0] || {}).prop_id || '';
             var open = trig.indexOf('mobile-nav-toggle') === 0
@@ -60,6 +60,6 @@ def register_shell_callbacks() -> None:
         Output("mobile-nav-state", "data"),
         Input("mobile-nav-toggle", "n_clicks"),
         Input("sidebar-scrim", "n_clicks"),
-        Input("app-location", "pathname"),
+        Input("app-location", "href"),
         prevent_initial_call=True,
     )

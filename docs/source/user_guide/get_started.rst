@@ -86,3 +86,17 @@ file provided, via Docker Compose:
 
 
 The app should now be accessible at http://localhost:8050.
+
+
+Reporting a website bug
+-----------------------
+
+Use **Report a bug** in the app header to prepare a GitHub issue with page and
+settings details. Optionally capture the page and mark the problem
+area.
+
+Select **Open GitHub issue** to open a prefilled *Website bug* issue form, labelled
+automatically, then review and submit using your GitHub account.
+Large page details are shortened automatically, with counts of omitted entries.
+Captured screenshots download separately. Drag the file into the **Screenshots**
+field to attach it, or attach your own screenshot directly on GitHub.

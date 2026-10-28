@@ -4,4 +4,6 @@ implementers:
 
 contributors: []
 
-citations: []
+citations:
+  - bibtex_key: cattsunami2024
+    role: reference_data

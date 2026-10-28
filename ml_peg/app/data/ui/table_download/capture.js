@@ -41,15 +41,19 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
         if (window._mlpegHtmlToImagePromise) {
           return window._mlpegHtmlToImagePromise;
         }
-        window._mlpegHtmlToImagePromise = new Promise((resolve, reject) => {
+        const pending = new Promise((resolve, reject) => {
           const script = document.createElement("script");
           script.src = source;
           script.async = true;
           script.onload = () => resolve(window.htmlToImage);
           script.onerror = () => reject(new Error("Failed to load html-to-image"));
           document.head.appendChild(script);
+        }).catch(error => {
+          if (window._mlpegHtmlToImagePromise === pending) window._mlpegHtmlToImagePromise = null;
+          throw error;
         });
-        return window._mlpegHtmlToImagePromise;
+        window._mlpegHtmlToImagePromise = pending;
+        return pending;
       };
 
       const fmt = (request.format || "png").toLowerCase();

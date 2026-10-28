@@ -44,3 +44,5 @@ ml_peg/app/data/*
 certs/
 data.tar.gz
 scratchpad/
+*.bz2
+*.pkl

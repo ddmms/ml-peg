@@ -712,53 +712,52 @@ def register_category_table_callbacks(
             )
             return filtered_rows, style, tooltip_data
 
-    @callback(
-        Output(scores_store_id, "data", allow_duplicate=True),
-        Input(f"{table_id}-computed-store", "data"),
-        State(scores_store_id, "data"),
-        prevent_initial_call="initial_duplicate",
-    )
-    def update_scores_store(
-        computed_rows: list[dict] | None,
-        scores_data: dict[str, dict[str, float]],
-    ) -> dict[str, dict[str, float]]:
-        """
-        Update stored scores values when weights update.
+    # Only summary tables write to the global scores store
+    if table_id.endswith(summary_suffix):
 
-        Parameters
-        ----------
-        computed_rows
-            Cached full rows for the category summary table.
-        scores_data
-            Stored overall-summary inputs, keyed by category score column.
+        @callback(
+            Output(scores_store_id, "data", allow_duplicate=True),
+            Input(f"{table_id}-computed-store", "data"),
+            State(scores_store_id, "data"),
+            prevent_initial_call="initial_duplicate",
+        )
+        def update_scores_store(
+            computed_rows: list[dict] | None,
+            scores_data: dict[str, dict[str, float]],
+        ) -> dict[str, dict[str, float]]:
+            """
+            Update stored scores values when weights update.
 
-        Returns
-        -------
-        dict[str, dict[str, float]]
-            Updated summary-score mapping.
-        """
-        # Only summary tables should write to the global store
-        if not table_id.endswith(summary_suffix):
-            raise PreventUpdate
+            Parameters
+            ----------
+            computed_rows
+                Cached full rows for the category summary table.
+            scores_data
+                Stored overall-summary inputs, keyed by category score column.
 
-        if not computed_rows:
-            raise PreventUpdate
+            Returns
+            -------
+            dict[str, dict[str, float]]
+                Updated summary-score mapping.
+            """
+            if not computed_rows:
+                raise PreventUpdate
 
-        # Summary table IDs are of form "[key]{summary_suffix}"
-        category_key = table_id.removesuffix(summary_suffix) + " Score"
+            # Summary table IDs are of form "[key]{summary_suffix}"
+            category_key = table_id.removesuffix(summary_suffix) + " Score"
 
-        new_scores = {
-            row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
-        }
-        current_scores = (scores_data or {}).get(category_key)
+            new_scores = {
+                row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
+            }
+            current_scores = (scores_data or {}).get(category_key)
 
-        if current_scores == new_scores:
-            return no_update
+            if current_scores == new_scores:
+                return no_update
 
-        patch = Patch()
-        patch[category_key] = new_scores
+            patch = Patch()
+            patch[category_key] = new_scores
 
-        return patch
+            return patch
 
 
 def register_benchmark_to_group_callback(

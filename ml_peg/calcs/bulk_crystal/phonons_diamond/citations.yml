@@ -7,4 +7,6 @@ contributors:
     github: "joehart2001"
     email: "jh2536@cam.ac.uk"
 
-citations: []
+citations:
+  - bibtex_key: slack1973thermal
+    role: reference_method

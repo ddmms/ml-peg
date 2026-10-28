@@ -28,6 +28,8 @@ from ml_peg.app.filters import (
     get_model_filter,
     register_element_filter_callbacks,
 )
+from ml_peg.app.utils.bug_report import register_bug_report_callbacks
+from ml_peg.app.utils.build_bibtex import build_bibtex_controls
 from ml_peg.app.utils.build_components import (
     build_benchmark_card,
     build_collapse_controls,
@@ -55,6 +57,11 @@ from ml_peg.app.utils.register_callbacks import (
     register_filter_loading_callback,
     register_filter_tables_callback,
 )
+from ml_peg.app.utils.search import (
+    build_search_box,
+    build_search_entries,
+    register_search_callbacks,
+)
 from ml_peg.app.utils.settings import register_settings_callbacks
 from ml_peg.app.utils.shell import STARTUP_MASK_POLL_MS, register_shell_callbacks
 from ml_peg.app.utils.storage import (
@@ -73,6 +80,7 @@ from ml_peg.app.utils.weight_presets import (
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
+from ml_peg.utils.bibtex import BibTeXExport, collect_bibtex, combine_bibtex
 
 # Get all models
 MODELS = get_model_names(current_models)
@@ -531,10 +539,16 @@ def build_category(
             test_entries.append(
                 {
                     "name": test_name,
+                    "description": getattr(table, "description", "") or "",
                     "framework_ids": test_framework_ids,
                     "layout": all_layouts[category][test_name],
                     "key": test_name,
                     "speed": getattr(table, "speed", None),
+                    "bibtex": collect_bibtex(
+                        getattr(table, "citation_credits", None),
+                        test_framework_ids,
+                        label=test_name,
+                    ),
                 }
             )
 
@@ -597,6 +611,18 @@ def build_category_page_layout(
         [
             H1(category_title),
             H3(category_description),
+            Div(
+                build_bibtex_controls(
+                    combine_bibtex(
+                        test.get("bibtex", BibTeXExport()) for test in tests
+                    ),
+                    category_title,
+                    preview=True,
+                    heading=f"{category_title} bibliography",
+                    scope=f"Papers cited across all benchmarks in {category_title}.",
+                ),
+                className="mlpeg-category-bibliography",
+            ),
             Div(
                 Div(
                     Div(
@@ -695,10 +721,17 @@ def build_nav(
     weight_preset_selector = build_weight_preset_selector(_summary_label_style)
 
     sidebar = Div(
-        id="sidebar-nav",
+        [
+            build_search_box(),
+            Div(
+                id="sidebar-nav",
+                children=build_sidebar(
+                    "/", category_paths, framework_paths, framework_labels
+                ),
+                **{"role": "navigation", "aria-label": "Benchmark navigation"},
+            ),
+        ],
         className="mlpeg-sidebar",
-        children=build_sidebar("/", category_paths, framework_paths, framework_labels),
-        **{"role": "navigation", "aria-label": "Benchmark navigation"},
     )
 
     path_to_category = {path: category for category, path in category_paths.items()}
@@ -868,7 +901,7 @@ def build_nav(
                             ],
                             className="mlpeg-header",
                         ),
-                        build_header_controls(),
+                        build_header_controls(global_state_stores),
                     ],
                     className="mlpeg-topbar",
                 ),
@@ -958,6 +991,12 @@ def build_nav(
     register_shell_callbacks()
     register_storage_callbacks()
     register_settings_callbacks()
+    register_bug_report_callbacks(global_state_stores)
+    register_search_callbacks(
+        build_search_entries(
+            category_paths, framework_paths, framework_labels, category_views
+        )
+    )
 
     @callback(
         Output("model-filter-checklist", "value"),
@@ -1193,6 +1232,15 @@ def build_nav(
             return Div(
                 [
                     H1("Categories Summary"),
+                    build_bibtex_controls(
+                        combine_bibtex(
+                            test.get("bibtex", BibTeXExport())
+                            for view in category_views.values()
+                            for test in view["tests"]
+                        ),
+                        "all-benchmarks",
+                        scope="References for all benchmarks, regardless of filters.",
+                    ),
                     Div(
                         summary_counts,
                         className="mlpeg-chip",

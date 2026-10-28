@@ -196,10 +196,8 @@ def relax_with_pressure(
             )
             geom_opt.run()
             relaxed = geom_opt.struct
-            # asses forces to determine convergence
-            max_force = max(relaxed.get_forces().flatten(), key=abs)
-            if max_force < fmax:
-                converged = True
+            # Taken from the optimizer, so the cell is included under pressure
+            converged = geom_opt.dyn.converged()
             counter += 1
             atoms = relaxed
     except Exception as exc:

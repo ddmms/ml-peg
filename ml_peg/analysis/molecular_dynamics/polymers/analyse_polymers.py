@@ -62,14 +62,9 @@ DENSITY_MODEL_NAMES = list(
 )
 
 METRICS_CONFIG_PATH = pathlib.Path(__file__).with_name("metrics.yml")
-# `load_metrics_config` actually returns a 3-tuple (thresholds, tooltips,
-# weights), but its declared signature is a 2-tuple — silence the upstream
-# stub mismatch.
-(  # ty: ignore[invalid-assignment]
-    DEFAULT_THRESHOLDS,
-    DEFAULT_TOOLTIPS,
-    DEFAULT_WEIGHTS,
-) = analysis_utils.load_metrics_config(METRICS_CONFIG_PATH)  # type: ignore[misc]
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = (
+    analysis_utils.load_metrics_config(METRICS_CONFIG_PATH)
+)
 
 
 @functools.cache
@@ -299,6 +294,7 @@ def get_mae_by_subset(
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=DISPERSION_NAME_MAP,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     get_mae_by_subset: dict[str, dict[str, float]],

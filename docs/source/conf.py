@@ -11,9 +11,14 @@
 # serve to show the default.
 
 from importlib import metadata
+from pathlib import Path
+import sys
 import time
 
 import ml_peg
+
+# Local extensions, e.g. the model registry directive
+sys.path.append(str(Path(__file__).parent / "_ext"))
 
 # -- General configuration ------------------------------------------------
 
@@ -33,6 +38,7 @@ extensions = [
     "sphinxcontrib.contentui",
     "sphinx_copybutton",
     "sphinx_autodoc_typehints",
+    "model_registry",
 ]
 
 always_use_bars_union = True
