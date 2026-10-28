@@ -99,7 +99,9 @@ TRAVIS_FF = {
 # =============================================================================
 
 
-def resume_state(file_prefix: Path, steps: int) -> tuple[Atoms, int] | None:
+def resume_state(
+    file_prefix: Path, steps: int, traj_every: int = 100
+) -> tuple[Atoms, int] | None:
     """
     Find the restart point of a stage that a walltime cut short.
 
@@ -117,6 +119,12 @@ def resume_state(file_prefix: Path, steps: int) -> tuple[Atoms, int] | None:
     statistics file matches the structure it is handed, and so the output it
     appends does not overlap what is already there.
 
+    A job killed mid-write leaves its last output incomplete: a trajectory
+    frame, a statistics line or the restart file itself. Only the output up
+    to the restart step is read back, so a damaged tail is discarded rather
+    than parsed, and an unreadable restart file falls back to the previous
+    one.
+
     Returns ``None`` whenever anything fails to line up, which leaves the
     stage to start from scratch: losing a chunk is recoverable, resuming from
     an inconsistent state silently is not.
@@ -127,6 +135,9 @@ def resume_state(file_prefix: Path, steps: int) -> tuple[Atoms, int] | None:
         Prefix shared by this stage's output files.
     steps : int
         Total number of steps the stage must reach.
+    traj_every : int
+        Trajectory output interval of the stage, used to check that no frame
+        before the restart step is missing. Default is janus-core's.
 
     Returns
     -------
@@ -145,9 +156,49 @@ def resume_state(file_prefix: Path, steps: int) -> tuple[Atoms, int] | None:
             step = int(tail)
             if 0 < step < steps:
                 candidates[step] = path
-    if not candidates:
+
+    for step in sorted(candidates, reverse=True):
+        resumed = _rewind_to(step, candidates[step], stats_file, traj_file, traj_every)
+        if resumed is not None:
+            return resumed, step
+    return None
+
+
+def _rewind_to(
+    step: int, restart_file: Path, stats_file: Path, traj_file: Path, traj_every: int
+) -> Atoms | None:
+    """
+    Truncate statistics and trajectory back to a restart step.
+
+    Parameters
+    ----------
+    step : int
+        Step the restart file holds.
+    restart_file : Path
+        Restart file janus-core wrote at ``step``.
+    stats_file : Path
+        Statistics file of the stage.
+    traj_file : Path
+        Trajectory file of the stage.
+    traj_every : int
+        Trajectory output interval of the stage.
+
+    Returns
+    -------
+    Atoms | None
+        Structure to resume from, or None if the files cannot be brought back
+        to ``step`` consistently. Nothing is rewritten in that case.
+    """
+    try:
+        resumed = ase_read(restart_file)
+    except Exception:
+        # Restart file left incomplete by the kill.
         return None
-    step = max(candidates)
+    # The extxyz parser hands back info scalars as numpy types; orb's adapter
+    # asserts charge/spin are Python float/int.
+    for key in ("charge", "spin"):
+        if key in resumed.info:
+            resumed.info[key] = int(resumed.info[key])
 
     # The statistics file is the offset janus-core will read back, so it has to
     # end exactly on the step the restart file holds.
@@ -161,26 +212,32 @@ def resume_state(file_prefix: Path, steps: int) -> tuple[Atoms, int] | None:
         first = line.split(maxsplit=1)
         if not first or not first[0].isdigit():
             continue
-        if int(first[0]) > step:
+        # A line without its newline is one the kill cut short.
+        if int(first[0]) > step or not line.endswith("\n"):
             break
         kept.append(line)
         found = int(first[0]) == step
     if not found:
         return None
 
-    frames = ase_read(traj_file, index=":")
-    if any("step" not in frame.info for frame in frames):
+    # Frames are read one at a time and the first one past the restart step
+    # ends the read, so an incomplete frame at the end of the file is never
+    # parsed when an intact frame past the step precedes it. When it is the
+    # first frame past the step, parsing it fails in ways that depend on where
+    # the kill fell, and the read stops there.
+    frames = []
+    try:
+        for frame in iread(traj_file, index=":", format="extxyz"):
+            if int(frame.info["step"]) > step:
+                break
+            frames.append(frame)
+    except Exception:
+        pass
+    # janus-core writes the frame of a step before its restart file, so with a
+    # readable restart file every frame up to the step is complete. Check it
+    # anyway: a frame missing before the step would leave a silent gap.
+    if not frames or step - int(frames[-1].info["step"]) >= traj_every:
         return None
-    frames = [frame for frame in frames if int(frame.info["step"]) <= step]
-    if not frames:
-        return None
-
-    resumed = ase_read(candidates[step])
-    # The extxyz parser hands back info scalars as numpy types; orb's adapter
-    # asserts charge/spin are Python float/int.
-    for key in ("charge", "spin"):
-        if key in resumed.info:
-            resumed.info[key] = int(resumed.info[key])
 
     # Rewrite through temporaries: a job killed halfway through this must not
     # be able to leave a half-written history behind.
@@ -190,7 +247,7 @@ def resume_state(file_prefix: Path, steps: int) -> tuple[Atoms, int] | None:
     ase_write(tmp_traj, frames, format="extxyz")
     os.replace(tmp_stats, stats_file)
     os.replace(tmp_traj, traj_file)
-    return resumed, step
+    return resumed
 
 
 def run_stage(
@@ -234,7 +291,9 @@ def run_stage(
         done.calc = struct.calc
         return done
 
-    resume = resume_state(Path(file_prefix), steps)
+    resume = resume_state(
+        Path(file_prefix), steps, traj_every=kwargs.get("traj_every", 100)
+    )
     if resume is not None:
         resumed, offset = resume
         resumed.calc = struct.calc
