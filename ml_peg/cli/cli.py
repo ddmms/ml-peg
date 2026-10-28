@@ -570,14 +570,13 @@ def describe_run(run: dict | None) -> tuple[str, str]:
 #: States a calculation is reported in, in the order they are reported.
 STATES = ("completed", "stale", "failed", "incomplete", "skipped", "not run")
 
-#: Colour used to report each state of a run.
+#: Colour used to report each state of a run. States needing no attention are left
+#: uncoloured, rather than dimmed, so their counts are as readable as any other.
 STATE_COLOURS = {
     "completed": "green",
     "failed": "red",
     "incomplete": "yellow",
     "stale": "yellow",
-    "skipped": "dim",
-    "not run": "dim",
 }
 
 
@@ -705,31 +704,60 @@ def _add_detail_rows(
     int
         Number of models left out, as they are in a state not being reported.
     """
-    table.add_column("Benchmark", overflow="fold")
+    table.add_column("Category")
+    table.add_column("Test", overflow="fold")
     for column in ("Model", "State", "Finished", "Duration"):
         table.add_column(column)
     table.add_column("Warnings", justify="right")
     table.add_column("Note")
 
     hidden = 0
+    previous = None
     for benchmark, models in runs.items():
+        category, _, test = benchmark.partition("/")
         for model_name, run in models.items():
             run_state, note = describe_run(run)
             if run_state not in wanted:
                 hidden += 1
                 continue
+
+            new_category = previous is None or category != previous[0]
+            if previous is not None and new_category:
+                table.add_section()
+
+            # Only name the benchmark on its first row, so models read as a group
             warnings = (run or {}).get("warnings") or {}
+            colour = STATE_COLOURS.get(run_state)
             table.add_row(
-                benchmark,
+                category if new_category else "",
+                test if previous is None or (category, test) != previous else "",
                 model_name,
-                f"[{STATE_COLOURS.get(run_state, '')}]{run_state}[/]",
+                f"[{colour}]{run_state}[/]" if colour else run_state,
                 format_timestamp((run or {}).get("finished")),
                 format_duration((run or {}).get("duration_s")),
                 str(warnings.get("total", "")) if run else "",
                 note,
             )
+            previous = (category, test)
 
     return hidden
+
+
+def _count(count: int) -> str:
+    """
+    Format a count of models, dimming it where there are none to report.
+
+    Parameters
+    ----------
+    count
+        Number of models in a state.
+
+    Returns
+    -------
+    str
+        Count, dimmed if zero so that non-zero counts stand out.
+    """
+    return str(count) if count else "[dim]0[/]"
 
 
 def _add_summary_rows(table: Table, runs: dict[str, dict[str, dict | None]]) -> None:
@@ -745,23 +773,35 @@ def _add_summary_rows(table: Table, runs: dict[str, dict[str, dict | None]]) -> 
     """
     from collections import Counter
 
-    table.add_column("Benchmark", overflow="fold")
+    table.add_column("Category")
+    table.add_column("Test", overflow="fold")
     for run_state in STATES:
         table.add_column(
             run_state.title(), justify="right", style=STATE_COLOURS.get(run_state, "")
         )
 
     totals: Counter[str] = Counter()
+    previous = None
     for benchmark, models in runs.items():
         counts = Counter(describe_run(run)[0] for run in models.values())
         totals.update(counts)
+
+        category, _, test = benchmark.partition("/")
+        if previous is not None and category != previous:
+            table.add_section()
+        # Only name the category on its first row, so its tests read as a group
         table.add_row(
-            benchmark, *(str(counts[run_state] or "") for run_state in STATES)
+            category if category != previous else "",
+            test,
+            *(_count(counts[run_state]) for run_state in STATES),
         )
+        previous = category
 
     table.add_section()
     table.add_row(
-        "Total", *(f"[bold]{totals[run_state] or ''}[/]" for run_state in STATES)
+        "Total",
+        "",
+        *(f"[bold]{_count(totals[run_state])}[/]" for run_state in STATES),
     )
 
 

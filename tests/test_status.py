@@ -243,9 +243,9 @@ def test_status_summary(logged_runs):
         Output directory of the temporary benchmark.
     """
     output = status("--test", "tmp_status_test")
-    assert "Completed Stale Failed Incomplete Skipped Not Run" in output
-    # One completed, one failed, one incomplete, and one model never run
-    assert f"{BENCHMARK_ID} 1 1 1 1" in output
+    assert "Category Test Completed Stale Failed Incomplete Skipped Not Run" in output
+    # One completed, none stale, one failed, one incomplete, none skipped, one not run
+    assert "tmp_status_category tmp_status_test 1 0 1 1 0 1" in output
 
 
 def test_status_detail(logged_runs):
@@ -266,6 +266,10 @@ def test_status_detail(logged_runs):
     # Models that were never run are left out, as they would be most of the table
     assert "model_3" not in output
     assert "1 model(s) in other states" in output
+
+    # The benchmark is named once, rather than repeated for each of its models
+    assert output.count("tmp_status_category") == 1
+    assert output.count("tmp_status_test") == 1
 
 
 def test_status_reports_not_run(logged_runs):
