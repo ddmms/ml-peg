@@ -72,11 +72,11 @@ def plot_parity(
     symbol_labels
         Optional mapping from ``symbol_by`` values to shorter display names
         used in the legend. Values absent from this dict are shown as-is.
-    plot_combined
-        Whether to combine models in one plot or write a plot per model.
     log
         Whether to use log-log axes. When True, the y=x line spans the positive
         data range. Default is False.
+    plot_combined
+        Whether to combine models in one plot or write a plot per model.
 
     Returns
     -------
@@ -805,6 +805,7 @@ def plot_density_scatter(
     seed: int = DENSITY_SAMPLE_SEED,
     hover_metadata: dict[str, str] | None = None,
     annotation_metadata: dict[str, str] | None = None,
+    point_metadata: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot density-coloured parity scatter with legend-based model toggling.
@@ -841,6 +842,9 @@ def plot_density_scatter(
         annotations (shown in the text box on the plot). Keys are used to look up
         values in the model's metadata dict; labels are shown in the annotation.
         Pass ``None`` (default) to omit additional annotation metadata.
+    point_metadata
+        Mapping of per-point metadata keys to hover labels. Each model supplies
+        matching full-length arrays in ``point_meta``. Values follow sampling order.
 
     Returns
     -------
@@ -895,6 +899,7 @@ def plot_density_scatter(
             annotations = {}
             annotation_fields = annotation_metadata or {}
             hover_fields = hover_metadata or {}
+            point_fields = point_metadata or {}
 
             for model in results:
                 data = results[model]
@@ -915,6 +920,13 @@ def plot_density_scatter(
                 for meta_key in hover_fields:
                     meta_raw = meta.get(meta_key)
                     hover_values.append("n/a" if meta_raw is None else str(meta_raw))
+
+                sampled_indices = []
+                point_meta = data.get("point_meta") or {}
+                if pred_vals.size:
+                    for key in point_fields:
+                        if len(point_meta.get(key, [])) != ref_vals.size:
+                            raise ValueError(f"Point metadata {key!r} must match data")
 
                 if ref_vals.size == 0 or pred_vals.size == 0:
                     sampled = ([], [], [])
@@ -954,6 +966,10 @@ def plot_density_scatter(
                 }
                 processed[model] = {
                     "samples": sampled,
+                    "customdata": [
+                        [density, *[point_meta[key][i] for key in point_fields]]
+                        for i, density in zip(sampled_indices, sampled[2], strict=True)
+                    ],
                     "counts": len(ref_vals),
                     "meta": hover_values if hover_fields else None,
                 }
@@ -964,6 +980,8 @@ def plot_density_scatter(
                 "<b>Predicted:</b> %{y:.3f}",
                 "<b>Density:</b> %{customdata[0]:.0f}",
             ]
+            for idx, label in enumerate(point_fields.values(), start=1):
+                hover_lines.append(f"<b>{label}:</b> %{{customdata[{idx}]}}")
             if hover_fields:
                 for idx, label in enumerate(hover_fields.values()):
                     hover_lines.append(f"<b>{label}:</b> %{{meta[{idx}]}}")
@@ -984,9 +1002,7 @@ def plot_density_scatter(
                             "showscale": True,
                             "colorbar": {"title": colorbar_title},
                         },
-                        customdata=np.array(density, dtype=float)[:, None]
-                        if density
-                        else None,
+                        customdata=processed[model]["customdata"] or None,
                         meta=processed[model]["meta"],
                         hovertemplate=hovertemplate,
                     )

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from ase.io import read, write
@@ -157,6 +158,7 @@ def plot_density_parity_results(prop_key: str, results: dict[str, float]) -> Non
 
     @plot_density_scatter(
         filename=OUT_PATH / f"{prop_key.lower()}_density_parity.json",
+        point_metadata={"structures": "Unique structures"},
         title=prop_key,
         x_label=f"DFT {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
         y_label=f"Predicted {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
@@ -174,18 +176,35 @@ def plot_density_parity_results(prop_key: str, results: dict[str, float]) -> Non
         ref_vals = results["ref"]
         for model, model_pred in results.items():
             if model != "ref":
-                # Match structure clicks to the density plot's sampled point order.
-                indices, _, _ = sample_density_grid(ref_vals, model_pred)
+                _, _, memberships = sample_density_grid(ref_vals, model_pred)
                 model_dir = OUT_PATH / model
                 model_dir.mkdir(parents=True, exist_ok=True)
-                np.savetxt(
-                    model_dir / f"{prop_key.lower()}_sample_indices.txt",
-                    indices,
-                    fmt="%d",
+                point_meta = {"structures": [0] * len(model_pred)}
+                bins = []
+                point_bins = []
+                if model_pred:
+                    counts = np.loadtxt(
+                        model_dir / "atom_counts.txt", dtype=int, ndmin=1
+                    )
+                    frame_ids = np.repeat(np.arange(len(counts)), counts * 3)
+                    # Each bin has a distinct first source index. Store it only once.
+                    bin_ids = {}
+                    for members in memberships:
+                        key = members[0]
+                        if key not in bin_ids:
+                            bin_ids[key] = len(bins)
+                            frames = np.unique(frame_ids[members]).tolist()
+                            bins.append(frames)
+                            for component in members:
+                                point_meta["structures"][component] = len(frames)
+                        point_bins.append(bin_ids[key])
+                (model_dir / f"{prop_key.lower()}_structure_bins.json").write_text(
+                    json.dumps({"bins": bins, "point_bins": point_bins})
                 )
                 results_formatted[model] = {
                     "ref": ref_vals,
                     "pred": model_pred,
+                    "point_meta": point_meta,
                 }
         return results_formatted
 

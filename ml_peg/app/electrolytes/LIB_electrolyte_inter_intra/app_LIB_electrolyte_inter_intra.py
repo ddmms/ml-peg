@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import json
+
 from dash.html import Div
 import numpy as np
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell, struct_from_scatter
+from ml_peg.app.utils.build_callbacks import (
+    clear_from_table_cell,
+    plot_from_table_cell,
+    struct_from_scatter,
+)
 from ml_peg.app.utils.load import read_density_plot_for_model, read_plot
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -61,60 +67,49 @@ class LIBelectrolyteInterIntraApp(BaseApp):
             cell_to_plot=plots,
         )
 
-        assets_dir = "/assets/electrolytes/LIB_electrolyte_inter_intra/"
+        struct_id = f"{BENCHMARK_NAME}-struct-placeholder"
+        clear_from_table_cell(self.table_id, [struct_id])
+        assets_dir = "/assets/electrolytes/LIB_electrolyte_inter_intra"
 
         for model in MODELS:
-            struct_from_scatter(
-                scatter_id=f"{BENCHMARK_NAME}-{model}-inter_energy-figure",
-                struct_id=f"{BENCHMARK_NAME}-{model}-inter_energy-struct-placeholder",
-                structs=f"{assets_dir}/{model}/{model}-intra_inter.extxyz",
-                mode="traj",
-            )
-
             structs_dir = DATA_PATH / model
             struct_files = list(structs_dir.glob(f"{model}-intra_inter_*.extxyz"))
-            virial_structs = np.repeat(
-                [
-                    f"{assets_dir}/{model}/{model}-intra_inter_{i}.extxyz"
-                    for i in range(len(struct_files))
-                ],
-                9,
-            ).tolist()
+            frame_structs = [
+                f"{assets_dir}/{model}/{model}-intra_inter_{i}.extxyz"
+                for i in range(len(struct_files))
+            ]
+            struct_from_scatter(
+                scatter_id=f"{BENCHMARK_NAME}-{model}-inter_energy-figure",
+                struct_id=struct_id,
+                structs=frame_structs,
+                mode="struct",
+            )
+
+            virial_structs = np.repeat(frame_structs, 9).tolist()
 
             for property in ("intra_virial", "inter_virial"):
                 struct_from_scatter(
                     scatter_id=f"{BENCHMARK_NAME}-{model}-{property}-figure",
-                    struct_id=f"{BENCHMARK_NAME}-{model}-{property}-struct-placeholder",
+                    struct_id=struct_id,
                     structs=virial_structs,
                     mode="struct",
                 )
 
-            atom_counts_file = structs_dir / "atom_counts.txt"
-
-            if atom_counts_file.exists():
-                atom_counts = np.loadtxt(atom_counts_file, dtype=int, ndmin=1)
-                force_component_repetitions = atom_counts * 3
-                forces_structs = np.repeat(
-                    [
-                        f"{assets_dir}/{model}/{model}-intra_inter_{i}.extxyz"
-                        for i in range(len(struct_files))
-                    ],
-                    force_component_repetitions,
-                ).tolist()
-
-                for property in ("intra_forces", "inter_forces"):
-                    indices_path = structs_dir / (
-                        f"{property.replace('_', '-')}_sample_indices.txt"
-                    )
-                    if not indices_path.exists():
-                        continue
-                    sampled_indices = np.loadtxt(indices_path, dtype=int, ndmin=1)
-                    struct_from_scatter(
-                        scatter_id=f"{BENCHMARK_NAME}-{model}-{property}-figure",
-                        struct_id=f"{BENCHMARK_NAME}-{model}-{property}-struct-placeholder",
-                        structs=[forces_structs[i] for i in sampled_indices],
-                        mode="traj",
-                    )
+            for property in ("intra_forces", "inter_forces"):
+                bins_path = structs_dir / (
+                    f"{property.replace('_', '-')}_structure_bins.json"
+                )
+                if not bins_path.exists():
+                    continue
+                mapping = json.loads(bins_path.read_text())
+                struct_from_scatter(
+                    scatter_id=f"{BENCHMARK_NAME}-{model}-{property}-figure",
+                    struct_id=struct_id,
+                    structs=f"{assets_dir}/{model}/{model}-intra_inter.extxyz",
+                    mode="traj",
+                    follow_frames=False,
+                    frame_groups=[mapping["bins"][i] for i in mapping["point_bins"]],
+                )
 
 
 def get_app() -> LIBelectrolyteInterIntraApp:
@@ -137,17 +132,7 @@ def get_app() -> LIBelectrolyteInterIntraApp:
         table_path=DATA_PATH / "inter_intra_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
-            *[
-                Div(id=f"{BENCHMARK_NAME}-{model}-{property}-struct-placeholder")
-                for model in MODELS
-                for property in (
-                    "intra_forces",
-                    "inter_forces",
-                    "inter_energy",
-                    "intra_virial",
-                    "inter_virial",
-                )
-            ],
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
     )
