@@ -18,9 +18,9 @@ protocol that generated the reference data, and writes its products into
   model's structure.
 
 Both cells were generated and equilibrated once, at the experimental density,
-with the procedure described in Brugnoli et al., arXiv:2603.22099 (SI,
-Section 1); they are downloaded from the ml-peg data bucket, so every model
-starts from the same configuration.
+with the procedure described in Brugnoli et al., J. Chem. Theory Comput. 22,
+9927 (2026), SI Section 1; they are downloaded from the ml-peg data bucket, so
+every model starts from the same configuration.
 
 Models not trained on dispersion-corrected data are run with a D3(BJ)
 correction added at runtime (``Model.add_d3_calculator``), as in the other
@@ -132,9 +132,9 @@ def load_initial_structure(cell: str) -> Atoms:
     Load the equilibrated starting configuration of a cell.
 
     Both cells were generated and equilibrated once, at the experimental
-    density and identically for every model (Brugnoli et al.,
-    arXiv:2603.22099, SI Section 1). They are downloaded from the ml-peg data
-    bucket and cached.
+    density and identically for every model (Brugnoli et al., J. Chem.
+    Theory Comput. 22, 9927 (2026), SI Section 1). They are downloaded from
+    the ml-peg data bucket and cached.
 
     Parameters
     ----------

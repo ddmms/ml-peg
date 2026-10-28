@@ -24,9 +24,9 @@ Protocol
 --------
 
 Both cells were generated and equilibrated once, at the experimental density,
-with the procedure described in Brugnoli et al., arXiv:2603.22099 (SI, Section
-1). Every model starts from the same two configurations, which
-``test_reference_md`` downloads from the ml-peg data bucket.
+with the procedure described in Brugnoli et al., *J. Chem. Theory Comput.* 22,
+9927 (2026), SI Section 1. Every model starts from the same two configurations,
+which ``test_reference_md`` downloads from the ml-peg data bucket.
 
 MD is run with janus-core at dt = 0.5 fs, T = 298.15 K and P = 1 atm, with a
 Nose-Hoover chain thermostat (tau = 50 fs) and, for NPT, the
@@ -161,14 +161,16 @@ Reference data:
 * Density: Gilbert et al., *J. Chem. Eng. Data* 62, 2056 (2017),
   DOI: 10.1021/acs.jced.7b00135.
 * Li-O coordination numbers: theoretical references at 21 m (r2SCAN AIMD and
-  r2SCAN-trained MACE potentials, Brugnoli et al., arXiv:2603.22099);
+  r2SCAN-trained MACE potentials, Brugnoli et al., *J. Chem. Theory Comput.*
+  22, 9927 (2026));
   experimental total CN at ~18.5 m: Watanabe et al., *J. Phys. Chem. B* 125,
   7477 (2021), DOI: 10.1021/acs.jpcb.1c04693.
 * X-ray S(q): Zhang et al., *J. Phys. Chem. B* 125, 4501 (2021),
   DOI: 10.1021/acs.jpcb.1c02189.
 
 Further details on the simulation protocol and the MLIP assessment for this
-system: Brugnoli et al., arXiv:2603.22099 (2026).
+system: Brugnoli et al., *J. Chem. Theory Comput.* 22, 9927 (2026),
+DOI: 10.1021/acs.jctc.6c00579.
 
 
 SSE-MD
