@@ -23,20 +23,29 @@ DOCS_URL = (
 DATA_PATH = APP_ROOT / "data" / "landscapes" / "stationary_points"
 INFO_PATH = DATA_PATH / "info.json"
 
-# Which figure to show when a metric column is selected. Several metrics share
-# a figure: the median and the upper percentile of one distribution are two
-# readings of the same violin, and showing it for either is what makes the
-# pair interpretable -- a median and a 90th percentile far apart mean a tail,
-# which is visible in the plot and not in the two numbers.
+# Which figure to show when a metric column is clicked. Several metrics share
+# one: the median and mean of a distribution are two readings of the same
+# violin, and showing it for either is what makes the pair interpretable --
+# a mean well above the median means a tail, visible in the plot and not in
+# the two numbers. Metrics with no distribution behind them, such as the
+# fractions, have no entry and clicking them does nothing.
+#
+# Every key must match a metric name in metrics.yml exactly. A stale key is
+# silent: the callback raises PreventUpdate and the column simply stops
+# responding.
 FIGURES = {
     "Energy RMSE": "figure_stationary_energies.json",
-    "Residual force (median)": "figure_residual_forces.json",
-    "Residual force (90th pct)": "figure_residual_forces.json",
+    "Residual force": "figure_residual_forces.json",
     "Path force RMSE": "figure_path_forces.json",
     "Minima drift (median)": "figure_minima_drift.json",
     "Minima drift (mean)": "figure_minima_drift.json",
     "Saddle drift (median)": "figure_saddle_drift.json",
     "Saddle drift (mean)": "figure_saddle_drift.json",
+    "Normal mode overlap": "figure_mode_overlaps.json",
+    "Reaction coordinate overlap": "figure_reaction_coordinates.json",
+    "Curvature scaling error": "figure_curvature_scaling.json",
+    "Soft mode curvature error": "figure_soft_mode_error.json",
+    "Reaction mode curvature": "figure_reaction_curvature.json",
 }
 
 

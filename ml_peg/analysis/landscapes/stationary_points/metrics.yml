@@ -7,91 +7,91 @@ metrics:
     good: 1.0
     bad: 10.0
     unit: meV/atom
-    tooltip: "RMSE between MLIP and DFT energies at the Landscape17 minima and transition states, each method measured from its own mean so that an overall offset cancels. The mean rather than the lowest structure: a model that badly over-stabilises one structure would otherwise take that structure as its zero, measuring every other energy from its own worst error. Divided by atom count so the six molecules, 9 to 21 atoms, contribute on the same scale."
+    tooltip: "Energy error at the 95 DFT minima and transition states, each method measured from its own per-molecule mean so a constant offset cancels."
     level_of_theory: ωB97X/6-31G(d)
   Residual force:
     good: 130.0
     bad: 400.0
     unit: meV/Å
-    tooltip: "Median over structures of the RMS force the MLIP reports at the DFT stationary points. DFT forces are zero there, so this is an RMSE against zero, the same statistic as Path force RMSE and directly comparable with it. A floor applies here that no model can go below: these are ωB97X/6-31G(d) geometries, and evaluating ωB97M-V/def2-TZVPD at them -- the level OMol25 is trained on -- already gives 128.6 meV/Å RMS (p10 103, p90 146 over all 95 structures, measured 2026-10-28). MACE-OFF-23-L sits at 159, so four fifths of what this metric reports is the gap between the reference's functional and the model's rather than the model's own error. The thresholds are set from that: good is the floor, bad is about three times it. They are provisional, because the floor depends on the functional a model was trained on and so differs between model families -- a PBE-trained model has a different one, and this scale does not describe it. DFT forces are zero there by construction, so this is not an error against a reference but a measure of how far the DFT geometry is from being stationary under the model."
+    tooltip: "The model's own force where DFT's is zero. A floor of about 130 meV/Å applies: these are ωB97X/6-31G(d) geometries and no current model is trained on that functional."
     level_of_theory: ωB97X/6-31G(d)
   Path energy RMSE:
     good: 1.0
     bad: 10.0
     unit: meV/atom
-    tooltip: "The same quantity along the steepest-descent paths joining the stationary points. Thresholds match those for the stationary points so the two can be read against each other: the stationary points test the depths of the wells and the heights of the barriers, the paths test the shape of the surface in between."
+    tooltip: "The same energy error along the 11,173 steepest-descent frames joining the stationary points: the shape of the surface between them."
     level_of_theory: ωB97X/6-31G(d)
   Path force RMSE:
     good: 130.0
     bad: 400.0
     unit: meV/Å
-    tooltip: "RMSE between MLIP and DFT forces over all 11,173 path frames and every component. These are ordinary points on the surface with non-zero forces, so this is a conventional accuracy test -- but sampled along the reaction coordinates rather than from a thermal distribution. A floor applies here that no model can go below: these are ωB97X/6-31G(d) geometries, and evaluating ωB97M-V/def2-TZVPD at them -- the level OMol25 is trained on -- already gives 128.6 meV/Å RMS (p10 103, p90 146 over all 95 structures, measured 2026-10-28). MACE-OFF-23-L sits at 159, so four fifths of what this metric reports is the gap between the reference's functional and the model's rather than the model's own error. The thresholds are set from that: good is the floor, bad is about three times it. They are provisional, because the floor depends on the functional a model was trained on and so differs between model families -- a PBE-trained model has a different one, and this scale does not describe it."
+    tooltip: "Force error along the paths, where DFT forces are non-zero. Subject to the same ~130 meV/Å functional floor as the residual force."
     level_of_theory: ωB97X/6-31G(d)
   Minima drift (median):
     good: 0.02
     bad: 0.3
     unit: Å
-    tooltip: "Median RMSD a reference minimum moves when relaxed under the MLIP. Below ~0.02 A the difference is not chemically meaningful; by 0.3 A it is a different conformer. A minimum whose relaxation stopped on the iteration limit has no valid drift and is recorded as NaN, which makes this metric and the model's score NaN: relaxing a minimum should always converge, so failing to is a protocol fault rather than a property of the model."
+    tooltip: "How far a reference minimum moves when relaxed under the model. By 0.3 Å it is a different conformer."
     level_of_theory: ωB97X/6-31G(d)
   Minima drift (mean):
     good: 0.02
     bad: 0.3
     unit: Å
-    tooltip: "Mean of the same distribution. Read against the median: a mean well above it means a few minima moved a long way while most did not."
+    tooltip: "Mean of the same distribution. Well above the median means a few minima moved a long way."
     level_of_theory: ωB97X/6-31G(d)
   Saddles converged:
     good: 0.95
     bad: 0.3
     unit: fraction
-    tooltip: "Fraction of all 67 reference transition states for which eigenvector following reaches a saddle at all within the step budget. No distance threshold: this counts whether the model has a saddle there to find, and the drift metrics say how far away it was. Unlike the minima, failing to converge here is a result rather than a fault -- it means the model has no saddle near the DFT one -- so it is counted instead of invalidating the drift of the saddles that did converge."
+    tooltip: "Fraction of all 67 reference transition states where eigenvector following reaches a saddle within the step budget."
     level_of_theory: ωB97X/6-31G(d)
   Saddle drift (median):
     good: 0.02
     bad: 0.3
     unit: Å
-    tooltip: "Median RMSD a reference transition state moves when reconverged by eigenvector following, over the saddles that converged. Thresholds match those for minima: what counts as the same structure is a geometric question and does not change because a saddle is harder to locate."
+    tooltip: "How far a reference transition state moves when reconverged, over those the search reached."
     level_of_theory: ωB97X/6-31G(d)
   Saddle drift (mean):
     good: 0.02
     bad: 0.3
     unit: Å
-    tooltip: "Mean of the same distribution, read against the median as for the minima. Expected to sit well above it: the saddles the model does not hold tend to land a long way off, around 1 A rather than 0.1."
+    tooltip: "Mean of the same distribution. The step budget truncates the far-drifting tail, so this understates the skew."
     level_of_theory: ωB97X/6-31G(d)
   Connectivity preserved:
     good: 0.9
     bad: 0.4
     unit: fraction
-    tooltip: "Fraction of all 67 reference transition states whose steepest-descent paths reach the same two minima as in the DFT landscape. The denominator is every reference saddle rather than only the ones that converged, so a model that reconverges few of them cannot score well on the few it manages. A saddle can sit in the right place and still rewire the network, which changes the kinetics while leaving every structure looking right. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
+    tooltip: "Fraction of all 67 reference transition states whose steepest-descent paths reach the same two minima as DFT. A saddle can sit in the right place and still rewire the network."
     level_of_theory: ωB97X/6-31G(d)
   Normal mode overlap:
     good: 0.99
     bad: 0.8
     unit: cosine
-    tooltip: "Median overlap between MLIP and DFT normal modes at the reference geometries, matched one to one. Translations and rotations are projected out first, since their near-zero curvature makes individual eigenvectors arbitrary."
+    tooltip: "Agreement with the DFT normal modes at the reference geometries, matched one to one after projecting out translation and rotation."
     level_of_theory: ωB97X/6-31G(d)
   Reaction coordinate overlap:
     good: 0.99
     bad: 0.8
     unit: cosine
-    tooltip: "Median overlap between the MLIP and DFT imaginary modes, over the transition states where the model has an imaginary mode at all. Read with Saddles converged, which is how often that was true: on MACE-OFF only 35 of 67, so this describes half the reference. The condition matters -- without it the overlap is taken against a mode the model considers uphill, crediting it for agreeing about a reaction it does not believe has a barrier."
+    tooltip: "Agreement with the DFT imaginary mode, over the saddles where the model has one at all. Read with Saddles converged."
     level_of_theory: ωB97X/6-31G(d)
   Curvature scaling error:
     good: 0.02
     bad: 0.2
     unit: fraction
-    tooltip: "Deviation from 1 of the least-squares slope of MLIP against DFT eigenvalues, taken through the origin. It separates a uniform stiffness error, which is correctable and leaves every mode direction intact, from disagreement about the shape of the surface. The fit weights each mode by the square of its reference eigenvalue, so it describes the stiff modes: weighting every mode equally instead makes the number depend on where near-zero reference eigenvalues are cut off rather than on the model."
+    tooltip: "Distance from 1 of the least-squares slope of model against DFT eigenvalues. Weighted by eigenvalue, so it describes the stiff modes."
     level_of_theory: ωB97X/6-31G(d)
   Soft mode curvature error:
     good: 0.02
     bad: 0.2
     unit: eV/Å²
-    tooltip: "Median absolute error in the eigenvalues of the softest third of the modes, where a landscape lives: the torsions that set barrier heights and decide whether two minima are distinct. Absolute rather than relative because these eigenvalues approach zero -- the softest on this reference is 0.0026 eV/Å² -- so a ratio turns a small error into a factor of 67 and the resulting statistic tracks wherever near-zero modes are cut off rather than the model. Thresholds are provisional: they are the scale of the soft modes themselves, which run from about 0.1 to 1 eV/Å²."
+    tooltip: "Absolute eigenvalue error over the softest third of the modes, where a landscape lives. Absolute rather than relative because these eigenvalues approach zero."
     level_of_theory: ωB97X/6-31G(d)
   Reaction mode curvature:
     good: 1.0
     bad: 0.3
     unit: ratio
-    tooltip: "The model's imaginary eigenvalue over the reference one, at the transition states where the model has an imaginary mode at all. This is the curvature along the reaction coordinate, which fixes the tunnelling correction and the transition state theory prefactor, so it is the one curvature a rate calculation depends on directly. Read it with Saddles converged: that says how often the model sees a barrier top here, this says how wrong its shape is when it does. The two conditions agree on 65 of 67 structures, so a single Hessian at the reference geometry predicts whether a saddle search will succeed."
+    tooltip: "The model's imaginary eigenvalue over DFT's: the curvature along the reaction coordinate, which sets the tunnelling correction and the TST prefactor."
     level_of_theory: ωB97X/6-31G(d)
 
 # Pending. Each of these moves into `metrics` above when its calculation lands
