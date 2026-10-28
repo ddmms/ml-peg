@@ -15,6 +15,10 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.physicality.water_cl2_relaxation.calc_water_cl2_relaxation import (  # noqa: E501
+    FMAX,
+    MAX_STEPS,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -80,12 +84,16 @@ def plot_relaxation(model_name: str):
     with log.open("r", encoding="utf-8") as f:
         lines = f.readlines()
         try:
+            steps = int(lines[-1].split()[1])
             fmax = float(lines[-1].split()[4])
-            steps = float(lines[-1].split()[1])
-            if fmax > 0.01 and steps < 2000:
-                return None
         except (IndexError, ValueError):
             return None
+
+    # Stopping before the step limit without converging means the relaxation was
+    # interrupted, so its final structure says nothing about Cl2 stability.
+    # Reaching the step limit is a complete relaxation, which can still be judged.
+    if fmax > FMAX and steps < MAX_STEPS:
+        return None
 
     return cl_cl_distances()[model_name]
 

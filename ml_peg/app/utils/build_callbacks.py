@@ -651,6 +651,9 @@ def struct_from_scatter(
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = point["pointNumber"] if mode == "traj" else 0
         else:
+            # Structures are missing if the benchmark has not been fully analysed
+            if point["pointNumber"] >= len(structs):
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             struct = structs[point["pointNumber"]]
             index = 0
 
