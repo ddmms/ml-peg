@@ -46,8 +46,8 @@ def test_search_result_opens_collapsed_benchmark(ready_page: Page) -> None:
     expect(ready_page.locator("#Iron\\ Oxidation\\ States-table")).to_be_visible(
         timeout=TIMEOUT
     )
-    expect(ready_page.locator("#sidebar-search")).to_have_value("")
-    expect(ready_page.locator(".mlpeg-search-result")).to_have_count(0)
+    expect(ready_page.locator("#sidebar-search")).to_have_value("", timeout=TIMEOUT)
+    expect(ready_page.locator(".mlpeg-search-result")).to_have_count(0, timeout=TIMEOUT)
 
 
 def test_search_reopens_current_target(ready_page: Page) -> None:
@@ -59,13 +59,13 @@ def test_search_reopens_current_target(ready_page: Page) -> None:
     toggle = page.get_by_role("button", name="Iron Oxidation States", exact=True)
     page.get_by_label("Search", exact=True).fill("oxid")
     result.click()
-    expect(toggle).to_have_attribute("aria-expanded", "true")
+    expect(toggle).to_have_attribute("aria-expanded", "true", timeout=TIMEOUT)
     toggle.click()
-    expect(toggle).to_have_attribute("aria-expanded", "false")
+    expect(toggle).to_have_attribute("aria-expanded", "false", timeout=TIMEOUT)
     page.get_by_label("Search", exact=True).fill("oxid")
     result.press("Enter")
-    expect(toggle).to_have_attribute("aria-expanded", "true")
-    expect(page.locator("#sidebar-search")).to_have_value("")
+    expect(toggle).to_have_attribute("aria-expanded", "true", timeout=TIMEOUT)
+    expect(page.locator("#sidebar-search")).to_have_value("", timeout=TIMEOUT)
 
 
 def test_search_closes_mobile_sidebar_on_same_category(ready_page: Page) -> None:
@@ -73,18 +73,22 @@ def test_search_closes_mobile_sidebar_on_same_category(ready_page: Page) -> None
     page = ready_page
     page.locator("#sidebar-search").fill("physicality")
     page.locator('.mlpeg-search-result[href="/category/physicality"]').click()
-    expect(page).to_have_url(re.compile(r"/category/physicality$"))
+    expect(page).to_have_url(re.compile(r"/category/physicality$"), timeout=TIMEOUT)
     page.set_viewport_size({"width": 390, "height": 844})
     page.locator("#mobile-nav-toggle").click()
-    expect(page.locator("body")).to_have_class(re.compile("sidebar-open"))
+    expect(page.locator("body")).to_have_class(
+        re.compile("sidebar-open"), timeout=TIMEOUT
+    )
     page.locator("#sidebar-search").fill("oxid")
     page.locator(
         '.mlpeg-search-result[href="/category/physicality#Iron%20Oxidation%20States"]'
     ).click()
-    expect(page.locator("body")).not_to_have_class(re.compile("sidebar-open"))
+    expect(page.locator("body")).not_to_have_class(
+        re.compile("sidebar-open"), timeout=TIMEOUT
+    )
     expect(
         page.get_by_role("button", name="Iron Oxidation States", exact=True)
-    ).to_have_attribute("aria-expanded", "true")
+    ).to_have_attribute("aria-expanded", "true", timeout=TIMEOUT)
 
 
 def test_search_matches_description(ready_page: Page) -> None:
@@ -94,7 +98,7 @@ def test_search_matches_description(ready_page: Page) -> None:
         ready_page.locator(
             '.mlpeg-search-result[href="/category/physicality#Iron%20Oxidation%20States"]'
         )
-    ).to_be_visible()
+    ).to_be_visible(timeout=TIMEOUT)
 
 
 def test_search_matches_benchmark_category(ready_page: Page) -> None:
@@ -104,12 +108,12 @@ def test_search_matches_benchmark_category(ready_page: Page) -> None:
         ready_page.locator(
             '.mlpeg-search-result[href="/category/physicality#Iron%20Oxidation%20States"]'
         )
-    ).to_be_visible()
+    ).to_be_visible(timeout=TIMEOUT)
     expect(
         ready_page.locator(
             '.mlpeg-search-result[href="/category/physicality#Extensivity"]'
         )
-    ).to_be_visible()
+    ).to_be_visible(timeout=TIMEOUT)
 
 
 def test_search_target_direct_link(ready_page: Page) -> None:
