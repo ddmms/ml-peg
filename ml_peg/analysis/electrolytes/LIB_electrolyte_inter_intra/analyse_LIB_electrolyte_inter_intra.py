@@ -13,7 +13,12 @@ from ml_peg.analysis.utils.decorators import (
     plot_density_scatter,
     plot_parity,
 )
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
+from ml_peg.analysis.utils.utils import (
+    get_struct_info,
+    load_metrics_config,
+    rmse,
+    sample_density_grid,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -87,7 +92,11 @@ def get_property_results(prop_key: str) -> dict[str, float]:
 
         for frame in configs:
             frame_data = getattr(frame, stored)
-            property_data = frame_data[property]
+            property_data = np.asarray(frame_data[property])
+            if "Energy" in prop_key:
+                property_data = property_data * 1000 / len(frame)
+            elif "Virial" in prop_key:
+                property_data = property_data * 1000
             results[model].append(property_data.tolist())
 
         if "Forces" in prop_key:
@@ -165,6 +174,15 @@ def plot_density_parity_results(prop_key: str, results: dict[str, float]) -> Non
         ref_vals = results["ref"]
         for model, model_pred in results.items():
             if model != "ref":
+                # Match structure clicks to the density plot's sampled point order.
+                indices, _, _ = sample_density_grid(ref_vals, model_pred)
+                model_dir = OUT_PATH / model
+                model_dir.mkdir(parents=True, exist_ok=True)
+                np.savetxt(
+                    model_dir / f"{prop_key.lower()}_sample_indices.txt",
+                    indices,
+                    fmt="%d",
+                )
                 results_formatted[model] = {
                     "ref": ref_vals,
                     "pred": model_pred,

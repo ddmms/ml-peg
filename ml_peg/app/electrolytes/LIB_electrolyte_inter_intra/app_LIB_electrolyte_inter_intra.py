@@ -92,7 +92,7 @@ class LIBelectrolyteInterIntraApp(BaseApp):
             atom_counts_file = structs_dir / "atom_counts.txt"
 
             if atom_counts_file.exists():
-                atom_counts = np.loadtxt(atom_counts_file, dtype=int)
+                atom_counts = np.loadtxt(atom_counts_file, dtype=int, ndmin=1)
                 force_component_repetitions = atom_counts * 3
                 forces_structs = np.repeat(
                     [
@@ -103,10 +103,16 @@ class LIBelectrolyteInterIntraApp(BaseApp):
                 ).tolist()
 
                 for property in ("intra_forces", "inter_forces"):
+                    indices_path = structs_dir / (
+                        f"{property.replace('_', '-')}_sample_indices.txt"
+                    )
+                    if not indices_path.exists():
+                        continue
+                    sampled_indices = np.loadtxt(indices_path, dtype=int, ndmin=1)
                     struct_from_scatter(
                         scatter_id=f"{BENCHMARK_NAME}-{model}-{property}-figure",
                         struct_id=f"{BENCHMARK_NAME}-{model}-{property}-struct-placeholder",
-                        structs=forces_structs,
+                        structs=[forces_structs[i] for i in sampled_indices],
                         mode="traj",
                     )
 

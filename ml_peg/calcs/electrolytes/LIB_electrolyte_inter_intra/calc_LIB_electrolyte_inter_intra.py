@@ -53,6 +53,7 @@ def test_intra_inter(mlip: tuple[str, Any]) -> None:
         / "LIB_electrolyte_inter_intra"
     )
 
+    shutil.copy(data_path / "intrainter_PBED3.xyz", ref_dir / "intrainter_PBED3.xyz")
     structure_paths = data_path.glob("output*.xyz")
 
     for struct_path in tqdm(structure_paths, total=5):
