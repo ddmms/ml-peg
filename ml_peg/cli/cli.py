@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Annotated, Literal, get_args
+from typing import TYPE_CHECKING, Annotated, Literal, get_args
 
 from typer import Context, Exit, Option, Typer
 from yaml import safe_load
@@ -13,6 +13,9 @@ from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.cli.profile import register_profile_command
+
+if TYPE_CHECKING:
+    from rich.table import Table
 
 
 def get_categories(root: Path, script_prefix: str) -> tuple[str, ...]:
@@ -483,6 +486,283 @@ def run_analysis(
         options.extend(["--update"])
 
     pytest.main(options)
+
+
+def format_duration(seconds: float | None) -> str:
+    """
+    Format a duration for display.
+
+    Parameters
+    ----------
+    seconds
+        Duration in seconds, or `None` if it was not recorded.
+
+    Returns
+    -------
+    str
+        Duration in hours, minutes and seconds, as appropriate.
+    """
+    if seconds is None:
+        return "-"
+    if seconds < 60:
+        return f"{seconds:.0f}s"
+    minutes, seconds = divmod(int(seconds), 60)
+    hours, minutes = divmod(minutes, 60)
+    return f"{hours}h {minutes:02d}m" if hours else f"{minutes}m {seconds:02d}s"
+
+
+def format_timestamp(timestamp: str | None) -> str:
+    """
+    Format a logged timestamp for display.
+
+    Parameters
+    ----------
+    timestamp
+        Timestamp in ISO 8601 format, or `None` if it was not recorded.
+
+    Returns
+    -------
+    str
+        Date and time, to the minute.
+    """
+    from datetime import datetime
+
+    if not timestamp:
+        return "-"
+    try:
+        return datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M")
+    except ValueError:
+        return timestamp
+
+
+def describe_run(run: dict | None) -> tuple[str, str]:
+    """
+    Describe the state of a run, and why it is in that state.
+
+    Parameters
+    ----------
+    run
+        Most recent logged run, or `None` if the calculation has never been run.
+
+    Returns
+    -------
+    tuple[str, str]
+        State to report, and a note explaining it.
+    """
+    from ml_peg.calcs.utils.run_log import is_stale
+
+    if run is None:
+        return "not run", ""
+
+    status = run["status"]
+    if status == "running":
+        # Nothing finalised the run, so it was interrupted, unless still in progress
+        return "incomplete", f"started {format_timestamp(run.get('started'))}"
+    if status == "failed":
+        error = run.get("error") or {}
+        message = " ".join(str(error.get("message", "")).split())
+        return "failed", f"{error.get('type', 'error')}: {message[:60]}"
+    if status == "completed" and is_stale(run):
+        return "stale", "model definition changed since run"
+    return status, ""
+
+
+#: States a calculation is reported in, in the order they are reported.
+STATES = ("completed", "stale", "failed", "incomplete", "skipped", "not run")
+
+#: Colour used to report each state of a run.
+STATE_COLOURS = {
+    "completed": "green",
+    "failed": "red",
+    "incomplete": "yellow",
+    "stale": "yellow",
+    "skipped": "dim",
+    "not run": "dim",
+}
+
+
+@app.command(
+    name="status", help="Report when calculations ran, and whether they completed"
+)
+def run_status(
+    models: Annotated[
+        str | None,
+        Option(
+            help="Comma-separated models to report on. Default is all models.",
+            autocompletion=complete_models,
+        ),
+    ] = None,
+    models_file: Annotated[
+        Path | None,
+        Option(
+            help=(
+                "Path to model definitions YAML file. Default is models.yml in models "
+                "directory."
+            ),
+        ),
+    ] = None,
+    category: Annotated[
+        CalcCategories,
+        Option(
+            help="Category to report on. Default is all categories.",
+            case_sensitive=False,
+        ),
+    ] = "*",
+    test: Annotated[
+        str,
+        Option(
+            help="Test to report on. Default is all tests.",
+            autocompletion=complete_test,
+        ),
+    ] = "*",
+    detail: Annotated[
+        bool,
+        Option(help="Whether to report every model separately, rather than totals."),
+    ] = False,
+    state: Annotated[
+        str | None,
+        Option(
+            help=(
+                "Comma-separated states to report, such as failed,incomplete. "
+                "Default is every state but not-run."
+            )
+        ),
+    ] = None,
+) -> None:
+    """
+    Report the state of logged calculations.
+
+    Parameters
+    ----------
+    models
+        Models to report on, in comma-separated list. Default is `None`,
+        corresponding to all available models.
+    models_file
+        Path to model definitions YAML file. Default is models.yml in models directory.
+    category
+        Category to report on. Default is `*`, corresponding to all categories.
+    test
+        Test to report on. Default is `*`, corresponding to all tests in the category.
+    detail
+        Whether to report each model separately, rather than totals per benchmark.
+        Default is `False`.
+    state
+        States to report, in comma-separated list. Implies `detail`. Default is
+        `None`, reporting every state but "not run", which would otherwise be most
+        of the table.
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    from ml_peg.calcs.utils.run_log import collect_runs
+
+    runs = collect_runs(category, test, models, models_file)
+    if not runs:
+        raise ValueError(
+            f"No tests were found matching {category}/{test}/calc_*.py in {CALCS_ROOT}"
+        )
+
+    # Hyphens and underscores are easier to type than the space in "not run"
+    wanted = (
+        {name.strip().replace("-", " ").replace("_", " ") for name in state.split(",")}
+        if state
+        else set(STATES) - {"not run"}
+    )
+    console = Console()
+    table = Table(title="Calculation status")
+
+    if detail or state:
+        hidden = _add_detail_rows(table, runs, wanted)
+        console.print(table)
+        if hidden:
+            console.print(
+                f"[dim]{hidden} model(s) in other states. Use --state to report "
+                "them, for example --state not-run.[/]"
+            )
+        return
+
+    _add_summary_rows(table, runs)
+    console.print(table)
+
+
+def _add_detail_rows(
+    table: Table, runs: dict[str, dict[str, dict | None]], wanted: set[str]
+) -> int:
+    """
+    Add one row per model to a status table.
+
+    Parameters
+    ----------
+    table
+        Rich table to add rows to.
+    runs
+        Most recent run of each model, keyed by benchmark then model.
+    wanted
+        States to report.
+
+    Returns
+    -------
+    int
+        Number of models left out, as they are in a state not being reported.
+    """
+    table.add_column("Benchmark", overflow="fold")
+    for column in ("Model", "State", "Finished", "Duration"):
+        table.add_column(column)
+    table.add_column("Warnings", justify="right")
+    table.add_column("Note")
+
+    hidden = 0
+    for benchmark, models in runs.items():
+        for model_name, run in models.items():
+            run_state, note = describe_run(run)
+            if run_state not in wanted:
+                hidden += 1
+                continue
+            warnings = (run or {}).get("warnings") or {}
+            table.add_row(
+                benchmark,
+                model_name,
+                f"[{STATE_COLOURS.get(run_state, '')}]{run_state}[/]",
+                format_timestamp((run or {}).get("finished")),
+                format_duration((run or {}).get("duration_s")),
+                str(warnings.get("total", "")) if run else "",
+                note,
+            )
+
+    return hidden
+
+
+def _add_summary_rows(table: Table, runs: dict[str, dict[str, dict | None]]) -> None:
+    """
+    Add one row per benchmark to a status table, totalling the states of its models.
+
+    Parameters
+    ----------
+    table
+        Rich table to add rows to.
+    runs
+        Most recent run of each model, keyed by benchmark then model.
+    """
+    from collections import Counter
+
+    table.add_column("Benchmark", overflow="fold")
+    for run_state in STATES:
+        table.add_column(
+            run_state.title(), justify="right", style=STATE_COLOURS.get(run_state, "")
+        )
+
+    totals: Counter[str] = Counter()
+    for benchmark, models in runs.items():
+        counts = Counter(describe_run(run)[0] for run in models.values())
+        totals.update(counts)
+        table.add_row(
+            benchmark, *(str(counts[run_state] or "") for run_state in STATES)
+        )
+
+    table.add_section()
+    table.add_row(
+        "Total", *(f"[bold]{totals[run_state] or ''}[/]" for run_state in STATES)
+    )
 
 
 list_app = Typer(

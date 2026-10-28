@@ -337,6 +337,123 @@ def log_path(out_path: Path | str, model_name: str) -> Path:
     return Path(out_path) / model_name / RUN_LOG_NAME
 
 
+def read_runs(out_path: Path | str, model_name: str) -> list[dict[str, Any]]:
+    """
+    Read every run logged for a model, oldest first.
+
+    Parameters
+    ----------
+    out_path
+        Output directory of the benchmark, containing one directory per model.
+    model_name
+        Name of the model.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Logged runs. Empty if the model has never been run.
+    """
+    return _read_runs(log_path(out_path, model_name))
+
+
+def latest_run(out_path: Path | str, model_name: str) -> dict[str, Any] | None:
+    """
+    Read the most recent run logged for a model.
+
+    Parameters
+    ----------
+    out_path
+        Output directory of the benchmark, containing one directory per model.
+    model_name
+        Name of the model.
+
+    Returns
+    -------
+    dict[str, Any] | None
+        Most recent run, or `None` if the model has never been run.
+    """
+    runs = read_runs(out_path, model_name)
+    return runs[-1] if runs else None
+
+
+def collect_runs(
+    category: str = "*",
+    test: str = "*",
+    models: str | None = None,
+    models_file: Path | str | None = None,
+) -> dict[str, dict[str, dict[str, Any] | None]]:
+    """
+    Read the most recent run of each model, for each matching benchmark.
+
+    Models that have been run but are no longer defined are included, so results
+    left behind by a since-removed model are still visible.
+
+    Parameters
+    ----------
+    category
+        Category of benchmarks to read. Default is `*`, corresponding to all
+        categories.
+    test
+        Benchmark to read. Default is `*`, corresponding to all benchmarks.
+    models
+        Models to read, in a comma-separated list. Default is `None`, corresponding
+        to all defined models.
+    models_file
+        Path to model definitions YAML file. Default is `None`, using models.yml.
+
+    Returns
+    -------
+    dict[str, dict[str, dict[str, Any] | None]]
+        Most recent run of each model, keyed by benchmark then model. `None` where
+        a model has never been run.
+    """
+    from ml_peg.models.get_models import get_model_names
+
+    defined = get_model_names(models, models_file)
+    selected = (
+        {name.strip() for name in models.split(",")}
+        if isinstance(models, str)
+        else None
+    )
+
+    runs: dict[str, dict[str, dict[str, Any] | None]] = {}
+    for script in sorted(CALCS_ROOT.glob(f"{category}/{test}/calc_*.py")):
+        benchmark = benchmark_id(script)
+        if benchmark is None:
+            continue
+
+        out_path = script.parent / "outputs"
+        logged = sorted(path.parent.name for path in out_path.glob(f"*/{RUN_LOG_NAME}"))
+        if selected is not None:
+            logged = [name for name in logged if name in selected]
+
+        # Defined models first, so the table reads in the order models are listed
+        names = dict.fromkeys((*defined, *logged))
+        runs[benchmark] = {name: latest_run(out_path, name) for name in names}
+
+    return runs
+
+
+def is_stale(run: dict[str, Any]) -> bool:
+    """
+    Check whether a model's definition has changed since it was run.
+
+    Parameters
+    ----------
+    run
+        Logged run to check.
+
+    Returns
+    -------
+    bool
+        Whether the model is still defined as it was when the run was logged.
+    """
+    logged = (run.get("model_config") or {}).get("config_sha256")
+    if logged is None:
+        return False
+    return logged != model_config(run["model"]).get("config_sha256")
+
+
 def _read_runs(path: Path) -> list[dict[str, Any]]:
     """
     Read previously logged runs.
