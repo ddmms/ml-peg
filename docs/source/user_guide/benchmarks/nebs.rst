@@ -231,12 +231,14 @@ A reaction counts as converged when the maximum force of the final climbing-imag
 NEB falls below 0.05 eV/Å. The reported metric is the fraction of the 100 reactions
 that converged. If any simulation errors, the metric is reported as NaN.
 
-Computational cost
-------------------
 
-High: 100 NEB simulations with 10 images each, each with up to 500 ordinary and
-500 climbing-image NEB steps, plus up to 50 minimisation steps for each
-endpoint. Days on CPU, hours on GPU.
+Benchmark speed
+---------------
+
+Very slow: approximately 12-24 hours per model for 100 NEB calculations,
+depending on hardware and convergence. Each reaction uses 10 images, up to
+500 ordinary and 500 climbing-image NEB steps, plus up to 50 minimisation
+steps per endpoint.
 
 Data availability
 -----------------
@@ -249,5 +251,7 @@ Input structures:
 
 Reference data:
 
-* Same as input data
-* :math:`\omega B97X-D3/def2-TZVP` level of theory.
+The input geometries come from calculations at the
+:math:`\omega B97X-D3/def2-TZVP` level of theory. The convergence metric does not
+compare against DFT energies or barriers. The benchmark protocol is adapted from
+MLIP Audit, which is credited through the framework citation.
