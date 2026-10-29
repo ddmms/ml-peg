@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from ase import Atoms, units
 from ase.calculators.calculator import Calculator
+from ase.io import write
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
@@ -16,8 +19,11 @@ from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import (
 )
 from mlipaudit.io import load_model_output_from_disk
 
-from ml_peg.analysis.utils.decorators import build_table
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
+from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegGrambowOrganicsBenchmark
@@ -55,6 +61,129 @@ def check_dataset() -> None:
         raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
 
 
+def write_neb_profiles(model_name: str, states: list, references: list) -> None:
+    """
+    Export final NEB bands, individual profiles and a reaction overview.
+
+    Parameters
+    ----------
+    model_name
+        Registry model name used for the output directory.
+    states
+        Final simulation states in dataset order, including failed reactions.
+    references
+        Reference reactions in the same dataset order, with energies in kcal/mol.
+    """
+    model_path = OUT_PATH / model_name
+    model_path.mkdir(parents=True, exist_ok=True)
+    profile_path = model_path / "profiles"
+    profile_path.mkdir(parents=True, exist_ok=True)
+    reactions, barriers, ref_barriers, converged = [], [], [], []
+    for index, state in enumerate(states):
+        if state is None:
+            continue
+        energies = np.asarray(state.potential_energy, dtype=float)
+        positions = np.asarray(state.positions)
+        if (
+            energies.ndim != 1
+            or len(energies) == 0
+            or len(energies) != len(positions)
+            or not np.isfinite(energies).all()
+            or not np.isfinite(positions).all()
+        ):
+            continue
+        # Keep dataset indices so failed reactions never shift structure mappings.
+        reaction = str(index + 1)
+        converged.append(
+            bool(
+                np.sqrt((state.forces**2).sum(axis=1).max())
+                < FINAL_CONVERGENCE_THRESHOLD
+            )
+        )
+        reactions.append(reaction)
+        barriers.append(float(energies.max() - energies[0]))
+        figure = go.Figure()
+        frames = [
+            Atoms(numbers=state.atomic_numbers, positions=position)
+            for position in positions
+        ]
+        write(model_path / f"band_{reaction}.extxyz", frames)
+        figure.add_scatter(
+            x=list(range(len(energies))),
+            y=(energies - energies[0]).tolist(),
+            name=f"Reaction {reaction}",
+            mode="lines+markers",
+            customdata=[reaction] * len(energies),
+            hovertemplate=(
+                "Reaction %{customdata}<br>Image %{x}<br>"
+                "Relative energy: %{y:.3f} eV<extra></extra>"
+            ),
+        )
+        reference = references[index]
+        molecules = [
+            reference.reactants,
+            reference.transition_state,
+            reference.products,
+        ]
+        # MLIP Audit's Grambow reference energies are in kcal/mol, unlike ASE's eV.
+        ref_energies = np.array([molecule.energy for molecule in molecules])
+        ref_energies = (ref_energies - ref_energies[0]) * units.kcal / units.mol
+        ref_barriers.append(float(ref_energies[1]))
+        write(
+            model_path / f"band_ref_{reaction}.extxyz",
+            [
+                Atoms(symbols=molecule.atom_symbols, positions=molecule.coordinates)
+                for molecule in molecules
+            ],
+        )
+        figure.add_scatter(
+            x=[0, (len(energies) - 1) / 2, len(energies) - 1],
+            y=ref_energies.tolist(),
+            name="DFT reference",
+            mode="markers",
+            marker={"symbol": "diamond", "size": 10, "color": "black"},
+            customdata=[f"ref_{reaction}"] * 3,
+            text=["Reactant", "Transition state (schematic position)", "Product"],
+            hovertemplate="%{text}<br>DFT relative energy: %{y:.3f} eV<extra></extra>",
+        )
+        figure.update_layout(
+            title=f"Reaction {reaction}",
+            xaxis_title="NEB image",
+            yaxis_title="Relative energy / eV",
+            showlegend=True,
+        )
+        figure.write_json(profile_path / f"{reaction}.json")
+
+    statuses = [
+        "Converged" if value else "Unconverged (barrier estimate)"
+        for value in converged
+    ]
+
+    @plot_parity(
+        x_label="MLIP forward barrier / eV",
+        y_label="DFT forward barrier / eV",
+        hoverdata={"Convergence": statuses, "Reaction": reactions},
+        symbol_by=statuses,
+        group_colors={
+            "Converged": "#2ca02c",
+            "Unconverged (barrier estimate)": "#ff7f0e",
+        },
+        filename=model_path / "figure_neb_overview.json",
+    )
+    def barrier_parity() -> dict:
+        """
+        Collect forward barriers for the shared parity plot.
+
+        Returns
+        -------
+        dict
+            Model and DFT barriers in matching reaction order.
+        """
+        return {model_name: barriers, "ref": ref_barriers}
+
+    barrier_parity()
+
+
 @pytest.fixture
 def convergence_rate() -> dict[str, float]:
     """
@@ -70,6 +199,11 @@ def convergence_rate() -> dict[str, float]:
     dict[str, float]
         Fraction of converged reactions for each model.
     """
+    check_dataset()
+    benchmark = MlPegGrambowOrganicsBenchmark(
+        force_field=Calculator(), data_input_dir=CALC_PATH, run_mode="standard"
+    )
+    references = [benchmark._grambow_data[key] for key in benchmark._reaction_ids]
     results = {}
     for model_name in MODELS:
         output_dir = CALC_PATH / model_name / BENCHMARK
@@ -79,6 +213,7 @@ def convergence_rate() -> dict[str, float]:
             CALC_PATH / model_name, MlPegGrambowOrganicsBenchmark
         )
         states = model_output.simulation_states
+        write_neb_profiles(model_name, states, references)
         if not states or any(state is None for state in states):
             results[model_name] = np.nan
             continue
@@ -147,9 +282,7 @@ def metrics(convergence_rate: dict[str, float]) -> dict[str, dict]:
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {
-        "Convergence Rate": convergence_rate,
-    }
+    return {"Convergence Rate": convergence_rate}
 
 
 def test_grambow_organics(metrics: dict[str, dict], struct_info: dict) -> None:
