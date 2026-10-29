@@ -1,0 +1,19 @@
+implementers:
+  - name: Leon Wehrhan
+    github: lwehrhan
+  - name: Marco Carobene
+    github: mcarobene-id
+
+contributors:
+  - name: Joe Hart
+    github: joehart2001
+  - name: Elliott Kasoar
+    github: ElliottKasoar
+
+citations:
+  # Source of the reactant, product and transition-state input geometries.
+  - bibtex_key: grambow2020reactions
+    role: reference_data
+    detail: Input geometries, ωB97X-D3/def2-TZVP
+
+# MLIP Audit is cited automatically through the app's mlip_audit framework tag.
