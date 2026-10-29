@@ -969,8 +969,6 @@ def register_weight_callbacks(
             reset_weights = {
                 key: default_weights.get(key, 1.0) for key in stored_weights
             }
-            if reset_weights == stored_weights:
-                raise PreventUpdate
             stored_weights = reset_weights
         else:
             raise PreventUpdate
@@ -1047,8 +1045,6 @@ def register_normalization_callbacks(
                 if not n_clicks:
                     raise PreventUpdate
                 if cleaned_defaults:
-                    if cleaned_defaults == cleaned_store:
-                        raise PreventUpdate
                     return deepcopy(cleaned_defaults)
                 raise PreventUpdate
 
