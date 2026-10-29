@@ -136,15 +136,13 @@ def write_neb_profiles(model_name: str, states: list, references: list) -> None:
                 for molecule in molecules
             ],
         )
-        figure.add_scatter(
-            x=[0, (len(energies) - 1) / 2, len(energies) - 1],
-            y=ref_energies.tolist(),
-            name="DFT reference",
-            mode="markers",
-            marker={"symbol": "diamond", "size": 10, "color": "black"},
-            customdata=[f"ref_{reaction}"] * 3,
-            text=["Reactant", "Transition state (schematic position)", "Product"],
-            hovertemplate="%{text}<br>DFT relative energy: %{y:.3f} eV<extra></extra>",
+        figure.add_hline(
+            y=float(ref_energies[1]),
+            line_dash="dash",
+            line_color="red",
+            line_width=1,
+            annotation_text=f"DFT barrier: {ref_energies[1]:.3f} eV",
+            annotation_position="top left",
         )
         figure.update_layout(
             title=f"Reaction {reaction}",
