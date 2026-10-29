@@ -3,9 +3,19 @@
 from __future__ import annotations
 
 from dash import Dash
+from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
+from ml_peg.app.utils.build_callbacks import (
+    clear_from_table_cell,
+    plot_from_scatter_files,
+    plot_from_table_cell,
+    struct_from_scatter,
+)
+from ml_peg.app.utils.load import read_plot
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
 
 BENCHMARK_NAME = "GrambowOrganics"
 DOCS_URL = (
@@ -19,6 +29,45 @@ class GrambowOrganicsApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
+        plots = {}
+        for model in get_model_names(current_models):
+            model_path = DATA_PATH / model
+            if not (model_path / "figure_neb_overview.json").exists():
+                continue
+            graph_id = f"{BENCHMARK_NAME}-{model}-neb"
+            plot = read_plot(model_path / "figure_neb_overview.json", id=graph_id)
+            plots[model] = {
+                "Convergence Rate": plot,
+                "Score": plot,
+            }
+            profile_id = plot_from_scatter_files(
+                scatter_id=graph_id,
+                plot_id=f"{BENCHMARK_NAME}-profile",
+                plot_dir=model_path / "profiles",
+                clear_plot_ids=[f"{BENCHMARK_NAME}-struct"],
+            )
+            structs = {
+                path.stem.removeprefix("band_"): (
+                    f"/assets/nebs/grambow_organics/{model}/{path.name}"
+                )
+                for path in model_path.glob("band_*.extxyz")
+            }
+            struct_from_scatter(
+                scatter_id=profile_id,
+                struct_id=f"{BENCHMARK_NAME}-struct",
+                structs=structs,
+                mode="traj",
+                follow_frames=True,
+            )
+        clear_from_table_cell(
+            self.table_id,
+            [f"{BENCHMARK_NAME}-profile", f"{BENCHMARK_NAME}-struct"],
+        )
+        plot_from_table_cell(
+            table_id=self.table_id,
+            plot_id=f"{BENCHMARK_NAME}-figure",
+            cell_to_plot=plots,
+        )
 
 
 def get_app() -> GrambowOrganicsApp:
@@ -41,7 +90,11 @@ def get_app() -> GrambowOrganicsApp:
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "grambow_organics_metrics_table.json",
         info_path=DATA_PATH / "info.json",
-        extra_components=[],
+        extra_components=[
+            Div(id=f"{BENCHMARK_NAME}-figure"),
+            Div(id=f"{BENCHMARK_NAME}-profile"),
+            Div(id=f"{BENCHMARK_NAME}-struct"),
+        ],
     )
 
 
