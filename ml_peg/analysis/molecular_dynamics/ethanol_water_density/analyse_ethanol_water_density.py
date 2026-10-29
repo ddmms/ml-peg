@@ -1,7 +1,13 @@
 """Analyse ethanol-water density curves."""
 
+# TODO: Allow for experimental uncertainties, as in the other density benchmarks.
+# Add 1-sd uncertainties on the reference grid, interpolate them onto each model
+# grid and pass them to `bootstrap_metric`. `_peak_x_error` fixes the reference
+# peak, so would need to refit it for each bootstrap draw to include them.
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 from warnings import warn
 
@@ -9,6 +15,12 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.timeseries import (
+    MetricEstimate,
+    TimeSeriesEstimate,
+    bootstrap_metric,
+    estimate_mean,
+)
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -180,9 +192,9 @@ def ref_curve() -> tuple[np.ndarray, np.ndarray]:
     return x, rho_ref
 
 
-def compute_density(fname, density_col=13):
+def compute_density(fname, density_col=13, label=None) -> TimeSeriesEstimate | None:
     """
-    Compute average density from NPT log file.
+    Compute average density, and its uncertainty, from NPT log file.
 
     Parameters
     ----------
@@ -190,11 +202,14 @@ def compute_density(fname, density_col=13):
         Path to the log file.
     density_col
         Which column the density numbers are in.
+    label
+        Label to identify the simulation in warnings.
 
     Returns
     -------
-    float
-        Average density in g/cm3.
+    TimeSeriesEstimate | None
+        Average density in g/cm3, with its uncertainty. None if the run is missing or
+        incomplete.
     """
     density_series = []
     try:
@@ -203,9 +218,9 @@ def compute_density(fname, density_col=13):
                 items = line.strip().split()
                 if len(items) != 15:
                     continue
-                density_series.append(float(items[13]))
+                density_series.append(float(items[density_col]))
     except OSError:
-        return np.nan
+        return None
     n_expected = NUM_NPT_STEPS // LOG_INTERVAL + 1
     if len(density_series) != n_expected:
         warn(
@@ -213,33 +228,39 @@ def compute_density(fname, density_col=13):
             "(incomplete run?); density set to NaN.",
             stacklevel=2,
         )
-        return np.nan
+        return None
     # Discard first half as equilibration
     skip_frames = len(density_series) // 2
     equilibrated = density_series[skip_frames:]
     if len(equilibrated) == 0:
-        return np.nan
-    return np.mean(equilibrated)
+        return None
+    return estimate_mean(equilibrated, label=label)
 
 
 @pytest.fixture
-def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
+def model_curves() -> dict[str, tuple[np.ndarray, list[TimeSeriesEstimate | None]]]:
     """
     Return simulated model density curves on sorted composition grids.
 
     Returns
     -------
-    dict[str, tuple[numpy.ndarray, numpy.ndarray]]
-        Mapping from model name to x-grid and density values.
+    dict[str, tuple[numpy.ndarray, list[TimeSeriesEstimate | None]]]
+        Mapping from model name to x-grid and density estimates. Estimates are None
+        for missing or incomplete runs.
     """
-    curves: dict[str, tuple[np.ndarray, np.ndarray]] = {}
+    curves: dict[str, tuple[np.ndarray, list[TimeSeriesEstimate | None]]] = {}
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         xs = []
         rhos = []
         if model_dir.is_dir():
             for case_dir in model_dir.iterdir():
-                rhos.append(compute_density(case_dir / f"{model_name}.log"))
+                rhos.append(
+                    compute_density(
+                        case_dir / f"{model_name}.log",
+                        label=f"{model_name}/{case_dir.name}",
+                    )
+                )
                 xs.append(float(case_dir.name.split("_")[-1]))
         else:
             # A model in `current_models` may not have been calculated; leave its curve
@@ -248,7 +269,6 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
                 f"No outputs for model {model_name}; metrics set to NaN.", stacklevel=2
             )
         x = np.asarray(xs, dtype=float)
-        rho = np.asarray(rhos, dtype=float)
 
         # A partial grid would silently skew metrics (wrong excess-volume
         # endpoints), possibly rewarding models whose runs failed.
@@ -258,10 +278,10 @@ def model_curves() -> dict[str, tuple[np.ndarray, np.ndarray]]:
                 "metrics set to NaN.",
                 stacklevel=2,
             )
-            rho[:] = np.nan
+            rhos = [None] * len(rhos)
 
         order = np.argsort(x)
-        curves[model_name] = (x[order], rho[order])
+        curves[model_name] = (x[order], [rhos[i] for i in order])
     return curves
 
 
@@ -269,6 +289,7 @@ def plot_model_curves(
     model_name: str,
     ref_curve: tuple[np.ndarray, np.ndarray],
     model_curve: tuple[np.ndarray, np.ndarray],
+    model_ci: list[float] | None = None,
 ) -> None:
     """
     Plot density, excess volume, and excess-volume minimum figures for one model.
@@ -281,6 +302,8 @@ def plot_model_curves(
         Reference composition and density arrays.
     model_curve
         Model composition and density arrays.
+    model_ci
+        Half-widths of the 95 % confidence intervals of the model densities.
     """
     x_ref, rho_ref = ref_curve
     x_m, rho_m = model_curve
@@ -305,10 +328,13 @@ def plot_model_curves(
         dict[str, list]
             Mole fractions and densities for the reference and model.
         """
-        return {
+        results = {
             "ref": [list(x_ref), list(rho_ref)],
             model_name: [list(x_m), list(rho_m)],
         }
+        if model_ci is not None:
+            results["y_err"] = {model_name: model_ci}
+        return results
 
     @plot_scatter(
         filename=model_dir / "figure_excess_volume.json",
@@ -379,17 +405,130 @@ def curve_plots(ref_curve, model_curves) -> None:
     ----------
     ref_curve : tuple[numpy.ndarray, numpy.ndarray]
         Reference composition and density arrays.
-    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
-        Per-model composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, list]]
+        Per-model composition grids and density estimates (with uncertainties).
     """
-    for model_name, (x_m, rho_m) in model_curves.items():
-        if rho_m.size == 0 or not np.all(np.isfinite(rho_m)):
+    for model_name, (x_m, rhos) in model_curves.items():
+        if not rhos or any(rho is None for rho in rhos):
             continue
-        plot_model_curves(model_name, ref_curve, (x_m, rho_m))
+        rho_m = np.array([rho.mean for rho in rhos])
+        if not np.all(np.isfinite(rho_m)):
+            continue
+        model_ci = [rho.ci_95 for rho in rhos]
+        plot_model_curves(model_name, ref_curve, (x_m, rho_m), model_ci)
+
+
+def _rmse_density(
+    x_m: np.ndarray, ref_curve: tuple[np.ndarray, np.ndarray]
+) -> Callable[[np.ndarray, np.ndarray], float]:
+    """
+    Get function to compute density RMSE versus interpolated reference values.
+
+    Parameters
+    ----------
+    x_m : numpy.ndarray
+        Model composition grid.
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+
+    Returns
+    -------
+    Callable[[numpy.ndarray, numpy.ndarray], float]
+        Function of reference densities at ``x_m`` and model densities.
+    """
+    return lambda rho_ref_m, rho_m: rmse(rho_ref_m, rho_m)
+
+
+def _rmse_excess_volume(
+    x_m: np.ndarray, ref_curve: tuple[np.ndarray, np.ndarray]
+) -> Callable[[np.ndarray, np.ndarray], float]:
+    """
+    Get function to compute RMSE of excess volume curves.
+
+    Parameters
+    ----------
+    x_m : numpy.ndarray
+        Model composition grid.
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+
+    Returns
+    -------
+    Callable[[numpy.ndarray, numpy.ndarray], float]
+        Function of reference densities at ``x_m`` and model densities.
+    """
+    return lambda rho_ref_m, rho_m: rmse(
+        _excess_volume(x_m, rho_ref_m), _excess_volume(x_m, rho_m)
+    )
+
+
+def _peak_x_error(
+    x_m: np.ndarray, ref_curve: tuple[np.ndarray, np.ndarray]
+) -> Callable[[np.ndarray, np.ndarray], float]:
+    """
+    Get function to compute error in composition of minimum excess volume.
+
+    The peak is located on the full reference curve, so the reference densities
+    passed to the returned function are unused. The peak position comes from a
+    local quadratic fit around the minimum, so is discontinuous in the densities and
+    its confidence interval may be lumpy.
+
+    Parameters
+    ----------
+    x_m : numpy.ndarray
+        Model composition grid.
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+
+    Returns
+    -------
+    Callable[[numpy.ndarray, numpy.ndarray], float]
+        Function of reference densities at ``x_m`` and model densities.
+    """
+    x_ref, rho_ref = ref_curve
+    x_peak_ref = _peak_x_quadratic(x_ref, _excess_volume(x_ref, rho_ref))
+    return lambda _rho_ref_m, rho_m: float(
+        abs(_peak_x_quadratic(x_m, _excess_volume(x_m, rho_m)) - x_peak_ref)
+    )
+
+
+def _curve_metric(
+    metric_fn: Callable,
+    ref_curve: tuple[np.ndarray, np.ndarray],
+    model_curves: dict[str, tuple[np.ndarray, list[TimeSeriesEstimate | None]]],
+) -> dict[str, MetricEstimate | float]:
+    """
+    Compute a curve metric, with confidence intervals, for all models.
+
+    Parameters
+    ----------
+    metric_fn : Callable
+        Function of the model composition grid and reference curve, returning a
+        function of reference and model densities at that grid.
+    ref_curve : tuple[numpy.ndarray, numpy.ndarray]
+        Reference composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, list]]
+        Per-model composition grids and density estimates (with uncertainties).
+
+    Returns
+    -------
+    dict[str, MetricEstimate | float]
+        Metric keyed by model name. NaN for models with missing densities.
+    """
+    x_ref, rho_ref = ref_curve
+    out: dict[str, MetricEstimate | float] = {}
+    for m, (x_m, rhos) in model_curves.items():
+        if not rhos or any(rho is None for rho in rhos):
+            out[m] = np.nan
+            continue
+        out[m] = bootstrap_metric(
+            metric_fn(x_m, ref_curve), np.interp(x_m, x_ref, rho_ref), rhos
+        )
+    return out
 
 
 @pytest.fixture
-def rmse_density(ref_curve, model_curves) -> dict[str, float]:
+def rmse_density(ref_curve, model_curves) -> dict[str, MetricEstimate | float]:
     """
     Compute density RMSE versus interpolated reference values.
 
@@ -397,27 +536,19 @@ def rmse_density(ref_curve, model_curves) -> dict[str, float]:
     ----------
     ref_curve : tuple[numpy.ndarray, numpy.ndarray]
         Reference composition and density arrays.
-    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
-        Per-model composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, list]]
+        Per-model composition grids and density estimates (with uncertainties).
 
     Returns
     -------
-    dict[str, float]
+    dict[str, MetricEstimate | float]
         RMSE values in g/cm^3 keyed by model name.
     """
-    x_ref, rho_ref = ref_curve
-    out: dict[str, float] = {}
-    for m, (x_m, rho_m) in model_curves.items():
-        if rho_m.size == 0 or not np.all(np.isfinite(rho_m)):
-            out[m] = np.nan
-            continue
-        rho_ref_m = np.interp(x_m, x_ref, rho_ref)
-        out[m] = rmse(rho_m, rho_ref_m)
-    return out
+    return _curve_metric(_rmse_density, ref_curve, model_curves)
 
 
 @pytest.fixture
-def rmse_excess_volume(ref_curve, model_curves) -> dict[str, float]:
+def rmse_excess_volume(ref_curve, model_curves) -> dict[str, MetricEstimate | float]:
     """
     Compute RMSE of excess volume curves.
 
@@ -425,33 +556,19 @@ def rmse_excess_volume(ref_curve, model_curves) -> dict[str, float]:
     ----------
     ref_curve : tuple[numpy.ndarray, numpy.ndarray]
         Reference composition and density arrays.
-    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
-        Per-model composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, list]]
+        Per-model composition grids and density estimates (with uncertainties).
 
     Returns
     -------
-    dict[str, float]
+    dict[str, MetricEstimate | float]
         Excess-density RMSE values keyed by model name.
     """
-    x_ref, rho_ref = ref_curve
-    out: dict[str, float] = {}
-
-    for m, (x_m, rho_m) in model_curves.items():
-        if rho_m.size == 0 or not np.all(np.isfinite(rho_m)):
-            out[m] = np.nan
-            continue
-        rho_ref_m = np.interp(x_m, x_ref, rho_ref)
-
-        ex_ref = _excess_volume(x_m, rho_ref_m)
-        ex_m = _excess_volume(x_m, rho_m)
-
-        out[m] = rmse(ex_m, ex_ref)
-
-    return out
+    return _curve_metric(_rmse_excess_volume, ref_curve, model_curves)
 
 
 @pytest.fixture
-def peak_x_error(ref_curve, model_curves) -> dict[str, float]:
+def peak_x_error(ref_curve, model_curves) -> dict[str, MetricEstimate | float]:
     """
     Compute absolute error in composition of minimum excess volume.
 
@@ -459,29 +576,15 @@ def peak_x_error(ref_curve, model_curves) -> dict[str, float]:
     ----------
     ref_curve : tuple[numpy.ndarray, numpy.ndarray]
         Reference composition and density arrays.
-    model_curves : dict[str, tuple[numpy.ndarray, numpy.ndarray]]
-        Per-model composition and density arrays.
+    model_curves : dict[str, tuple[numpy.ndarray, list]]
+        Per-model composition grids and density estimates (with uncertainties).
 
     Returns
     -------
-    dict[str, float]
+    dict[str, MetricEstimate | float]
         Absolute peak-position error keyed by model name.
     """
-    x_ref, rho_ref = ref_curve
-    ex_ref_dense = _excess_volume(x_ref, rho_ref)
-    x_peak_ref = _peak_x_quadratic(x_ref, ex_ref_dense)
-    print("ref peak at:", x_peak_ref)
-
-    out: dict[str, float] = {}
-    for m, (x_m, rho_m) in model_curves.items():
-        if rho_m.size == 0 or not np.all(np.isfinite(rho_m)):
-            out[m] = np.nan
-            continue
-        ex_m = _excess_volume(x_m, rho_m)
-        x_peak_m = _peak_x_quadratic(x_m, ex_m)
-        out[m] = float(abs(x_peak_m - x_peak_ref))
-
-    return out
+    return _curve_metric(_peak_x_error, ref_curve, model_curves)
 
 
 # -----------------------------------------------------------------------------
@@ -506,20 +609,20 @@ def peak_x_error(ref_curve, model_curves) -> dict[str, float]:
     },
 )
 def metrics(
-    rmse_density: dict[str, float],
-    rmse_excess_volume: dict[str, float],
-    peak_x_error: dict[str, float],
+    rmse_density: dict[str, MetricEstimate | float],
+    rmse_excess_volume: dict[str, MetricEstimate | float],
+    peak_x_error: dict[str, MetricEstimate | float],
 ) -> dict[str, dict]:
     """
     Combine individual metrics into the table payload.
 
     Parameters
     ----------
-    rmse_density : dict[str, float]
+    rmse_density : dict[str, MetricEstimate | float]
         Density RMSE values.
-    rmse_excess_volume : dict[str, float]
+    rmse_excess_volume : dict[str, MetricEstimate | float]
         Excess-volume RMSE values.
-    peak_x_error : dict[str, float]
+    peak_x_error : dict[str, MetricEstimate | float]
         Peak-position errors.
 
     Returns

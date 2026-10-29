@@ -749,6 +749,7 @@ def build_weight_components(
     model_levels = getattr(table, "model_levels_of_theory", None)
     metric_levels = getattr(table, "metric_levels_of_theory", None)
     model_configs = getattr(table, "model_configs", None)
+    uncertainties = getattr(table, "uncertainties", None)
 
     # Callbacks to update table scores when table weight dicts change
     if table.id == SUMMARY_TABLE_ID:
@@ -784,6 +785,7 @@ def build_weight_components(
             model_levels=model_levels,
             metric_levels=metric_levels,
             model_configs=model_configs,
+            uncertainties=uncertainties,
         )
 
     # Callbacks to sync sliders, text boxes, and stored table weights
