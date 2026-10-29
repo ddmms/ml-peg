@@ -127,7 +127,10 @@ def _preview_png(
     element = None if element_value == overview_label else element_value
     version = []
     for path in _selected_curve_files(root, model_name, element):
-        stat = path.stat()
+        try:
+            stat = path.stat()
+        except FileNotFoundError:
+            continue
         version.append((path.name, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
     return _cached_preview_png(root, model_name, element, tuple(version))
 
