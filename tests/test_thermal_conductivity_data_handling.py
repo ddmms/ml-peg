@@ -361,3 +361,195 @@ def test_existing_phonon_status_is_preserved(conductivity_functions) -> None:
     stats = {"ref": reference, "model": aligned}
     assert conductivity_functions["failure"](stats)["model"] == pytest.approx(1 / 3)
     assert conductivity_functions["instability"](stats)["model"] == pytest.approx(1 / 3)
+
+
+@pytest.mark.parametrize("existing_alias", [False, True])
+@pytest.mark.parametrize("missing_plugin", [False, True])
+def test_wte_registration_cleans_up_grid_alias(existing_alias, missing_plugin):
+    """Register explicitly without replacing or leaking the legacy grid module."""
+    grid = object()
+    previous = object()
+    alias = "phono3py.phonon.grid"
+    modules = {alias: previous} if existing_alias else {}
+    calls = []
+
+    def import_plugin(name):
+        if name == "phonopy.phonon.grid":
+            return grid
+        assert name == "wte"
+        assert modules[alias] is (previous if existing_alias else grid)
+        if missing_plugin:
+            raise ModuleNotFoundError(name="wte")
+        return SimpleNamespace(register=lambda: calls.append("registered"))
+
+    namespace = {
+        "sys": SimpleNamespace(modules=modules),
+        "import_module": import_plugin,
+    }
+    _load_functions(CALC_PATH / "thermal_conductivity.py", {"register_wte"}, namespace)
+    if missing_plugin:
+        with pytest.raises(ModuleNotFoundError, match="uv sync"):
+            namespace["register_wte"]()
+    else:
+        namespace["register_wte"]()
+        assert calls == ["registered"]
+    assert modules == ({alias: previous} if existing_alias else {})
+
+
+def test_wte_mode_outputs_preserve_total_conductivity():
+    """Use the plugin API while retaining mode contributions and output keys."""
+    from copy import deepcopy
+
+    keys = SimpleNamespace(
+        **{
+            name: name
+            for name in (
+                "kappa_tot_rta",
+                "kappa_p_rta",
+                "kappa_c",
+                "mode_weights",
+                "q_points",
+                "ph_freqs",
+                "mode_kappa_tot_rta",
+            )
+        }
+    )
+    population = np.ones((1, 1, 1, 2, 6))
+    coherence = np.zeros((1, 1, 1, 2, 2, 6))
+    coherence[:, :, :, 0, 1] = 0.25
+    coherence[:, :, :, 1, 0] = 0.25
+    kappa = SimpleNamespace(
+        kappa_TOT_RTA=np.full((1, 1, 6), 1.25),
+        kappa_P_RTA=np.ones((1, 1, 6)),
+        kappa_C=np.full((1, 1, 6), 0.25),
+        mode_kappa=population,
+        mode_kappa_C=coherence,
+        mode_heat_capacities=np.ones((1, 1, 2)),
+        grid_weights=np.array([2]),
+        qpoints=np.zeros((1, 3)),
+        frequencies=np.ones((1, 2)),
+    )
+    calls = []
+    ph3 = SimpleNamespace(
+        thermal_conductivity=kappa,
+        init_phph_interaction=lambda **kw: calls.append(("init", kw)),
+        run_thermal_conductivity=lambda **kw: calls.append(("run", kw)),
+    )
+    namespace = {
+        "np": np,
+        "deepcopy": deepcopy,
+        "warnings": warnings,
+        "TCKeys": keys,
+        "register_wte": lambda: calls.append(("register", {})),
+    }
+    _load_functions(
+        CALC_PATH / "thermal_conductivity.py",
+        {"calculate_conductivity", "calc_mode_kappa_tot"},
+        namespace,
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result_ph3, result, result_kappa = namespace["calculate_conductivity"](
+            ph3,
+            [300],
+            boundary_mfp=123,
+            log_level=0,
+        )
+    assert result_ph3 is ph3
+    assert result_kappa is kappa
+    assert [name for name, _ in calls] == ["register", "init", "run"]
+    assert calls[1][1] == {
+        "symmetrize_fc3q": False,
+        "average_degenerate_weights": True,
+        "exclude_gamma_acoustic": True,
+    }
+    assert calls[-1][1] == {
+        "transport_type": "WTE",
+        "temperatures": [300],
+        "is_isotope": True,
+        "boundary_mfp": 123,
+        "log_level": 0,
+    }
+    np.testing.assert_allclose(result["mode_kappa_tot_rta"], 1.25)
+    np.testing.assert_allclose(
+        result["mode_kappa_tot_rta"].sum(axis=(1, 2)) / 2,
+        result["kappa_tot_rta"],
+    )
+
+
+@pytest.mark.parametrize("failure", ["none", "transient", "persistent", "http"])
+def test_reference_download_order_and_resume(tmp_path, failure):
+    """Keep material order and reuse completed downloads after a failed batch."""
+    from concurrent.futures import ThreadPoolExecutor
+    from hashlib import sha256
+    import lzma
+    import re
+
+    from requests import HTTPError
+
+    names = ["NaCl", "MgO", "SiC"]
+    links = [f"https://example.test/{name}.yaml.xz" for name in names]
+    readme = "\n".join(
+        f"| mp{i}-{name} | [phono3py_params.yaml.xz]({link}) |"
+        for i, (name, link) in enumerate(zip(names, links, strict=True))
+    )
+    (tmp_path / "phonon3db_readme.md").write_text(readme)
+    calls = []
+    fail = failure != "none"
+
+    def get(url, timeout):
+        calls.append(url)
+        assert timeout == (10, 120)
+        if (
+            fail
+            and url == links[0]
+            and (failure in {"persistent", "http"} or calls.count(url) <= 3)
+        ):
+            if failure == "http":
+                raise HTTPError(f"404 Client Error: Not Found for url: {url}")
+            raise OSError("interrupted download")
+        return SimpleNamespace(
+            content=lzma.compress(names[links.index(url)].encode()),
+            raise_for_status=lambda: None,
+        )
+
+    namespace = {
+        "Path": Path,
+        "PH3_PARAMS_PATH": tmp_path,
+        "PHONONDB_COMMIT": "fixed-revision",
+        "SCRAPED_YAMLS_FILE": tmp_path / "scraped_yamls.txt",
+        "os": __import__("os"),
+        "re": re,
+        "sha256": sha256,
+        "requests": SimpleNamespace(get=get),
+        "time": SimpleNamespace(sleep=lambda _: None),
+        "ThreadPoolExecutor": ThreadPoolExecutor,
+        # Force results to be consumed in reverse order to check name alignment.
+        "as_completed": lambda futures: reversed(list(futures)),
+        "tqdm": lambda items, **kwargs: items,
+    }
+    _load_functions(
+        CALC_PATH / "data/reference_generation.py", {"scrape_phono3py_data"}, namespace
+    )
+    download = namespace["scrape_phono3py_data"]
+    if failure in {"persistent", "http"}:
+        with pytest.raises(RuntimeError, match="Failed to download") as exc_info:
+            download()
+        assert links[0] in str(exc_info.value)
+        expected = (
+            "404 Client Error: Not Found"
+            if failure == "http"
+            else ("OSError('interrupted download')")
+        )
+        assert expected in str(exc_info.value)
+        assert calls.count(links[0]) == 6
+        fail = False
+    yaml_list, name_list = download()
+    assert yaml_list == names
+    assert name_list == names
+    assert calls.count(links[1]) == 1
+    assert calls.count(links[2]) == 1
+    before = list(calls)
+    assert download() == (names, names)
+    assert calls == before
+    assert not list(tmp_path.rglob("*.tmp"))
