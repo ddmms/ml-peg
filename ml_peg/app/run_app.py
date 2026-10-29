@@ -9,8 +9,14 @@ from dash import Dash
 
 from ml_peg.app.build_app import build_full_app
 from ml_peg.app.utils.head_scripts import analytics_scripts, inject_head_scripts
+from ml_peg.app.utils.profiling import (
+    enable_request_profiling,
+    profile_directory,
+    profile_startup,
+)
 
 DATA_PATH = Path(__file__).parent / "data"
+PROFILE_DIRECTORY = profile_directory()
 
 
 def _build_full_app(app: Dash, category: str, test: str):
@@ -26,7 +32,8 @@ def _build_full_app(app: Dash, category: str, test: str):
     test
         Test to build application for.
     """
-    build_full_app(app, category, test)
+    with profile_startup(PROFILE_DIRECTORY):
+        build_full_app(app, category, test)
 
 
 # Make server accessible for gunicorn
@@ -55,6 +62,7 @@ if bool(os.environ.get("ML_PEG_PROD", False)):
     _build_full_app(app, "*", "*")
 
 server = app.server
+enable_request_profiling(server, PROFILE_DIRECTORY)
 
 
 def run_app(
@@ -80,7 +88,13 @@ def run_app(
     _build_full_app(app, category=category, test=test)
 
     print(f"Starting Dash app on port {port}...")
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    # The debug reloader starts a second process and duplicates startup profiles.
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=debug,
+        use_reloader=debug and PROFILE_DIRECTORY is None,
+    )
 
 
 if __name__ == "__main__":
