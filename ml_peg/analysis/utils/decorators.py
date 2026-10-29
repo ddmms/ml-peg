@@ -48,6 +48,7 @@ def plot_parity(
     symbol_by: list | None = None,
     symbol_labels: dict[str, str] | None = None,
     log: bool = False,
+    group_colors: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -66,14 +67,17 @@ def plot_parity(
         Filename to save plot as JSON. Default is "parity.json".
     symbol_by
         Per-point list of group values. When provided, each point receives a
-        marker symbol based on its group, while trace colours still represent
-        models. Legend-only traces above the plot show one marker symbol per group.
+        marker symbol based on its group. Colours represent models unless
+        ``group_colors`` is supplied. Legend-only traces show each group.
     symbol_labels
         Optional mapping from ``symbol_by`` values to shorter display names
         used in the legend. Values absent from this dict are shown as-is.
     log
         Whether to use log-log axes. When True, the y=x line spans the positive
         data range. Default is False.
+    group_colors
+        Optional colour mapping for every group in ``symbol_by``, applied to both
+        points and group legend markers. Default preserves model colours.
 
     Returns
     -------
@@ -135,6 +139,13 @@ def plot_parity(
                 marker_kwargs = {
                     "marker": {"symbol": [group_symbol[g] for g in symbol_by]}
                 }
+                if group_colors is not None:
+                    missing = [group for group in groups if group not in group_colors]
+                    if missing:
+                        raise ValueError(f"Missing group colours for {missing}")
+                    marker_kwargs["marker"]["color"] = [
+                        group_colors[group] for group in symbol_by
+                    ]
 
             for mlip, value in results.items():
                 if mlip == "ref":
@@ -164,7 +175,10 @@ def plot_parity(
                             y=[None],
                             name=label,
                             mode="markers",
-                            marker={"symbol": group_symbol[group], "color": "black"},
+                            marker={
+                                "symbol": group_symbol[group],
+                                "color": (group_colors or {}).get(group, "black"),
+                            },
                             hoverinfo="skip",
                             legend="legend2",
                             showlegend=True,
