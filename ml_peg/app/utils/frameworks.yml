@@ -90,6 +90,13 @@ matbench-discovery:
       - Kristin A. Persson
     year: 2025
 
+matbench-discovery:
+  label: Matbench Discovery
+  color: "#2563eb"
+  text_color: "#ffffff"
+  url: "https://matbench-discovery.materialsproject.org"
+  tooltip: "Evaluation framework for machine-learning materials discovery"
+
 mace-multihead:
   bibtex_key: batatia2025crosslearningelectronicstructure
   label: Multihead Cross Learning
