@@ -34,10 +34,10 @@ Mean lattice constant error compared to PBE data
 Same as (1), but optimised lattice constants are compared to reference PBE data.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -45,13 +45,108 @@ Data availability
 
 Input structures:
 
-* Built from experimental lattice constants from various sources
+* Built from experimental lattice constants in
+  ``lattice_constants_ref_exp.json`` inside the S3 archive
+  ``inputs/bulk_crystal/lattice_constants/lattice_constants.zip``.
+  The same archive contains the MACE-MP PBE reference values in
+  ``lattice_constants_ref.json`` and crystal types in
+  ``lattice_constants_ref_types.json``.
 
 Reference data:
 
-* Experimental data same as input data
+* Experimental data are the same as the input data, using the following sources:
 
-* DFT data
+  * Ag, Pd, Rh, Li, Na, K, Rb, Ca, Sr, Ba, Al and Cu: the publications below.
+    Values are rounded to three decimal places in Å.
+
+    .. list-table:: Elemental lattice-constant references
+       :header-rows: 1
+       :widths: 10 15 20 55
+
+       * - Element
+         - a (Å)
+         - Temperature (K)
+         - Source
+       * - Ag
+         - 4.086
+         - 293
+         - `Suh, Ohta and Waseda (1988) <https://doi.org/10.1007/BF01174717>`_
+       * - Pd
+         - 3.8898
+         - Not recorded
+         - Wyckoff (1963)
+       * - Rh
+         - 3.8031
+         - Not recorded
+         - Wyckoff (1963)
+       * - Li
+         - 3.5093
+         - 293
+         - Wyckoff (1963)
+       * - Na
+         - 4.2906
+         - 293
+         - Wyckoff (1963)
+       * - K
+         - 5.328
+         - Not recorded
+         - `Liu (1986) <https://doi.org/10.1016/0022-3697(86)90073-9>`_, 0 GPa
+       * - Rb
+         - 5.699
+         - 293.15
+         - `Arblaster (2018), Table 37a, p. 298
+           <https://my.asminternational.org/asm-store?store-path=/products/05244G>`_
+       * - Ca
+         - 5.5884
+         - 299.15
+         - `Bernstein and Smith (1959) <https://doi.org/10.1107/S0365110X59001268>`_
+       * - Sr
+         - 6.0847
+         - Not recorded
+         - Wyckoff (1963)
+       * - Ba
+         - 5.025
+         - 300
+         - Wyckoff (1963)
+       * - Al
+         - 4.04961
+         - 298.15
+         - `Straumanis (1949) <https://doi.org/10.1063/1.1698520>`_
+       * - Cu
+         - 3.6150
+         - Not recorded
+         - `Otte (1961) <https://doi.org/10.1063/1.1728392>`_
+
+    Ag, Pd, Rh, Ca, Sr, Al and Cu use fcc cells. Li, Na, K, Rb and Ba use
+    bcc cells. Wyckoff refers to *Crystal Structures*, volume 1, second edition
+    (Interscience Publishers, 1963). Except for Rb, values and available measurement
+    conditions were cross-checked against COD records. Missing conditions are not
+    assumed to imply ambient conditions. Rb uses Arblaster's recommended value
+    of 5.699 ± 0.002 Å at 20 °C.
+    The Al value includes the kX-to-Å conversion documented in
+    `COD entry 9012002 <https://www.crystallography.net/cod/9012002.cif>`_.
+  * Cs: `Weir, Piermarini and Block (1971)
+    <https://doi.org/10.1063/1.1675251>`_, ambient bcc Cs, 6.141 Å.
+    This value is also tabulated in the
+    `NIST-hosted review, Table 3, reference 413
+    <https://srd.nist.gov/jpcrdreprint/1.3253148.pdf>`_.
+  * C (diamond), Si and Ge: `Hom, Kiszenik and Post (1975)
+    <https://doi.org/10.1107/S0021889875010965>`_. Their measured lattice
+    constants round to the values used here.
+  * GaAs: `Ioffe Institute NSM Archive
+    <https://www.ioffe.ru/SVA/NSM/Semicond/GaAs/basic.html>`_, 300 K.
+  * LiF, LiCl, NaF and NaCl: `Joung and Cheatham (2008), Table 3
+    <https://doi.org/10.1021/jp8001614>`_, room-temperature lattice constants.
+  * MgO: the experimental column of `Oganov, Gillan and Price (2003), Table I
+    <https://doi.org/10.1063/1.1570394>`_, 300 K and zero pressure.
+  * 2H-SiC: `Li et al. (2014), Table 1
+    <https://doi.org/10.1088/2053-1591/1/4/045023>`_, which reproduces ICSD
+    entry 41487.
+
+  LiF, LiCl, NaF and NaCl use 4.027, 5.140, 4.634 and 5.640 Å, respectively.
+  For 2H-SiC, ``a = 3.076 Å`` and ``c = 5.048 Å``.
+
+* Benchmark and DFT data
 
   * Batatia, I., Benner, P., Chiang, Y., Elena, A.M., Kovács, D.P., Riebesell, J.,
     Advincula, X.R., Asta, M., Avaylon, M., Baldwin, W.J. and Berger, F., 2025. A
@@ -103,10 +198,10 @@ Symmetry-independent elastic constants are extracted based on crystal system:
 triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, or cubic.
 Symmetry checks are applied to components on the diagonal with a relative tolerance of 10%. If checks fail, a triclinic symmetry is assumed. Tensor components which are zero in both the reference and comparison tensors are excluded.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours-days to run on GPU.
+Very slow: around 20 hours per model on an A100 GPU.
 
 Data availability
 -----------------
@@ -268,10 +363,10 @@ scattering channel. It does not include phonon–phonon scattering from third-or
 constants and should be treated as an order-of-magnitude estimate.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: band-structure and thermal-property calculations together typically take
+Fast: band-structure and thermal-property calculations together typically take
 several minutes to tens of minutes per model on CPU. Both steps use the same 512-atom
 conventional supercell and share the equilibrium force constants; the thermal step
 adds force-constant evaluations at V\ :sub:`0` + δ and V\ :sub:`0` − δ, so total wall
@@ -378,10 +473,10 @@ bars (7 meV/atom at 0 K, ≈20% of the ~35 meV/atom zero-point energy; 30 meV/at
 differences (tens of meV/atom) that such calculations are used to resolve.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: dispersion, DOS and thermodynamic calculations typically take minutes per model on CPU.
+Fast: dispersion, DOS and thermodynamic calculations typically take minutes per model on CPU.
 Thermodynamic calculations are enabled for a 7/10 subset of cases.
 Ti64 calculations were run as a single process on CPU on an
 x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
@@ -456,10 +551,10 @@ Metrics
    Percentage of volume grid points at which the model correctly identifies all non-ground-state phases as higher in energy than the ground-state phase. A value of 100 % means the model preserves the correct phase ordering at every
    volume point. This metric is practically important: it indicates whether a model predicts spurious phase transitions under extreme conditions, such as the high tensile stresses at a crack tip.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low. Every eos curve requires 50 calls on unit cells.
+Fast. Every EOS curve requires 50 calls on unit cells.
 
 Data availability
 -----------------
@@ -514,11 +609,11 @@ below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation 
 repeated up from the last structure of the previous relaxation up to 3 times.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours-days to run on GPU, depending on the number of
-structures and pressure conditions tested.
+Very slow: tests are likely to take 10 hours to a day on GPU, depending on the
+number of structures and pressure conditions tested.
 
 
 Data availability
@@ -591,11 +686,11 @@ Relaxation continues until the maximum force component is below 0.0002 eV/Å or 
 500 steps are reached. If not converged, relaxation is repeated up to 3 times.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours-days to run on GPU, depending on the number of
-structures tested.
+Very slow: tests are likely to take 10 hours to a day on GPU, depending on the
+number of structures tested.
 
 
 Data availability
@@ -668,11 +763,10 @@ The dashboard then uses ML-PEG's standard weighted mean of the four group scores
 the overall score. Selecting a group cell displays its component scores, while the
 curve selector shows the model and DFT reference curves.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take minutes to run on GPU, or hours on CPU for each model.
-The benchmark is marked as slow and excluded from default test runs.
+Medium: tests are likely to take tens of minutes to run on GPU.
 
 
 Data availability
@@ -694,6 +788,84 @@ Reference data:
   with a machine-learning interatomic potential: Thermomechanics and defects in bcc
   ferromagnetic iron." `Physical Review Materials 2, 013808
   <https://doi.org/10.1103/PhysRevMaterials.2.013808>`_.
+
+
+Thermal conductivity
+====================
+
+Summary
+-------
+
+Performance in evaluating lattice thermal conductivity for 103 binary compounds in
+rocksalt, zincblende, and wurtzite structures.
+
+Metrics
+-------
+
+1. κSRE (PBE)
+
+Mean symmetric relative error (SRE) between predicted and PBE reference lattice
+thermal conductivity values.
+
+DFT-optimised structures are relaxed with fixed symmetries to 0.0001 eV/Å forces.
+Interatomic force constants are calculated using finite differences with a 0.03 Å
+displacement. The Wigner transport equation is solved within the single-mode
+relaxation-time approximation (RTA) to obtain lattice thermal conductivity. The
+symmetric relative error in the thermal conductivity at 300 K for a single material
+is calculated as:
+
+.. math::
+
+    \operatorname{SRE}(\kappa_i) =
+    2\frac{|\kappa_i^{\mathrm{pred}} - \kappa_i^{\mathrm{ref}}|}
+    {\kappa_i^{\mathrm{pred}} + \kappa_i^{\mathrm{ref}}}
+
+where :math:`\kappa^{\mathrm{pred}}` and :math:`\kappa^{\mathrm{ref}}` are the
+predicted and reference thermal conductivities for material :math:`i`. The mean SRE
+is calculated across all materials in the dataset.
+
+2. κSRME (PBE)
+
+Mean symmetric relative mean error (SRME) between predicted and PBE reference lattice
+phonon-mode contributions to thermal conductivity. Thermal conductivity is calculated
+as above. The symmetric relative mean error in the phonon-mode contributions to
+thermal conductivity at 300 K for a single material is calculated as:
+
+.. math::
+
+    \operatorname{SRME}(\kappa_i) =
+    2\frac{\sum_j |\kappa_i^{\mathrm{pred}}(q)_s -
+    \kappa_i^{\mathrm{ref}}(q)_s|}
+    {\kappa_i^{\mathrm{pred}} + \kappa_i^{\mathrm{ref}}}
+
+where :math:`\kappa_i^{\mathrm{pred}}(q)_s` and
+:math:`\kappa_i^{\mathrm{ref}}(q)_s` are the predicted and reference thermal
+conductivity contributions from phonon mode :math:`s` at wavevector :math:`q` for
+material :math:`i`. The mean SRME is calculated across all materials in the dataset.
+
+Both metrics are based on Póta, B., Ahlawat, P., Csányi, G., & Simoncelli, M. (2026).
+Thermal conductivity predictions with foundation atomistic models. Nature
+Communications 17, 10566. https://doi.org/10.1038/s41467-026-76391-w
+
+Computational cost
+------------------
+
+High: tests are likely to take hours to run on both CPU and GPU. Thermal conductivity
+evaluation requires a CPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* DFT-optimised structures from the reference dataset.
+
+Reference data:
+
+* DFT (PBE) data
+* A. Togo, L. Chaput, and I. Tanaka, Phys. Rev. B, 91, 094306 (2015), and
+  A. Seko et al., Phys. Rev. Lett., 115, 205901 (2015).
+* https://github.com/atztogo/phonondb/blob/main/mdr/phono3py_103compounds_fd_PBE/README.md
 
 
 Phonons
@@ -765,17 +937,17 @@ stable when ω\ :sub:`min` > -2.4 K (-0.05 THz). Agreement with DFT is
 classified as true positive, false positive, true negative, or false negative.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-The DFT reference preprocessing (``test_phonons_ref``) runs once and takes
+Medium: the DFT reference preprocessing (``test_phonons_ref``) runs once and takes
 30 minutes to 1 hour on CPU or GPU, as it only processes pre-computed force
 constants from the Alexandria database to generate band structures for later
-comparison. This part of the test is marked ``slow``.
+comparison.
 
-The MLIP evaluation (``test_phonons``) requires computing forces for all
+Slow: the MLIP evaluation (``test_phonons``) requires computing forces for all
 displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
-models will be slower. This part of the test is marked ``very_slow``.
+models will be slower.
 
 
 Data availability
@@ -816,10 +988,10 @@ From the reference paper providing the structures, the elemental transition meta
     * For magnetic structures, the reference spin-polarized calculations only is used.
     * Unstable element-structure combinations are not included.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take a couple of minutes to run on CPU.
+Fast: tests are likely to take a couple of minutes to run on CPU.
 
 
 Data availability
@@ -827,7 +999,7 @@ Data availability
 
 Input structures:
 
-* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2024 16 015018
+* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2014 16 015018
 
 Reference data:
 

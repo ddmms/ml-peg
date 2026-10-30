@@ -47,7 +47,7 @@ def test_oc20neb(model_name: str) -> None:
         dft_traj = read(data_path / f"{reaction}.xyz", ":")
         initial, final = dft_traj[0], dft_traj[-1]
         for struct in [initial, final]:
-            struct.calc = calc.get_calculator()
+            struct.calc = calc.get_calculator(precision="high")
             struct.info.setdefault("spin", 1)
             struct.info.setdefault("charge", 0)
 

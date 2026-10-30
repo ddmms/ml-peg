@@ -1,0 +1,18 @@
+implementers:
+  - name: "Leon Wehrhan"
+    github: "lwehrhan"
+
+contributors:
+  - name: "Silvia Acosta-Gutiérrez"
+    github: "sacostagutz"
+  - name: "Marco Carobene"
+    github: "mcarobene-id"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+  - name: "Lucien Walewski"
+    github: "lwalew"
+
+citations:
+  - bibtex_key: berman2000pdb
+    role: reference_data

@@ -10,8 +10,10 @@ Developer guide
     vibecoding
     cli
     add_benchmarks
+    add_interactivity
     add_category
     running
+    profiling
     data
     add_models
     levels_of_theory

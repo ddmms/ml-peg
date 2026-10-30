@@ -1,0 +1,17 @@
+implementers:
+  - name: "Eszter Varga-Umbrich"
+    github: "vue1999"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: Mehdizadeh_2025
+    role: benchmark_method
+  - bibtex_key: schindler2024cleavage-data
+    role: reference_data

@@ -5,6 +5,9 @@ Benchmarks
 .. toctree::
     :maxdepth: 3
 
+    alloy_metallurgy
+    amorphous_materials
+    biomolecules
     bulk_crystal
     conformers
     defects
@@ -17,6 +20,7 @@ Benchmarks
     nebs
     non_covalent_interactions
     physicality
+    porous_materials
     supramolecular
     surfaces
     tm_complexes

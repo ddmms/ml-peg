@@ -1,0 +1,193 @@
+"""Analyse molecular dynamics stability benchmark."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from ase.calculators.calculator import Calculator
+import pytest
+
+pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+from mlipaudit.benchmarks.stability.stability import STRUCTURE_NAMES, STRUCTURES
+from mlipaudit.io import load_model_output_from_disk
+
+from ml_peg.analysis.utils.decorators import build_table, plot_scatter
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    load_metrics_config,
+    write_struct_info,
+)
+from ml_peg.app import APP_ROOT
+from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.mlipaudit import MlPegStabilityBenchmark
+from ml_peg.models import current_models
+from ml_peg.models.get_models import load_models
+
+EXAMPLE_INPUT_FILENAME = STRUCTURES["Small_molecule_HCNO"]["xyz"]
+
+MODELS = load_models(current_models)
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+
+BENCHMARK = MlPegStabilityBenchmark.name
+
+CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "stability" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "stability"
+
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
+    METRICS_CONFIG_PATH
+)
+
+
+def check_dataset() -> None:
+    """
+    Check the dataset saved by the calculation is available.
+
+    The calculation copies and unzips the downloaded dataset into its
+    outputs, so the analysis does not need to download the input data again.
+
+    Raises
+    ------
+    ValueError
+        If the dataset is missing from the calculation outputs.
+    """
+    dataset_path = CALC_PATH / BENCHMARK / EXAMPLE_INPUT_FILENAME
+    if not dataset_path.exists():
+        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
+
+
+@pytest.fixture
+def structure_results() -> dict[str, list]:
+    """
+    Analyse each stored trajectory into per-structure stability results.
+
+    Returns
+    -------
+    dict[str, list]
+        List of ``StabilityStructureResult`` objects for each model.
+    """
+    check_dataset()
+
+    results = {}
+    for model_name in MODELS:
+        output_dir = CALC_PATH / model_name / MlPegStabilityBenchmark.name
+        if not (output_dir / "model_output.zip").exists():
+            continue
+        benchmark = MlPegStabilityBenchmark(
+            force_field=Calculator(),
+            data_input_dir=CALC_PATH,
+            run_mode="standard",
+        )
+        benchmark.model_output = load_model_output_from_disk(
+            CALC_PATH / model_name, MlPegStabilityBenchmark
+        )
+        results[model_name] = benchmark.analyze().structure_results
+    return results
+
+
+@pytest.fixture
+def stability_score(structure_results: dict[str, list]) -> dict[str, float]:
+    """
+    Get the mean stability score over all systems.
+
+    Parameters
+    ----------
+    structure_results
+        Per-structure stability results for all models.
+
+    Returns
+    -------
+    dict[str, float]
+        Mean stability score for each model.
+    """
+    return {
+        model_name: sum(r.score for r in results) / len(results)
+        for model_name, results in structure_results.items()
+    }
+
+
+@pytest.fixture
+@plot_scatter(
+    title="Trajectory stability",
+    x_label="System",
+    y_label="Stability score",
+    hovertemplate="<b>%{x}</b><br>Score: %{y:.2f}<extra>%{fullData.name}</extra>",
+    filename=str(OUT_PATH / "stability_progress.json"),
+)
+def progress(structure_results: dict[str, list]) -> dict[str, tuple[list, list]]:
+    """
+    Get per-structure stability scores for each model.
+
+    Parameters
+    ----------
+    structure_results
+        Per-structure stability results for all models.
+
+    Returns
+    -------
+    dict[str, tuple[list, list]]
+        Structure names and stability scores for each model.
+    """
+    return {
+        model_name: (
+            [r.structure_name for r in results],
+            [r.score for r in results],
+        )
+        for model_name, results in structure_results.items()
+    }
+
+
+@pytest.fixture
+@build_table(
+    filename=OUT_PATH / "stability_metrics_table.json",
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+    mlip_name_map=DISPERSION_NAME_MAP,
+)
+def metrics(stability_score: dict[str, float]) -> dict[str, dict]:
+    """
+    Get all metrics.
+
+    Parameters
+    ----------
+    stability_score
+        Mean stability score for all models.
+
+    Returns
+    -------
+    dict[str, dict]
+        Metric names and values for all models.
+    """
+    return {
+        "Stability Score": stability_score,
+    }
+
+
+@pytest.fixture
+def element_info() -> None:
+    """Write element info for all benchmark systems, used by the app element filter."""
+    check_dataset()
+    xyz_paths = [
+        CALC_PATH / MlPegStabilityBenchmark.name / STRUCTURES[name]["xyz"]
+        for name in STRUCTURE_NAMES
+    ]
+    write_struct_info(data_path=xyz_paths, out_path=OUT_PATH)
+
+
+def test_stability(
+    metrics: dict[str, dict],
+    progress: dict[str, tuple[list, list]],
+    element_info: None,
+) -> None:
+    """
+    Run stability analysis.
+
+    Parameters
+    ----------
+    metrics : dict[str, dict]
+        Stability metric results provided by fixtures.
+    progress : dict[str, tuple[list, list]]
+        Per-structure stability scores provided by fixtures.
+    element_info : None
+        Element info written for the app element filter.
+    """

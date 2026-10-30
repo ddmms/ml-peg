@@ -1,0 +1,9 @@
+implementers:
+  - name: "Tamas Tompa"
+    github: "ttompa"
+
+contributors: []
+
+citations:
+  - bibtex_key: zhang2024efficiency
+    role: reference_data

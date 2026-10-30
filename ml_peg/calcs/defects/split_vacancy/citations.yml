@@ -1,0 +1,13 @@
+implementers:
+  - name: "Thomas Warford"
+    github: "ThomasWarford"
+
+contributors:
+  - name: "Seán Kavanagh"
+    github: "kavanase"
+
+citations:
+  - bibtex_key: kavanagh-2025-split-vacancy
+    role: reference_data
+  - bibtex_key: kumagai-2021-oxygen-vacancies
+    role: benchmark_method

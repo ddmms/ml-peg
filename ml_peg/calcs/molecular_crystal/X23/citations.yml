@@ -1,0 +1,15 @@
+implementers:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+citations:
+  - bibtex_key: reilly2013understanding
+    role: benchmark_method
+  - bibtex_key: dellapia2024x23dmc
+    role: reference_data

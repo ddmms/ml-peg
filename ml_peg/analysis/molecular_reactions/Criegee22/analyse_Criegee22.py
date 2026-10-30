@@ -1,7 +1,7 @@
 """
 Analyse Criegee22 reaction barrier benchmark.
 
-10.1021/acs.jpca.8b09349
+10.1002/jcc.26106
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map()
 
 EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "molecular_reactions" / "Criegee22" / "outputs"

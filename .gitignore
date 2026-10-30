@@ -39,6 +39,17 @@ dist/
 pip-wheel-metadata/
 __pycache__/
 ml_peg/app/data/*
-!ml_peg/app/data/onboarding/
-!ml_peg/app/data/table_download/
+!ml_peg/app/data/ui/
+!ml_peg/app/data/ui/**
 certs/
+data.tar.gz
+scratchpad/
+*.bz2
+*.pkl
+
+# Local app profiling output
+profiles/
+*.prof
+
+# Local element-coverage probe logs
+dev/element_coverage/model_supported_elements_errors.jsonl

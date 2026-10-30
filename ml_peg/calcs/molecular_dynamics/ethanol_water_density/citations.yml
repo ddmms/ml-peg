@@ -1,0 +1,9 @@
+implementers:
+  - name: "Arn De Moor"
+    github: "arnon-1"
+
+contributors: []
+
+citations:
+  - bibtex_key: southard-2018-perrys
+    role: reference_data

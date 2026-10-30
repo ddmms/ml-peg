@@ -1,0 +1,18 @@
+implementers:
+  - name: "Alin M. Elena"
+    github: "alinelena"
+    email: "alin-marin.elena@stfc.ac.uk"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: rosen-2021-qmof
+    role: reference_data
+  - bibtex_key: batatia2025foundation
+    role: reference_data

@@ -23,10 +23,10 @@ between the complex and the sum of the individual fragment energies. This is
 compared to the reference interaction energy, calculated in the same way. For examples 18 and 19,
 the energy is computed by taking the difference between the two conformers.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take seconds to run on GPU.
+Fast: tests are likely to take seconds to run on GPU.
 
 Data availability
 -----------------
@@ -61,10 +61,10 @@ For each dimer, the interaction energy is computed by subtracting the sum of the
 energies from the dimer energy. This is compared to the reference interaction energy,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on GPU.
+Fast: tests are likely to take minutes to run on GPU.
 
 Data availability
 -----------------
@@ -99,10 +99,10 @@ For each dimer, the interaction energy is computed by subtracting the sum of the
 energies from the dimer energy. This is compared to the reference interaction energy,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on GPU.
+Fast: tests are likely to take minutes to run on GPU.
 
 Data availability
 -----------------
@@ -137,10 +137,10 @@ For each dimer, the interaction energy is computed by subtracting the sum of the
 energies from the dimer energy. This is compared to the reference interaction energy,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on GPU.
+Fast: tests are likely to take minutes to run on GPU.
 
 Data availability
 -----------------
@@ -175,10 +175,10 @@ For each dimer, the interaction energy is computed by subtracting the sum of the
 energies from the dimer energy. This is compared to the reference interaction energy,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on GPU.
+Fast: tests are likely to take minutes to run on GPU.
 
 Data availability
 -----------------
@@ -213,10 +213,10 @@ For each dimer, the interaction energy is computed by subtracting the sum of the
 energies from the dimer energy. This is compared to the reference interaction energy,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on GPU.
+Fast: tests are likely to take minutes to run on GPU.
 
 Data availability
 -----------------
@@ -250,10 +250,10 @@ For each dimer, the interaction energy is computed by subtracting the sum of the
 energies from the dimer energy. This is compared to the reference interaction energy,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on GPU.
+Fast: tests are likely to take minutes to run on GPU.
 
 Data availability
 -----------------
@@ -286,10 +286,10 @@ For each dimer, the interaction energy is computed by subtracting the sum of the
 energies from the dimer energy. This is compared to the reference interaction energy,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on GPU.
+Fast: tests are likely to take minutes to run on GPU.
 
 Data availability
 -----------------

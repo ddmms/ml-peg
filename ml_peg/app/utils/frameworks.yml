@@ -8,6 +8,7 @@ ml_peg:
   project_url: "https://github.com/ddmms/ml-peg"
 
 mlip_arena:
+  bibtex_key: chiang-2025-mlip-arena
   label: MLIP Arena
   type: framework
   color: "#0f766e"
@@ -18,21 +19,53 @@ mlip_arena:
   project_url: "https://huggingface.co/spaces/atomind/mlip-arena"
   paper_url: "https://proceedings.neurips.cc/paper_files/paper/2025/hash/bfa45223cc236855dbaa5c468c809896-Abstract-Datasets_and_Benchmarks_Track.html"
   github: "https://github.com/atomind-ai/mlip-arena"
+  citation:
+    title: "MLIP Arena: Advancing Fairness and Transparency in Machine Learning Interatomic Potentials via an Open, Accessible Benchmark Platform"
+    authors:
+      - Yuan Chiang
+      - Tobias Kreiman
+      - Christine Zhang
+      - Matthew C. Kuner
+      - Elizabeth Weaver
+      - Ishan Amin
+      - Hyunsoo Park
+      - Yunsung Lim
+      - Jihan Kim
+      - Daryl Chrzan
+      - Aron Walsh
+      - Samuel M. Blau
+      - Mark Asta
+      - Aditi S. Krishnapriyan
+    year: 2025
 
 mlip_audit:
+  bibtex_key: wehrhan2025mlipaudit
   label: MLIP Audit
   type: framework
   color: "#1d4ed8"
   text_color: "#ffffff"
   url: "https://github.com/instadeepai/mlipaudit"
-  logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/v0.1.6/InstaDeep_Logo.png"
+  logo: "https://raw.githubusercontent.com/instadeepai/mlipaudit/v0.1.8/InstaDeep_Logo.png"
   description: "MLIPAudit is a Python library and app for benchmarking and validating Machine Learning Interatomic Potential (MLIP) models, in particular those based on the mlip library. It aims to cover a wide range of use cases and difficulties, providing users with a comprehensive overview of the performance of their models. It also provides the option to benchmark models of any origin (e.g., also those based on PyTorch) via the ASE calculator interface."
   project_url: "https://huggingface.co/spaces/InstaDeepAI/mlipaudit-leaderboard"
   paper_url: "https://arxiv.org/abs/2511.20487"
   github: "https://github.com/instadeepai/mlipaudit/"
+  citation:
+    title: "MLIPAudit: A benchmarking tool for Machine Learned Interatomic Potentials"
+    authors:
+      - Leon Wehrhan
+      - Lucien Walewski
+      - Marie Bluntzer
+      - Heloise Chomet
+      - Jules Tilly
+      - Christoph Brunken
+      - Silvia Acosta-Gutiérrez
+    year: 2025
 
 matbench-discovery:
+  bibtex_key: matbench-discovery
   label: Matbench Discovery
+  type: framework
   color: "#061e25"
   text_color: "#ffffff"
   url: "https://matbench-discovery.materialsproject.org"
@@ -42,8 +75,23 @@ matbench-discovery:
   project_url: "https://matbench-discovery.materialsproject.org"
   paper_url: "https://doi.org/10.1038/s42256-025-01055-1"
   github: "https://github.com/janosh/matbench-discovery"
+  citation:
+    title: "A framework to evaluate machine learning crystal stability predictions"
+    authors:
+      - Janosh Riebesell
+      - Rhys E. A. Goodall
+      - Philipp Benner
+      - Yuan Chiang
+      - Bowen Deng
+      - Gerbrand Ceder
+      - Mark Asta
+      - Alpha A. Lee
+      - Anubhav Jain
+      - Kristin A. Persson
+    year: 2025
 
 mace-multihead:
+  bibtex_key: batatia2025crosslearningelectronicstructure
   label: Multihead Cross Learning
   type: paper
   color: "#7c3aed"
@@ -55,6 +103,7 @@ mace-multihead:
   paper_url: "https://arxiv.org/abs/2510.25380"
 
 mace-polar-1:
+  bibtex_key: batatia2026mace
   label: MACE-POLAR-1
   type: paper
   color: "#1d4ed8"
@@ -64,3 +113,15 @@ mace-polar-1:
   tooltip: "Benchmark from the MACE-POLAR-1 paper (arXiv:2602.19411), click to read"
   description: "Benchmarks from 'MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry'."
   paper_url: "https://arxiv.org/abs/2602.19411"
+
+mace-mp:
+  bibtex_key: batatia2025foundation
+  label: MACE-MP
+  type: paper
+  color: "#0e7490"
+  text_color: "#ecfeff"
+  url: "https://pubs.aip.org/aip/jcp/article/163/18/184110/3372267/A-foundation-model-for-atomistic-materials"
+  icon: "📄"
+  tooltip: "Benchmark from the MACE-MP foundation model paper (JCP 163, 184110), click to read"
+  description: "Benchmarks from 'A foundation model for atomistic materials chemistry'."
+  paper_url: "https://pubs.aip.org/aip/jcp/article/163/18/184110/3372267/A-foundation-model-for-atomistic-materials"

@@ -1,0 +1,9 @@
+implementers:
+  - name: "Mandy Hoffmann"
+    github: "MandyHoffmann"
+
+contributors: []
+
+citations:
+  - bibtex_key: parker2026false
+    role: benchmark_method

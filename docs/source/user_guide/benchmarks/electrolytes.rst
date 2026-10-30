@@ -52,10 +52,10 @@ as stable only if no such failure occurs and the full 1 ns of MD is completed.
 The reported value is the percentage of the 49 systems that are stable, so 100%
 indicates that every trajectory ran to completion.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours to days to run on GPU.
+Very slow: tests are likely to take hours to days to run on GPU.
 
 
 Data availability

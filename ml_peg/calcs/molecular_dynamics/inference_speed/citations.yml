@@ -1,0 +1,17 @@
+implementers:
+  - name: "Lucien Walewski"
+    github: "lwalew"
+  - name: "Marco Carobene"
+    github: "mcarobene-id"
+
+contributors:
+  - name: "Eric Djäknegren"
+    github: "elindgren"
+  - name: "Finlay Clark"
+    github: "fjclark"
+  - name: "Joao Morado"
+    github: "jmorado"
+
+citations:
+  - bibtex_key: berman2000pdb
+    role: reference_data

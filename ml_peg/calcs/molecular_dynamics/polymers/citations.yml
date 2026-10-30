@@ -1,0 +1,17 @@
+implementers:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+  - name: "Gregor Simm"
+    github: "gncs"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: simm2025simpoly
+    role: benchmark_method
+  - bibtex_key: abbott2013polymatic
+    role: benchmark_method

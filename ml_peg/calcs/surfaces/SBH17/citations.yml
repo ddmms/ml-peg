@@ -1,0 +1,12 @@
+implementers:
+  - name: "Giaan Kler-Young"
+    github: "gkleryoung"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: tchakoua2023sbh17
+    role: benchmark_method

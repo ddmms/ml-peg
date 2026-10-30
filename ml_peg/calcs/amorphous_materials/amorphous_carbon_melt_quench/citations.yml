@@ -1,0 +1,22 @@
+implementers:
+  - name: "Ilyes Batatia"
+    github: "ilyes319"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+contributors: []
+
+citations:
+  - bibtex_key: batatia2025foundation
+    role: benchmark_method
+  - bibtex_key: jana-2019-amorphous-carbon
+    role: reference_data
+  - bibtex_key: deringer-2017-amorphous-carbon
+    role: reference_data
+  - bibtex_key: fallon-1993-diamondlike-carbon
+    role: reference_data
+  - bibtex_key: schwan-1996-tetrahedral-carbon
+    role: reference_data
+  - bibtex_key: ferrari-2000-amorphous-carbon
+    role: reference_data

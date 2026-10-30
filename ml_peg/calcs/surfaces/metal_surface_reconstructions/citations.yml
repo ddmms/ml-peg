@@ -1,0 +1,11 @@
+implementers:
+  - name: "Felix Riccius"
+    github: "Felixrccs"
+
+contributors: []
+
+citations:
+  - bibtex_key: zhu-2025-cu-oxides
+    role: benchmark_method
+  - bibtex_key: vinogradova-2023-pdau
+    role: benchmark_method

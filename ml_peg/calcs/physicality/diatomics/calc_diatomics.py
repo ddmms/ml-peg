@@ -246,7 +246,7 @@ def run_diatomics(model_name: str, model) -> None:
     (write_dir / "metadata.json").write_text(json.dumps(metadata, indent=2))
 
 
-@pytest.mark.framework("mace-multihead")
+@pytest.mark.framework("mace-multihead", "mace-mp")
 @pytest.mark.slow
 @pytest.mark.parametrize("model_name", MODELS)
 def test_diatomics(model_name: str) -> None:
