@@ -162,6 +162,13 @@ def load_curve(model_name: str, curve_type: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     curve = pd.read_csv(csv_path)
+    if curve_type == "bain" and {"ca_ratio", "energy_meV"}.issubset(curve.columns):
+        ca_ratio = pd.to_numeric(curve["ca_ratio"], errors="coerce")
+        energy = pd.to_numeric(curve["energy_meV"], errors="coerce")
+        if ca_ratio.notna().any():
+            bcc_energy = energy.loc[(ca_ratio - 1).abs().idxmin()]
+            if _finite(bcc_energy):
+                curve["energy_meV"] = energy - bcc_energy
     if curve_type == "eos" and "energy_meV" not in curve and "energy" in curve:
         energy = pd.to_numeric(curve["energy"], errors="coerce")
         if energy.notna().any():
