@@ -562,6 +562,7 @@ def struct_from_scatter(
     mode: Literal["struct", "traj"] = "struct",
     follow_frames: bool | None = None,
     struct_template: str | None = None,
+    frame_groups: list[list[int]] | None = None,
 ) -> None:
     """
     Attach callback to show a structure when a scatter point is clicked.
@@ -599,9 +600,14 @@ def struct_from_scatter(
     struct_template
         Asset path template containing ``{id}``, filled from the clicked point's
         ``customdata`` (id-based matching). Default is None.
+    frame_groups
+        Optional unique XYZ trajectory frame indices per plotted point. When given,
+        only these frames are displayed, starting at the first selected frame.
     """
     if follow_frames is None:
-        follow_frames = mode == "traj" and isinstance(structs, str)
+        follow_frames = (
+            mode == "traj" and isinstance(structs, str) and frame_groups is None
+        )
     _register_point_highlight(scatter_id, follow_frames=follow_frames)
 
     @callback(
@@ -648,9 +654,17 @@ def struct_from_scatter(
             struct = structs[point["pointNumber"]]
             index = 0
 
+        frames = (
+            frame_groups[point["pointNumber"]] if frame_groups is not None else None
+        )
         return Div(
             Iframe(
-                srcDoc=generate_weas_html(struct, mode, index),
+                srcDoc=generate_weas_html(
+                    struct,
+                    mode,
+                    0 if frames is not None else index,
+                    frame_indices=frames,
+                ),
                 style={
                     "height": "550px",
                     "width": "100%",

@@ -570,3 +570,46 @@ def test_model_colours():
     assert get_model_colour("model_2", colours) == "green"
     # Models that are not defined follow all defined models
     assert get_model_colour("model_3", colours) == "blue"
+
+
+def test_density_point_metadata(tmp_path):
+    """Keep point identity aligned after density sampling reorders points."""
+    filename = tmp_path / "points.json"
+    refs = [0.0, 2.0, 0.0, 2.0]
+    identities = [10, 11, 12, 13]
+
+    @plot_density_scatter(
+        filename=filename,
+        point_metadata={"structure": "Structure", "component": "Component"},
+    )
+    def results():
+        return {
+            "model1": {
+                "ref": refs,
+                "pred": refs,
+                "point_meta": {
+                    "structure": identities,
+                    "component": ["x", "y", "z", "x"],
+                },
+            }
+        }
+
+    results()
+    trace = pio.read_json(filename).data[0]
+    assert list(trace.x) == [0.0, 0.0, 2.0, 2.0]
+    assert [row[1] for row in trace.customdata] == [10, 12, 11, 13]
+    assert [row[2] for row in trace.customdata] == ["x", "z", "y", "x"]
+    assert "%{customdata[1]}" in trace.hovertemplate
+
+
+def test_density_point_metadata_length(tmp_path):
+    """Reject metadata that cannot identify every input point."""
+
+    @plot_density_scatter(
+        filename=tmp_path / "points.json", point_metadata={"atom": "Atom"}
+    )
+    def results():
+        return {"model1": {"ref": [1, 2], "pred": [1, 2], "point_meta": {"atom": [0]}}}
+
+    with pytest.raises(ValueError, match="must match data"):
+        results()

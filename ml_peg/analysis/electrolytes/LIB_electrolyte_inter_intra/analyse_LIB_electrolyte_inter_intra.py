@@ -1,0 +1,276 @@
+"""Analyse LIB electrolyte inter intra benchmark."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from ase.io import read, write
+import numpy as np
+import pytest
+
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    plot_density_scatter,
+    plot_parity,
+)
+from ml_peg.analysis.utils.utils import (
+    get_struct_info,
+    load_metrics_config,
+    rmse,
+    sample_density_grid,
+)
+from ml_peg.app import APP_ROOT
+from ml_peg.calcs import CALCS_ROOT
+from ml_peg.models import current_models
+from ml_peg.models.get_models import get_model_names
+
+MODELS = get_model_names(current_models)
+
+CALC_PATH = CALCS_ROOT / "electrolytes" / "LIB_electrolyte_inter_intra" / "outputs"
+REF_PATH = CALC_PATH / "ref"
+OUT_PATH = APP_ROOT / "data" / "electrolytes" / "LIB_electrolyte_inter_intra"
+METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
+DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PATH)
+
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index=":",
+    include_filenames=True,
+    write_structs=False,
+    out_path=OUT_PATH,
+    info_keys=["sys_formula"],
+)
+
+property_metadata = {
+    "Intra-Forces": ["arrays", "forces_intram"],
+    "Inter-Forces": ["arrays", "forces_interm"],
+    "Inter-Energy": ["info", "energy_interm"],
+    "Intra-Virial": ["info", "virial_intram"],
+    "Inter-Virial": ["info", "virial_interm"],
+}
+
+
+def get_property_results(prop_key: str) -> dict[str, float]:
+    """
+    Get inter-intra results for a specific property.
+
+    Parameters
+    ----------
+    prop_key
+        String of property name.
+
+    Returns
+    -------
+    dict[str, list]
+        Dictionary of reference and predicted inter-intra property.
+    """
+    results = {"ref": []} | {mlip: [] for mlip in MODELS}
+    stored, property = property_metadata[prop_key]
+
+    for model in results.keys():
+        if model == "ref":
+            configs = read(REF_PATH / "intrainter_PBED3.xyz", ":")
+
+        else:
+            model_path = CALC_PATH / model / f"intrainter_{model}_D3.xyz"
+            if not model_path.exists():
+                continue
+
+            configs = read(model_path, ":")
+
+        structs_dir = OUT_PATH / model
+        structs_dir.mkdir(parents=True, exist_ok=True)
+        write(structs_dir / f"{model}-intra_inter.extxyz", configs)
+
+        n_atoms_per_frame = []
+        for i, fr in enumerate(configs):
+            n_atoms_per_frame.append(len(fr))
+            write(structs_dir / f"{model}-intra_inter_{i}.extxyz", fr)
+
+        np.savetxt(structs_dir / "atom_counts.txt", n_atoms_per_frame, fmt="%d")
+
+        for frame in configs:
+            frame_data = getattr(frame, stored)
+            property_data = np.asarray(frame_data[property])
+            if "Energy" in prop_key:
+                property_data = property_data * 1000 / len(frame)
+            elif "Virial" in prop_key:
+                property_data = property_data * 1000 / len(frame)
+            results[model].append(property_data.tolist())
+
+        if "Forces" in prop_key:
+            results[model] = np.concatenate(results[model]).flatten()
+            results[model] = results[model].tolist()
+
+        if "Virial" in prop_key:
+            results[model] = np.array(results[model]).flatten()
+            results[model] = results[model].tolist()
+
+    return results
+
+
+def plot_parity_results(prop_key: str, results: dict[str, float]) -> None:
+    """
+    Plot inter-intra property parity plots.
+
+    Parameters
+    ----------
+    prop_key
+        Name of inter-intra property to be plotted.
+    results
+        Results from all models for a single property.
+    """
+
+    @plot_parity(
+        filename=OUT_PATH / f"{prop_key.lower()}_parity.json",
+        title=prop_key,
+        x_label=f"Predicted {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+        y_label=f"DFT {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+        plot_combined=False,
+    )
+    def plot_parity_result() -> dict[str, list[float]]:
+        """
+        Plot the inter-intra propery parity plots.
+
+        Returns
+        -------
+        dict[str, tuple[list[float]]]
+            Dictionary of reference and predicted inter-intra property.
+        """
+        return results
+
+    plot_parity_result()
+
+
+def plot_density_parity_results(prop_key: str, results: dict[str, float]) -> None:
+    """
+    Plot inter-intra property parity density plots.
+
+    Parameters
+    ----------
+    prop_key
+        Name of inter-intra property to be plotted.
+    results
+        Results from all models for a single property.
+    """
+
+    @plot_density_scatter(
+        filename=OUT_PATH / f"{prop_key.lower()}_density_parity.json",
+        point_metadata={"structures": "Unique structures"},
+        title=prop_key,
+        x_label=f"DFT {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+        y_label=f"Predicted {prop_key} / {DEFAULT_THRESHOLDS[prop_key]['unit']}",
+    )
+    def plot_density_parity_result() -> dict[str, list[float]]:
+        """
+        Plot the inter-intra propery density parity plots.
+
+        Returns
+        -------
+        dict[str, tuple[list[float]]]
+            Dictionary of reference and predicted inter-intra property.
+        """
+        results_formatted: dict[str, dict] = {}
+        ref_vals = results["ref"]
+        for model, model_pred in results.items():
+            if model != "ref":
+                _, _, memberships = sample_density_grid(ref_vals, model_pred)
+                model_dir = OUT_PATH / model
+                model_dir.mkdir(parents=True, exist_ok=True)
+                point_meta = {"structures": [0] * len(model_pred)}
+                bins = []
+                point_bins = []
+                if model_pred:
+                    counts = np.loadtxt(
+                        model_dir / "atom_counts.txt", dtype=int, ndmin=1
+                    )
+                    frame_ids = np.repeat(np.arange(len(counts)), counts * 3)
+                    # Each bin has a distinct first source index. Store it only once.
+                    bin_ids = {}
+                    for members in memberships:
+                        key = members[0]
+                        if key not in bin_ids:
+                            bin_ids[key] = len(bins)
+                            frames = np.unique(frame_ids[members]).tolist()
+                            bins.append(frames)
+                            for component in members:
+                                point_meta["structures"][component] = len(frames)
+                        point_bins.append(bin_ids[key])
+                (model_dir / f"{prop_key.lower()}_structure_bins.json").write_text(
+                    json.dumps({"bins": bins, "point_bins": point_bins})
+                )
+                results_formatted[model] = {
+                    "ref": ref_vals,
+                    "pred": model_pred,
+                    "point_meta": point_meta,
+                }
+        return results_formatted
+
+    plot_density_parity_result()
+
+
+@pytest.fixture
+def get_property_rmses() -> dict[str, dict]:
+    """
+    Get model prediction RMSEs for all inter-intra properties.
+
+    Returns
+    -------
+    dict[str, dict]
+        Dictionary of inter-intra properties and the respective RMSE per model.
+    """
+    property_rmse = {prop_key: {} for prop_key in property_metadata.keys()}
+
+    for prop_key in property_metadata.keys():
+        results = get_property_results(prop_key)
+        if "Forces" in prop_key:
+            plot_density_parity_results(prop_key, results)
+        else:
+            plot_parity_results(prop_key, results)
+        for model in MODELS:
+            try:
+                model_rmse = rmse(results["ref"], results[model])
+                property_rmse[prop_key][model] = model_rmse
+            except ValueError:
+                property_rmse[prop_key][model] = None
+
+    return property_rmse
+
+
+@pytest.fixture
+@build_table(
+    filename=OUT_PATH / "inter_intra_metrics_table.json",
+    metric_tooltips=DEFAULT_TOOLTIPS,
+    thresholds=DEFAULT_THRESHOLDS,
+)
+def rmse_metrics(get_property_rmses: dict[str, dict]) -> dict[str, dict]:
+    """
+    Get all inter intra RMSE metrics.
+
+    Parameters
+    ----------
+    get_property_rmses
+        Dictionary for every property containing each model's RMSE.
+
+    Returns
+    -------
+    dict[str, dict]
+        Dictionary for every property containing each model's RMSE.
+    """
+    return get_property_rmses
+
+
+def test_rmse_metrics(
+    rmse_metrics: dict[str, dict],
+) -> None:
+    """
+    Run inter-intra property test.
+
+    Parameters
+    ----------
+    rmse_metrics
+        All inter-intra metrics.
+    """
+    return
