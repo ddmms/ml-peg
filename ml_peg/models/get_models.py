@@ -373,12 +373,16 @@ def load_models(
                 model_name = pop_required_kwarg(name, kwargs, "model_name")
                 task_name = kwargs.pop("task_name", "omat")
                 overrides = kwargs.pop("overrides", {})
+                # Default to batch inference, as this is equivalent to the previous
+                # (fairchem 2.19) default
+                inference_settings = kwargs.pop("inference_settings", "batch")
                 loaded_models[name] = FairChemCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     model_name=model_name,
                     task_name=task_name,
                     device=cfg.get("device", "auto"),
+                    inference_settings=inference_settings,
                     overrides=overrides,
                     kwargs=kwargs,
                     default_dtype=cfg.get("overwrite_dtype", None),
