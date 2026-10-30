@@ -135,6 +135,7 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``PBEsol``
 - ``r2SCAN``
 - ``ωB97M/def2-TZVPP``
+- ``ωB97M-D4rev/def2-TZVPD``
 - ``ωB97M-V``
 - ``ωB97M-V/def2-TZVPD``
 
