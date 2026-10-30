@@ -747,7 +747,10 @@ The calculations and reported groups are:
 A scalar relative error :math:`e` is mapped to
 :math:`s=1-\mathrm{clip}(e/e_{\mathrm{bad}},0,1)`. The zero-score cutoffs are 2% for
 :math:`a_0`, 50% for :math:`B_0`, 75% for the elastic constants, and 20% for vacancy
-and surface energies.
+and surface energies. Scalar components with missing or non-finite predictions, or
+calculation status marked invalid, receive a score of zero (maximum penalty). These
+components retain their assigned weights in the group score, so failed components
+penalise both the group and overall scores.
 
 GSFE and traction curves compare their model and DFT interpolants over the common
 domain. GSFE scores combine relative integrated absolute error (62.5%) and relative
