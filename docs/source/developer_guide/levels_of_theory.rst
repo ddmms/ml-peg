@@ -153,6 +153,7 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``DMC``
 - ``ph-AFQMC``
 - ``wb97md3 + 1b CCSD(T)``
+- ``GGA-PW91``
 - ``Experimental`` (see :ref:`special values <special-values>`)
 - ``null`` (see :ref:`special values <special-values>`)
 
