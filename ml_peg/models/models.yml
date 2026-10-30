@@ -206,6 +206,33 @@ uma-m-1p1-omat:
     model_name: "uma-m-1p1"
     task_name: "omat"
 
+uma-s-1p2p1-omat:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model_name: "uma-s-1p2p1"
+    task_name: "omat"
+    inference_settings: "nitro"
+
+uma-s-1p2p1-ft-r2scan:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26, MAD-1p6]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: r2SCAN
+  kwargs:
+    model_name: "uma-s-1p2p1-ft-r2scan"
+    task_name: "omat"
+    inference_settings: "nitro"
+  dispersion_kwargs:
+    xc: r2scan
+
 grace-2l-omat:
   module: tensorpotential.calculator
   class_name: grace_fm
@@ -290,6 +317,32 @@ uma-s-1p2-omol:
   kwargs:
     model_name: "uma-s-1p2"
     task_name: "omol"
+
+uma-s-1p2p1-omol:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  kwargs:
+    model_name: "uma-s-1p2p1"
+    task_name: "omol"
+    inference_settings: "nitro"
+
+uma-s-1p2p1-ft-d4rev:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-D4rev/def2-TZVPD
+  kwargs:
+    model_name: "uma-s-1p2p1-ft-d4rev"
+    task_name: "omol"
+    inference_settings: "nitro"
 
 uma-m-1p1-omol:
   module: fairchem.core
