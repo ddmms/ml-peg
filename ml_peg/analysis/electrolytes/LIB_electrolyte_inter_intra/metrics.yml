@@ -14,30 +14,30 @@ metrics:
     level_of_theory: PBE
     weight: 1
   Intra-Energy:
-    good: 5
-    bad: 60.0
+    good: 1
+    bad: 100.0
     unit: meV/atom
     tooltip: "Weighted Root Mean Square Deviation of Intra-Energy"
     level_of_theory: PBE
     weight: 1
   Inter-Energy:
-    good: 5
-    bad: 60.0
+    good: 1
+    bad: 100.0
     unit: meV/atom
     tooltip: "Weighted Root Mean Square Deviation of Inter-Energy"
     level_of_theory: PBE
     weight: 1
   Intra-Virial:
-    good: 10.0
-    bad: 50.0
-    unit: meV
+    good: 1
+    bad: 100.0
+    unit: meV/atom
     tooltip: "Weighted Root Mean Square Deviation of Intra-Virial"
     level_of_theory: PBE
     weight: 1
   Inter-Virial:
     good: 1.0
-    bad: 50.0
-    unit: meV
+    bad: 100.0
+    unit: meV/atom
     tooltip: "Weighted Root Mean Square Deviation of Inter-Virial"
     level_of_theory: PBE
     weight: 1

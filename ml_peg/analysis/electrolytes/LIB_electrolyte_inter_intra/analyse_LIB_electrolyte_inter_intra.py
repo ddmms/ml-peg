@@ -97,7 +97,7 @@ def get_property_results(prop_key: str) -> dict[str, float]:
             if "Energy" in prop_key:
                 property_data = property_data * 1000 / len(frame)
             elif "Virial" in prop_key:
-                property_data = property_data * 1000
+                property_data = property_data * 1000 / len(frame)
             results[model].append(property_data.tolist())
 
         if "Forces" in prop_key:
