@@ -29,11 +29,17 @@ families:
       for float32 benchmarks on CUDA GPUs with compute capability 8.x-12.x. On Hopper
       and Blackwell GPUs (9.x-12.x), Nitro uses TF32 matrix multiplies, so these
       results are slightly lower precision than other UMA models; on Ampere GPUs
-      (8.x), it uses full float32. Float64 benchmarks, and other devices, use the
-      standard fairchem settings, as for the other UMA models.
+      (8.x), it uses full float32. When Nitro cannot serve a float32 request (for
+      example, on a CPU, or after a change in composition, charge or spin), fairchem
+      falls back to its ``multigpu`` preset, which also uses TF32 matrix multiplies on
+      CUDA GPUs, including Ampere. Float64 benchmarks use the standard fairchem
+      (``batch``) settings, as for the other UMA models, since Nitro only supports
+      float32.
       ``uma-s-1p2p1-ft-d4rev`` (ωB97M-D4rev, dispersion included) only supports the
       ``omol`` task, and ``uma-s-1p2p1-ft-r2scan`` only supports the ``omat`` task and
-      is not spin-polarised. See the
+      is not spin-polarised, so fairchem advises against using it for magnetic
+      systems or cohesive energies. Neither fine-tune ships isolated-atom reference
+      energies, so their single-atom energies may be unreliable. See the
       `fine-tune limitations <https://facebookresearch.github.io/fairchem/uma#uma-s-1p2p1-fine-tunes>`_.
 
   MatterSim:
