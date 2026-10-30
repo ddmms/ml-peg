@@ -20,69 +20,6 @@ aimnet2-2025:
     # Alias for ensemble member 0 (aimnet2-b973c-2025-d3_0), not the 4-member ensemble average.
     model: "aimnet2-2025"
 
-mace-mp-0a:
-  module: mace.calculators
-  class_name: mace_mp
-  datasets: [MPtrj]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium"
-
-mace-mp-0b3:
-  module: mace.calculators
-  class_name: mace_mp
-  datasets: [MPtrj]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-0b3"
-
-mace-mpa-0:
-  module: mace.calculators
-  class_name: mace_mp
-  datasets: [MPtrj, sAlex]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-mpa-0"
-
-mace-omat-0:
-  module: mace.calculators
-  class_name: mace_mp
-  datasets: [OMAT]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "medium-omat-0"
-
-mace-matpes-r2scan:
-  module: mace.calculators
-  class_name: mace_mp
-  datasets: [MatPES-r2SCAN]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: r2SCAN
-  kwargs:
-    model: "mace-matpes-r2scan-0"
-  dispersion_kwargs:
-    xc: r2scan
-
-mace-mh-1-omat:
-  module: mace.calculators
-  class_name: mace_mp
-  datasets: [OMAT, OMol25, OC20, MatPES-PBE, MatPES-r2SCAN]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "mh-1"
-    head: omat_pbe
-
 dpa-3p3-1M-omat:
   module: deepmd.calculator
   class_name: DP
@@ -128,84 +65,6 @@ dpa-4-plus-omat:
   kwargs:
     model: DPA4-Plus-OMat24-v20260805
 
-orb-v3-consv-inf-omat:
-  module: orb_models.forcefield.inference.calculator
-  class_name: ORBCalculator
-  datasets: [OMAT]
-  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    name: "orb_v3_conservative_inf_omat"
-
-orb-v3-direct-inf-omat:
-  module: orb_models.forcefield.inference.calculator
-  class_name: ORBCalculator
-  datasets: [OMAT]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    name: "orb_v3_direct_inf_omat"
-
-orb-v3-consv-omol:
-  module: orb_models.forcefield.inference.calculator
-  class_name: ORBCalculator
-  datasets: [OMol25]
-  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
-  device: "auto"
-  trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
-  kwargs:
-    name: "orb_v3_conservative_omol"
-
-mattersim-5M:
-  module: mattersim.forcefield
-  class_name: MatterSimCalculator
-  datasets: null
-  additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    load_path: "mattersim-v1.0.0-5m"
-
-mattersim-1M:
-  module: mattersim.forcefield
-  class_name: MatterSimCalculator
-  datasets: null
-  additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    load_path: "mattersim-v1.0.0-1m"
-
-uma-s-1p1-omat:
-  module: fairchem.core
-  class_name: FAIRChemCalculator
-  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
-  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
-  device: "auto"
-  level_of_theory: PBE
-  trained_on_dispersion: false
-  kwargs:
-    model_name: "uma-s-1p1"
-    task_name: "omat"
-
-uma-m-1p1-omat:
-  module: fairchem.core
-  class_name: FAIRChemCalculator
-  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
-  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
-  device: "auto"
-  level_of_theory: PBE
-  trained_on_dispersion: false
-  kwargs:
-    model_name: "uma-m-1p1"
-    task_name: "omat"
-
 grace-2l-omat:
   module: tensorpotential.calculator
   class_name: grace_fm
@@ -225,6 +84,70 @@ grace-2l-smax-omat-medium:
   trained_on_dispersion: false
   kwargs:
     model: GRACE-2L-SMAX-OMAT-medium
+
+mace-matpes-r2scan:
+  module: mace.calculators
+  class_name: mace_mp
+  datasets: [MatPES-r2SCAN]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: r2SCAN
+  kwargs:
+    model: "mace-matpes-r2scan-0"
+  dispersion_kwargs:
+    xc: r2scan
+
+mace-mh-1-omat:
+  module: mace.calculators
+  class_name: mace_mp
+  datasets: [OMAT, OMol25, OC20, MatPES-PBE, MatPES-r2SCAN]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "mh-1"
+    head: omat_pbe
+
+mace-mh-1-omol:
+  module: mace.calculators
+  class_name: mace_mp
+  datasets: [OMAT, OMol25, OC20, MatPES-PBE, MatPES-r2SCAN]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  kwargs:
+    model: "mh-1"
+    head: omol
+
+mace-mp-0a:
+  module: mace.calculators
+  class_name: mace_mp
+  datasets: [MPtrj]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "medium"
+
+mace-mp-0b3:
+  module: mace.calculators
+  class_name: mace_mp
+  datasets: [MPtrj]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "medium-0b3"
+
+mace-mpa-0:
+  module: mace.calculators
+  class_name: mace_mp
+  datasets: [MPtrj, sAlex]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "medium-mpa-0"
 
 mace-off-23-L:
   module: mace.calculators
@@ -246,6 +169,16 @@ mace-off-24-M:
   kwargs:
     model: "https://raw.githubusercontent.com/ACEsuit/mace-off/main/mace_off24/MACE-OFF24_medium.model"
 
+mace-omat-0:
+  module: mace.calculators
+  class_name: mace_mp
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "medium-omat-0"
+
 mace-omol:
   module: mace.calculators
   class_name: mace_omol
@@ -256,52 +189,89 @@ mace-omol:
   kwargs:
     model: "extra_large"
 
-mace-mh-1-omol:
+mace-polar-1-l:
   module: mace.calculators
-  class_name: mace_mp
-  datasets: [OMAT, OMol25, OC20, MatPES-PBE, MatPES-r2SCAN]
+  class_name: mace_polar
+  datasets: [OMol25]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M-V
   kwargs:
-    model: "mh-1"
-    head: omol
+    model: "polar-1-l"
 
-uma-s-1p1-omol:
-  module: fairchem.core
-  class_name: FAIRChemCalculator
-  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
-  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+mace-polar-1-m:
+  module: mace.calculators
+  class_name: mace_polar
+  datasets: [OMol25]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M-V
   kwargs:
-    model_name: "uma-s-1p1"
-    task_name: "omol"
+    model: "polar-1-m"
 
-uma-s-1p2-omol:
-  module: fairchem.core
-  class_name: FAIRChemCalculator
-  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
-  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+mace-polar-1-s:
+  module: mace.calculators
+  class_name: mace_polar
+  datasets: [OMol25]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M-V
   kwargs:
-    model_name: "uma-s-1p2"
-    task_name: "omol"
+    model: "polar-1-s"
 
-uma-m-1p1-omol:
-  module: fairchem.core
-  class_name: FAIRChemCalculator
-  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
-  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+mattersim-1M:
+  module: mattersim.forcefield
+  class_name: MatterSimCalculator
+  datasets: null
+  additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    load_path: "mattersim-v1.0.0-1m"
+
+mattersim-5M:
+  module: mattersim.forcefield
+  class_name: MatterSimCalculator
+  datasets: null
+  additional_supported_elements: ["H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Ac", "Th", "Pa", "U", "Np", "Pu"]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    load_path: "mattersim-v1.0.0-5m"
+
+orb-v3-consv-inf-omat:
+  module: orb_models.forcefield.inference.calculator
+  class_name: ORBCalculator
+  datasets: [OMAT]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    name: "orb_v3_conservative_inf_omat"
+
+orb-v3-consv-omol:
+  module: orb_models.forcefield.inference.calculator
+  class_name: ORBCalculator
+  datasets: [OMol25]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M-V/def2-TZVPD
   kwargs:
-    model_name: "uma-m-1p1"
-    task_name: "omol"
+    name: "orb_v3_conservative_omol"
+
+orb-v3-direct-inf-omat:
+  module: orb_models.forcefield.inference.calculator
+  class_name: ORBCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    name: "orb_v3_direct_inf_omat"
 
 pet-mad:
   module: upet.calculator
@@ -363,16 +333,6 @@ tace-oam-7m:
   kwargs:
     model: "TACE-OAM-7M"
 
-tece-oam-rra-1p0:
-  module: tace.interface.ase
-  class_name: TACEAseCalc
-  datasets: [MPtrj, sAlex, OMAT]
-  device: "auto"
-  trained_on_dispersion: false
-  level_of_theory: PBE
-  kwargs:
-    model: "TECE-OAM-RRA-1.0"
-
 tace-oam-l:
   module: tace.interface.ase
   class_name: TACEAseCalc
@@ -383,6 +343,76 @@ tace-oam-l:
   kwargs:
     model: "TACE-OAM-L"
 
+tece-oam-rra-1p0:
+  module: tace.interface.ase
+  class_name: TACEAseCalc
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "TECE-OAM-RRA-1.0"
+
+uma-m-1p1-omat:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  level_of_theory: PBE
+  trained_on_dispersion: false
+  kwargs:
+    model_name: "uma-m-1p1"
+    task_name: "omat"
+
+uma-m-1p1-omol:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  kwargs:
+    model_name: "uma-m-1p1"
+    task_name: "omol"
+
+uma-s-1p1-omat:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  level_of_theory: PBE
+  trained_on_dispersion: false
+  kwargs:
+    model_name: "uma-s-1p1"
+    task_name: "omat"
+
+uma-s-1p1-omol:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  kwargs:
+    model_name: "uma-s-1p1"
+    task_name: "omol"
+
+uma-s-1p2-omol:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  kwargs:
+    model_name: "uma-s-1p2"
+    task_name: "omol"
+
 Vivace:
   module: simpoly.vivace.calculator
   class_name: MLFFCalculator
@@ -392,33 +422,3 @@ Vivace:
   level_of_theory: r2SCAN+D3
   kwargs:
     model_path: null
-
-mace-polar-1-s:
-  module: mace.calculators
-  class_name: mace_polar
-  datasets: [OMol25]
-  device: "auto"
-  trained_on_dispersion: true
-  level_of_theory: ωB97M-V
-  kwargs:
-    model: "polar-1-s"
-
-mace-polar-1-m:
-  module: mace.calculators
-  class_name: mace_polar
-  datasets: [OMol25]
-  device: "auto"
-  trained_on_dispersion: true
-  level_of_theory: ωB97M-V
-  kwargs:
-    model: "polar-1-m"
-
-mace-polar-1-l:
-  module: mace.calculators
-  class_name: mace_polar
-  datasets: [OMol25]
-  device: "auto"
-  trained_on_dispersion: true
-  level_of_theory: ωB97M-V
-  kwargs:
-    model: "polar-1-l"
