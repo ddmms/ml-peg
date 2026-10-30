@@ -79,7 +79,7 @@ orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
 ]
 uma = [
-    "fairchem-core == 2.19.0",
+    "fairchem-core == 2.25.0",
 ]
 upet = [
     "upet==0.2.4",
@@ -255,10 +255,10 @@ conflicts = [
         { extra = "tace" },
         { extra = "upet" },
     ],
-    # UMA requires torch~=2.8.0; TACE AOTI uses newer export APIs.
+    # UMA requires torch~=2.13.0, but UPET requires torch<2.13.
     [
-        { extra = "tace" },
         { extra = "uma" },
+        { extra = "upet" },
     ],
     [
         { group = "aimnet" },
