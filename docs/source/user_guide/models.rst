@@ -7,8 +7,4 @@ below. Each entry is generated from ``ml_peg/models/models.yml``, so it always
 matches the configuration ML-PEG loads. Descriptions, and the families models
 are grouped into, are defined in ``docs/source/user_guide/model_notes.yml``.
 
-.. note::
-
-   Citations and longer descriptions are still to be added for each model.
-
 .. model-registry::
