@@ -60,15 +60,17 @@ reported as a mean absolute error in meV/atom.
 
 4. Convergence
 
-Percentage of the seven relaxations whose largest residual force component falls
-below the threshold. An unconverged relaxation is reported as NaN for every quantity
+Percentage of the seven relaxations that the optimiser reports as converged: the largest
+per-atom residual force, including the cell degrees of freedom of the periodic
+systems, is below ``fmax``. An unconverged relaxation is reported as NaN for every quantity
 measured from it, with a warning, and is excluded from the metrics above rather than
 voiding them; it is penalised here instead.
 
 Computational cost
 ------------------
 
-Medium: relaxations of up to 288 atoms.
+Fast: around two minutes for ``mace-mp-0a`` on an RTX A4000 GPU; seven relaxations of
+up to 288 atoms.
 
 Data availability
 -----------------
@@ -89,36 +91,37 @@ shipped DFT reference geometry; the benchmark performs no geometry optimisation.
 Metrics
 -------
 
-1. As-cut surface energy MAE
+1. As-cut surface energy MAPE
 
 For diamond {100} and graphite (0001), the model evaluates a single point at each of
 the three shipped geometries — bulk, as-cut and relaxed — unmodified:
 
-``surface_energy_j_m2 = 0.5 * (E_slab - E_bulk) / |a1 x a2| * 16.0218``
+``surface_energy_j_m2 = 0.5 * (E_slab - E_bulk) / |a1 x a2| * (units.m**2 / units.J)``
 
 where ``a1`` and ``a2`` are the first two vectors of the reference bulk cell, and
-16.0218 converts eV/Å² to J/m².
+the eV/Å² to J/m² conversion is taken from ``ase.units``.
 
 Amorphous carbon has no unique cleavage plane, so its reference is ten independently
 generated bulk configurations, each cut along four or five planes (49 cuts); its
 as-cut value is the mean over all 49 (bulk, slab) pairs.
 
-The reported error is the mean absolute error across all three surfaces.
+The reported error is the mean absolute percentage error across all three surfaces.
 
-2. Relaxed surface energy MAE
+2. Relaxed surface energy MAPE
 
 A single point at the shipped relaxed geometry for diamond {100} and graphite (0001).
 The provenances differ: every diamond reference INCAR has ``NSW = 0``, so its
 "relaxed" reference is a single point at a distinct GAP-20 geometry, whereas
 graphite's is a genuine DFT ionic relaxation (``NSW = 1000``, atoms moving up to
 0.104 Å). The benchmark relaxes nothing either way. Amorphous carbon is excluded: its
-DFT reference used only unrelaxed cuts, so no relaxed reference exists.
+DFT reference used only unrelaxed cuts, so no relaxed reference exists. The reported
+error is the mean absolute percentage error across the two surfaces.
 
 Computational cost
 ------------------
 
-Small: 65 single points per model — three each for diamond {100} and graphite
-(0001), plus 59 for the amorphous ensemble (10 bulk, 49 slab, up to 216 atoms each).
+Fast: around 90 seconds for ``mace-mp-0a`` on an RTX A4000 GPU; 65 single points of up
+to 216 atoms.
 
 Data availability
 -----------------
@@ -158,7 +161,8 @@ mean absolute error in meV/atom for the reason given under lattice parameters Me
 Computational cost
 ------------------
 
-Small: 21 single points per model, 20 tubes plus one graphene reference.
+Fast: around 30 seconds for ``mace-mp-0a`` on an RTX A4000 GPU; 21 single points, 20
+tubes plus one graphene reference.
 
 Data availability
 -----------------

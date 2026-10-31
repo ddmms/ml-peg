@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mape
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.carbon.surface_energies.calc_surface_energies import (
@@ -86,9 +86,9 @@ def gather_metric_values(entries: list[tuple[str, str]]) -> dict[str, list]:
     return results
 
 
-def mae_or_nan(results: dict[str, list], model_name: str) -> float:
+def mape_or_nan(results: dict[str, list], model_name: str) -> float:
     """
-    Get mean absolute error for one model, or `np.nan` if no reference is available.
+    Get one model's mean absolute percentage error, or `np.nan` with no reference.
 
     Parameters
     ----------
@@ -100,11 +100,11 @@ def mae_or_nan(results: dict[str, list], model_name: str) -> float:
     Returns
     -------
     float
-        Mean absolute error, or `np.nan` if `results["ref"]` is empty.
+        Mean absolute percentage error, or `np.nan` if `results["ref"]` is empty.
     """
     if not results["ref"]:
         return np.nan
-    return mae(results["ref"], results[model_name])
+    return mape(results["ref"], results[model_name])
 
 
 @pytest.fixture
@@ -175,11 +175,11 @@ def metrics(
         Metric names and values for all models.
     """
     return {
-        "As-cut surface energy MAE": {
-            m: mae_or_nan(as_cut_surface_energy, m) for m in MODELS
+        "As-cut surface energy MAPE": {
+            m: mape_or_nan(as_cut_surface_energy, m) for m in MODELS
         },
-        "Relaxed surface energy MAE": {
-            m: mae_or_nan(relaxed_surface_energy, m) for m in MODELS
+        "Relaxed surface energy MAPE": {
+            m: mape_or_nan(relaxed_surface_energy, m) for m in MODELS
         },
     }
 

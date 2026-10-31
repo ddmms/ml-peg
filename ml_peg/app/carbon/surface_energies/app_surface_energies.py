@@ -22,8 +22,8 @@ INFO_PATH = DATA_PATH / "info.json"
 
 # Table column, figure JSON suffix
 PLOTS = {
-    "As-cut surface energy MAE": "as_cut",
-    "Relaxed surface energy MAE": "relaxed",
+    "As-cut surface energy MAPE": "as_cut",
+    "Relaxed surface energy MAPE": "relaxed",
 }
 
 

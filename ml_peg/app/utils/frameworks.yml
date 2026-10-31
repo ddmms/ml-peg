@@ -127,6 +127,7 @@ mace-mp:
   paper_url: "https://pubs.aip.org/aip/jcp/article/163/18/184110/3372267/A-foundation-model-for-atomistic-materials"
 
 gap-20:
+  bibtex_key: rowe-2020-gap20-carbon
   label: GAP-20
   type: paper
   color: "#b45309"
