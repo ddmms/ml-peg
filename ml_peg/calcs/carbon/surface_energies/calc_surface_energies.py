@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 from warnings import warn
 
-from ase import Atoms
+from ase import Atoms, units
 from ase.calculators.calculator import Calculator
 from ase.io import read, write
 import numpy as np
@@ -22,7 +22,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 AMORPHOUS_SYSTEM = "Amorphous_Bulk_Unrelaxed_2"
 EXCLUDED_SYSTEMS = ("Diamond_110",)
 
-EV_ANGSTROM2_TO_J_M2 = 16.0218
+EV_ANGSTROM2_TO_J_M2 = units.m**2 / units.J
 
 
 def surface_area(atoms: Atoms) -> float:
@@ -230,7 +230,7 @@ def evaluate_amorphous(
 
 
 @pytest.mark.framework("gap-20")
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_surface_energies(mlip: tuple[str, Any]) -> None:
     """

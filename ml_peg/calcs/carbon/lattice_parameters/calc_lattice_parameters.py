@@ -120,13 +120,15 @@ def relax_system(
     atoms.calc = copy(calc)
 
     relaxed = True
+    converged = False
     try:
         if ref["is_molecule"]:
-            GeomOpt(
+            optimizer = GeomOpt(
                 struct=atoms, fmax=ref["fmax"], steps=MAX_STEPS, filter_class=None
-            ).run()
+            )
         else:
-            GeomOpt(struct=atoms, fmax=ref["fmax"], steps=MAX_STEPS).run()
+            optimizer = GeomOpt(struct=atoms, fmax=ref["fmax"], steps=MAX_STEPS)
+        converged = optimizer.run()
     except Exception as exc:
         warn(f"Error relaxing {system}: {exc}", stacklevel=2)
         relaxed = False
@@ -135,12 +137,13 @@ def relax_system(
     max_force = np.nan
     if relaxed:
         try:
-            max_force = float(np.abs(atoms.get_forces()).max())
+            residual = atoms if ref["is_molecule"] else optimizer.filtered_struct
+            max_force = float(np.linalg.norm(residual.get_forces(), axis=1).max())
             energy_per_atom = atoms.get_potential_energy() / len(atoms)
         except Exception as exc:
             warn(f"Error calculating energy for {system}: {exc}", stacklevel=2)
 
-    atoms.info["converged"] = bool(max_force < ref["fmax"])
+    atoms.info["converged"] = converged
     atoms.info["max_force_ev_per_angstrom"] = max_force
     atoms.info["fmax_ev_per_angstrom"] = ref["fmax"]
 
@@ -168,7 +171,7 @@ def relax_system(
 
 
 @pytest.mark.framework("gap-20")
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
     """

@@ -12,7 +12,7 @@ import numpy as np
 
 from ml_peg.calcs.utils.utils import download_github_data
 
-GITHUB_URI = "https://raw.githubusercontent.com/patrickwrowe/Carbon_GAP/main/ml_peg_benchmark_data"
+GITHUB_URI = "https://raw.githubusercontent.com/patrickwrowe/Carbon_GAP/bed597f0dce1dbe26e1add51a8ac9fd0331c16d7/ml_peg_benchmark_data"
 
 
 def load_carbon_systems(benchmark: str) -> tuple[Path, list[str]]:

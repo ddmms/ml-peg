@@ -138,6 +138,7 @@ aceff:
   paper_url: "https://arxiv.org/abs/2601.00581"
 
 gap-20:
+  bibtex_key: rowe-2020-gap20-carbon
   label: GAP-20
   type: paper
   color: "#b45309"
