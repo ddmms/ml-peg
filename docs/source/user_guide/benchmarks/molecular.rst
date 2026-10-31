@@ -61,10 +61,10 @@ Weighted mean absolute deviation (MAD) of all subsets.
 Same as (1), for all subsets.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Fast: tests are likely to take minutes to run on CPU.
 
 
 Data availability
@@ -105,10 +105,10 @@ DLPNO-CCSD(T)/CBS geometry optimised structure to the energies of its 50 straine
 mean absolute error is reported over all 150 conformers.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -154,7 +154,7 @@ at distances below 2.5 Å, this indicates bond formation and the model fails the
 * 1 = bonds formed (unphysical, model failure)
 
 
-Computational cost
+Benchmark speed
 ------------------
 
 Medium: tests require running 10,000 steps of Langevin MD for a system of 10 ion
@@ -171,6 +171,5 @@ Input structures:
 * Zills, F. molify: Molecular Structure Interface. Journal of Open Source Software
   10, 8829 (2025). https://doi.org/10.21105/joss.08829
 * Density from: Yang, F., Wang, D., Wang, X. & Liu, Z. Volumetric Properties of
-  Binary and Ternary Mixtures of Bis(2-hydroxyethyl)ammonium Acetate with Methanol,
-  N,N-Dimethylformamide, and Water at Several Temperatures. J. Chem. Eng. Data 62,
+  1-Butyl-3-methylimidazolium Chloride with Organic Solvents. J. Chem. Eng. Data 62,
   3958-3966 (2017). https://doi.org/10.1021/acs.jced.7b00654

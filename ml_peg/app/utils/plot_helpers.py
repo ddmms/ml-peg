@@ -10,12 +10,12 @@ import numpy as np
 import plotly.graph_objects as go
 
 INSTRUCTION_STYLE = {
-    "backgroundColor": "#f5f8fc",
-    "border": "1px solid #d7e3f0",
-    "borderLeft": "4px solid #4f7fb8",
+    "backgroundColor": "var(--mlpeg-accent-soft)",
+    "border": "1px solid var(--mlpeg-accent-soft-border)",
+    "borderLeft": "4px solid var(--mlpeg-accent)",
     "borderRadius": "6px",
     "boxSizing": "border-box",
-    "color": "#24415f",
+    "color": "var(--mlpeg-accent-strong)",
     "display": "inline-block",
     "fontSize": "13px",
     "margin": "8px 0 12px 0",
@@ -24,6 +24,7 @@ INSTRUCTION_STYLE = {
 }
 TABLE_HINT = "Click a table cell to view its data."
 POINT_HINT = "Click the points to see more information."
+PARITY_LINE_NAME = "__parity_line__"
 
 
 def figure_from_dict(
@@ -262,7 +263,9 @@ def build_classified_parity_scatter(
             x=[lower, upper],
             y=[lower, upper],
             mode="lines",
+            name=PARITY_LINE_NAME,
             showlegend=False,
+            hoverinfo="skip",
             line={"color": "#8c8c8c", "dash": "dash"},
         )
     )

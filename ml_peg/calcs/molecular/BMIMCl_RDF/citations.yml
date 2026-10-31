@@ -1,0 +1,11 @@
+implementers:
+  - name: "Fabian Zills"
+    github: "PythonFZ"
+
+contributors: []
+
+citations:
+  - bibtex_key: zills-2025-molify
+    role: benchmark_method
+  - bibtex_key: yang-2017-volumetric
+    role: reference_data

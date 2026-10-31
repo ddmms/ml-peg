@@ -95,6 +95,7 @@ def get_monomers(atoms: Atoms) -> tuple[Atoms, Atoms]:
 
 
 @pytest.mark.framework("mace-polar-1")
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_lattice_energy(mlip: tuple[str, Any]) -> None:
     """

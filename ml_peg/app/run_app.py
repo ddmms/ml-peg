@@ -8,9 +8,15 @@ from pathlib import Path
 from dash import Dash
 
 from ml_peg.app.build_app import build_full_app
+from ml_peg.app.utils.head_scripts import analytics_scripts, inject_head_scripts
+from ml_peg.app.utils.profiling import (
+    enable_request_profiling,
+    profile_directory,
+    profile_startup,
+)
 
 DATA_PATH = Path(__file__).parent / "data"
-ANALYTICS_ID = os.environ.get("ML_PEG_ANALYTICS_ID")
+PROFILE_DIRECTORY = profile_directory()
 
 
 def _build_full_app(app: Dash, category: str, test: str):
@@ -26,20 +32,9 @@ def _build_full_app(app: Dash, category: str, test: str):
     test
         Test to build application for.
     """
-    build_full_app(app, category, test)
+    with profile_startup(PROFILE_DIRECTORY):
+        build_full_app(app, category, test)
 
-
-# Load the async gtag script in <head> only when an analytics ID is configured
-_analytics_scripts = (
-    [
-        {
-            "src": f"https://www.googletagmanager.com/gtag/js?id={ANALYTICS_ID}",
-            "async": True,
-        }
-    ]
-    if ANALYTICS_ID
-    else []
-)
 
 # Make server accessible for gunicorn
 app = Dash(
@@ -47,27 +42,27 @@ app = Dash(
     assets_folder=DATA_PATH,
     title="ML-PEG",  # set browser tab title
     update_title=None,  # prevent the tab changing to Updating... during callbacks
-    external_scripts=_analytics_scripts,
+    external_scripts=analytics_scripts(),
+    # Benchmark cards mount their bodies lazily, so their control ids are absent
+    # from the initial layout; allow callbacks to reference not-yet-present ids.
+    suppress_callback_exceptions=True,
+    meta_tags=[
+        # Render at real device width so the responsive layout + media queries
+        # apply on phones (without this, mobile browsers assume a ~980px page).
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"},
+    ],
 )
 
-# Inject the inline gtag init into the parsed <head> so the browser executes it
-if ANALYTICS_ID:
-    app.index_string = app.index_string.replace(
-        "{%metas%}",
-        "{%metas%}\n"
-        "    <script>"
-        "window.dataLayer=window.dataLayer||[];"
-        "function gtag(){dataLayer.push(arguments);}"
-        "gtag('js', new Date());"
-        f"gtag('config', '{ANALYTICS_ID}');"
-        "</script>",
-    )
+# Apply the saved preferences before first paint so a reload doesn't flash the
+# wrong theme, zoom or font while Dash hydrates (see utils/head_scripts.py).
+inject_head_scripts(app)
 
 # Only build app when in production, otherwise run_app's layout is missing
 if bool(os.environ.get("ML_PEG_PROD", False)):
     _build_full_app(app, "*", "*")
 
 server = app.server
+enable_request_profiling(server, PROFILE_DIRECTORY)
 
 
 def run_app(
@@ -93,7 +88,13 @@ def run_app(
     _build_full_app(app, category=category, test=test)
 
     print(f"Starting Dash app on port {port}...")
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    # The debug reloader starts a second process and duplicates startup profiles.
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=debug,
+        use_reloader=debug and PROFILE_DIRECTORY is None,
+    )
 
 
 if __name__ == "__main__":

@@ -1,0 +1,9 @@
+implementers:
+  - name: "Jad Jaafar"
+    github: "Jad-J3far"
+
+contributors: []
+
+citations:
+  - bibtex_key: liu-2015-o-diffusion-tmd
+    role: reference_data

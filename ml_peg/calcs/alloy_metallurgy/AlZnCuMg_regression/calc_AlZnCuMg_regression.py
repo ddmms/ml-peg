@@ -1743,6 +1743,7 @@ def structure_properties(
     return properties
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_alzncumg_regression(mlip: tuple[str, Any], data_path: Path) -> None:
     """
@@ -1845,6 +1846,7 @@ def test_alzncumg_regression(mlip: tuple[str, Any], data_path: Path) -> None:
         )
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_alzncumg_fault_surfaces(mlip: tuple[str, Any], data_path: Path) -> None:
     """

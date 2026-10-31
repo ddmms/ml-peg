@@ -1,0 +1,12 @@
+implementers:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: puleva2025quid
+    role: reference_data

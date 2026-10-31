@@ -40,9 +40,15 @@ def _preset_btn_style(selected: bool) -> dict[str, str]:
         "fontSize": "12px",
         "borderRadius": "4px",
         "cursor": "pointer",
-        "border": "1px solid #228be6" if selected else "1px solid #ced4da",
-        "backgroundColor": "#228be6" if selected else "#fff",
-        "color": "#fff" if selected else "#495057",
+        "border": (
+            "1px solid var(--mlpeg-accent)"
+            if selected
+            else "1px solid var(--mlpeg-border-strong)"
+        ),
+        "backgroundColor": (
+            "var(--mlpeg-accent)" if selected else "var(--mlpeg-surface)"
+        ),
+        "color": "#ffffff" if selected else "var(--mlpeg-ink-2)",
     }
 
 
@@ -108,8 +114,8 @@ def build_weight_preset_selector(label_style: dict[str, str]) -> Details:
                                 style={
                                     "padding": "4px 12px",
                                     "fontSize": "12px",
-                                    "backgroundColor": "#228be6",
-                                    "color": "#fff",
+                                    "backgroundColor": "var(--mlpeg-accent)",
+                                    "color": "#ffffff",
                                     "border": "none",
                                     "borderRadius": "4px",
                                     "cursor": "pointer",
@@ -122,9 +128,9 @@ def build_weight_preset_selector(label_style: dict[str, str]) -> Details:
                                 style={
                                     "padding": "4px 12px",
                                     "fontSize": "12px",
-                                    "backgroundColor": "#fff",
-                                    "color": "#495057",
-                                    "border": "1px solid #ced4da",
+                                    "backgroundColor": "var(--mlpeg-surface)",
+                                    "color": "var(--mlpeg-ink-2)",
+                                    "border": "1px solid var(--mlpeg-border-strong)",
                                     "borderRadius": "4px",
                                     "cursor": "pointer",
                                 },

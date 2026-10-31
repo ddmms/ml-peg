@@ -1,0 +1,9 @@
+implementers:
+  - name: "Benjamin X. Shi"
+    github: "benshi97"
+
+contributors: []
+
+citations:
+  - bibtex_key: schmidt-2018-cmr
+    role: benchmark_method

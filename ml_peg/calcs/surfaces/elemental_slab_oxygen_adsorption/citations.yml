@@ -1,0 +1,13 @@
+implementers:
+  - name: "Thomas Warford"
+    github: "ThomasWarford"
+
+contributors: []
+
+citations:
+  - bibtex_key: tran-2016-surface-energies
+    role: benchmark_method
+  - bibtex_key: kaplan2025foundationalpotentialenergysurface
+    role: reference_data
+  - bibtex_key: ong-2013-pymatgen
+    role: reference_method

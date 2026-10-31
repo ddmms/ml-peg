@@ -39,6 +39,7 @@ N_ION_PAIRS = 10
 DENSITY = 1052  # kg/m³ at 353.15 K
 
 
+@pytest.mark.medium
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_bmimcl_md(mlip: tuple[str, Any]) -> None:
     """

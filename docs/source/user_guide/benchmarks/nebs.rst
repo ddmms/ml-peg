@@ -29,10 +29,10 @@ through deletion an atom from the initial structure. These structures are relaxe
 and the Nudged Elastic Band method is used to calculate the energy barrier. This is
 compared to the reference activation energy for this path.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 
 Data availability
@@ -71,10 +71,10 @@ for both the DFT reference and the MLIP predictions.
 
 Mean absolute error (MAE) of forces across all atoms and images along the NEB.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 Data availability
 -----------------
@@ -136,10 +136,10 @@ falling back to ASEs interpolation if any exceptions are raised during optimisat
 which is carried out by ASE's NEBOptimizer.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests involving multiple foundation models are likely to take around an one hour to run on a single GPU.
+Fast: the benchmark takes around one minute per model on an A100 GPU.
 
 Data availability
 -----------------
@@ -166,3 +166,39 @@ Reference data:
 
 * Manually taken from https://doi.org/10.1039/C4RA17320A
 * GGA (PBE) exchange correlation functional
+
+
+OC20NEB
+=======
+
+Summary
+-------
+
+Performance in running NEB for surface reactions on multiple catalytic surfaces from OC20NEB dataset.
+
+Metrics
+-------
+
+1. Reaction energy difference compared to DFT reference
+
+2. Activation barrier difference compared to DFT reference
+
+3. NEB convergence
+
+Benchmark speed
+------------------
+
+Very slow: tests may take over 10 hours to run on GPU.
+
+
+Data availability
+-----------------
+
+Input structure:
+
+* OC20NEB dataset : https://dl.fbaipublicfiles.com/opencatalystproject/data/oc20neb/oc20neb_dft_trajectories_04_23_24.tar.gz
+
+Reference data:
+
+* Manually taken from https://doi.org/10.1021/acscatal.4c04272
+* GGA RPBE exchange correlation functional
