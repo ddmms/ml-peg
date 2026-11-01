@@ -25,10 +25,10 @@
   if (window.__mlpegLoadingProgress) {
     return;
   }
-  window.__mlpegLoadingProgress = true;
+  window.__mlpegLoadingProgress = {};
 
   var CEILING = 92; // never claim done before the app actually is
-  var TIME_CONSTANT_MS = 2600; // how quickly the ease approaches CEILING
+  var TIME_CONSTANT_MS = 1500; // how quickly the ease approaches CEILING
   var MAX_FRAME_MS = 100; // ignore time the main thread spent blocked
   // Stop the loop once nothing has needed it for this many consecutive frames
   // (~2s at 60fps); a DOM observer restarts it when a ring next appears.
@@ -55,8 +55,6 @@
   }
 
   function tick(now) {
-    watchStartupMask();
-
     var rings = document.querySelectorAll(".mlpeg-progress-ring");
     var active = 0;
 
@@ -135,47 +133,43 @@
     }).observe(document.documentElement, { childList: true, subtree: true });
   }
 
-  /* Complete the start-up ring the moment the app is interactive, so the last
-   * thing the user sees is 100% rather than the ring vanishing mid-climb. The
-   * mask is hidden by a clientside callback in shell.py (it sets display:none);
-   * watch for that instead of duplicating its readiness test here.
-   *
-   * #startup-mask is part of the Dash layout, so it does not exist at
-   * DOMContentLoaded — React renders it once the bundle boots. Hence the check
-   * runs from the frame loop until the mask turns up. */
-  var maskWatched = false;
-
-  function watchStartupMask() {
-    if (maskWatched) {
-      return;
+  // The shell waits for this promise before hiding the mask, so completion is
+  // painted while the ring is still visible. Share it across overlapping polls.
+  var completion;
+  window.__mlpegLoadingProgress.finishStartup = function () {
+    if (completion) {
+      return completion;
     }
-    var mask = document.getElementById("startup-mask");
-    if (!mask) {
-      return;
+    var ring = document.querySelector("#startup-mask .mlpeg-progress-ring");
+    if (!ring) {
+      return Promise.resolve();
     }
-    maskWatched = true;
-
-    var observer = new MutationObserver(function () {
-      if (mask.style.display !== "none") {
-        return;
-      }
-      var ring = mask.querySelector(".mlpeg-progress-ring");
-      if (ring) {
-        // Mark it done as well as painting it: tick() owns --mlpeg-pct and
-        // would otherwise ease this straight back to the ceiling next frame.
-        var entry = state.get(ring);
-        if (entry) {
-          entry.pct = 100;
-          entry.done = true;
-        } else {
-          state.set(ring, { pct: 100, last: 0, done: true });
+    var entry = state.get(ring) || { pct: 0, last: 0 };
+    entry.done = true; // Stop the estimated-progress loop overwriting completion.
+    state.set(ring, entry);
+    var initial = entry.pct;
+    var duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? 0 : 180;
+    completion = new Promise(function (resolve) {
+      var started;
+      function finish(now) {
+        if (started === undefined) {
+          started = now;
         }
-        paint(ring, 100);
+        var fraction = duration ? Math.min((now - started) / duration, 1) : 1;
+        entry.pct = initial + (100 - initial) * fraction;
+        paint(ring, entry.pct);
+        if (fraction < 1) {
+          window.requestAnimationFrame(finish);
+        } else {
+          // Leave a brief, visible completed frame before revealing the page.
+          window.setTimeout(resolve, 100);
+        }
       }
-      observer.disconnect();
+      window.requestAnimationFrame(finish);
     });
-    observer.observe(mask, { attributes: true, attributeFilter: ["style"] });
-  }
+    return completion;
+  };
 
   function init() {
     observeForRings();
