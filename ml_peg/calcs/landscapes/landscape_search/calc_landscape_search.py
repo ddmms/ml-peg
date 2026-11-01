@@ -36,8 +36,10 @@ attempt among hundreds, and a failed attempt costs only that pair.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 from typing import Any
 from warnings import warn
 
@@ -47,7 +49,7 @@ import numpy as np
 import pytest
 from tqdm.auto import tqdm
 
-from ml_peg.calcs.utils.utils import download_github_data
+from ml_peg.calcs.utils.utils import chdir, download_github_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -108,6 +110,11 @@ BASIN_HOPPING_STEPS = 100
 SEED_OFFSETS = (3000, 3017, 3034, 3051, 3068)
 BASIN_HOPPING_TEMPERATURE = 100.0
 MINIMISE_CONV_CRIT = 1e-3
+# topsearch's own default is 200, at which 55% of basin hopping minimisations
+# on aspirin ran out of iterations and were discarded wholesale. Raising it to
+# 1000 converges all of them, quadrupling the minima found for ~12% more
+# L-BFGS iterations, because the capped work was previously spent and binned.
+MAX_MINIMISATION_STEPS = 1000
 MAX_CONNECTION_ATTEMPTS = 3
 # An RMSD, so 0.3 A per atom means the same thing whatever the molecule size.
 SAME_STRUCTURE = 0.3
@@ -165,6 +172,11 @@ MOLECULES: tuple[_Molecule, ...] = (
 )
 
 
+# Cached because the shared downloader re-extracts the whole archive on
+# every call rather than checking whether it is already unpacked. This is
+# called once per molecule per model, which without the cache meant 36 full
+# extractions, and the better part of a quarter hour, in one analysis run.
+@cache
 def _data_dir() -> Path:
     """
     Fetch and extract the Landscape17 archive.
@@ -179,6 +191,7 @@ def _data_dir() -> Path:
     )
 
 
+@cache
 def _starts_dir() -> Path:
     """
     Fetch and extract the starting conformers.
@@ -215,9 +228,6 @@ class _AseCalculatorPotential(Potential):
         self.atoms = Atoms(symbols, positions=np.zeros((len(symbols), 3)))
         self.atoms.info.update(charge=CHARGE, spin=SPIN)
         self.atoms.calc = calc
-        # Read by topsearch's ASE minimiser; every model here evaluates
-        # through plain get_potential_energy and get_forces.
-        self.calculator_type = "ase"
 
     def function(self, position: np.ndarray) -> float:
         """
@@ -292,65 +302,77 @@ def _search(symbols: list[str], start: np.ndarray, potential: Potential, seed: i
     topsearch.data.kinetic_transition_network.KineticTransitionNetwork
         The network of minima and transition states found.
     """
-    # Building a model can reseed the global generators -- fairchem's does --
-    # so the seed is set after the potential exists, not before.
-    set_global_seed(seed)
+    # topsearch dumps the network and opens a log file in the working
+    # directory without being asked, so the search is run in a scratch
+    # directory to keep those out of the user's. Nothing the search
+    # reads is addressed by a relative path.
+    with TemporaryDirectory() as scratch, chdir(Path(scratch)):
+        # Building a model can reseed the global generators -- fairchem's does --
+        # so the seed is set after the potential exists, not before.
+        set_global_seed(seed)
 
-    comparer = MolecularSimilarity(
-        distance_criterion=SAME_STRUCTURE,
-        energy_criterion=ENERGY_CRITERION,
-        weighted=False,
-        keep_symmetry_copies=KEEP_SYMMETRY_COPIES,
-    )
-    network = KineticTransitionNetwork()
-    coords = MolecularCoordinates(symbols, start.copy())
+        comparer = MolecularSimilarity(
+            distance_criterion=SAME_STRUCTURE,
+            energy_criterion=ENERGY_CRITERION,
+            weighted=False,
+            keep_symmetry_copies=KEEP_SYMMETRY_COPIES,
+        )
+        network = KineticTransitionNetwork()
+        coords = MolecularCoordinates(symbols, start.copy())
 
-    explorer = NetworkSampling(
-        ktn=network,
-        coords=coords,
-        global_optimiser=BasinHopping(
+        explorer = NetworkSampling(
             ktn=network,
-            potential=potential,
-            similarity=comparer,
-            step_taking=MolecularPerturbation(
-                max_displacement=MAX_DISPLACEMENT, max_bonds=MAX_BONDS
+            coords=coords,
+            global_optimiser=BasinHopping(
+                ktn=network,
+                potential=potential,
+                similarity=comparer,
+                step_taking=MolecularPerturbation(
+                    max_displacement=MAX_DISPLACEMENT, max_bonds=MAX_BONDS
+                ),
+                # topsearch minimises through this class's function_gradient,
+                # the same route the stationary point benchmark takes, so a
+                # minimum here is converged by the same criterion as one there.
+                # Its "ase" alternative would instead drive ASE's own LBFGS to
+                # an fmax, which is a different quantity from the projected
+                # gradient this tolerance refers to.
+                opt_method="scipy",
+                max_minimisation_steps=MAX_MINIMISATION_STEPS,
             ),
-            opt_method="ase",
-        ),
-        single_ended_search=HybridEigenvectorFollowing(
-            potential=potential,
-            ts_conv_crit=TS_CONV_CRIT,
-            ts_steps=TS_STEPS,
-            pushoff=PUSHOFF,
-            max_uphill_step_size=MAX_UPHILL_STEP_SIZE,
-            positive_eigenvalue_step=POSITIVE_EIGENVALUE_STEP,
-            steepest_descent_conv_crit=STEEPEST_DESCENT_CONV_CRIT,
-            eigenvalue_conv_crit=EIGENVALUE_CONV_CRIT,
-        ),
-        double_ended_search=NudgedElasticBand(
-            potential=potential,
-            force_constant=NEB_FORCE_CONSTANT,
-            image_density=NEB_IMAGE_DENSITY,
-            max_images=NEB_MAX_IMAGES,
-            neb_conv_crit=NEB_CONV_CRIT,
-        ),
-        similarity=comparer,
-        max_connection_attempts_per_pair=MAX_CONNECTION_ATTEMPTS,
-    )
+            single_ended_search=HybridEigenvectorFollowing(
+                potential=potential,
+                ts_conv_crit=TS_CONV_CRIT,
+                ts_steps=TS_STEPS,
+                pushoff=PUSHOFF,
+                max_uphill_step_size=MAX_UPHILL_STEP_SIZE,
+                positive_eigenvalue_step=POSITIVE_EIGENVALUE_STEP,
+                steepest_descent_conv_crit=STEEPEST_DESCENT_CONV_CRIT,
+                eigenvalue_conv_crit=EIGENVALUE_CONV_CRIT,
+            ),
+            double_ended_search=NudgedElasticBand(
+                potential=potential,
+                force_constant=NEB_FORCE_CONSTANT,
+                image_density=NEB_IMAGE_DENSITY,
+                max_images=NEB_MAX_IMAGES,
+                neb_conv_crit=NEB_CONV_CRIT,
+            ),
+            similarity=comparer,
+            max_connection_attempts_per_pair=MAX_CONNECTION_ATTEMPTS,
+        )
 
-    explorer.get_minima(
-        coords=coords,
-        n_steps=BASIN_HOPPING_STEPS,
-        conv_crit=MINIMISE_CONV_CRIT,
-        temperature=BASIN_HOPPING_TEMPERATURE,
-        test_valid=True,
-    )
-    explorer.get_transition_states(
-        method="ClosestEnumeration",
-        neighbours=NEIGHBOURS,
-        remove_bounds_minima=False,
-    )
-    return network
+        explorer.get_minima(
+            coords=coords,
+            n_steps=BASIN_HOPPING_STEPS,
+            conv_crit=MINIMISE_CONV_CRIT,
+            temperature=BASIN_HOPPING_TEMPERATURE,
+            test_valid=True,
+        )
+        explorer.get_transition_states(
+            method="ClosestEnumeration",
+            neighbours=NEIGHBOURS,
+            remove_bounds_minima=False,
+        )
+        return network
 
 
 def _frames(network, symbols: list[str], molecule: str, seed: int) -> list[Atoms]:
