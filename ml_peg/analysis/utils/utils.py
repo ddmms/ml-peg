@@ -200,7 +200,7 @@ def mape(ref: list, prediction: list) -> float:
     float
         Mean absolute percentage error, as a percentage.
     """
-    if np.isnan(np.sum(prediction)):
+    if not np.isfinite(np.sum(ref) + np.sum(prediction)):
         return np.nan
     return mean_absolute_percentage_error(ref, prediction) * 100
 

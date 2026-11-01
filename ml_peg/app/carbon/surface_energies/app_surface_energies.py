@@ -41,12 +41,12 @@ def get_mock_structs(scatter: Graph) -> list[str]:
     list[str]
         Asset paths to the mock structure for each point.
     """
-    traces = scatter.figure.data if scatter.figure else ()
-    if not traces or traces[0].customdata is None:
+    traces = scatter.figure.get("data") if scatter.figure else None
+    if not traces or traces[0].get("customdata") is None:
         return []
     return [
         f"/assets/carbon/surface_energies/mock/{point[0]}.extxyz"
-        for point in traces[0].customdata
+        for point in traces[0]["customdata"]
     ]
 
 
