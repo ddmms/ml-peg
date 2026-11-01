@@ -47,6 +47,12 @@ metrics:
     unit: fraction
     tooltip: "Fraction of the model's minima whose bonding differs from the reference molecule. Not necessarily errors of structure: a model may find a genuine isomer and merely place it at the wrong energy."
     level_of_theory: ωB97X/6-31G(d)
+  Distorted minima:
+    good: 0.0
+    bad: 0.2
+    unit: fraction
+    tooltip: "Fraction of the model's minima holding one of the molecule's own bonds more than 20% away from its length in the reference. Invisible to the row above, which compares bonding graphs: a bond crushed to two thirds of its length is still a bond, so the graph is unchanged and the structure reads as the right molecule at an impossible geometry. The flagged structures are written out beside the model's results."
+    level_of_theory: ωB97X/6-31G(d)
   # TODO: not yet implemented. Mean first passage time between a chosen pair of
   # minima, derived from the landscape the model built and compared with the
   # same quantity from the DFT landscape. The kinetics are what a landscape is
