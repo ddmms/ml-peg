@@ -1,74 +1,26 @@
-"""Evaluate MLIPs on the Landscape17 DFT landscapes.
+"""Evaluate MLIPs on the DFT stationary points of Landscape17.
 
-Landscape17 maps the potential energy landscape of six molecules as a network
-of minima joined by transition states, computed at wB97X/6-31G(d). It holds 28
-minima, 67 transition states, a DFT Hessian for every one of them, and the
-steepest-descent paths joining them -- 11,173 frames carrying DFT energies and
-forces.
+Hands a model the 28 reference minima and 67 transition states, the DFT
+Hessian of each, and the 11,173 steepest-descent frames joining them, and
+measures what survives contact with it: forces there, how far each structure
+drifts when reconverged, whether its saddles still connect the same minima,
+and how its curvature compares. Nothing here searches for new structures --
+the companion ``landscape_search`` benchmark asks whether a model can find
+the landscape unaided.
 
-This benchmark hands a model those geometries and asks how much of the
-landscape survives contact with it. Nothing here searches for new structures;
-the companion ``landscape_search`` benchmark asks whether a model can find the
-landscape unaided.
-
-Two kinds of geometry, which test different things:
-
-``test_paths``
-    Energies and forces along the steepest-descent paths. These are ordinary
-    points on the surface with non-zero forces, so this is a conventional
-    accuracy test -- but sampled along the reaction coordinates rather than
-    from a thermal distribution, which is where a landscape benchmark should
-    want to look.
-
-``test_stationary_points``
-    The model's force at each reference minimum and transition state. DFT
-    forces there are zero by construction, so what is recorded is the residual:
-    how far from stationary the DFT geometry is under the model. This predicts
-    whether the structure will survive reconvergence, and is reported rather
-    than compared against a reference of zeros.
-
-``test_reconverge_minima``
-    Relax each reference minimum under the model. A good model leaves it where
-    it is; the distance it drifts is the metric.
-
-``test_reconverge_transition_states``
-    The same for saddles, by eigenvector following, plus the connectivity.
-    Harder than the minima, because a saddle is stationary in only one
-    direction and a model may have no saddle nearby at all. Connectivity lives
-    here rather than in a test of its own because eigenvector following already
-    returns the two minima its steepest-descent paths reach, so splitting them
-    would mean running the whole search twice for a result already in hand.
-
-Everything that searches runs the model in float64, via
-``get_calculator(precision="high")``. That is a requirement rather than a
+Everything that searches runs in float64, via
+``get_calculator(precision="high")``. That is a requirement, not a
 preference: eigenvector following takes its curvature from finite differences
 of forces, which in float32 is noise-dominated, and the search wanders.
 
-``test_hessians``
-    Compare the model's Hessian at each reference geometry with the DFT one:
-    the overlap of the normal modes, the overlap of the reaction coordinate at
-    saddles, and whether the curvature is systematically scaled.
-
-Reported distributions rather than pass rates
----------------------------------------------
-The drift and overlap tests report positions in a distribution -- medians and
-upper percentiles -- rather than the fraction falling below a threshold. A
-fraction is brittle in a way that misleads: a model that reproduces every
-structure with the same small systematic displacement scores zero if that
-displacement sits a hair outside the cut, which reads as total failure rather
-than as the tidy, correctable offset it is. Percentiles say where the
-distribution sits and whether it has a tail, and both can be given
-``good``/``bad`` thresholds with a physical justification.
-
-Results are kept per molecule rather than pooled. Aspirin alone is 37 of the 67
-transition states and 6,944 of the 11,173 path frames, so a single pooled
-number is largely a statement about aspirin. Raw outputs are written per
-structure, so pooling later is a change to the analysis.
+See the Landscapes benchmark documentation for what each test measures and
+why the results are reported as distributions, per molecule.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 import sys
 from typing import Any
@@ -145,6 +97,11 @@ MOLECULES: tuple[_Molecule, ...] = (
 )
 
 
+# Cached because the shared downloader re-extracts the whole archive on
+# every call rather than checking whether it is already unpacked. This is
+# called once per molecule per model, which without the cache meant 36 full
+# extractions, and the better part of a quarter hour, in one analysis run.
+@cache
 def _data_dir() -> Path:
     """
     Fetch and extract the Landscape17 archive.
