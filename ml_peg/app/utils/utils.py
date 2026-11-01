@@ -689,6 +689,69 @@ def _categorize_benchmark_level(level: str | None) -> str | None:
     return DEFAULT_WARNING_CATEGORY
 
 
+def add_uncertainty_tooltips(
+    rows: Sequence[Mapping[str, Any]],
+    tooltip_rows: list[dict[str, Any]],
+    uncertainties: Mapping[str, Mapping[str, Mapping[str, Any]]] | None,
+    thresholds: Mapping[str, Mapping[str, Any]] | None = None,
+    show_normalized: bool = False,
+) -> list[dict[str, Any]]:
+    """
+    Add confidence intervals to the tooltips of metric cells.
+
+    Parameters
+    ----------
+    rows
+        Table rows currently displayed, each with an ``id`` of the model name.
+    tooltip_rows
+        Tooltip data for each row, updated in place.
+    uncertainties
+        Uncertainty information keyed by model name, then metric name.
+    thresholds
+        Metric thresholds, used for units. Default is `None`.
+    show_normalized
+        Whether normalised scores are displayed. Confidence intervals are in the
+        units of the raw metrics, so are not added if `True`. Default is `False`.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        Updated tooltip data for each row.
+    """
+    if not uncertainties or show_normalized:
+        return tooltip_rows
+    thresholds = thresholds or {}
+
+    for row, tooltip_row in zip(rows, tooltip_rows, strict=True):
+        for metric, info in uncertainties.get(row.get("id"), {}).items():
+            # Cells cleared by the element filter no longer show the saved metric
+            if row.get(metric) is None:
+                continue
+            decimals = column_decimals([r.get(metric) for r in rows])
+            unit = (thresholds.get(metric) or {}).get("unit")
+            unit = f" {unit}" if unit else ""
+
+            lines = []
+            if "ci_low" in info:
+                lines.append(
+                    f"95 % CI (sampling): [{info['ci_low']:.{decimals}f}, "
+                    f"{info['ci_high']:.{decimals}f}]{unit}"
+                )
+            if "ci_low_ref" in info:
+                lines.append(
+                    f"95 % CI (incl. reference): [{info['ci_low_ref']:.{decimals}f}, "
+                    f"{info['ci_high_ref']:.{decimals}f}]{unit}"
+                )
+            if "n_eff_min" in info:
+                lines.append(f"Min. effective samples: {info['n_eff_min']:.0f}")
+            if "method" in info:
+                lines.append(f"Method: {info['method']}")
+            if "note" in info:
+                lines.append(f"Note: {info['note']}")
+            tooltip_row[metric] = {"type": "markdown", "value": "  \n".join(lines)}
+    return tooltip_rows
+
+
 def build_level_of_theory_warnings(
     rows: list[dict[str, Any]] | None,
     model_theory_levels: dict[str, str | None] | None,

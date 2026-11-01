@@ -36,6 +36,7 @@ from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
     SUMMARY_TABLE_ID,
     Thresholds,
+    add_uncertainty_tooltips,
     apply_column_decimals,
     build_level_of_theory_warnings,
     build_threshold_input_style,
@@ -288,6 +289,7 @@ def register_category_table_callbacks(
     model_levels: dict[str, str | None] | None = None,
     metric_levels: dict[str, str | None] | None = None,
     model_configs: dict[str, Any] | None = None,
+    uncertainties: dict[str, Any] | None = None,
     scores_store_id: str = "summary-table-scores-store",
     summary_suffix: str = "-summary-table",
 ) -> None:
@@ -308,6 +310,8 @@ def register_category_table_callbacks(
         Mapping of metric name -> level of theory metadata.
     model_configs
         Optional configuration metadata for each model.
+    uncertainties
+        Optional metric uncertainties, keyed by model name then metric name.
     scores_store_id
         ID of the global scores store this summary table writes into. Default is
         "summary-table-scores-store" (the overall summary's inputs).
@@ -321,6 +325,7 @@ def register_category_table_callbacks(
     @callback(
         Output(table_id, "data", allow_duplicate=True),
         Output(table_id, "style_data_conditional", allow_duplicate=True),
+        Output(table_id, "tooltip_data", allow_duplicate=True),
         Input(f"{table_id}-raw-data-store", "data"),
         State(f"{table_id}-computed-store", "data"),
         State(f"{table_id}-weight-store", "data"),
@@ -343,7 +348,7 @@ def register_category_table_callbacks(
         cmap_name: str | None,
         raw_tooltips: dict[str, str] | None,
         current_columns: list[dict] | None,
-    ) -> list[dict]:
+    ) -> tuple[list[dict], list[dict], list[dict]]:
         """
         Update visible table from cached data when the raw data store changes.
 
@@ -370,8 +375,8 @@ def register_category_table_callbacks(
 
         Returns
         -------
-        list[dict]
-            Updated rows for the visible table.
+        tuple[list[dict], list[dict], list[dict]]
+            Updated rows, style rules, and tooltip rows for the visible table.
         """
         display_rows = get_scores(
             stored_raw_data, stored_computed_data, thresholds, toggle_value
@@ -396,7 +401,14 @@ def register_category_table_callbacks(
             metric_levels=metric_levels,
             model_configs=model_configs,
         )
-        return filtered_rows, style
+        tooltip_data = add_uncertainty_tooltips(
+            filtered_rows,
+            tooltip_data,
+            uncertainties,
+            thresholds,
+            show_normalized=bool(toggle_value) and toggle_value[0] == "norm",
+        )
+        return filtered_rows, style, tooltip_data
 
     # Benchmark tables
     if use_thresholds:
@@ -507,6 +519,13 @@ def register_category_table_callbacks(
                     metric_levels=metric_levels,
                     model_configs=model_configs,
                 )
+                tooltip_data = add_uncertainty_tooltips(
+                    filtered_rows,
+                    tooltip_data,
+                    uncertainties,
+                    thresholds,
+                    show_normalized=show_normalized,
+                )
                 columns = apply_column_decimals(
                     format_metric_columns(current_columns, thresholds, show_normalized),
                     filtered_rows,
@@ -552,6 +571,13 @@ def register_category_table_callbacks(
                 model_levels=model_levels,
                 metric_levels=metric_levels,
                 model_configs=model_configs,
+            )
+            tooltip_data = add_uncertainty_tooltips(
+                filtered_rows,
+                tooltip_data,
+                uncertainties,
+                thresholds,
+                show_normalized=show_normalized,
             )
             columns = apply_column_decimals(
                 format_metric_columns(current_columns, thresholds, show_normalized),

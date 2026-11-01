@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import asdict
 import functools
 import json
 from json import dump
@@ -24,6 +25,7 @@ from ml_peg.analysis.utils.periodic_table import (
     PERIODIC_TABLE_POSITIONS,
     PERIODIC_TABLE_ROWS,
 )
+from ml_peg.analysis.utils.timeseries import MetricEstimate
 from ml_peg.analysis.utils.utils import (
     DENSITY_GRID_SIZE,
     DENSITY_MAX_POINTS_PER_CELL,
@@ -79,6 +81,13 @@ def plot_parity(
     -------
     Callable
         Decorator to wrap function.
+
+    Notes
+    -----
+    The wrapped function may also return the optional keys ``pred_err``, a mapping
+    of model to error bar half-widths for each prediction, and ``ref_err``, a list of
+    error bar half-widths for each reference value. These are plotted as error bars,
+    and are not treated as models.
     """
 
     def plot_parity_decorator(func: Callable) -> Callable:
@@ -115,6 +124,8 @@ def plot_parity(
             """
             results = func(*args, **kwargs)
             ref = results["ref"]
+            pred_err = results.get("pred_err", {})
+            ref_err = results.get("ref_err")
 
             hovertemplate = "<b>Pred: </b>%{x}<br>" + "<b>Ref: </b>%{y}<br>"
 
@@ -137,8 +148,13 @@ def plot_parity(
                 }
 
             for mlip, value in results.items():
-                if mlip == "ref":
+                if mlip in ("ref", "pred_err", "ref_err"):
                     continue
+                error_kwargs = {}
+                if mlip in pred_err:
+                    error_kwargs["error_x"] = {"type": "data", "array": pred_err[mlip]}
+                if ref_err is not None:
+                    error_kwargs["error_y"] = {"type": "data", "array": ref_err}
                 fig.add_trace(
                     go.Scatter(
                         x=value,
@@ -148,6 +164,7 @@ def plot_parity(
                         customdata=customdata,
                         hovertemplate=hovertemplate,
                         **marker_kwargs,
+                        **error_kwargs,
                     )
                 )
 
@@ -587,6 +604,12 @@ def plot_scatter(
     -------
     Callable
         Decorator to wrap function.
+
+    Notes
+    -----
+    The wrapped function may also return the optional keys ``x_err`` and ``y_err``,
+    each a mapping of trace name (e.g. ``"ref"`` or a model) to error bar half-widths
+    for each point. These are plotted as error bars, and are not treated as traces.
     """
 
     def plot_scatter_decorator(func: Callable) -> Callable:
@@ -647,9 +670,21 @@ def plot_scatter(
 
             mode = "+".join(modes)
 
+            errors = {
+                "error_x": results.get("x_err", {}),
+                "error_y": results.get("y_err", {}),
+            }
+
             fig = go.Figure()
             for mlip, value in results.items():
+                if mlip in ("x_err", "y_err"):
+                    continue
                 name = "Reference" if mlip == "ref" else mlip
+                error_kwargs = {
+                    axis: {"type": "data", "array": err[mlip]}
+                    for axis, err in errors.items()
+                    if mlip in err
+                }
                 fig.add_trace(
                     go.Scatter(
                         x=value[0],
@@ -658,6 +693,7 @@ def plot_scatter(
                         mode=mode,
                         customdata=customdata,
                         hovertemplate=template,
+                        **error_kwargs,
                     )
                 )
 
@@ -2293,9 +2329,11 @@ def merge_saved_traces(
     )
 
 
-def load_saved_rows(filename: str | Path) -> dict[str, dict[str, Any]]:
+def load_saved_table(
+    filename: str | Path,
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     """
-    Load rows of a previously saved table, keyed by model identifier.
+    Load rows and metric uncertainties of a previously saved table.
 
     Parameters
     ----------
@@ -2304,19 +2342,59 @@ def load_saved_rows(filename: str | Path) -> dict[str, dict[str, Any]]:
 
     Returns
     -------
-    dict[str, dict[str, Any]]
-        Mapping of model identifier to its saved row. Empty if the table has not
-        been saved previously.
+    tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]
+        Mapping of model identifier to its saved row, and mapping of model identifier
+        to its saved uncertainties for each metric. Both are empty if the table has
+        not been saved previously.
     """
     table_path = Path(filename)
     if not table_path.exists():
         print(f"No existing table found at {table_path}. Building new table.")
-        return {}
+        return {}, {}
 
     with table_path.open() as fp:
         saved_table = json.load(fp)
 
-    return {row["id"]: row for row in saved_table.get("data", []) if "id" in row}
+    rows = {row["id"]: row for row in saved_table.get("data", []) if "id" in row}
+    uncertainties = saved_table.get("uncertainties", {})
+
+    return rows, uncertainties
+
+
+def split_metric_estimates(
+    results: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, dict[str, Any]]]]:
+    """
+    Separate metric values from their uncertainties.
+
+    Parameters
+    ----------
+    results
+        Metric names and values for each model. Values may be ``MetricEstimate``
+        instances, which carry confidence intervals.
+
+    Returns
+    -------
+    tuple[dict[str, dict[str, Any]], dict[str, dict[str, dict[str, Any]]]]
+        Metric values for each model, with any ``MetricEstimate`` replaced by its
+        value, and uncertainties keyed by model then metric. Uncertainty fields that
+        are `None` are omitted.
+    """
+    values = {}
+    uncertainties: dict[str, dict[str, dict[str, Any]]] = {}
+    for metric, model_values in results.items():
+        values[metric] = {}
+        for model, value in model_values.items():
+            if not isinstance(value, MetricEstimate):
+                values[metric][model] = value
+                continue
+            values[metric][model] = value.value
+            uncertainties.setdefault(model, {})[metric] = {
+                key: val
+                for key, val in asdict(value).items()
+                if key != "value" and val is not None
+            }
+    return values, uncertainties
 
 
 def build_table(
@@ -2439,11 +2517,15 @@ def build_table(
                     "'mlip_name_map'."
                 )
 
+            # Separate any confidence intervals from the metric values
+            values, uncertainties = split_metric_estimates(results)
+
             # When updating, preserve saved values for models outside this analysis run
             saved_rows = {}
+            saved_uncertainties = {}
             updated_mlips = set(mlips)
             if analysis.update_results:
-                saved_rows = load_saved_rows(filename)
+                saved_rows, saved_uncertainties = load_saved_table(filename)
                 updated_mlips = get_updated_models()
                 warn_dropped_models(saved_rows.keys() - set(mlips), filename)
 
@@ -2455,11 +2537,15 @@ def build_table(
                 saved_row = (
                     saved_rows.get(mlip, {}) if mlip not in updated_mlips else {}
                 )
-                for key, value in results.items():
+                for key, value in values.items():
                     if saved_row:
                         row_data[key] = saved_row.get(key, None)
                     else:
                         row_data[key] = value.get(mlip, None)
+                if saved_row:
+                    uncertainties.pop(mlip, None)
+                    if mlip in saved_uncertainties:
+                        uncertainties[mlip] = saved_uncertainties[mlip]
                 # Store the original model name in the row ID for callbacks, instead of
                 # the display name (e.g. store mace-mp-0a instead of mace-mp-0a-D3)
                 row_data["id"] = mlip
@@ -2531,6 +2617,7 @@ def build_table(
                         "metric_levels_of_theory": metric_levels,
                         "model_configs": model_configs,
                         "model_name_map": model_name_map,
+                        "uncertainties": uncertainties,
                     },
                     fp,
                 )

@@ -15,6 +15,7 @@ from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
 from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.speed import speed_for_table_path
 from ml_peg.app.utils.utils import (
+    add_uncertainty_tooltips,
     apply_column_decimals,
     build_level_of_theory_warnings,
     calculate_column_widths,
@@ -166,6 +167,10 @@ def rebuild_table(
     warning_styles, tooltip_rows = build_level_of_theory_warnings(
         data, model_levels, metric_levels, model_configs
     )
+    uncertainties = table_json.get("uncertainties") or {}
+    tooltip_rows = add_uncertainty_tooltips(
+        data, tooltip_rows or [{} for _ in data], uncertainties, thresholds
+    )
     style_with_warnings = style + warning_styles
 
     # Proportional widths (percent of total) with a pixel minWidth floor, matching
@@ -231,6 +236,7 @@ def rebuild_table(
     table.model_levels_of_theory = model_levels
     table.metric_levels_of_theory = metric_levels
     table.model_configs = model_configs
+    table.uncertainties = uncertainties
     table.tooltip_data = tooltip_rows
     table.model_name_map = model_name_map
     table.column_widths = column_widths
