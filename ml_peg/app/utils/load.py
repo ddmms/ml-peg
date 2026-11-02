@@ -442,9 +442,13 @@ def collect_traj_assets(
             traj_dir.glob(f"*{suffix}"), key=lambda path: int(path.stem)
         )
         if traj_files:
-            struct_trajs[model] = [
-                f"{assets_base}/{model}/{traj_dirname}/{traj_file.name}"
-                for traj_file in traj_files
-            ]
+            # Paths are indexed by plotted point, so a point without a
+            # trajectory must leave a gap rather than shift those after it
+            paths = [""] * (int(traj_files[-1].stem) + 1)
+            for traj_file in traj_files:
+                paths[int(traj_file.stem)] = (
+                    f"{assets_base}/{model}/{traj_dirname}/{traj_file.name}"
+                )
+            struct_trajs[model] = paths
 
     return struct_trajs

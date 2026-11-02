@@ -420,7 +420,11 @@ def write_density_trajectories(
             struct_path = struct_dir / struct_filename_builder(label)
             if not struct_path.exists():
                 continue
-            frames.append(read(struct_path))
+            try:
+                frames.append(read(struct_path))
+            except Exception as exc:
+                # An interrupted calculation can leave a truncated structure
+                warn(f"Could not read {struct_path}: {exc}", stacklevel=2)
 
         # Skipped points keep their index, so remaining files match plotted points
         if frames:

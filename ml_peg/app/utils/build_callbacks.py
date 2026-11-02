@@ -655,6 +655,8 @@ def struct_from_scatter(
             if point["pointNumber"] >= len(structs):
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             struct = structs[point["pointNumber"]]
+            if not struct:
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = 0
 
         frames = (
@@ -756,6 +758,8 @@ def struct_from_multi_scatters(
             struct = curve_structs
             index = idx
         else:
+            if idx >= len(curve_structs) or not curve_structs[idx]:
+                return Div()
             struct = curve_structs[idx]
             index = 0
 
