@@ -89,9 +89,7 @@ def plot_relaxation(model_name: str):
         except (IndexError, ValueError):
             return None
 
-    # Stopping before the step limit without converging means the relaxation was
-    # interrupted, so its final structure says nothing about Cl2 stability.
-    # Reaching the step limit is a complete relaxation, which can still be judged.
+    # Accept a relaxation that converged, or that ran all its steps
     if fmax > FMAX and steps < MAX_STEPS:
         return None
 

@@ -266,7 +266,7 @@ def sample_density_grid(
     if ref_arr.size == 0 or pred_arr.size == 0:
         return [], [], []
 
-    # Points cannot be paired, so there is nothing meaningful to plot
+    # Points cannot be paired
     if ref_arr.size != pred_arr.size:
         warn(
             f"{pred_arr.size} predictions for {ref_arr.size} reference values. "

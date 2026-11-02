@@ -17,7 +17,7 @@ MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
-# Convergence criteria, also used by the analysis to judge each relaxation
+# Convergence criteria, also used by the analysis
 FMAX = 0.01
 MAX_STEPS = 2000
 
