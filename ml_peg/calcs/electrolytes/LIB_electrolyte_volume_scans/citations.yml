@@ -8,4 +8,8 @@ contributors:
   - name: "Joseph Hart"
     github: "joehart2001"
 
-citations: []
+citations:
+  - bibtex_key: batatia2025foundation
+    role: benchmark_method
+  - bibtex_key: magduau2023interintra_volumescans
+    role: inspired_by

@@ -101,6 +101,12 @@ Root mean square errors for each predicted property compared to PBE data.
 All properties listed above are calculated for each structure. The intra decomposition for a frame is achieved by isolating each molecule and evaluating it with PBE.
 The inter properties are then calculated by subtracting the intra property from the total property prediction. The D3 correction is applied both on the models and the PBE functional.
 
+* Ilyes Batatia et al. (2025). A foundation model for atomistic materials
+  chemistry. https://doi.org/10.1063/5.0297006
+* Ioan-Bogdan Magdău et al. (2023). Machine learning force fields for
+  molecular liquids: Ethylene Carbonate/Ethyl Methyl Carbonate binary
+  solvent. https://doi.org/10.1038/s41524-023-01100-w
+
 Computational cost
 ------------------
 
@@ -140,6 +146,12 @@ Volume scans consist of an initial config, where the molecules are frozen and th
 The resulting set of configurations represent a scan across different electrolyte densities with all intra properties remaining unchanged.
 The relative energy difference between densities is fully dependent on inter-molecular interactions, which heavily influence the density and diffusivity of an electrolyte.
 The D3 correction is applied both on the models and the PBE functional.
+
+* Ilyes Batatia et al. (2025). A foundation model for atomistic materials
+  chemistry. https://doi.org/10.1063/5.0297006
+* Ioan-Bogdan Magdău et al. (2023). Machine learning force fields for
+  molecular liquids: Ethylene Carbonate/Ethyl Methyl Carbonate binary
+  solvent. https://doi.org/10.1038/s41524-023-01100-w
 
 Computational cost
 ------------------
