@@ -228,6 +228,7 @@ def register_summary_table_callbacks(
         State(f"{prefix}-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
         optional=True,
+        **COMPRESS_STORES,
     )
     def sync_summary_table(
         selected_models: list[str] | None,

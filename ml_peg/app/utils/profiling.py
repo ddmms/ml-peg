@@ -7,6 +7,7 @@ import cProfile
 import json
 import os
 from pathlib import Path
+from threading import Lock
 from time import perf_counter
 from uuid import uuid4
 
@@ -170,6 +171,10 @@ def enable_request_profiling(server: Flask, directory: Path | None) -> None:
     profiled = ProfilerMiddleware(
         original, stream=None, profile_dir=str(directory), filename_format=filename
     )
+    # cProfile claims a process-global sys.monitoring tool id, so two overlapping
+    # profiled requests raise "Another profiling tool is already active" and 500.
+    # The browser profiler loads layout and dependencies in parallel, so serialise.
+    profile_lock = Lock()
 
     def dispatch(environ, start_response):
         """
@@ -192,7 +197,10 @@ def enable_request_profiling(server: Flask, directory: Path | None) -> None:
             ("/_dash-layout", "/_dash-dependencies", "/_dash-update-component")
         ):
             environ["ml_peg.profiling"] = True
-            return profiled(environ, start_response)
+            # Timings start inside ProfilerMiddleware, so waiting here is not
+            # counted against the request that waited.
+            with profile_lock:
+                return profiled(environ, start_response)
         return original(environ, start_response)
 
     server.wsgi_app = dispatch

@@ -61,6 +61,27 @@ class SkipActionError(Exception):
     """An action has no applicable data in the current app."""
 
 
+def _callback_name(request) -> str | None:
+    """
+    Read the output name from a callback request.
+
+    Callbacks using ``compress_payload`` send a Blob, which Chromium does not expose
+    to Playwright, so these are unavoidably unnamed here. Their names and sizes are
+    recorded server-side instead (see utils/profiling.py).
+
+    Parameters
+    ----------
+    request
+        Completed Playwright POST request.
+
+    Returns
+    -------
+    str | None
+        Callback output name, or None if the body is not readable.
+    """
+    return (request.post_data_json or {}).get("output")
+
+
 class Journey:
     """
     Measure actions through a short period of network and DOM inactivity.
@@ -144,9 +165,12 @@ class Journey:
                     if timing["responseEnd"] >= 0
                     else None,
                     "failure": request.failure,
-                    "callback": (request.post_data_json or {}).get("output")
+                    "callback": _callback_name(request)
                     if request.method == "POST"
                     else None,
+                    # Explains a null callback: the body was gzipped and unreadable.
+                    "compressed": "gzip"
+                    in (request.headers.get("content-encoding") or ""),
                     "response_bytes": response.headers.get("content-length")
                     if response
                     else None,
