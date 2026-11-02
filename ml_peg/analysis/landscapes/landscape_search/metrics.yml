@@ -18,8 +18,8 @@ metrics:
     tooltip: "90th percentile of the same distribution, distinguishing a model that places most minima well but loses a few from one that is uniformly imprecise."
     level_of_theory: ωB97X/6-31G(d)
   Saddles recovered:
-    good: 0.9
-    bad: 0.3
+    good: 0.6
+    bad: 0.2
     unit: fraction
     tooltip: "Fraction of the DFT transition states found from scratch. Strongly dependent on how many pairs of minima the search attempts to connect, which is recorded with the result."
     level_of_theory: ωB97X/6-31G(d)
@@ -36,8 +36,8 @@ metrics:
     tooltip: "90th percentile of the saddle RMSD distribution."
     level_of_theory: ωB97X/6-31G(d)
   Connectivity preserved:
-    good: 0.9
-    bad: 0.4
+    good: 0.6
+    bad: 0.2
     unit: fraction
     tooltip: "Fraction of matched transition states joining the two minima that their DFT counterparts join. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
     level_of_theory: ωB97X/6-31G(d)
@@ -52,6 +52,24 @@ metrics:
     bad: 0.2
     unit: fraction
     tooltip: "Fraction of the model's minima holding one of the molecule's own bonds more than 20% away from its length in the reference. Invisible to the row above, which compares bonding graphs: a bond crushed to two thirds of its length is still a bond, so the graph is unchanged and the structure reads as the right molecule at an impossible geometry. The flagged structures are written out beside the model's results."
+    level_of_theory: ωB97X/6-31G(d)
+  Minima near-missed:
+    good: 0.0
+    bad: 0.2
+    unit: fraction
+    tooltip: "Fraction of the DFT minima whose closest counterpart lies between the 0.3 Å matching radius and half as much again. Recovery above is a pass rate over a hard radius, so a reference missed by 0.31 Å scores the same as one missed by 3 Å; this row separates the two. A model with low recovery and a high value here is systematically displaced rather than failing to find the structures, which is a correctable offset."
+    level_of_theory: ωB97X/6-31G(d)
+  Minima nearest (median):
+    good: 0.05
+    bad: 0.6
+    unit: Å
+    tooltip: "Median distance from each DFT minimum to the closest one the model found, over every reference rather than only the matched ones. Unlike the RMSD rows this does not condition on success, so it does not flatter a model that found two structures precisely and missed the rest."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddle nearest (median):
+    good: 0.05
+    bad: 0.6
+    unit: Å
+    tooltip: "Median distance from each DFT transition state to the closest one the model found, over every reference rather than only the matched ones."
     level_of_theory: ωB97X/6-31G(d)
   # TODO: not yet implemented. Mean first passage time between a chosen pair of
   # minima, derived from the landscape the model built and compared with the

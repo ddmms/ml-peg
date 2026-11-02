@@ -83,6 +83,10 @@ FOUND_GLOB = "*_found.extxyz"
 # Below this RMSD two structures are the same one. The same radius the search
 # itself uses to decide whether a newly found minimum is new.
 SAME_STRUCTURE = 0.3
+# Outer edge of a near miss, as a multiple of SAME_STRUCTURE. A reference
+# whose nearest neighbour falls between the two is one the search reached
+# but not closely enough to count, which a pass rate alone cannot show.
+NEAR_MISS_FACTOR = 1.5
 # ASE's natural cutoffs scaled. At 1.0 the covalent radii are tight enough that
 # every molecule containing hydrogen reads as fragmented; 1.1 to 1.2 is the
 # usable range, and the neighbour list adds the skin to EACH radius, so it is
@@ -304,6 +308,55 @@ def _assign(matrix: np.ndarray) -> dict[int, tuple[int, float]]:
         for r, c in zip(rows, columns, strict=True)
         if matrix[r, c] < SAME_STRUCTURE
     }
+
+
+def _nearest(matrix: np.ndarray) -> list[float]:
+    """
+    Distance from each reference structure to the closest one found.
+
+    Reported alongside the match counts because those are a pass rate over a
+    hard radius: a reference missed by 0.31 Å and one missed by 3 Å both
+    score zero, which reads as total failure rather than as the systematic
+    offset the first one is. Unconstrained, unlike ``_assign`` -- the question
+    is whether the search reached this reference at all, and the one-to-one
+    constraint would answer a different one when two references share a
+    nearest neighbour.
+
+    Parameters
+    ----------
+    matrix
+        Distances, reference by found.
+
+    Returns
+    -------
+    list[float]
+        One distance per reference, infinite where nothing was found.
+    """
+    if matrix.size == 0:
+        return [float("inf")] * matrix.shape[0]
+    return [float(d) for d in matrix.min(axis=1)]
+
+
+def _near_missed(nearest: list[float]) -> int:
+    """
+    Count references the search reached but not closely enough to match.
+
+    Parameters
+    ----------
+    nearest
+        Distance from each reference to the closest structure found.
+
+    Returns
+    -------
+    int
+        How many fall between the matching radius and ``NEAR_MISS_FACTOR``
+        times it.
+    """
+    return sum(
+        1
+        for d in nearest
+        if SAME_STRUCTURE <= d < NEAR_MISS_FACTOR * SAME_STRUCTURE
+    )
 
 
 def _endpoints(atoms: Atoms) -> tuple[int, ...]:
@@ -564,18 +617,16 @@ def _compare(model_name: str) -> dict:
         if not found_minima:
             continue
 
-        minima_match = _assign(
-            _distances(
-                ref_minima, [a.get_positions().flatten() for a in found_minima], symbols
-            )
+        minima_distances = _distances(
+            ref_minima, [a.get_positions().flatten() for a in found_minima], symbols
         )
-        saddle_match = _assign(
-            _distances(
-                ref_saddles,
-                [a.get_positions().flatten() for a in found_saddles],
-                symbols,
-            )
+        minima_match = _assign(minima_distances)
+        saddle_distances = _distances(
+            ref_saddles,
+            [a.get_positions().flatten() for a in found_saddles],
+            symbols,
         )
+        saddle_match = _assign(saddle_distances)
 
         # Which reference minimum each found minimum corresponds to, for the
         # connectivity test. A found minimum matching nothing is -1.
@@ -621,6 +672,10 @@ def _compare(model_name: str) -> dict:
             "saddles_matched": len(saddle_match),
             "minima_rmsd": [d for _, d in minima_match.values()],
             "saddle_rmsd": [d for _, d in saddle_match.values()],
+            "minima_nearest": _nearest(minima_distances),
+            "saddle_nearest": _nearest(saddle_distances),
+            "minima_near_missed": _near_missed(_nearest(minima_distances)),
+            "saddle_near_missed": _near_missed(_nearest(saddle_distances)),
             "connectivity_preserved": preserved,
             "off_reference_minima": off_reference,
             "distorted_minima": len(distorted),
@@ -834,6 +889,80 @@ def get_distorted_minima(comparison: dict[str, dict]) -> dict[str, float]:
 
 
 @pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_minima_nearest.json",
+    title="How close the search got to every DFT minimum",
+    y_label="Distance to the nearest found minimum / Å",
+)
+def minima_nearest(comparison: dict[str, dict]) -> dict[str, list]:
+    """
+    Get the distance to the closest found minimum for every DFT minimum.
+
+    Over all reference minima rather than the matched ones, so a model whose
+    structures sit a little outside the matching radius is distinguishable
+    from one that found nothing like them. References with nothing found at
+    all are left out, having no finite distance to show; the recovery counts
+    already carry that case.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-reference distance in Å.
+    """
+    return {
+        model_name: [
+            d
+            for v in comparison[model_name].values()
+            for d in v["minima_nearest"]
+            if np.isfinite(d)
+        ]
+        for model_name in MODELS
+    }
+
+
+@pytest.fixture
+@plot_violin(
+    filename=OUT_PATH / "figure_saddle_nearest.json",
+    title="How close the search got to every DFT transition state",
+    y_label="Distance to the nearest found saddle / Å",
+)
+def saddle_nearest(comparison: dict[str, dict]) -> dict[str, list]:
+    """
+    Get the distance to the closest found saddle for every DFT saddle.
+
+    Returns
+    -------
+    dict[str, list]
+        Per-reference distance in Å.
+    """
+    return {
+        model_name: [
+            d
+            for v in comparison[model_name].values()
+            for d in v["saddle_nearest"]
+            if np.isfinite(d)
+        ]
+        for model_name in MODELS
+    }
+
+
+@pytest.fixture
+def get_near_missed(comparison: dict[str, dict]) -> dict[str, float]:
+    """
+    Get the fraction of reference minima the search reached but did not match.
+
+    Returns
+    -------
+    dict[str, float]
+        One fraction per model.
+    """
+    return {
+        m: _pooled(comparison[m], "minima_near_missed", "n_reference_minima")
+        for m in MODELS
+    }
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "landscape_search_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -849,6 +978,9 @@ def metrics(
     get_connectivity: dict[str, float],
     get_off_reference: dict[str, float],
     get_distorted_minima: dict[str, float],
+    minima_nearest: dict[str, list],
+    saddle_nearest: dict[str, list],
+    get_near_missed: dict[str, float],
 ) -> dict[str, dict]:
     """
     Collect all metrics.
@@ -872,6 +1004,9 @@ def metrics(
         "Connectivity preserved": get_connectivity,
         "Off-reference minima": get_off_reference,
         "Distorted minima": get_distorted_minima,
+        "Minima near-missed": get_near_missed,
+        "Minima nearest (median)": _summarise(minima_nearest, np.median),
+        "Saddle nearest (median)": _summarise(saddle_nearest, np.median),
     }
 
 

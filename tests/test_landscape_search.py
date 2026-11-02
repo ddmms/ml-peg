@@ -12,10 +12,15 @@ from ml_peg.analysis.landscapes.landscape_search.analyse_landscape_search import
     DEFAULT_THRESHOLDS,
     DEFAULT_TOOLTIPS,
     DISTORTED_SUBDIR,
+    NEAR_MISS_FACTOR,
+    SAME_STRUCTURE,
+    _assign,
     _bond_deviations,
     _bond_lengths,
     _bonds,
     _is_distorted,
+    _near_missed,
+    _nearest,
     _write_distorted,
 )
 
@@ -226,3 +231,93 @@ def test_the_metric_is_registered() -> None:
     assert "Distorted minima" in DEFAULT_THRESHOLDS
     assert "Distorted minima" in DEFAULT_TOOLTIPS
     assert DEFAULT_TOOLTIPS["Distorted minima"]
+
+
+# --- nearest-distance reporting -------------------------------------------
+# Recovery is a pass rate over a hard 0.3 A radius, so a reference missed by
+# 0.31 A and one missed by 3 A score the same. mace-mp-0a on paracetamol put
+# two of four reference minima at 0.308 and 0.352 A and scored zero, which
+# reads as total failure rather than as the systematic offset it is. These
+# cover reporting the distance alongside the count.
+
+
+def test_nearest_reports_a_distance_for_every_reference() -> None:
+    """Every reference gets a distance, matched or not."""
+    matrix = np.array([[0.1, 0.9], [0.8, 0.7], [2.0, 2.5]])
+    assert _nearest(matrix) == pytest.approx([0.1, 0.7, 2.0])
+
+
+def test_nearest_reports_misses_not_only_matches() -> None:
+    """A reference just outside the cut still reports how far it was.
+
+    This is the whole point of the measure: ``_assign`` drops the pair, so
+    without this the near miss is indistinguishable from nothing found.
+    """
+    just_outside = SAME_STRUCTURE + 0.008
+    matrix = np.array([[just_outside]])
+    assert _assign(matrix) == {}
+    assert _nearest(matrix) == pytest.approx([just_outside])
+
+
+def test_nearest_is_not_constrained_by_the_assignment() -> None:
+    """Two references may name the same nearest structure.
+
+    ``_assign`` is one-to-one and must give that structure to one of them,
+    structure and the other is dropped. The
+    question here is "did the search get anywhere near this reference", which
+    the one-to-one constraint would distort.
+    """
+    matrix = np.array([[0.05, 1.0], [0.06, 1.0]])
+    assert _nearest(matrix) == pytest.approx([0.05, 0.06])
+    # One structure, two references that both want it: the assignment can
+    # only hand it to one, and the other drops out with nothing recorded.
+    assert len(_assign(matrix)) == 1
+
+
+def test_nearest_is_infinite_when_nothing_was_found() -> None:
+    """No found structures means no distance, reported as infinite."""
+    assert _nearest(np.zeros((3, 0))) == [float("inf")] * 3
+
+
+def test_nearest_of_an_empty_reference_is_empty() -> None:
+    """No references means nothing to report."""
+    assert _nearest(np.zeros((0, 4))) == []
+
+
+def test_near_miss_counts_only_the_band_outside_the_radius() -> None:
+    """Inside the radius is a match, far outside is a failure; neither counts."""
+    inside = SAME_STRUCTURE - 0.01
+    band = SAME_STRUCTURE + 0.01
+    far = NEAR_MISS_FACTOR * SAME_STRUCTURE + 0.01
+    assert _near_missed([inside, band, far]) == 1
+
+
+def test_near_miss_boundaries_are_half_open() -> None:
+    """Exactly at the radius is a near miss; exactly at the outer edge is not."""
+    assert _near_missed([SAME_STRUCTURE]) == 1
+    assert _near_missed([NEAR_MISS_FACTOR * SAME_STRUCTURE]) == 0
+
+
+def test_near_miss_ignores_references_with_nothing_found() -> None:
+    """An infinite distance is not a near miss."""
+    assert _near_missed([float("inf"), float("inf")]) == 0
+
+
+def test_the_paracetamol_near_misses_are_counted() -> None:
+    """The case this measure exists for.
+
+    mace-mp-0a put two of paracetamol's four reference minima at 0.308 and
+    0.352 Å and matched none of the four, which reads as total failure.
+    """
+    assert _near_missed([0.308, 0.352, 0.586, 0.571]) == 2
+
+
+def test_the_new_metrics_are_registered() -> None:
+    """Every new table row needs a threshold and a tooltip."""
+    for name in (
+        "Minima near-missed",
+        "Minima nearest (median)",
+        "Saddle nearest (median)",
+    ):
+        assert name in DEFAULT_THRESHOLDS
+        assert name in DEFAULT_TOOLTIPS
