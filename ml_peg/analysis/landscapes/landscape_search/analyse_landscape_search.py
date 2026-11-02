@@ -992,21 +992,21 @@ def metrics(
     """
     return {
         "Minima recovered": get_minima_recovered,
-        "Minima RMSD (median)": _summarise(minima_rmsd, np.median),
-        "Minima RMSD (90th pct)": _summarise(
+        "Matched minima RMSD (median)": _summarise(minima_rmsd, np.median),
+        "Matched minima RMSD (90th pct)": _summarise(
             minima_rmsd, lambda v: np.percentile(v, 90)
         ),
         "Saddles recovered": get_saddles_recovered,
-        "Saddle RMSD (median)": _summarise(saddle_rmsd, np.median),
-        "Saddle RMSD (90th pct)": _summarise(
+        "Matched saddle RMSD (median)": _summarise(saddle_rmsd, np.median),
+        "Matched saddle RMSD (90th pct)": _summarise(
             saddle_rmsd, lambda v: np.percentile(v, 90)
         ),
         "Connectivity preserved": get_connectivity,
         "Off-reference minima": get_off_reference,
         "Distorted minima": get_distorted_minima,
         "Minima near-missed": get_near_missed,
-        "Minima nearest (median)": _summarise(minima_nearest, np.median),
-        "Saddle nearest (median)": _summarise(saddle_nearest, np.median),
+        "Nearest minima RMSD (median)": _summarise(minima_nearest, np.median),
+        "Nearest saddle RMSD (median)": _summarise(saddle_nearest, np.median),
     }
 
 

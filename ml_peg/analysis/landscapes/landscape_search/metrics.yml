@@ -5,13 +5,13 @@ metrics:
     unit: fraction
     tooltip: "Fraction of the DFT minima found by a landscape built from scratch under the MLIP. Reported with the search settings used, which control it strongly."
     level_of_theory: ωB97X/6-31G(d)
-  Minima RMSD (median):
+  Matched minima RMSD (median):
     good: 0.02
     bad: 0.3
     unit: Å
     tooltip: "Median RMSD between each DFT minimum and the model minimum matched to it, one to one. Accuracy given recovery, reported separately from coverage."
     level_of_theory: ωB97X/6-31G(d)
-  Minima RMSD (90th pct):
+  Matched minima RMSD (90th pct):
     good: 0.05
     bad: 0.5
     unit: Å
@@ -23,13 +23,13 @@ metrics:
     unit: fraction
     tooltip: "Fraction of the DFT transition states found from scratch. Strongly dependent on how many pairs of minima the search attempts to connect, which is recorded with the result."
     level_of_theory: ωB97X/6-31G(d)
-  Saddle RMSD (median):
+  Matched saddle RMSD (median):
     good: 0.02
     bad: 0.3
     unit: Å
     tooltip: "Median RMSD between each DFT transition state and the model saddle matched to it."
     level_of_theory: ωB97X/6-31G(d)
-  Saddle RMSD (90th pct):
+  Matched saddle RMSD (90th pct):
     good: 0.05
     bad: 0.5
     unit: Å
@@ -59,13 +59,13 @@ metrics:
     unit: fraction
     tooltip: "Fraction of the DFT minima whose closest counterpart lies between the 0.3 Å matching radius and half as much again. Recovery above is a pass rate over a hard radius, so a reference missed by 0.31 Å scores the same as one missed by 3 Å; this row separates the two. A model with low recovery and a high value here is systematically displaced rather than failing to find the structures, which is a correctable offset."
     level_of_theory: ωB97X/6-31G(d)
-  Minima nearest (median):
+  Nearest minima RMSD (median):
     good: 0.05
     bad: 0.6
     unit: Å
     tooltip: "Median distance from each DFT minimum to the closest one the model found, over every reference rather than only the matched ones. Unlike the RMSD rows this does not condition on success, so it does not flatter a model that found two structures precisely and missed the rest."
     level_of_theory: ωB97X/6-31G(d)
-  Saddle nearest (median):
+  Nearest saddle RMSD (median):
     good: 0.05
     bad: 0.6
     unit: Å

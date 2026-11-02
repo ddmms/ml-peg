@@ -316,8 +316,8 @@ def test_the_new_metrics_are_registered() -> None:
     """Every new table row needs a threshold and a tooltip."""
     for name in (
         "Minima near-missed",
-        "Minima nearest (median)",
-        "Saddle nearest (median)",
+        "Nearest minima RMSD (median)",
+        "Nearest saddle RMSD (median)",
     ):
         assert name in DEFAULT_THRESHOLDS
         assert name in DEFAULT_TOOLTIPS
