@@ -4423,7 +4423,7 @@ wheels = [
 
 [[package]]
 name = "janus-core"
-version = "0.9.8"
+version = "0.9.9"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ase" },
@@ -4439,9 +4439,9 @@ dependencies = [
     { name = "typer" },
     { name = "typer-config" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/47/4f/f2bde722007b5c2505925e108733375027d357f225f82f5ee8cad567f1d8/janus_core-0.9.8.tar.gz", hash = "sha256:2926aea7a4a531fb62e5382b8e77823a51eac62f74c3943088416bfb4a1027bf", size = 83099, upload-time = "2026-10-02T12:31:17.478Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/98/d944e3f95188065344cc720d262c5c1cec1fdec1a6928c63788169a9a133/janus_core-0.9.9.tar.gz", hash = "sha256:419b24f328131d0611b3baf663c030a0760a8d027513fe1d4f2f2be57444d7ed", size = 84146, upload-time = "2026-10-28T13:22:25.379Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/d1/b4f9bdc1cd949219f968979882971624fa1080f4ead55fd76d070189ddc8/janus_core-0.9.8-py3-none-any.whl", hash = "sha256:42190bee7f7ab48f96be33efa567e3d161bf9a74a4009c1810262f96bbf48942", size = 114164, upload-time = "2026-10-02T12:31:16.349Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/99/12e6caa573177dff040e2e918c3aadcd999779e73ecfb76bf0953e53293a/janus_core-0.9.9-py3-none-any.whl", hash = "sha256:02d4814596d78187609c3c19fb297f7d6656274095d0a7863e0217bca2c52b3d", size = 115310, upload-time = "2026-10-28T13:22:23.887Z" },
 ]
 
 [[package]]
@@ -6569,7 +6569,7 @@ requires-dist = [
     { name = "deepmd-kit", extras = ["torch"], marker = "extra == 'dpa'", specifier = "==3.2.0" },
     { name = "fairchem-core", marker = "extra == 'uma'", specifier = "==2.19.0" },
     { name = "graph-longrange", marker = "extra == 'mace'", specifier = "==0.4.0" },
-    { name = "janus-core", specifier = ">=0.9.2,<1.0.0" },
+    { name = "janus-core", specifier = ">=0.9.9,<1.0.0" },
     { name = "kaleido", specifier = ">=1.0.0,<2" },
     { name = "mace-torch", marker = "extra == 'mace'", specifier = "==0.3.16" },
     { name = "matcalc", specifier = ">=0.4.7,<0.5" },
