@@ -202,6 +202,8 @@ def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
         frames[system] = atoms
 
     graphite_energy = energy_per_atom["Graphite"]
+    if not frames["Graphite"].info["converged"]:
+        graphite_energy = np.nan
     for system, atoms in frames.items():
         atoms.info["energy_above_graphite_ev_per_atom"] = (
             energy_per_atom[system] - graphite_energy
