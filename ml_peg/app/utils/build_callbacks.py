@@ -659,9 +659,12 @@ def struct_from_scatter(
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = 0
 
-        frames = (
-            frame_groups[point["pointNumber"]] if frame_groups is not None else None
-        )
+        frames = None
+        if frame_groups is not None:
+            # Missing if the benchmark has not been fully analysed
+            if point["pointNumber"] >= len(frame_groups):
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
+            frames = frame_groups[point["pointNumber"]]
         return Div(
             Iframe(
                 srcDoc=generate_weas_html(
