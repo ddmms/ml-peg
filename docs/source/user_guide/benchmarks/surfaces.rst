@@ -365,34 +365,3 @@ Reference data:
 
 * PBE conjugate gradient geomerty optimizations are performed via VASP, with a cutoff energy of 500 eV.
 
-
-Surface Alloy Reorganisation
-=============================
-
-Summary
--------
-
-Performance in predicting reaction energies and barriers for mechanisms involving metal dopants at terraces and step edge defects.
-
-Metrics
--------
-
-
-Benchmark speed
-------------------
-
-Fast: tests are likely to take five to ten minutes.
-
-Data availability
------------------
-
-Input data:
-
-* Structures for local minima and transition states, obtained with optB86b-vdW as a reference method.
-
-  * Karageorgiou I, Michaelides A, Berger F. "Mechanisms for the formation of active sites in single-atom alloys." Nanoscale, 2026, 18(18), 9709-22. https://doi.org/10.1039/d5nr05517b
-  
-Reference data:
-
-* PBE conjugate gradient geomerty optimizations are performed via VASP, with a cutoff energy of 400 eV.
-
