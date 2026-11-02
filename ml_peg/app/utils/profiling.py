@@ -10,6 +10,7 @@ from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
+from dash._compression import decompress_payload
 from flask import Flask, request
 from werkzeug.middleware.profiler import ProfilerMiddleware
 
@@ -64,6 +65,28 @@ def profile_startup(directory: Path | None):
         )
 
 
+def _request_payload(compressed: bool) -> dict | None:
+    """
+    Read the callback request body, un-gzipping it when needed.
+
+    Parameters
+    ----------
+    compressed
+        Whether the request carries a gzipped body (``compress_payload``).
+
+    Returns
+    -------
+    dict | None
+        Decoded payload, or None if it cannot be read.
+    """
+    if not compressed:
+        return request.get_json(silent=True)
+    try:
+        return decompress_payload(request.data)
+    except (ValueError, OSError):
+        return None
+
+
 def enable_request_profiling(server: Flask, directory: Path | None) -> None:
     """
     Profile Dash requests and record callback names and payload sizes.
@@ -86,9 +109,12 @@ def enable_request_profiling(server: Flask, directory: Path | None) -> None:
         """Capture the callback output name without recording its inputs."""
         if not request.environ.get("ml_peg.profiling"):
             return
-        metadata = {"request_bytes": request.content_length}
+        # request_bytes is the on-the-wire size, so compressed for callbacks using
+        # compress_payload; "compressed" distinguishes those from small raw ones.
+        compressed = "gzip" in (request.headers.get("Content-Encoding") or "")
+        metadata = {"request_bytes": request.content_length, "compressed": compressed}
         if request.path.endswith("/_dash-update-component"):
-            payload = request.get_json(silent=True)
+            payload = _request_payload(compressed)
             if isinstance(payload, dict):
                 metadata["callback"] = payload.get("output")
         request.environ["ml_peg.profile"] = metadata
