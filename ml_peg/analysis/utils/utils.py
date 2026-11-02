@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import threading
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.io import read, write
@@ -263,6 +264,15 @@ def sample_density_grid(
     pred_arr = np.asarray(pred_vals, dtype=float)
 
     if ref_arr.size == 0 or pred_arr.size == 0:
+        return [], [], []
+
+    # Points cannot be paired, so there is nothing meaningful to plot
+    if ref_arr.size != pred_arr.size:
+        warn(
+            f"{pred_arr.size} predictions for {ref_arr.size} reference values. "
+            "No density plotted.",
+            stacklevel=2,
+        )
         return [], [], []
 
     # Drop missing data, so a single NaN cannot make all bins NaN
