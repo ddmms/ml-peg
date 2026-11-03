@@ -98,5 +98,4 @@ def test_extensivity(metrics: dict[str, dict]) -> None:
         write_info=True,
         write_structs=True,
         out_path=OUT_PATH,
-        index=0,
     )
