@@ -241,6 +241,12 @@ class ConvexHullAlexandriaApp(BaseApp):
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
         cell_to_plot = {}
+        # Each violin figure holds all the models, so load it once for all cells
+        violins = {}
+        for _, violin_stem, _ in PLOTS.values():
+            violin_path = DATA_PATH / f"{violin_stem}.json"
+            if violin_stem not in violins and violin_path.exists():
+                violins[violin_stem] = Graph(figure=read_json(violin_path))
         for model in MODELS:
             plots = {}
             for column_id, (density_stem, violin_stem, table_stem) in PLOTS.items():
@@ -255,9 +261,8 @@ class ConvexHullAlexandriaApp(BaseApp):
                         )
                         if density is not None:
                             components.append(density)
-                violin_path = DATA_PATH / f"{violin_stem}.json"
-                if violin_path.exists():
-                    components.append(Graph(figure=read_json(violin_path)))
+                if violin_stem in violins:
+                    components.append(violins[violin_stem])
                 if table_stem is not None:
                     table_path = DATA_PATH / model / f"{table_stem}.json"
                     if table_path.exists():
