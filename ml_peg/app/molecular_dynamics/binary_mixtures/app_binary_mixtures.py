@@ -48,6 +48,8 @@ DETAIL_DIRS = {
     "parity_pure_density": "convergence_density",
     "flag_summary": "convergence_h",
 }
+# Second panel, shown alongside the first: V^E running averages
+SECOND_DETAIL_DIRS = {"parity_vex": "convergence_vex"}
 
 
 class BinaryMixturesApp(BaseApp):
@@ -57,6 +59,7 @@ class BinaryMixturesApp(BaseApp):
         """Register callbacks to app."""
         figure_placeholder = f"{BENCHMARK_NAME}-figure-placeholder"
         detail_placeholder = f"{BENCHMARK_NAME}-detail-placeholder"
+        second_detail_placeholder = f"{BENCHMARK_NAME}-second-detail-placeholder"
         struct_placeholder = f"{BENCHMARK_NAME}-struct-placeholder"
 
         cell_to_plot: dict[str, dict] = {}
@@ -89,6 +92,13 @@ class BinaryMixturesApp(BaseApp):
                     plot_id=detail_placeholder,
                     plot_dir=model_dir / DETAIL_DIRS[figure],
                 )
+                if figure in SECOND_DETAIL_DIRS:
+                    plot_from_scatter_files(
+                        scatter_id=scatter_id,
+                        plot_id=second_detail_placeholder,
+                        plot_dir=model_dir / SECOND_DETAIL_DIRS[figure],
+                        graph_id=f"{scatter_id}-second-plot",
+                    )
                 if structs:
                     struct_from_scatter(
                         scatter_id=scatter_id,
@@ -104,7 +114,11 @@ class BinaryMixturesApp(BaseApp):
         )
         clear_from_table_cell(
             table_id=self.table_id,
-            plot_ids=[detail_placeholder, struct_placeholder],
+            plot_ids=[
+                detail_placeholder,
+                second_detail_placeholder,
+                struct_placeholder,
+            ],
         )
 
 
@@ -124,13 +138,15 @@ def get_app() -> BinaryMixturesApp:
             "density of 10 binary liquid mixtures (30 compositions, 2 aqueous), "
             "against experiment, from 1 ns NPT MD after 0.2 ns equilibration. "
             "Click a cell for a parity plot, then a point for its composition "
-            "curve or time series and final structure."
+            "curve or time series and final structure (V^E points also show the "
+            "running average of V^E)."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "binary_mixtures_metrics_table.json",
         extra_components=[
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-detail-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-second-detail-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,

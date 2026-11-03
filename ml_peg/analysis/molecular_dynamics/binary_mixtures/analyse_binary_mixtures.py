@@ -681,6 +681,64 @@ def system_plots(box_results) -> None:
                     )
 
 
+def write_convergence(
+    filename: Path,
+    time: np.ndarray,
+    values: np.ndarray,
+    estimate: TimeSeriesEstimate,
+    title: str,
+    y_label: str,
+) -> None:
+    """
+    Write block means, the production running mean and the final estimate.
+
+    Parameters
+    ----------
+    filename
+        Output JSON path.
+    time
+        Times of the whole run in ps, including equilibration.
+    values
+        Value at each time.
+    estimate
+        Production mean and its uncertainty.
+    title
+        Figure title.
+    y_label
+        Quantity and unit for the y axis.
+    """
+    data = pd.DataFrame({"t": time, "y": values})
+    block = ((data.t - 1e-6) // CONVERGENCE_BLOCK_PS).clip(lower=0)
+    means = data.groupby(block).mean()
+    prod = data[data.t > EQUILIBRATION_PS]
+    # Skip the first 50 ps, where the running mean is mostly noise
+    running = prod.y.expanding().mean()[
+        prod.t > EQUILIBRATION_PS + RUNNING_MEAN_SKIP_PS
+    ]
+    stride = max(1, len(prod) // 200)
+    write_scatter(
+        filename,
+        {
+            f"{CONVERGENCE_BLOCK_PS:.0f} ps block mean": [
+                means.t.tolist(),
+                means.y.tolist(),
+            ],
+            "running mean (production)": [
+                prod.t[running.index].iloc[::stride].tolist(),
+                running.iloc[::stride].tolist(),
+            ],
+            "production mean ± 95 % CI": [
+                [float(prod.t.iloc[-1])],
+                [estimate.mean],
+            ],
+            "y_err": {"production mean ± 95 % CI": [estimate.ci_95]},
+        },
+        title=title,
+        x_label=f"Time / ps (production starts at {EQUILIBRATION_PS:.0f} ps)",
+        y_label=y_label,
+    )
+
+
 @pytest.fixture(scope="module")
 def convergence_plots(box_results, flags) -> None:
     """
@@ -695,56 +753,63 @@ def convergence_plots(box_results, flags) -> None:
     """
     for model_name, model_results in box_results.items():
         for box_id, result in model_results.items():
-            path = CALC_PATH / model_name / f"{box_id}.csv"
-            data = pd.read_csv(path)
-            data["h"] = observables(data, N_MOLECULES[box_id])["h"]
-            data["density"] = data.density_g_cm3
-            block = ((data.time_ps - 1e-6) // CONVERGENCE_BLOCK_PS).clip(lower=0)
-            means = data.groupby(block).agg(
-                t=("time_ps", "mean"),
-                h=("h", "mean"),
-                density=("density", "mean"),
-            )
-            prod = data[data.time_ps > EQUILIBRATION_PS]
-            title_flags = (
-                "flags: " + "; ".join(flags.get(model_name, {}).get(box_id, []))
-                if flags.get(model_name, {}).get(box_id)
-                else "no flags"
-            )
+            data = pd.read_csv(CALC_PATH / model_name / f"{box_id}.csv")
+            values = {
+                "h": observables(data, N_MOLECULES[box_id])["h"],
+                "density": data.density_g_cm3.to_numpy(),
+            }
+            box_flags = flags.get(model_name, {}).get(box_id)
+            title_flags = "flags: " + "; ".join(box_flags) if box_flags else "no flags"
             for obs, label in (("h", "h / kJ mol⁻¹"), ("density", "density / g cm⁻³")):
-                # Skip the first 50 ps, where the running mean is mostly noise
-                running = (
-                    prod[obs]
-                    .expanding()
-                    .mean()[prod.time_ps > EQUILIBRATION_PS + RUNNING_MEAN_SKIP_PS]
-                )
-                stride = max(1, len(prod) // 200)
-                estimate = result.estimates[obs]
-
-                t_prod = prod.time_ps[running.index].iloc[::stride].tolist()
-                data = {
-                    f"{CONVERGENCE_BLOCK_PS:.0f} ps block mean": [
-                        means.t.tolist(),
-                        means[obs].tolist(),
-                    ],
-                    "running mean (production)": [
-                        t_prod,
-                        running.iloc[::stride].tolist(),
-                    ],
-                    "production mean ± 95 % CI": [
-                        [float(prod.time_ps.iloc[-1])],
-                        [estimate.mean],
-                    ],
-                    "y_err": {"production mean ± 95 % CI": [estimate.ci_95]},
-                }
-                write_scatter(
+                write_convergence(
                     OUT_PATH / model_name / f"convergence_{obs}" / f"{box_id}.json",
-                    data,
+                    data.time_ps.to_numpy(),
+                    values[obs],
+                    result.estimates[obs],
                     title=f"{box_id}: {title_flags}",
-                    x_label="Time / ps (production starts at "
-                    f"{EQUILIBRATION_PS:.0f} ps)",
                     y_label=label,
                 )
+
+
+@pytest.fixture(scope="module")
+def vex_convergence_plots(box_results) -> None:
+    """
+    Write V^E block-mean and running-mean time series per model and point.
+
+    V^E(t) combines the molar volumes of the mixture box and both pure boxes at
+    each logged time, so its production mean is the scored V^E.
+
+    Parameters
+    ----------
+    box_results
+        Box statistics for all models.
+    """
+    for model_name, results in box_results.items():
+        v_molar = {}
+        for box_id in BOX_IDS:
+            data = pd.read_csv(CALC_PATH / model_name / f"{box_id}.csv")
+            v_molar[box_id] = (
+                data.time_ps.to_numpy(),
+                observables(data, N_MOLECULES[box_id])["v_molar"],
+            )
+        points = point_estimates(results, "v_molar")
+        for i in VEX_ROWS:
+            terms = [
+                (w, *v_molar[b]) for w, b in zip(MIX[i], BOX_IDS, strict=True) if w
+            ]
+            time = terms[0][1]
+            if not all(np.array_equal(t, time) for _, t, _ in terms):
+                raise ValueError(
+                    f"{model_name}/{POINT_IDS[i]}: boxes logged at different times"
+                )
+            write_convergence(
+                OUT_PATH / model_name / "convergence_vex" / f"{POINT_IDS[i]}.json",
+                time,
+                sum(w * v for w, _, v in terms),
+                points[i],
+                title=f"{POINT_IDS[i]}: V^E from the mixture and pure boxes",
+                y_label="V^E / cm³ mol⁻¹",
+            )
 
 
 @pytest.fixture(scope="module")
@@ -845,6 +910,7 @@ def test_binary_mixtures(
     parity_plots: None,
     system_plots: None,
     convergence_plots: None,
+    vex_convergence_plots: None,
     flag_plots: None,
     final_structures: None,
 ) -> None:
@@ -861,6 +927,8 @@ def test_binary_mixtures(
         Per-system ΔHmix(x) and V^E(x) figures.
     convergence_plots
         Per-box convergence figures.
+    vex_convergence_plots
+        Per-point V^E convergence figures.
     flag_plots
         Per-model flag overviews.
     final_structures
