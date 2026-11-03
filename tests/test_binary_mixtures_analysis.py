@@ -170,6 +170,14 @@ def test_holm():
     )
 
 
+def test_holm_ignores_nan():
+    """NaN p-values stay NaN and do not count towards the number of tests."""
+    np.testing.assert_array_equal(holm([np.nan]), [np.nan])
+    np.testing.assert_allclose(holm([0.001, np.nan]), [0.001, np.nan])
+    # Two finite tests: 0.01×2 = 0.02, then 0.04×1 = 0.04
+    np.testing.assert_allclose(holm([0.01, np.nan, 0.04]), [0.02, np.nan, 0.04])
+
+
 def test_read_production(tmp_path: Path):
     """Truncated runs are rejected and equilibration is discarded."""
     time_ps = np.arange(0, 2200.01, 0.1)

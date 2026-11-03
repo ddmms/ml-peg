@@ -199,14 +199,16 @@ def holm(pvalues: Sequence[float]) -> np.ndarray:
     Returns
     -------
     np.ndarray
-        Adjusted p-values in the original order.
+        Adjusted p-values in the original order. NaN p-values (failed tests)
+        stay NaN and do not count towards the number of tests.
     """
     p = np.asarray(pvalues, dtype=float)
-    order = np.argsort(p)
-    adjusted = np.empty_like(p)
+    adjusted = np.full_like(p, np.nan)
+    finite = np.flatnonzero(np.isfinite(p))
+    order = finite[np.argsort(p[finite])]
     running = 0.0
     for rank, index in enumerate(order):
-        running = max(running, (len(p) - rank) * p[index])
+        running = max(running, (len(order) - rank) * p[index])
         adjusted[index] = min(1.0, running)
     return adjusted
 
