@@ -15,6 +15,9 @@ from ml_peg.analysis.bulk_crystal.convex_hull_alexandria.analyse_convex_hull_ale
     model_metrics,
     signed_errors,
 )
+from ml_peg.app.bulk_crystal.convex_hull_alexandria.app_convex_hull_alexandria import (  # noqa: E501
+    system_mae,
+)
 from ml_peg.calcs.bulk_crystal.convex_hull_alexandria.prepare_inputs import (
     is_plus_u,
     select_entries,
@@ -136,6 +139,12 @@ def test_signed_errors_and_hull_rows():
     assert rows["cuzn"]["e_form_pred"] == pytest.approx(-350.0)
     assert (rows["cuzn"]["stable_ref"], rows["cuzn"]["stable_pred"]) == (True, False)
     assert (rows["cu3zn"]["stable_ref"], rows["cu3zn"]["stable_pred"]) == (False, True)
+
+    # The dropdown MAE leaves out the elements added to draw the hull
+    data = {
+        key: [row[key] for row in rows.values()] for key in next(iter(rows.values()))
+    }
+    assert system_mae(data, "Cu-Zn") == pytest.approx(200 / 3)
 
     failed = compare_model(STRUCTURES, REFERENCE | {"zn": np.nan})
     assert signed_errors(failed, "e_hull") == []

@@ -992,9 +992,9 @@ thresholds only set the colours.
 Benchmark speed
 ---------------
 
-Slow: 24,815 single-point calculations on cells of 1 to 168 atoms (262,203 atoms in
-total). On an Apple M2 Max CPU, ``mace-mp-0a`` takes about 30 minutes and
-``uma-s-1p1-omat`` about 2.5 hours.
+Medium: 24,815 single-point calculations on cells of 1 to 168 atoms (262,203 atoms in
+total), taking around 10 minutes per model on GPU. On an Apple M2 Max CPU,
+``mace-mp-0a`` takes about 30 minutes and ``uma-s-1p1-omat`` about 2.5 hours.
 
 Data availability
 -----------------

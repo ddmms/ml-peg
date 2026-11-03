@@ -37,7 +37,7 @@ def get_data_path() -> Path:
     )
 
 
-@pytest.mark.slow
+@pytest.mark.medium
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_convex_hull_alexandria(mlip: tuple[str, Any]) -> None:
     """

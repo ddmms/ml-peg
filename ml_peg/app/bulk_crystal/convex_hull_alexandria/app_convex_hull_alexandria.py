@@ -8,7 +8,7 @@ import json
 from dash import Input, Output, callback
 from dash.dcc import Dropdown, Graph
 from dash.exceptions import PreventUpdate
-from dash.html import H3, Div
+from dash.html import H3, Div, P
 import numpy as np
 from plotly.io import read_json
 from plotly.subplots import make_subplots
@@ -73,6 +73,28 @@ def load_hull_data(model: str) -> dict[str, dict[str, list]]:
         return json.load(file)
 
 
+def system_mae(data: dict[str, list], system: str) -> float:
+    """
+    Get the energy above hull MAE of a system, over its binaries only.
+
+    Parameters
+    ----------
+    data
+        Data of the system, one list per field.
+    system
+        System, such as ``Cu-Zn``.
+
+    Returns
+    -------
+    float
+        MAE (meV/atom), leaving out the elements, which are only there to draw the
+        hull and have zero error by construction.
+    """
+    binary = ~np.isin(data["mat_id"], system.split("-"))
+    errors = np.subtract(data["e_hull_pred"], data["e_hull_ref"])[binary]
+    return float(np.mean(np.abs(errors)))
+
+
 def system_options(model: str) -> list[dict[str, str]]:
     """
     Get the systems of a model, sorted by decreasing energy above hull MAE.
@@ -89,7 +111,7 @@ def system_options(model: str) -> list[dict[str, str]]:
         the elements in either order, such as ``O-Si`` or ``Si-O``.
     """
     errors = {
-        system: np.mean(np.abs(np.subtract(data["e_hull_pred"], data["e_hull_ref"])))
+        system: system_mae(data, system)
         for system, data in load_hull_data(model).items()
     }
     options = []
@@ -293,14 +315,15 @@ class ConvexHullAlexandriaApp(BaseApp):
 
             Returns
             -------
-            Graph
-                Side-by-side hull figure.
+            Graph | P
+                Side-by-side hull figure, or a message if the model has no
+                successful system.
             """
-            if not model or not system:
+            if not model:
                 raise PreventUpdate
-            data = load_hull_data(model).get(system)
+            data = load_hull_data(model).get(system) if system else None
             if data is None:
-                raise PreventUpdate
+                return P(f"No successful systems for {model}.")
             return Graph(figure=hull_figure(data, system, model))
 
 
@@ -335,12 +358,14 @@ def get_app() -> ConvexHullAlexandriaApp:
                         options=models,
                         value=models[0] if models else None,
                         clearable=False,
+                        maxHeight=500,
                         style={"width": "300px"},
                     ),
                     Dropdown(
                         id=HULL_SYSTEM_ID,
                         clearable=False,
                         searchable=True,
+                        maxHeight=500,
                         placeholder="Type a system, such as Si-O",
                         style={"width": "400px"},
                     ),
