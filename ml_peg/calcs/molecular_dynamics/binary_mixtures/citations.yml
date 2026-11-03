@@ -1,0 +1,13 @@
+implementers:
+  - name: "Finlay Clark"
+    github: "fjclark"
+
+contributors: []
+
+citations:
+  - bibtex_key: frenkel2003thermoml
+    role: reference_data
+  - bibtex_key: boothroyd2023sage
+    role: reference_method
+  - bibtex_key: wang2026sage230
+    role: reference_method
