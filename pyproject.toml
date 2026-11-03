@@ -74,7 +74,7 @@ mace = [
 # pinned to a tag rather than a version; the benchmarks skip via importorskip
 # if it is absent, so this extra is only needed to run them.
 topsearch = [
-    "topsearch @ git+https://github.com/VladCarare/topography-searcher@v0.1.6",
+    "topsearch @ git+https://github.com/VladCarare/topography-searcher@v0.1.7",
 ]
 
 mattersim = [
