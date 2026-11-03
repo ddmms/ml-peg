@@ -71,8 +71,12 @@ PERIODIC_TABLES = {
     "ε": "epsilon_periodic_table",
     "ν": "nu_periodic_table",
     "Unphysical E(V)": "unphysical_periodic_table",
+    "ε (no +U or magnetic)": "epsilon_unflagged_periodic_table",
     "Δ": "delta_periodic_table",
 }
+
+# Metrics that exclude the structures flagged by ``is_flagged``, and their measure
+UNFLAGGED_METRICS = {"ε (no +U or magnetic)": "ε"}
 
 
 def is_flagged(element: str, configuration: str) -> bool:
@@ -150,13 +154,15 @@ def load_curves(model_name: str) -> dict[str, dict[str, np.ndarray]] | None:
     -------
     dict[str, dict[str, np.ndarray]] | None
         Volumes (Å³/atom) and energies (eV/atom) for each structure, or ``None`` if
-        the model was not run.
+        the model was not run for any dataset. The structures of a dataset that was
+        not run are missing, and so counted as failed by ``compare_model``.
     """
+    filenames = [CALC_PATH / model_name / f"{dataset}.extxyz" for dataset in DATASETS]
+    filenames = [filename for filename in filenames if filename.exists()]
+    if not filenames:
+        return None
     curves = {}
-    for dataset in DATASETS:
-        filename = CALC_PATH / model_name / f"{dataset}.extxyz"
-        if not filename.exists():
-            return None
+    for filename in filenames:
         for atoms in read(filename, index=":"):
             label = atoms.info["label"]
             curve = curves.setdefault(label, {"volumes": [], "energies": []})
@@ -442,17 +448,28 @@ def element_values(comparison: dict[str, dict], measure: str) -> dict[str, float
     dict[str, float]
         Median of the measure, or percentage of unphysical curves, for each element.
         A median without a minimum is shown as the "bad" threshold of the metric.
+        For the metrics in ``UNFLAGGED_METRICS``, the median is over the structures
+        not flagged by ``is_flagged``, and is ``nan`` (a blank cell) for elements
+        with all their structures flagged.
     """
+    flagged = measure not in UNFLAGGED_METRICS
     by_element = {}
     for label, result in comparison.items():
-        by_element.setdefault(label.split("-")[0], []).append(result)
+        element, configuration = label.split("-")
+        results = by_element.setdefault(element, [])
+        if flagged or not is_flagged(element, configuration):
+            results.append(result)
 
     values = {}
     for element, results in by_element.items():
         if measure == "Unphysical E(V)":
             values[element] = unphysical_share(dict(enumerate(results)))
+        elif not results:
+            values[element] = np.nan
         else:
-            value = median_measure([result[measure] for result in results])
+            value = median_measure(
+                [result[UNFLAGGED_METRICS.get(measure, measure)] for result in results]
+            )
             values[element] = (
                 value if np.isfinite(value) else DEFAULT_THRESHOLDS[measure]["bad"]
             )

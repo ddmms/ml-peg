@@ -27,6 +27,7 @@ METRICS = [
     ("ε", "epsilon_periodic_table"),
     ("ν", "nu_periodic_table"),
     ("Unphysical E(V)", "unphysical_periodic_table"),
+    ("ε (no +U or magnetic)", "epsilon_unflagged_periodic_table"),
     ("Δ", "delta_periodic_table"),
 ]
 INFO_PATH = DATA_PATH / "info.json"

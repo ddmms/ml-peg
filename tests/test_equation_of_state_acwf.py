@@ -22,6 +22,7 @@ from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.acwf_utils import (
 from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.analyse_equation_of_state_acwf import (  # noqa: E501
     compare_curve,
     compare_model,
+    element_values,
     is_flagged,
     load_curves,
     load_reference,
@@ -279,6 +280,9 @@ def test_load_curves(tmp_path, monkeypatch):
     model_dir = tmp_path / "model"
     model_dir.mkdir()
 
+    # A model without results for any dataset was not run.
+    assert load_curves("model") is None
+
     # Primitive diamond cell: 2 atoms in a³/4 = 40 Å³, so 20 Å³/atom.
     atoms = bulk("Si", "diamond", a=160 ** (1 / 3))
     structures = scaled_structures(atoms, "Si-Diamond")
@@ -286,8 +290,8 @@ def test_load_curves(tmp_path, monkeypatch):
         struct.info["mlip_energy"] = -10.0
     write(model_dir / "unaries.extxyz", structures)
 
-    # A model without results for every dataset was not run.
-    assert load_curves("model") is None
+    # A model run for only one dataset keeps its curves for that dataset.
+    assert sorted(load_curves("model")) == ["Si-Diamond"]
 
     # Primitive rock-salt cell: 2 atoms in a³/4 = 20 Å³, so 10 Å³/atom.
     atoms = bulk("MgO", "rocksalt", a=80 ** (1 / 3))
@@ -328,3 +332,24 @@ def test_compare_model_missing_structure():
     assert comparison["Cu-FCC"]["status"] == "ok"
     assert comparison["Si-Diamond"]["status"] == "failed"
     assert unphysical_share(comparison) == 50.0
+
+
+def test_element_values_unflagged():
+    """
+    The per-element ε without +U or magnetic structures skips flagged structures.
+
+    Elements with all their structures flagged are left blank (``nan``).
+    """
+    comparison = {
+        "Fe-BCC": {"ε": 5.0},  # Flagged: magnetic element.
+        "V-BCC": {"ε": 0.1},
+        "V-XO2": {"ε": 3.0},  # Flagged: +U oxide.
+        "V-X2O5": {"ε": 2.0},  # Flagged: +U oxide.
+    }
+
+    all_values = element_values(comparison, "ε")
+    unflagged_values = element_values(comparison, "ε (no +U or magnetic)")
+
+    assert all_values == {"Fe": 5.0, "V": 2.0}
+    assert unflagged_values["V"] == 0.1
+    assert np.isnan(unflagged_values["Fe"])
