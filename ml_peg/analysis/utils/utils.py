@@ -413,6 +413,11 @@ def write_density_trajectories(
 
     traj_dir.mkdir(parents=True, exist_ok=True)
 
+    # Sampling depends on the results, so trajectories from a previous run would
+    # otherwise survive as a point the current run did not write
+    for stale in traj_dir.glob("*.extxyz"):
+        stale.unlink()
+
     for point_idx, source_indices in enumerate(sampled_mapping):
         frames = []
         for source_idx in source_indices:
