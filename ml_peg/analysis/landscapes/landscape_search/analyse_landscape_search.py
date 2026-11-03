@@ -26,6 +26,8 @@ one number that mixes the two would say it was.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from ase import neighborlist
@@ -117,6 +119,34 @@ DISTORTED_BOND_TOLERANCE = 0.2
 # says a model converged impossible geometry; only the structures say what it
 # did.
 DISTORTED_SUBDIR = "distorted_minima"
+# topsearch's alignment tries random starting rotations and keeps the best, so
+# the distance it reports depends on which it drew. Unseeded, the same pair
+# scores differently from one run to the next -- in the last digits for most
+# pairs, and on either side of the matching radius for one near it -- and no
+# published number can be reproduced.
+ALIGNMENT_SEED = 0
+
+
+@contextmanager
+def _seeded() -> Iterator[None]:
+    """
+    Seed NumPy's global generator for the duration, then put it back.
+
+    topsearch draws its starting rotations from the global generator, so that
+    is the one to seed. Restoring it afterwards keeps scoring from disturbing
+    anything else that draws from it.
+
+    Yields
+    ------
+    None
+        Control, with the generator seeded with ``ALIGNMENT_SEED``.
+    """
+    state = np.random.get_state()
+    np.random.seed(ALIGNMENT_SEED)
+    try:
+        yield
+    finally:
+        np.random.set_state(state)
 
 
 def _comparer() -> MolecularSimilarity:
@@ -353,11 +383,14 @@ def _distances(
     """
     comparer = _comparer()
     matrix = np.zeros((len(reference), len(found)))
-    for i, ref in enumerate(reference):
-        coords = MolecularCoordinates(symbols, np.asarray(ref).copy())
-        for j, other in enumerate(found):
-            matrix[i, j] = comparer.closest_distance(coords, np.asarray(other).copy())
-            coords.position = np.asarray(ref).copy()
+    with _seeded():
+        for i, ref in enumerate(reference):
+            coords = MolecularCoordinates(symbols, np.asarray(ref).copy())
+            for j, other in enumerate(found):
+                matrix[i, j] = comparer.closest_distance(
+                    coords, np.asarray(other).copy()
+                )
+                coords.position = np.asarray(ref).copy()
     return matrix
 
 
@@ -560,20 +593,21 @@ def _merge(
     comparer = _comparer()
     kept: list[Atoms] = []
     where: dict[tuple[int, int], int] = {}
-    for atoms in frames:
-        position = atoms.get_positions().flatten()
-        index = None
-        for candidate, other in enumerate(kept):
-            coords = MolecularCoordinates(symbols, other.get_positions().flatten())
-            if comparer.closest_distance(coords, position.copy()) < SAME_STRUCTURE:
-                index = candidate
-                break
-        if index is None:
-            index = len(kept)
-            kept.append(atoms)
-        origin = _origin(atoms)
-        if origin is not None:
-            where[origin] = index
+    with _seeded():
+        for atoms in frames:
+            position = atoms.get_positions().flatten()
+            index = None
+            for candidate, other in enumerate(kept):
+                coords = MolecularCoordinates(symbols, other.get_positions().flatten())
+                if comparer.closest_distance(coords, position.copy()) < SAME_STRUCTURE:
+                    index = candidate
+                    break
+            if index is None:
+                index = len(kept)
+                kept.append(atoms)
+            origin = _origin(atoms)
+            if origin is not None:
+                where[origin] = index
     return kept, where
 
 

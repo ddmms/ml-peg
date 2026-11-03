@@ -10,6 +10,7 @@ import pytest
 
 from ml_peg.analysis.landscapes.landscape_search import analyse_landscape_search
 from ml_peg.analysis.landscapes.landscape_search.analyse_landscape_search import (
+    ALIGNMENT_SEED,
     DEFAULT_THRESHOLDS,
     DEFAULT_TOOLTIPS,
     DISTORTED_SUBDIR,
@@ -20,10 +21,13 @@ from ml_peg.analysis.landscapes.landscape_search.analyse_landscape_search import
     _bond_deviations,
     _bond_lengths,
     _bonds,
+    _distances,
     _in_reference_labelling,
     _is_distorted,
+    _merge,
     _near_missed,
     _nearest,
+    _seeded,
     _unphysical,
     _write_distorted,
 )
@@ -591,3 +595,62 @@ def test_an_unchanged_structure_is_returned_as_it_is() -> None:
     """Identical bonding needs no isomorphism search, and gets none."""
     reference = molecule("CH3OH")
     assert _in_reference_labelling(reference, _bonds(reference)) is reference
+
+
+def _scored_pair() -> tuple[list, list, list[str]]:
+    """
+    Build a reference and a slightly different structure to score against it.
+
+    Returns
+    -------
+    tuple[list, list, list[str]]
+        Reference positions, found positions and symbols, as ``_distances``
+        takes them.
+    """
+    reference = molecule("CH3OH")
+    other = reference.copy()
+    other.rattle(stdev=0.05, seed=1)
+    return (
+        [reference.get_positions().flatten()],
+        [other.get_positions().flatten()],
+        reference.get_chemical_symbols(),
+    )
+
+
+def test_scoring_the_same_structures_twice_gives_identical_distances() -> None:
+    """
+    Distances are reproducible to the last bit.
+
+    The alignment behind every distance starts from random rotations. Unseeded,
+    two runs draw different ones, so a pair near the matching radius can land
+    either side of it, and a published number cannot be reproduced.
+    """
+    pair = _scored_pair()
+    assert np.array_equal(_distances(*pair), _distances(*pair))
+
+
+@pytest.mark.parametrize("score", ["distances", "merge"])
+def test_scoring_leaves_the_global_generator_alone(score) -> None:
+    """Fixing the alignment's seed must not disturb anything else drawing from NumPy."""
+    reference, found, symbols = _scored_pair()
+    frames = [Atoms(symbols, positions=p.reshape(-1, 3)) for p in reference + found]
+    np.random.seed(123)
+    expected = np.random.random()
+    np.random.seed(123)
+    if score == "distances":
+        _distances(reference, found, symbols)
+    else:
+        _merge(frames, symbols)
+    assert np.random.random() == expected
+
+
+def test_seeded_fixes_the_generator_and_restores_it() -> None:
+    """Inside, draws follow the alignment seed; afterwards, the caller state is back."""
+    np.random.seed(ALIGNMENT_SEED)
+    seeded_draw = np.random.random()
+    np.random.seed(99)
+    expected_after = np.random.random()
+    np.random.seed(99)
+    with _seeded():
+        assert np.random.random() == seeded_draw
+    assert np.random.random() == expected_after
