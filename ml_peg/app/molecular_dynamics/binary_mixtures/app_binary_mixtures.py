@@ -90,25 +90,31 @@ class BinaryMixturesApp(BaseApp):
             }
             for figure in graphs:
                 scatter_id = f"{BENCHMARK_NAME}-{model_name}-{figure}"
-                plot_from_scatter_files(
+                detail_id = plot_from_scatter_files(
                     scatter_id=scatter_id,
                     plot_id=detail_placeholder,
                     plot_dir=model_dir / DETAIL_DIRS[figure],
                 )
+                sources = [scatter_id]
                 if figure in SECOND_DETAIL_DIRS:
-                    plot_from_scatter_files(
-                        scatter_id=scatter_id,
-                        plot_id=second_detail_placeholder,
-                        plot_dir=model_dir / SECOND_DETAIL_DIRS[figure],
-                        graph_id=f"{scatter_id}-second-plot",
-                    )
+                    # Clicking a parity point or a point of its composition curve
+                    # shows that composition's running average
+                    sources.append(detail_id)
+                    for source in sources:
+                        plot_from_scatter_files(
+                            scatter_id=source,
+                            plot_id=second_detail_placeholder,
+                            plot_dir=model_dir / SECOND_DETAIL_DIRS[figure],
+                            graph_id=f"{scatter_id}-second-plot",
+                        )
                 if structs:
-                    struct_from_scatter(
-                        scatter_id=scatter_id,
-                        struct_id=struct_placeholder,
-                        structs=structs,
-                        follow_frames=True,
-                    )
+                    for source in sources:
+                        struct_from_scatter(
+                            scatter_id=source,
+                            struct_id=struct_placeholder,
+                            structs=structs,
+                            follow_frames=True,
+                        )
 
         plot_from_table_cell(
             table_id=self.table_id,
@@ -142,7 +148,8 @@ def get_app() -> BinaryMixturesApp:
             "against experiment, from 1 ns NPT MD after 0.2 ns equilibration. "
             "Click a cell for a parity plot, then a point for its composition "
             "curve or time series and final structure (ΔHmix and V^E points also "
-            "show their running average)."
+            "show their running average; click a point of the composition curve "
+            "to switch composition)."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "binary_mixtures_metrics_table.json",

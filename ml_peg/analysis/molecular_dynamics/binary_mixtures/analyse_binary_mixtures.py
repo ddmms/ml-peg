@@ -667,7 +667,10 @@ def system_plots(box_results) -> None:
                 data["y_err"]["ref"] = (1.96 * sigma.fillna(0.0)).tolist()
                 if f"{prop}_sage" in system:
                     data[SAGE_LABEL] = [x, system[f"{prop}_sage"].tolist()]
-                # One copy per box, so clicking any point of the system opens it
+                # One copy per box, so clicking any point of the system opens it.
+                # Each point carries its box, so clicking it in the app selects
+                # that composition's running average.
+                hoverdata = {"Box": [POINT_IDS[i] for i in rows]}
                 for i in rows:
                     write_scatter(
                         OUT_PATH
@@ -678,6 +681,7 @@ def system_plots(box_results) -> None:
                         title=f"{system_id} at {system.temperature.iloc[0]} K",
                         x_label=f"Mole fraction of {system_id.split('_')[0]}",
                         y_label=label,
+                        hoverdata=hoverdata,
                     )
 
 
