@@ -47,6 +47,29 @@ def test_compressed_callbacks_are_flagged(tmp_path, encoding, compressed, callba
     assert journey.requests[0]["callback"] == callback
 
 
+@pytest.mark.parametrize(
+    "raised",
+    [
+        profiler.Error("not valid JSON"),
+        UnicodeDecodeError("utf-8", b"", 0, 1, "invalid"),
+    ],
+)
+def test_unreadable_body_does_not_fail_the_action(tmp_path, raised):
+    """A browser exposing a gzipped body must not break the run over a diagnostic."""
+    journey = profiler.Journey(Mock(), tmp_path, 1000, 100)
+    request = Mock()
+    request.url = "http://localhost/_dash-update-component"
+    request.timing = {"responseEnd": 1.0}
+    request.method = "POST"
+    request.failure = None
+    request.response.return_value = None
+    request.headers = {"content-encoding": "gzip"}
+    type(request).post_data_json = property(Mock(side_effect=raised))
+    journey.finished(request)
+    assert journey.requests[0]["callback"] is None
+    assert journey.requests[0]["compressed"] is True
+
+
 def test_measure_excludes_preparation_time_and_diagnostics(tmp_path, monkeypatch):
     """Previous work is neither charged to nor blamed on the next action."""
     clock = [0.0]

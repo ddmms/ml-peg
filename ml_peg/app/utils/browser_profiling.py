@@ -86,6 +86,10 @@ def _callback_name(request) -> str | None:
     to Playwright, so these are unavoidably unnamed here. Their names and sizes are
     recorded server-side instead (see utils/profiling.py).
 
+    Should a browser expose such a body, reading it raises rather than returning
+    None: UnicodeDecodeError on gzip bytes, or Error on any other non-JSON body.
+    A name is only a diagnostic, so never fail the action being timed over one.
+
     Parameters
     ----------
     request
@@ -96,7 +100,11 @@ def _callback_name(request) -> str | None:
     str | None
         Callback output name, or None if the body is not readable.
     """
-    return (request.post_data_json or {}).get("output")
+    try:
+        post_data = request.post_data_json
+    except (Error, UnicodeDecodeError):
+        return None
+    return (post_data or {}).get("output")
 
 
 class Journey:
