@@ -270,10 +270,10 @@ Every property is scored by its mean absolute z-score (MAZE). The mean absolute 
 
 5. Flagged boxes (not scored)
 
-   The number of boxes with fewer than 100 effective samples, a significant drift or
-   difference between the halves of production (block averages, Holm-corrected,
-   family-wise p < 0.05), a change in covalent bonding, or a like-neighbour fraction
-   well above that of the Sage runs (demixing).
+   The number of boxes with fewer than 100 effective samples, a significant drift
+   (a linear trend in the means of 10 production blocks, Holm-corrected, family-wise
+   p < 0.05), a change in covalent bonding, or a like-neighbour fraction well above
+   that of the Sage runs (demixing).
 
 Uncertainties
 -------------

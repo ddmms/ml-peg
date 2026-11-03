@@ -10,9 +10,9 @@ import pandas as pd
 import pytest
 
 from ml_peg.analysis.molecular_dynamics.binary_mixtures.mixing import (
-    block_tests,
     combine,
     component_a_molecules,
+    drift_test,
     find_molecules,
     frame_checks,
     holm,
@@ -152,18 +152,13 @@ def test_maze_uses_fixed_sigma(toy_tables):
     assert values[0] == values[1]
 
 
-def test_block_tests():
+def test_drift_test():
     """A drifting series is flagged; a stationary AR(1) series is not."""
     rng = np.random.default_rng(0)
     t = np.arange(20_000) * 0.1
     stationary = ar1(len(t), 0.9, rng)
-    p_drift, p_half, _ = block_tests(t, stationary)
-    assert p_drift > 0.01
-    assert p_half > 0.01
-    p_drift, p_half, _ = block_tests(t, stationary + 0.01 * t)
-    assert p_drift < 1e-4
-    # The trend also inflates the spread within each half, so this test is weaker
-    assert p_half < 0.01
+    assert drift_test(t, stationary) > 0.01
+    assert drift_test(t, stationary + 0.01 * t) < 1e-4
 
 
 def test_holm():

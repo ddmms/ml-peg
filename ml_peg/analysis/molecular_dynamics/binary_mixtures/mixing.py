@@ -10,8 +10,8 @@ here loads models or reads benchmark constants from the calc module.
 
 Box means and their standard errors come from
 :func:`ml_peg.analysis.utils.timeseries.estimate_mean`, applied to every logged
-sample. Block averages are used only for the drift and half-split flags, never
-for uncertainties.
+sample. Block averages are used only for the drift flag, never for
+uncertainties.
 """
 
 from __future__ import annotations
@@ -53,19 +53,14 @@ class BoxResult:
     ----------
     estimates
         Mean and uncertainty of each observable in ``OBSERVABLES``.
-    p_drift, p_half
-        Unadjusted p-values of the drift and half-split tests per observable.
-    block_ratio
-        Block-average standard error over the autocorrelation standard error
-        per observable (a diagnostic only).
+    p_drift
+        Unadjusted p-value of the drift test per observable.
     run_ps
         Time of the last logged sample.
     """
 
     estimates: dict[str, TimeSeriesEstimate]
     p_drift: dict[str, float] = field(default_factory=dict)
-    p_half: dict[str, float] = field(default_factory=dict)
-    block_ratio: dict[str, float] = field(default_factory=dict)
     run_ps: float = np.nan
 
 
@@ -134,9 +129,9 @@ def observables(prod: pd.DataFrame, n_molecules: int) -> dict[str, np.ndarray]:
     }
 
 
-def block_tests(t: np.ndarray, y: np.ndarray) -> tuple[float, float, float]:
+def drift_test(t: np.ndarray, y: np.ndarray) -> float:
     """
-    Test block means for drift and for a difference between halves.
+    Test block means for drift.
 
     Parameters
     ----------
@@ -147,22 +142,14 @@ def block_tests(t: np.ndarray, y: np.ndarray) -> tuple[float, float, float]:
 
     Returns
     -------
-    tuple[float, float, float]
-        P-value of a nonzero slope of the block means, p-value of a difference
-        between the first and second halves, and the block-average standard
-        error of the mean.
+    float
+        P-value of a nonzero slope of the block means.
     """
     # Split the run into N_BLOCKS consecutive blocks and average each one
     block_t = np.array([b.mean() for b in np.array_split(t, N_BLOCKS)])
     block_y = np.array([b.mean() for b in np.array_split(y, N_BLOCKS)])
-    # Standard error of the mean from the scatter of the block means
-    sem_block = float(block_y.std(ddof=1) / np.sqrt(N_BLOCKS))
     # Drift: is the slope of a straight line through the block means nonzero?
-    p_drift = float(stats.linregress(block_t, block_y).pvalue)
-    # Halves: do the first and second halves' block means differ (t-test)?
-    half = N_BLOCKS // 2
-    p_half = float(stats.ttest_ind(block_y[:half], block_y[half:]).pvalue)
-    return p_drift, p_half, sem_block
+    return float(stats.linregress(block_t, block_y).pvalue)
 
 
 def box_result(
@@ -196,10 +183,7 @@ def box_result(
             label=f"{label} {name}" if label else name,
         )
         result.estimates[name] = estimate
-        p_drift, p_half, sem_block = block_tests(t, y)
-        result.p_drift[name] = p_drift
-        result.p_half[name] = p_half
-        result.block_ratio[name] = sem_block / estimate.sem
+        result.p_drift[name] = drift_test(t, y)
     return result
 
 

@@ -258,11 +258,7 @@ def flags(box_results) -> dict[str, dict[str, list[str]]]:
             for obs in ("h", "density"):
                 if result.estimates[obs].n_eff < MIN_N_EFF:
                     box_flags.append(f"low n_eff ({obs})")
-                for kind, p in (
-                    ("drift", result.p_drift),
-                    ("half-split", result.p_half),
-                ):
-                    tests.append((box_id, f"{kind} ({obs})", p[obs]))
+                tests.append((box_id, f"drift ({obs})", result.p_drift[obs]))
             reacted, like = model_frame_checks(model_name, box_id)
             if reacted:
                 box_flags.append("bonding changed")
@@ -274,8 +270,6 @@ def flags(box_results) -> dict[str, dict[str, list[str]]]:
             diagnostics[model_name][box_id] = {
                 "n_eff_h": result.estimates["h"].n_eff,
                 "n_eff_density": result.estimates["density"].n_eff,
-                "block_over_acf_sem_h": result.block_ratio["h"],
-                "block_over_acf_sem_density": result.block_ratio["density"],
                 "like_fraction": like,
                 "like_fraction_sage": ref_like,
             }
