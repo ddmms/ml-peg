@@ -16,6 +16,7 @@ from ml_peg.analysis.molecular_dynamics.binary_mixtures.mixing import (
     find_molecules,
     frame_checks,
     holm,
+    like_fraction,
     mixing_matrix,
     molecule_centres,
     read_production,
@@ -273,3 +274,63 @@ def test_component_a_molecules(mixture_box):
     atoms.info.update({"n_a": 1, "smiles_b": "N"})
     with pytest.raises(ValueError, match="neither"):
         component_a_molecules(atoms, find_molecules(atoms))
+
+
+def lattice(spacing: float = 3.0, n: int = 8) -> tuple[Atoms, np.ndarray]:
+    """
+    Make a simple cubic lattice of single-atom molecules.
+
+    With one molecule per site, the mean intermolecular spacing equals the
+    lattice spacing, so the 1.5-spacing cutoff includes the 6 face and 12 edge
+    neighbours (at 1 and √2 spacings) and excludes the corners (√3).
+
+    Parameters
+    ----------
+    spacing
+        Lattice spacing in Å.
+    n
+        Sites per edge.
+
+    Returns
+    -------
+    tuple[Atoms, np.ndarray]
+        Periodic box and the integer (i, j, k) index of each site.
+    """
+    index = np.indices((n, n, n)).reshape(3, -1).T
+    atoms = Atoms(
+        f"Ar{n**3}", positions=index * spacing, cell=[n * spacing] * 3, pbc=True
+    )
+    return atoms, index
+
+
+def test_like_fraction_analytic_limits():
+    """Like-neighbour fractions match hand counts on a cubic lattice."""
+    atoms, index = lattice()
+    labels = np.arange(len(atoms))
+    # One component: every neighbour is alike
+    assert like_fraction(atoms, labels, np.ones(len(atoms), bool)) == 1.0
+    # Slabs of 4 layers each along x: interface sites have 5 of 18 neighbours
+    # in the other slab (1 face, 4 edge), interior sites none, so the mean is
+    # (13/18 + 1) / 2
+    slabs = index[:, 0] < 4
+    assert like_fraction(atoms, labels, slabs) == pytest.approx(31 / 36)
+    # Checkerboard: the 6 face neighbours differ, the 12 edge neighbours match
+    checkerboard = index.sum(axis=1) % 2 == 0
+    assert like_fraction(atoms, labels, checkerboard) == pytest.approx(2 / 3)
+
+
+def test_like_fraction_invariance():
+    """Translating the box or reordering the molecules leaves the value unchanged."""
+    atoms, index = lattice()
+    labels = np.arange(len(atoms))
+    slabs = index[:, 0] < 4
+    expected = like_fraction(atoms, labels, slabs)
+    rng = np.random.default_rng(0)
+
+    shifted = atoms.copy()
+    shifted.translate(rng.uniform(-50.0, 50.0, size=3))
+    shifted.wrap()
+    assert like_fraction(shifted, labels, slabs) == pytest.approx(expected)
+
+    order = rng.permutation(len(atoms))
+    assert like_fraction(atoms[order], labels, slabs[order]) == pytest.approx(expected)
