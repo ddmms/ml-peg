@@ -230,6 +230,20 @@ and non-polar interactions, including two aqueous mixtures. Five mix exothermica
      - 298.15
      - ΔHmix, density, V^E
 
+Each property is scored by its mean absolute z-score (MAZE). Each prediction's error is
+divided by a fixed reference uncertainty for that point,
+σ_ref = sqrt(σ_exp² + σ_Sage²), and the MAZE is the mean of these absolute z-scores.
+σ_exp is the experimental uncertainty and σ_Sage the standard deviation of 5
+independent OpenFF Sage runs of the same box with the same protocol (pooled per system
+and floored at the median over systems), so σ_ref measures how closely the property can
+be pinned down by experiment and by a single run of this length. Because σ_ref does not
+depend on the model, a model is not rewarded for noisy predictions, and MAZEs from
+different models can be compared directly. A MAZE of 1 means that the errors are, on
+average, as large as the reference uncertainty, and a MAZE of 5 means five times as
+large. A model that matched experiment exactly would still score about 0.6 to 0.8,
+from the sampling noise of its single run. Only the ΔHmix and V^E MAZEs are weighted;
+the density MAZEs are shown at weight 0 (see below).
+
 Boxes contain 100 to 521 molecules (952 to 2,400
 atoms), with edges of at least 25 Å so that periodic images stay outside the receptive
 field of typical MLIPs. Each box is built from low-energy conformers, annealed and
@@ -241,8 +255,9 @@ for 0.2 ns of equilibration followed by 1 ns of production.
 Metrics
 -------
 
-Every property is scored by its mean absolute z-score (MAZE), with the mean absolute
-error (MAE) shown alongside it at weight 0. Only the ΔHmix and V^E MAZEs are weighted.
+Every property is scored by its MAZE (defined in the summary above), with the mean
+absolute error (MAE) shown alongside it at weight 0. Only the ΔHmix and V^E MAZEs are
+weighted.
 The mixture and pure densities are shown at weight 0: the liquid densities benchmark
 already scores most of these pure liquids, and the mixture density errors are mostly
 pure-density errors (for Sage, the pure densities alone account for 0.0087 of the
@@ -262,22 +277,16 @@ pure-density errors (for Sage, the pure densities alone account for 0.0087 of th
 4. Pure density MAE (g/cm³) and MAZE, over all 20 pure-liquid boxes (18 liquids, with
    water and pyridine at two temperatures).
 
-   For every MAZE, each error is divided by a fixed reference uncertainty
-   σ_ref = sqrt(σ_exp² + σ_Sage²), where σ_Sage is the standard deviation of 5
-   independent Sage runs of the same boxes with the same protocol (pooled per system and
-   floored at the median over systems). σ_ref does not depend on the model, so models
-   are not rewarded for noisy predictions.
-
-   'Good' thresholds are the score expected for a model that matches experiment exactly,
-   given the noise of one 0.2 + 1 ns run per box, plus two standard deviations. 'Bad'
-   thresholds are five times the score of Sage, which was trained on these properties.
-
 5. Flagged boxes (not scored)
 
    The number of boxes with fewer than 100 effective samples, a significant drift
    (a linear trend in the means of 10 production blocks, Holm-corrected, family-wise
    p < 0.05), a change in covalent bonding, or a like-neighbour fraction well above
    that of the Sage runs (demixing).
+
+'Good' thresholds are the score expected for a model that matches experiment exactly,
+given the noise of one 0.2 + 1 ns run per box, plus two standard deviations. 'Bad'
+thresholds are five times the score of Sage, which was trained on these properties.
 
 Uncertainties
 -------------
