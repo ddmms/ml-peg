@@ -1,5 +1,5 @@
 title: Molecular Dynamics
-description: Liquid Densities, Polymer Densities, Water Densities, Stability
+description: Liquid Densities, Polymer Densities, Water Densities, Binary Mixtures, Stability
 weight: 0
 benchmark_weights:
   bond_length_distribution: 0
