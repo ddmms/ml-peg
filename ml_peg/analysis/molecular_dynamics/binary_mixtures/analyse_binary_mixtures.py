@@ -772,44 +772,52 @@ def convergence_plots(box_results, flags) -> None:
 
 
 @pytest.fixture(scope="module")
-def vex_convergence_plots(box_results) -> None:
+def mixing_convergence_plots(box_results) -> None:
     """
-    Write V^E block-mean and running-mean time series per model and point.
+    Write ΔHmix and V^E block-mean and running-mean time series per point.
 
-    V^E(t) combines the molar volumes of the mixture box and both pure boxes at
-    each logged time, so its production mean is the scored V^E.
+    Each combines the mixture box and both pure boxes at every logged time, so
+    its production mean is the scored value.
 
     Parameters
     ----------
     box_results
         Box statistics for all models.
     """
+    properties = (
+        ("h", "hmix", "ΔHmix", "ΔHmix / kJ mol⁻¹", range(len(SYSTEMS))),
+        ("v_molar", "vex", "V^E", "V^E / cm³ mol⁻¹", VEX_ROWS),
+    )
     for model_name, results in box_results.items():
-        v_molar = {}
+        series = {}
         for box_id in BOX_IDS:
             data = pd.read_csv(CALC_PATH / model_name / f"{box_id}.csv")
-            v_molar[box_id] = (
+            series[box_id] = (
                 data.time_ps.to_numpy(),
-                observables(data, N_MOLECULES[box_id])["v_molar"],
+                observables(data, N_MOLECULES[box_id]),
             )
-        points = point_estimates(results, "v_molar")
-        for i in VEX_ROWS:
-            terms = [
-                (w, *v_molar[b]) for w, b in zip(MIX[i], BOX_IDS, strict=True) if w
-            ]
-            time = terms[0][1]
-            if not all(np.array_equal(t, time) for _, t, _ in terms):
-                raise ValueError(
-                    f"{model_name}/{POINT_IDS[i]}: boxes logged at different times"
+        for observable, prop, name, label, rows in properties:
+            points = point_estimates(results, observable)
+            for i in rows:
+                terms = [
+                    (w, *series[b]) for w, b in zip(MIX[i], BOX_IDS, strict=True) if w
+                ]
+                time = terms[0][1]
+                if not all(np.array_equal(t, time) for _, t, _ in terms):
+                    raise ValueError(
+                        f"{model_name}/{POINT_IDS[i]}: boxes logged at different times"
+                    )
+                write_convergence(
+                    OUT_PATH
+                    / model_name
+                    / f"convergence_{prop}"
+                    / f"{POINT_IDS[i]}.json",
+                    time,
+                    sum(w * obs[observable] for w, _, obs in terms),
+                    points[i],
+                    title=f"{POINT_IDS[i]}: {name} from the mixture and pure boxes",
+                    y_label=label,
                 )
-            write_convergence(
-                OUT_PATH / model_name / "convergence_vex" / f"{POINT_IDS[i]}.json",
-                time,
-                sum(w * v for w, _, v in terms),
-                points[i],
-                title=f"{POINT_IDS[i]}: V^E from the mixture and pure boxes",
-                y_label="V^E / cm³ mol⁻¹",
-            )
 
 
 @pytest.fixture(scope="module")
@@ -910,7 +918,7 @@ def test_binary_mixtures(
     parity_plots: None,
     system_plots: None,
     convergence_plots: None,
-    vex_convergence_plots: None,
+    mixing_convergence_plots: None,
     flag_plots: None,
     final_structures: None,
 ) -> None:
@@ -927,8 +935,8 @@ def test_binary_mixtures(
         Per-system ΔHmix(x) and V^E(x) figures.
     convergence_plots
         Per-box convergence figures.
-    vex_convergence_plots
-        Per-point V^E convergence figures.
+    mixing_convergence_plots
+        Per-point ΔHmix and V^E convergence figures.
     flag_plots
         Per-model flag overviews.
     final_structures

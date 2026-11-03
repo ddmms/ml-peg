@@ -48,8 +48,11 @@ DETAIL_DIRS = {
     "parity_pure_density": "convergence_density",
     "flag_summary": "convergence_h",
 }
-# Second panel, shown alongside the first: V^E running averages
-SECOND_DETAIL_DIRS = {"parity_vex": "convergence_vex"}
+# Second panel, shown alongside the first: ΔHmix and V^E running averages
+SECOND_DETAIL_DIRS = {
+    "parity_hmix": "convergence_hmix",
+    "parity_vex": "convergence_vex",
+}
 
 
 class BinaryMixturesApp(BaseApp):
@@ -138,8 +141,8 @@ def get_app() -> BinaryMixturesApp:
             "density of 10 binary liquid mixtures (30 compositions, 2 aqueous), "
             "against experiment, from 1 ns NPT MD after 0.2 ns equilibration. "
             "Click a cell for a parity plot, then a point for its composition "
-            "curve or time series and final structure (V^E points also show the "
-            "running average of V^E)."
+            "curve or time series and final structure (ΔHmix and V^E points also "
+            "show their running average)."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "binary_mixtures_metrics_table.json",
