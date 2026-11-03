@@ -241,8 +241,12 @@ for 0.2 ns of equilibration followed by 1 ns of production.
 Metrics
 -------
 
-Every property is scored by its mean absolute z-score (MAZE). The mean absolute error
-(MAE) is shown alongside it, at weight 0.
+Every property is scored by its mean absolute z-score (MAZE), with the mean absolute
+error (MAE) shown alongside it at weight 0. Only the ΔHmix and V^E MAZEs are weighted.
+The mixture and pure densities are shown at weight 0: the liquid densities benchmark
+already scores most of these pure liquids, and the mixture density errors are mostly
+pure-density errors (for Sage, the pure densities alone account for 0.0087 of the
+0.0094 g/cm³ mixture density MAE), with the mixing contribution captured by V^E.
 
 1. ΔHmix MAE (kJ/mol) and MAZE, over the 30 mixture compositions
 
@@ -255,8 +259,8 @@ Every property is scored by its mean absolute z-score (MAZE). The mean absolute 
 
 3. V^E MAE (cm³/mol) and MAZE, over the same 27 compositions.
 
-4. Pure density MAE (g/cm³) and MAZE, over the 7 pure liquids not already scored by the
-   liquid densities benchmark.
+4. Pure density MAE (g/cm³) and MAZE, over all 20 pure-liquid boxes (18 liquids, with
+   water and pyridine at two temperatures).
 
    For every MAZE, each error is divided by a fixed reference uncertainty
    σ_ref = sqrt(σ_exp² + σ_Sage²), where σ_Sage is the standard deviation of 5

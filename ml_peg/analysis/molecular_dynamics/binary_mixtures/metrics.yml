@@ -3,7 +3,10 @@
 # (data/power_analysis/thresholds.csv). good: the score of a model that matches
 # experiment exactly, with one 0.2 + 1 ns run per box, plus 2 SD of its noise.
 # bad: 5 x the score of Sage (openff-2.3.0, mean of 5 replicates). Mixture and
-# pure densities share thresholds. Recompute them if the protocol changes.
+# pure densities share thresholds. All density metrics have weight 0: the liquid
+# densities benchmark already scores most of the pure liquids, and mixture
+# density errors are mostly pure-density errors. Recompute the thresholds if the
+# protocol changes.
 metrics:
   ΔHmix MAE:
     good: 0.11
@@ -21,20 +24,21 @@ metrics:
       5 independent Sage runs
     level_of_theory: Experimental
   Density MAE:
-    good: 0.0012
-    bad: 0.047
+    good: 0.001
+    bad: 0.052
     unit: g cm^-3
     tooltip: Mean absolute error of the mixture densities (27 points)
     level_of_theory: Experimental
     weight: 0
   Density MAZE:
-    good: 1.2
+    good: 1.1
     bad: 51.0
     unit: null
     tooltip: Mean absolute z-score of the mixture densities (27 points), dividing
       each error by a fixed sqrt(σ_exp² + σ_Sage²), where σ_Sage is the spread of
-      5 independent Sage runs
+      5 independent Sage runs (weight 0)
     level_of_theory: Experimental
+    weight: 0
   V^E MAE:
     good: 0.13
     bad: 1.2
@@ -51,21 +55,22 @@ metrics:
       5 independent Sage runs
     level_of_theory: Experimental
   Pure density MAE:
-    good: 0.0012
-    bad: 0.047
+    good: 0.001
+    bad: 0.052
     unit: g cm^-3
-    tooltip: Mean absolute error of the pure-liquid densities not already scored by
-      the liquid densities benchmark (7 points)
+    tooltip: Mean absolute error of the pure-liquid densities (20 points)
     level_of_theory: Experimental
     weight: 0
   Pure density MAZE:
-    good: 1.2
+    good: 1.1
     bad: 51.0
     unit: null
-    tooltip: Mean absolute z-score of the pure-liquid densities not already scored
-      by the liquid densities benchmark (7 points), dividing each error by a fixed
-      sqrt(σ_exp² + σ_Sage²), where σ_Sage is the spread of 5 independent Sage runs
+    tooltip: Mean absolute z-score of the pure-liquid densities (20 points),
+      dividing each error by a fixed sqrt(σ_exp² + σ_Sage²), where σ_Sage is the
+      spread of 5 independent Sage runs (weight 0, as the liquid densities
+      benchmark scores most of these liquids)
     level_of_theory: Experimental
+    weight: 0
   Flagged boxes:
     good: 0
     bad: 10

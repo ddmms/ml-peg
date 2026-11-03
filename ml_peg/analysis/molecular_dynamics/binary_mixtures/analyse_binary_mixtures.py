@@ -1,14 +1,17 @@
 """
 Analyse the binary mixtures benchmark.
 
-Scores ΔHmix, mixture density, excess molar volume (V^E) and new pure-liquid
-densities against experiment. Box means and their uncertainties come from the
-autocorrelation estimator in ``ml_peg.analysis.utils.timeseries`` (see
-``mixing.py``). Metric confidence intervals are bootstrapped at the level of
-the 50 boxes, so the correlation between compositions that share pure boxes is
-included. Every property is scored by MAE and by MAZE, which divides each
-error by a fixed, model-independent σ_ref from ``systems.csv`` or ``pure.csv``
-(experimental uncertainty and Sage replicate spread).
+Scores ΔHmix, mixture density, excess molar volume (V^E) and pure-liquid
+densities against experiment. The densities are shown at weight 0, as the
+liquid densities benchmark already scores most of the pure liquids and mixture
+density errors are mostly pure-density errors. Box means and their
+uncertainties come from the autocorrelation estimator in
+``ml_peg.analysis.utils.timeseries`` (see ``mixing.py``). Metric confidence
+intervals are bootstrapped at the level of the 50 boxes, so the correlation
+between compositions that share pure boxes is included. Every property is
+scored by MAE and by MAZE, which divides each error by a fixed,
+model-independent σ_ref from ``systems.csv`` or ``pure.csv`` (experimental
+uncertainty and Sage replicate spread).
 """
 
 from __future__ import annotations
@@ -122,12 +125,9 @@ DENSITY_ROWS = np.flatnonzero(SYSTEMS.density_exp.notna().to_numpy())
 VEX_ROWS = np.flatnonzero(SYSTEMS.vex_exp.notna().to_numpy())
 VEX_SIGMA = SYSTEMS.vex_sigma.fillna(0.0).to_numpy()[VEX_ROWS]
 DENSITY_BOXES = [POINT_IDS[i] for i in DENSITY_ROWS]
-# Pure liquids scored here (not already scored by liquid_densities)
+# Every pure liquid (at weight 0, as liquid_densities scores most of them)
 _PURE_BOX = BOXES[BOXES.kind == "pure"].set_index(["smiles", "temperature"]).box_id
-SCORED_PURE = PURE[PURE.scored.astype(bool)]
-PURE_BOXES = [
-    _PURE_BOX.loc[(p.smiles, p.temperature)] for p in SCORED_PURE.itertuples()
-]
+PURE_BOXES = [_PURE_BOX.loc[(p.smiles, p.temperature)] for p in PURE.itertuples()]
 
 # Elements of the input boxes, for the app's element filter
 write_struct_info(
@@ -476,7 +476,7 @@ def vex_errors(box_results) -> tuple[dict, dict]:
 @pytest.fixture(scope="module")
 def pure_density_errors(box_results) -> tuple[dict, dict]:
     """
-    Get the MAE (g/cm³) and MAZE of the pure densities not scored elsewhere.
+    Get the MAE (g/cm³) and MAZE of the pure densities.
 
     Parameters
     ----------
@@ -493,9 +493,9 @@ def pure_density_errors(box_results) -> tuple[dict, dict]:
         "density",
         PURE_BOXES,
         lambda rho: rho,
-        SCORED_PURE.density.to_numpy(),
-        SCORED_PURE.sigma.to_numpy(),
-        SCORED_PURE.sigma_ref_density.to_numpy(),
+        PURE.density.to_numpy(),
+        PURE.sigma.to_numpy(),
+        PURE.sigma_ref_density.to_numpy(),
     )
 
 
@@ -608,7 +608,7 @@ def parity_plots(box_results) -> None:
                 [vex[i] for i in VEX_ROWS],
                 pd.Series(VEX_SIGMA),
             ),
-            ("pure_density", PURE_BOXES, SCORED_PURE.density, pure, SCORED_PURE.sigma),
+            ("pure_density", PURE_BOXES, PURE.density, pure, PURE.sigma),
         ):
             write_parity(
                 model_dir / f"parity_{prop}.json",
