@@ -31,6 +31,8 @@ from pathlib import Path
 from ase import neighborlist
 from ase.atoms import Atoms
 from ase.io import read, write
+import networkx as nx
+from networkx.algorithms import isomorphism
 import numpy as np
 import pytest
 from scipy.optimize import linear_sum_assignment
@@ -87,6 +89,11 @@ SAME_STRUCTURE = 0.3
 # whose nearest neighbour falls between the two is one the search reached
 # but not closely enough to count, which a pass rate alone cannot show.
 NEAR_MISS_FACTOR = 1.5
+# Stand-in cost for a pairing that must never be made. The assignment
+# solver rejects a non-finite cost, so excluded structures are priced out
+# of it rather than removed: dropping them from the list would renumber
+# every minimum and break the merge indices that connectivity follows.
+UNMATCHABLE = 1.0e6
 # ASE's natural cutoffs scaled. At 1.0 the covalent radii are tight enough that
 # every molecule containing hydrogen reads as fragmented; 1.1 to 1.2 is the
 # usable range, and the neighbour list adds the skin to EACH radius, so it is
@@ -162,6 +169,74 @@ def _bonds(atoms: Atoms) -> frozenset[tuple[int, int]]:
     )
 
 
+def _labelled_graph(bonds: frozenset[tuple[int, int]], symbols: list[str]) -> nx.Graph:
+    """
+    Build a bonding graph whose nodes carry their element.
+
+    Parameters
+    ----------
+    bonds
+        Bonded index pairs, as ``_bonds`` returns them.
+    symbols
+        Chemical symbol of each atom.
+
+    Returns
+    -------
+    networkx.Graph
+        One node per atom, labelled ``element``, and one edge per bond.
+    """
+    graph = nx.Graph()
+    # Every atom is a node, bonded or not: an atom that has come away entirely
+    # leaves no edge, and would otherwise drop out of the comparison.
+    graph.add_nodes_from(
+        (index, {"element": symbol}) for index, symbol in enumerate(symbols)
+    )
+    graph.add_edges_from(bonds)
+    return graph
+
+
+def _in_reference_labelling(
+    atoms: Atoms, reference_bonds: frozenset[tuple[int, int]]
+) -> Atoms | None:
+    """
+    Put a structure's atoms in the reference's order, if it is the same molecule.
+
+    Matching is permutation-invariant, so a structure can be the reference
+    molecule with equivalent atoms labelled differently -- two hydrogens on
+    different carbons exchanged -- and still match it at 0 A. Index by index it
+    then looks rebonded, and every bond length involving those atoms looks
+    wrong, although nothing about the molecule has changed. So bonding is
+    compared as graphs with elements matched, and the isomorphism found is used
+    to relabel the structure before anything is measured.
+
+    Parameters
+    ----------
+    atoms
+        Structure to relabel.
+    reference_bonds
+        Bonding of the reference molecule, as ``_bonds`` returns it.
+
+    Returns
+    -------
+    ase.atoms.Atoms | None
+        The structure with its atoms reordered to the reference's, or None if
+        no relabelling makes its bonding the reference molecule's.
+    """
+    bonds = _bonds(atoms)
+    if bonds == reference_bonds:
+        return atoms
+    symbols = atoms.get_chemical_symbols()
+    matcher = isomorphism.GraphMatcher(
+        _labelled_graph(bonds, symbols),
+        _labelled_graph(reference_bonds, symbols),
+        node_match=isomorphism.categorical_node_match("element", None),
+    )
+    if not matcher.is_isomorphic():
+        return None
+    found_for = {reference: found for found, reference in matcher.mapping.items()}
+    return atoms[[found_for[index] for index in range(len(atoms))]]
+
+
 def _bond_lengths(
     atoms: Atoms, bonds: frozenset[tuple[int, int]]
 ) -> dict[tuple[int, int], float]:
@@ -194,8 +269,9 @@ def _bond_deviations(
     supposed to have, and whatever it has grown instead is the off-reference
     check's business rather than this one's.
 
-    Index by index, as the bonding comparison is: both sides keep the
-    molecule's atom order, so pair ``(i, j)`` means the same two atoms in each.
+    Index by index, so ``atoms`` must already be in the reference's atom
+    order -- see ``_in_reference_labelling`` -- for pair ``(i, j)`` to mean the
+    same two atoms in each.
 
     A deviation that is not finite -- a search that returned NaN coordinates,
     or a reference bond of zero length -- comes back as infinity rather than as
@@ -337,6 +413,42 @@ def _nearest(matrix: np.ndarray) -> list[float]:
     return [float(d) for d in matrix.min(axis=1)]
 
 
+def _unphysical(
+    structures: list[Atoms],
+    reference_bonds: frozenset[tuple[int, int]],
+    reference_lengths: dict[tuple[int, int], float],
+) -> list[int]:
+    """
+    Find the structures the molecule cannot physically adopt.
+
+    Either no relabelling of equivalent atoms makes the bonding the reference
+    molecule's, or one of the molecule's own bonds is held at a length it
+    cannot have. Such a structure is not a
+    node of the landscape, so it is kept out of the network -- counted and
+    written out first, because how many a model produces is itself a result.
+
+    Parameters
+    ----------
+    structures
+        Minima or transition states found by the search.
+    reference_bonds
+        Bonding of the reference molecule, as ``_bonds`` returns it.
+    reference_lengths
+        Reference bond lengths, as ``_bond_lengths`` returns them.
+
+    Returns
+    -------
+    list[int]
+        Indices into ``structures``, ascending.
+    """
+    flagged = []
+    for index, atoms in enumerate(structures):
+        relabelled = _in_reference_labelling(atoms, reference_bonds)
+        if relabelled is None or _is_distorted(relabelled, reference_lengths):
+            flagged.append(index)
+    return flagged
+
+
 def _near_missed(nearest: list[float]) -> int:
     """
     Count references the search reached but not closely enough to match.
@@ -353,9 +465,7 @@ def _near_missed(nearest: list[float]) -> int:
         times it.
     """
     return sum(
-        1
-        for d in nearest
-        if SAME_STRUCTURE <= d < NEAR_MISS_FACTOR * SAME_STRUCTURE
+        1 for d in nearest if SAME_STRUCTURE <= d < NEAR_MISS_FACTOR * SAME_STRUCTURE
     )
 
 
@@ -620,13 +730,48 @@ def _compare(model_name: str) -> dict:
         minima_distances = _distances(
             ref_minima, [a.get_positions().flatten() for a in found_minima], symbols
         )
-        minima_match = _assign(minima_distances)
         saddle_distances = _distances(
             ref_saddles,
             [a.get_positions().flatten() for a in found_saddles],
             symbols,
         )
-        saddle_match = _assign(saddle_distances)
+        # A structure the model cannot physically hold is not a node of the
+        # landscape, so it is kept out of the network and out of every measure
+        # taken on it -- but counted first, and written out, because how much
+        # of this a model produces is itself a result. Excluded by column
+        # rather than removed from the list: the merge indices that
+        # connectivity follows would otherwise all shift.
+        reference_atoms = read(_data_dir() / molecule.directory / molecule.xyz)
+        reference_bonds = _bonds(reference_atoms)
+        reference_lengths = _bond_lengths(reference_atoms, reference_bonds)
+        relabelled = [_in_reference_labelling(a, reference_bonds) for a in found_minima]
+        off_reference = [r for r in relabelled if r is None]
+        # A structure that is not the molecule has no reference order to be put
+        # in, so its bonds are measured as they stand.
+        distorted = [
+            a if r is None else r
+            for a, r in zip(found_minima, relabelled, strict=True)
+            if _is_distorted(a if r is None else r, reference_lengths)
+        ]
+        _write_distorted(model_name, molecule.key, distorted, reference_lengths)
+        excluded = _unphysical(found_minima, reference_bonds, reference_lengths)
+        if excluded:
+            minima_distances[:, excluded] = np.inf
+        minima_match = _assign(
+            np.where(np.isinf(minima_distances), UNMATCHABLE, minima_distances)
+        )
+
+        # The same test on transition states: a saddle holding a bond at an
+        # impossible length is no more a feature of the molecule's landscape
+        # than a minimum is.
+        excluded_saddles = _unphysical(
+            found_saddles, reference_bonds, reference_lengths
+        )
+        if excluded_saddles:
+            saddle_distances[:, excluded_saddles] = np.inf
+        saddle_match = _assign(
+            np.where(np.isinf(saddle_distances), UNMATCHABLE, saddle_distances)
+        )
 
         # Which reference minimum each found minimum corresponds to, for the
         # connectivity test. A found minimum matching nothing is -1.
@@ -649,19 +794,6 @@ def _compare(model_name: str) -> dict:
             if mapped == sorted(joins[ref_index]):
                 preserved += 1
 
-        reference_atoms = read(_data_dir() / molecule.directory / molecule.xyz)
-        reference_bonds = _bonds(reference_atoms)
-        off_reference = sum(1 for a in found_minima if _bonds(a) != reference_bonds)
-
-        # Geometry where the count above is topology, and the two are not
-        # exclusive: a minimum can have rebonded and be distorted as well.
-        # They are kept apart because they fail differently -- an off-reference
-        # minimum may be a real isomer the reference happens not to hold, while
-        # a distorted one is the molecule itself at a length it cannot have.
-        reference_lengths = _bond_lengths(reference_atoms, reference_bonds)
-        distorted = [a for a in found_minima if _is_distorted(a, reference_lengths)]
-        _write_distorted(model_name, molecule.key, distorted, reference_lengths)
-
         results[molecule.key] = {
             "n_searches": _searches(model_name, molecule.key),
             "n_reference_minima": len(ref_minima),
@@ -677,8 +809,10 @@ def _compare(model_name: str) -> dict:
             "minima_near_missed": _near_missed(_nearest(minima_distances)),
             "saddle_near_missed": _near_missed(_nearest(saddle_distances)),
             "connectivity_preserved": preserved,
-            "off_reference_minima": off_reference,
+            "off_reference_minima": len(off_reference),
             "distorted_minima": len(distorted),
+            "excluded_minima": len(excluded),
+            "excluded_saddles": len(excluded_saddles),
         }
     return results
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from ase import Atoms
+from ase.build import molecule
 from ase.io import read
 import numpy as np
 import pytest
@@ -14,13 +15,16 @@ from ml_peg.analysis.landscapes.landscape_search.analyse_landscape_search import
     DISTORTED_SUBDIR,
     NEAR_MISS_FACTOR,
     SAME_STRUCTURE,
+    UNMATCHABLE,
     _assign,
     _bond_deviations,
     _bond_lengths,
     _bonds,
+    _in_reference_labelling,
     _is_distorted,
     _near_missed,
     _nearest,
+    _unphysical,
     _write_distorted,
 )
 
@@ -321,3 +325,269 @@ def test_the_new_metrics_are_registered() -> None:
     ):
         assert name in DEFAULT_THRESHOLDS
         assert name in DEFAULT_TOOLTIPS
+
+
+# --- excluding unphysical structures from the network ---------------------
+# A structure the model cannot physically hold is not a node of the landscape.
+# It is counted and written out, then kept out of matching and connectivity.
+
+
+def test_an_excluded_column_can_never_be_matched() -> None:
+    """Pricing a column at UNMATCHABLE keeps it out of the assignment.
+
+    The exclusion works by column rather than by removing list entries,
+    because the merge indices that connectivity follows would otherwise shift.
+    """
+    import numpy as np
+
+    matrix = np.array([[0.05, 0.9], [0.9, 0.06]])
+    assert len(_assign(matrix)) == 2
+    matrix[:, 0] = np.inf
+    priced = np.where(np.isinf(matrix), UNMATCHABLE, matrix)
+    assigned = _assign(priced)
+    assert 0 not in {found for found, _ in assigned.values()}
+    assert len(assigned) == 1
+
+
+def test_excluding_leaves_the_other_indices_in_place() -> None:
+    """Column 1 stays column 1 after column 0 is excluded.
+
+    This is the property that makes connectivity survive the exclusion: a
+    saddle's endpoint is followed through the merge by index.
+    """
+    import numpy as np
+
+    matrix = np.array([[0.9, 0.05], [0.06, 0.9]])
+    matrix[:, 0] = np.inf
+    assigned = _assign(np.where(np.isinf(matrix), UNMATCHABLE, matrix))
+    assert assigned == {0: (1, pytest.approx(0.05))}
+
+
+def test_nearest_ignores_excluded_structures() -> None:
+    """Nearest reports the closest structure the model may actually hold."""
+    import numpy as np
+
+    matrix = np.array([[0.05, 0.40]])
+    matrix[:, 0] = np.inf
+    assert _nearest(matrix) == pytest.approx([0.40])
+
+
+def test_unphysical_flags_a_rebonded_structure(reference_lengths) -> None:
+    """Bonding that differs from the reference is enough on its own."""
+    good = _fragment(REFERENCE_CO)
+    rebonded = _fragment(CRUSHED_CO[0])
+    reference_bonds = _bonds(good)
+    assert _unphysical([good], reference_bonds, reference_lengths) == []
+    assert _unphysical([good, rebonded], reference_bonds, reference_lengths) == [1]
+
+
+def test_unphysical_flags_a_distorted_structure(reference_lengths) -> None:
+    """So is a reference bond held at an impossible length."""
+    good = _fragment(REFERENCE_CO)
+    reference_bonds = _bonds(good)
+    stretched = _fragment(REFERENCE_CO * 1.5)
+    flagged = _unphysical([good, stretched], reference_bonds, reference_lengths)
+    assert flagged == [1]
+
+
+def test_unphysical_returns_ascending_indices(reference_lengths) -> None:
+    """The indices address columns of the distance matrix, so order matters."""
+    good = _fragment(REFERENCE_CO)
+    bad = _fragment(CRUSHED_CO[0])
+    reference_bonds = _bonds(good)
+    structures = [bad, good, bad, good, bad]
+    flagged = _unphysical(structures, reference_bonds, reference_lengths)
+    assert flagged == sorted(flagged)
+    assert flagged == [0, 2, 4]
+
+
+def test_compare_keeps_unphysical_structures_out_of_the_match(monkeypatch) -> None:
+    """The exclusion is actually wired into the comparison.
+
+    Guards the integration rather than the mechanism: each piece can be
+    correct while nothing applies them, which unit tests on the matrix
+    helpers cannot see. The structure here is chosen to sit 0.147 A from the
+    reference -- inside the 0.3 A matching radius, so it matches unless it is
+    excluded -- while holding its C-O bond 25% long, so it is flagged.
+    """
+    results = _compare_one(
+        monkeypatch, _fragment(REFERENCE_CO), [_fragment(REFERENCE_CO * 1.25)]
+    )
+    assert results["excluded_minima"] == 1
+    # Without the exclusion this would be 1: the structure is within the radius.
+    assert results["minima_matched"] == 0
+
+
+def _compare_one(monkeypatch, reference: Atoms, found: list[Atoms]) -> dict:
+    """
+    Run the comparison against one reference minimum and a given search result.
+
+    Parameters
+    ----------
+    monkeypatch
+        Pytest's monkeypatch fixture.
+    reference
+        The only reference minimum, and the structure reference bonding is read from.
+    found
+        The minima the search is to have found. It found no transition states.
+
+    Returns
+    -------
+    dict
+        The comparison's results for the one molecule.
+    """
+    symbols = reference.get_chemical_symbols()
+    entry = analyse_landscape_search.MOLECULES[0]
+    monkeypatch.setattr(analyse_landscape_search, "MOLECULES", (entry,))
+    monkeypatch.setattr(
+        analyse_landscape_search,
+        "_reference",
+        lambda _m: (symbols, [reference.get_positions().flatten()], [], []),
+    )
+    monkeypatch.setattr(
+        analyse_landscape_search,
+        "_found",
+        lambda _m, _k, kind: found if kind == "minimum" else [],
+    )
+    monkeypatch.setattr(
+        analyse_landscape_search, "_merge", lambda frames, _s: (frames, {})
+    )
+    monkeypatch.setattr(analyse_landscape_search, "_searches", lambda _m, _k: 1)
+    monkeypatch.setattr(
+        analyse_landscape_search, "_write_distorted", lambda *a, **k: None
+    )
+    monkeypatch.setattr(
+        analyse_landscape_search, "read", lambda *a, **k: reference.copy()
+    )
+    return analyse_landscape_search._compare("any-model")[entry.key]
+
+
+def _hydrogen_on(atoms: Atoms, heavy: int) -> int:
+    """
+    Find a hydrogen bonded to a given atom.
+
+    Parameters
+    ----------
+    atoms
+        Structure to search.
+    heavy
+        Index of the atom the hydrogen is bonded to.
+
+    Returns
+    -------
+    int
+        Index of the first such hydrogen.
+    """
+    symbols = atoms.get_chemical_symbols()
+    return next(
+        other
+        for pair in sorted(_bonds(atoms))
+        if heavy in pair
+        for other in pair
+        if other != heavy and symbols[other] == "H"
+    )
+
+
+def _relabelled_methanol() -> tuple[Atoms, Atoms]:
+    """
+    Build methanol and a copy with a methyl and the hydroxyl hydrogen exchanged.
+
+    The copy is the same molecule in the same geometry, so a permutation-
+    invariant match puts it on the reference at zero distance. Only the labels
+    differ: index by index, the hydrogen that was on carbon is now on oxygen.
+
+    Returns
+    -------
+    tuple[ase.atoms.Atoms, ase.atoms.Atoms]
+        The reference and the relabelled copy.
+    """
+    reference = molecule("CH3OH")
+    symbols = reference.get_chemical_symbols()
+    on_carbon = _hydrogen_on(reference, symbols.index("C"))
+    on_oxygen = _hydrogen_on(reference, symbols.index("O"))
+    positions = reference.get_positions()
+    positions[[on_carbon, on_oxygen]] = positions[[on_oxygen, on_carbon]]
+    relabelled = reference.copy()
+    relabelled.set_positions(positions)
+    return reference, relabelled
+
+
+def _migrated_methanol() -> tuple[Atoms, Atoms]:
+    """
+    Build methanol and a copy whose hydroxyl hydrogen has moved onto the carbon.
+
+    Returns
+    -------
+    tuple[ase.atoms.Atoms, ase.atoms.Atoms]
+        The reference and the migrated structure.
+    """
+    reference = molecule("CH3OH")
+    symbols = reference.get_chemical_symbols()
+    carbon, oxygen = symbols.index("C"), symbols.index("O")
+    positions = reference.get_positions()
+    # Straight away from the oxygen, which keeps it clear of the methyl hydrogens.
+    away = positions[carbon] - positions[oxygen]
+    positions[_hydrogen_on(reference, oxygen)] = positions[carbon] + 1.09 * (
+        away / np.linalg.norm(away)
+    )
+    migrated = reference.copy()
+    migrated.set_positions(positions)
+    return reference, migrated
+
+
+def test_a_relabelled_copy_looks_rebonded_index_by_index() -> None:
+    """The case below is real: compared index by index, the copy is rebonded."""
+    reference, relabelled = _relabelled_methanol()
+    assert _bonds(relabelled) != _bonds(reference)
+
+
+def test_a_relabelled_copy_is_not_unphysical() -> None:
+    """
+    Exchanging equivalent atoms changes nothing about the molecule.
+
+    The match is permutation-invariant, so the copy sits on the reference at
+    zero distance, and excluding it discards a correct match. Three salicylic
+    acid minima were lost that way, at 0.0065, 0.030 and 0.054 A.
+    """
+    reference, relabelled = _relabelled_methanol()
+    bonds = _bonds(reference)
+    assert _unphysical([relabelled], bonds, _bond_lengths(reference, bonds)) == []
+
+
+def test_a_migration_is_still_unphysical() -> None:
+    """A migration is still flagged: the fix must not weaken the test."""
+    reference, migrated = _migrated_methanol()
+    bonds = _bonds(reference)
+    assert _unphysical([migrated], bonds, _bond_lengths(reference, bonds)) == [0]
+
+
+def test_compare_matches_a_relabelled_copy(monkeypatch) -> None:
+    """The copy is matched, and counted as neither off-reference nor distorted."""
+    reference, relabelled = _relabelled_methanol()
+    results = _compare_one(monkeypatch, reference, [relabelled])
+    assert results["excluded_minima"] == 0
+    assert results["off_reference_minima"] == 0
+    assert results["distorted_minima"] == 0
+    assert results["minima_matched"] == 1
+
+
+def test_relabelling_restores_the_reference_bonding() -> None:
+    """Put back in the reference's order, the copy is the reference again."""
+    reference, relabelled = _relabelled_methanol()
+    bonds = _bonds(reference)
+    restored = _in_reference_labelling(relabelled, bonds)
+    assert restored is not None
+    assert _bonds(restored) == bonds
+    assert not _is_distorted(restored, _bond_lengths(reference, bonds))
+
+
+def test_a_migration_has_no_reference_labelling() -> None:
+    """No relabelling turns a migrated structure into the reference molecule."""
+    reference, migrated = _migrated_methanol()
+    assert _in_reference_labelling(migrated, _bonds(reference)) is None
+
+
+def test_an_unchanged_structure_is_returned_as_it_is() -> None:
+    """Identical bonding needs no isomorphism search, and gets none."""
+    reference = molecule("CH3OH")
+    assert _in_reference_labelling(reference, _bonds(reference)) is reference
