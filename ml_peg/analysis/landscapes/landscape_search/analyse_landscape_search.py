@@ -1,12 +1,13 @@
-"""Analyse the Landscape17 landscape search results and emit metrics.
+"""
+Analyse the Landscape17 landscape search results and emit metrics.
 
 Reads the structures ``calc_landscape_search.py`` found and asks how much of
 the DFT landscape they account for. Nothing in the calculation looks at the
 reference; the comparison happens here, which keeps the search honest and
 means a metric can be redefined without repeating it.
 
-Matching
---------
+Notes
+-----
 Every reference structure is paired with at most one found structure and vice
 versa, by solving the assignment that minimises total RMSD rather than taking
 each reference's nearest in turn. Greedy nearest-first gets this wrong whenever
@@ -744,6 +745,11 @@ def _compare(model_name: str) -> dict:
     """
     Match everything one model found against the reference, molecule by molecule.
 
+    Parameters
+    ----------
+    model_name
+        Model whose search results to match.
+
     Returns
     -------
     dict
@@ -902,6 +908,11 @@ def minima_rmsd(comparison: dict[str, dict]) -> dict[str, list]:
     """
     Get the distance from each matched DFT minimum to the model's.
 
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
+
     Returns
     -------
     dict[str, list]
@@ -924,6 +935,11 @@ def minima_rmsd(comparison: dict[str, dict]) -> dict[str, list]:
 def saddle_rmsd(comparison: dict[str, dict]) -> dict[str, list]:
     """
     Get the distance from each matched DFT transition state to the model's.
+
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
 
     Returns
     -------
@@ -967,6 +983,11 @@ def get_minima_recovered(comparison: dict[str, dict]) -> dict[str, float]:
     """
     Get the fraction of DFT minima the search found.
 
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
+
     Returns
     -------
     dict[str, float]
@@ -982,6 +1003,11 @@ def get_minima_recovered(comparison: dict[str, dict]) -> dict[str, float]:
 def get_saddles_recovered(comparison: dict[str, dict]) -> dict[str, float]:
     """
     Get the fraction of DFT transition states the search found.
+
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
 
     Returns
     -------
@@ -1002,6 +1028,11 @@ def get_connectivity(comparison: dict[str, dict]) -> dict[str, float]:
     Over every reference saddle, not only the matched ones, so a model that
     finds few cannot score well on the few it finds.
 
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
+
     Returns
     -------
     dict[str, float]
@@ -1021,6 +1052,11 @@ def get_off_reference(comparison: dict[str, dict]) -> dict[str, float]:
     Not necessarily wrong: a model may find a genuine isomer and only place it
     at the wrong energy. It is reported because a search that invents structures
     is doing something a recovery fraction cannot show.
+
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
 
     Returns
     -------
@@ -1045,6 +1081,11 @@ def get_distorted_minima(comparison: dict[str, dict]) -> dict[str, float]:
     molecule it has the connectivity of, which the search cannot tell it: the
     structures are converged, and nothing short of the reference geometry says
     they are impossible.
+
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
 
     Returns
     -------
@@ -1072,6 +1113,11 @@ def minima_nearest(comparison: dict[str, dict]) -> dict[str, list]:
     all are left out, having no finite distance to show; the recovery counts
     already carry that case.
 
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
+
     Returns
     -------
     dict[str, list]
@@ -1098,6 +1144,11 @@ def saddle_nearest(comparison: dict[str, dict]) -> dict[str, list]:
     """
     Get the distance to the closest found saddle for every DFT saddle.
 
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
+
     Returns
     -------
     dict[str, list]
@@ -1118,6 +1169,11 @@ def saddle_nearest(comparison: dict[str, dict]) -> dict[str, list]:
 def get_near_missed(comparison: dict[str, dict]) -> dict[str, float]:
     """
     Get the fraction of reference minima the search reached but did not match.
+
+    Parameters
+    ----------
+    comparison
+        Per-model, per-molecule results, as ``comparison`` returns them.
 
     Returns
     -------
@@ -1152,6 +1208,29 @@ def metrics(
 ) -> dict[str, dict]:
     """
     Collect all metrics.
+
+    Parameters
+    ----------
+    get_minima_recovered
+        Fraction of DFT minima the search found.
+    minima_rmsd
+        Distance from each matched DFT minimum to the model's.
+    get_saddles_recovered
+        Fraction of DFT transition states the search found.
+    saddle_rmsd
+        Distance from each matched DFT transition state to the model's.
+    get_connectivity
+        Fraction of DFT saddles both found and joining the same minima.
+    get_off_reference
+        Fraction of found minima whose bonding differs from the molecule's.
+    get_distorted_minima
+        Fraction of found minima holding a bond at an impossible length.
+    minima_nearest
+        Distance to the closest found minimum for every DFT minimum.
+    saddle_nearest
+        Distance to the closest found saddle for every DFT saddle.
+    get_near_missed
+        Fraction of reference minima the search reached but did not match.
 
     Returns
     -------

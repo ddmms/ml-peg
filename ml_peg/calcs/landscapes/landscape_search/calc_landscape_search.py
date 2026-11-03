@@ -1,4 +1,5 @@
-"""Build each Landscape17 landscape from scratch and see how much is found.
+"""
+Build each Landscape17 landscape from scratch and see how much is found.
 
 The stationary points benchmark hands the model the DFT structures and asks
 what survives contact with it. This asks the harder question: given a few starting
@@ -11,8 +12,8 @@ for the transition states between them. Comparing the result with the reference
 is the analysis module's job, which is also where a model inventing structures
 DFT does not have becomes visible.
 
-Why the search is set up as it is
----------------------------------
+Notes
+-----
 ``NEIGHBOURS = 6`` is derived rather than tuned. Pair selection runs once, so
 each minimum is paired with its six nearest and that is the whole extent of the
 search. Six is the worst-case neighbour rank over the DFT reference -- the
@@ -144,7 +145,8 @@ NEB_CONV_CRIT = 1e-2
 
 @dataclass(frozen=True)
 class _Molecule:
-    """One Landscape17 molecule.
+    """
+    One Landscape17 molecule.
 
     Attributes
     ----------
@@ -223,6 +225,16 @@ class _AseCalculatorPotential(Potential):
     """
 
     def __init__(self, symbols: list[str], calc) -> None:
+        """
+        Bind the calculator to a structure of the given composition.
+
+        Parameters
+        ----------
+        symbols
+            Chemical symbols, fixing the element order for every position.
+        calc
+            ASE calculator to evaluate with.
+        """
         super().__init__()
         self.atomistic = True
         self.atoms = Atoms(symbols, positions=np.zeros((len(symbols), 3)))

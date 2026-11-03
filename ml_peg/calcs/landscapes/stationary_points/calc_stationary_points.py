@@ -1,4 +1,5 @@
-"""Evaluate MLIPs on the DFT stationary points of Landscape17.
+"""
+Evaluate MLIPs on the DFT stationary points of Landscape17.
 
 Hands a model the 28 reference minima and 67 transition states, the DFT
 Hessian of each, and the 11,173 steepest-descent frames joining them, and
@@ -69,7 +70,8 @@ SPIN = 1
 
 @dataclass(frozen=True)
 class _Molecule:
-    """One Landscape17 molecule.
+    """
+    One Landscape17 molecule.
 
     Attributes
     ----------
@@ -382,6 +384,16 @@ class _AseCalculatorPotential(Potential):
     """
 
     def __init__(self, symbols: list[str], calc) -> None:
+        """
+        Bind the calculator to a structure of the given composition.
+
+        Parameters
+        ----------
+        symbols
+            Chemical symbols, fixing the element order for every position.
+        calc
+            ASE calculator to evaluate with.
+        """
         super().__init__()
         self.atomistic = True
         self.atoms = Atoms(symbols, positions=np.zeros((len(symbols), 3)))

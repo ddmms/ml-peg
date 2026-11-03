@@ -1,4 +1,5 @@
-"""Analyse the Landscape17 stationary point results and emit metrics.
+"""
+Analyse the Landscape17 stationary point results and emit metrics.
 
 Reads the raw per-model outputs written by ``calc_stationary_points.py`` and
 derives the quantities declared in ``metrics.yml``. Derived properties are
@@ -8,7 +9,7 @@ if a metric is later redefined.
 Distributions are summarised by percentile rather than by the fraction crossing
 a threshold; see the calculation module's docstring for why.
 
-Scope
+Notes
 -----
 Only the energy and force metrics are implemented, because only the energy and
 force calculations exist. The drift, connectivity and Hessian metrics are held
@@ -154,7 +155,7 @@ def _read_frames(model_name: str, pattern: str) -> list:
 
 def _relative_energies(frames: list) -> tuple[np.ndarray, np.ndarray]:
     """
-    Energies per atom within each molecule, measured from its mean.
+    Get the energies per atom within each molecule, measured from its mean.
 
     Each method is referenced to its own mean, so an overall offset cancels.
     The mean rather than the lowest structure, because the lowest is not a
