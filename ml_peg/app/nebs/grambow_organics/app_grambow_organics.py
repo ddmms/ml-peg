@@ -38,6 +38,7 @@ class GrambowOrganicsApp(BaseApp):
             plot = read_plot(model_path / "figure_neb_overview.json", id=graph_id)
             plots[model] = {
                 "Convergence Rate": plot,
+                "Barrier Height MAE": plot,
                 "Score": plot,
             }
             profile_id = plot_from_scatter_files(
@@ -85,7 +86,7 @@ def get_app() -> GrambowOrganicsApp:
         description=(
             "Fraction of nudged elastic band simulations that converge for 100 "
             "elementary organic reactions sampled from the Grambow dataset. "
-            "Assesses whether the model can produce a stable reaction path."
+            "Assesses reaction-path convergence and forward barrier accuracy."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "grambow_organics_metrics_table.json",

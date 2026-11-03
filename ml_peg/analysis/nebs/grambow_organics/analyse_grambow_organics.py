@@ -23,6 +23,7 @@ from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     load_metrics_config,
+    mae,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -101,7 +102,9 @@ def write_neb_profiles(model_name: str, states: list, references: list) -> None:
             )
         )
         reactions.append(reaction)
-        barriers.append(float(energies.max() - energies[0]))
+        # Convert ASE energies to the reference dataset units, kcal/mol.
+        relative_energies = (energies - energies[0]) * units.mol / units.kcal
+        barriers.append(float(relative_energies.max()))
         figure = go.Figure()
         frames = [
             Atoms(numbers=state.atomic_numbers, positions=position)
@@ -110,13 +113,13 @@ def write_neb_profiles(model_name: str, states: list, references: list) -> None:
         write(model_path / f"band_{reaction}.extxyz", frames)
         figure.add_scatter(
             x=list(range(len(energies))),
-            y=(energies - energies[0]).tolist(),
+            y=relative_energies.tolist(),
             name=f"Reaction {reaction}",
             mode="lines+markers",
             customdata=[reaction] * len(energies),
             hovertemplate=(
                 "Reaction %{customdata}<br>Image %{x}<br>"
-                "Relative energy: %{y:.3f} eV<extra></extra>"
+                "Relative energy: %{y:.3f} kcal/mol<extra></extra>"
             ),
         )
         reference = references[index]
@@ -125,9 +128,8 @@ def write_neb_profiles(model_name: str, states: list, references: list) -> None:
             reference.transition_state,
             reference.products,
         ]
-        # MLIP Audit's Grambow reference energies are in kcal/mol, unlike ASE's eV.
         ref_energies = np.array([molecule.energy for molecule in molecules])
-        ref_energies = (ref_energies - ref_energies[0]) * units.kcal / units.mol
+        ref_energies = ref_energies - ref_energies[0]
         ref_barriers.append(float(ref_energies[1]))
         write(
             model_path / f"band_ref_{reaction}.extxyz",
@@ -141,13 +143,13 @@ def write_neb_profiles(model_name: str, states: list, references: list) -> None:
             line_dash="dash",
             line_color="red",
             line_width=1,
-            annotation_text=f"DFT barrier: {ref_energies[1]:.3f} eV",
+            annotation_text=f"DFT barrier: {ref_energies[1]:.3f} kcal/mol",
             annotation_position="top left",
         )
         figure.update_layout(
             title=f"Reaction {reaction}",
             xaxis_title="NEB image",
-            yaxis_title="Relative energy / eV",
+            yaxis_title="Relative energy / kcal/mol",
             showlegend=True,
         )
         figure.write_json(profile_path / f"{reaction}.json")
@@ -158,8 +160,8 @@ def write_neb_profiles(model_name: str, states: list, references: list) -> None:
     ]
 
     @plot_parity(
-        x_label="MLIP forward barrier / eV",
-        y_label="DFT forward barrier / eV",
+        x_label="MLIP forward barrier / kcal/mol",
+        y_label="DFT forward barrier / kcal/mol",
         hoverdata={"Convergence": statuses, "Reaction": reactions},
         symbol_by=statuses,
         group_colors={
@@ -182,27 +184,57 @@ def write_neb_profiles(model_name: str, states: list, references: list) -> None:
     barrier_parity()
 
 
-@pytest.fixture
-def convergence_rate() -> dict[str, float]:
+def barrier_height_mae(states: list, references: list) -> float:
     """
-    Get the fraction of NEB simulations that converged for each model.
+    Compare all final forward barriers with DFT, including unconverged estimates.
 
-    A reaction counts as converged when the maximum final NEB force is below the
-    convergence threshold. If any reaction simulation errored, or the whole
-    calculation failed (empty model output), the model gets a NaN convergence
-    rate. Models without any calculation output are skipped.
+    Parameters
+    ----------
+    states
+        Final simulation states in dataset order, including failed reactions.
+    references
+        Reference reactions in the same order, with energies in kcal/mol.
 
     Returns
     -------
-    dict[str, float]
-        Fraction of converged reactions for each model.
+    float
+        Barrier MAE in kcal/mol, or NaN for missing or invalid results.
+    """
+    if not references or len(states) != len(references):
+        return np.nan
+    predictions, targets = [], []
+    for state, reference in zip(states, references, strict=True):
+        if state is None:
+            return np.nan
+        energies = np.asarray(state.potential_energy, dtype=float)
+        if energies.ndim != 1 or len(energies) < 2 or not np.isfinite(energies).all():
+            return np.nan
+        predictions.append(float(energies.max() - energies[0]) * units.mol / units.kcal)
+        targets.append(reference.transition_state.energy - reference.reactants.energy)
+    if not np.isfinite(targets).all():
+        return np.nan
+    return mae(targets, predictions)
+
+
+@pytest.fixture
+def neb_metrics() -> dict[str, dict[str, float]]:
+    """
+    Get convergence rates and forward barrier errors for each model.
+
+    Missing reactions invalidate both metrics. Unconverged reactions remain in
+    the barrier error, with their final paths treated as barrier estimates.
+
+    Returns
+    -------
+    dict[str, dict[str, float]]
+        Metric names mapped to per-model values.
     """
     check_dataset()
     benchmark = MlPegGrambowOrganicsBenchmark(
         force_field=Calculator(), data_input_dir=CALC_PATH, run_mode="standard"
     )
     references = [benchmark._grambow_data[key] for key in benchmark._reaction_ids]
-    results = {}
+    results = {"Convergence Rate": {}, "Barrier Height MAE": {}}
     for model_name in MODELS:
         output_dir = CALC_PATH / model_name / BENCHMARK
         if not (output_dir / "model_output.zip").exists():
@@ -212,14 +244,21 @@ def convergence_rate() -> dict[str, float]:
         )
         states = model_output.simulation_states
         write_neb_profiles(model_name, states, references)
-        if not states or any(state is None for state in states):
-            results[model_name] = np.nan
+        results["Barrier Height MAE"][model_name] = barrier_height_mae(
+            states, references
+        )
+        if (
+            not states
+            or len(states) != len(references)
+            or any(state is None for state in states)
+        ):
+            results["Convergence Rate"][model_name] = np.nan
             continue
         n_converged = sum(
             np.sqrt((state.forces**2).sum(axis=1).max()) < FINAL_CONVERGENCE_THRESHOLD
             for state in states
         )
-        results[model_name] = n_converged / len(states)
+        results["Convergence Rate"][model_name] = n_converged / len(references)
     return results
 
 
@@ -266,21 +305,21 @@ def struct_info() -> dict:
     weights=DEFAULT_WEIGHTS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(convergence_rate: dict[str, float]) -> dict[str, dict]:
+def metrics(neb_metrics: dict[str, dict[str, float]]) -> dict[str, dict]:
     """
     Get all metrics.
 
     Parameters
     ----------
-    convergence_rate
-        Fraction of converged NEB reactions for all models.
+    neb_metrics
+        Convergence rates and barrier errors for all models.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return {"Convergence Rate": convergence_rate}
+    return neb_metrics
 
 
 def test_grambow_organics(metrics: dict[str, dict], struct_info: dict) -> None:

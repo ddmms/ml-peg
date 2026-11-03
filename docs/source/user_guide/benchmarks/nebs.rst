@@ -213,8 +213,7 @@ Summary
 Performance in converging nudged elastic band (NEB) simulations for 100
 elementary organic reactions sampled from the Grambow dataset, involving small
 neutral molecules containing H, C, N and O. The benchmark assesses whether a
-model can produce a stable, converged reaction path, rather than the accuracy of
-the transition state.
+model can produce a stable, converged reaction path and accurate forward barriers.
 
 Metrics
 -------
@@ -229,7 +228,16 @@ climbing-image NEB steps from the resulting images.
 
 A reaction counts as converged when the maximum force of the final climbing-image
 NEB falls below 0.05 eV/Å. The reported metric is the fraction of the 100 reactions
-that converged. If any simulation errors, the metric is reported as NaN.
+that converged. If any simulation errors or is missing, the metric is reported
+as NaN.
+
+2. Barrier height MAE
+
+Mean absolute error of the forward barrier, calculated as the highest final NEB
+image energy minus the reactant energy, against the DFT transition-state barrier.
+All reactions contribute, including unconverged paths as barrier estimates.
+Missing reactions or invalid energies give NaN rather than an error over only
+successful reactions.
 
 
 Benchmark speed
@@ -252,6 +260,6 @@ Input structures:
 Reference data:
 
 The input geometries come from calculations at the
-:math:`\omega B97X-D3/def2-TZVP` level of theory. The convergence metric does not
-compare against DFT energies or barriers. The benchmark protocol is adapted from
+:math:`\omega B97X-D3/def2-TZVP` level of theory. The barrier metric compares
+against energies at this level of theory. The benchmark protocol is adapted from
 MLIP Audit, which is credited through the framework citation.
