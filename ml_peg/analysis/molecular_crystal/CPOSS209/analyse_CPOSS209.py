@@ -40,7 +40,7 @@ INFO = get_struct_info(
     glob_pattern="**/crystal*.xyz",
     info_keys=["polymorph_name"],
     write_info=True,
-    write_structs=True,
+    write_structs=False,
     out_path=OUT_PATH,
     include_dirs=True,
 )
@@ -124,11 +124,6 @@ def lattice_energies_raw() -> tuple[
                 # Read molecule structure
                 molecule = read(system_dir / molecule_file, 0)
 
-                # Write molecule files to output directory for reference
-                out_dir = OUT_PATH / model_name / system
-                out_dir.mkdir(parents=True, exist_ok=True)
-                write(out_dir / molecule_file.name, molecule)
-
                 # Extract energy from structure
                 molecule_energy = molecule.get_potential_energy()
                 molecule_energies.append(molecule_energy)
@@ -145,11 +140,6 @@ def lattice_energies_raw() -> tuple[
             for crystal_file in crystal_files:
                 # Read crystal structure once
                 crystal = read(system_dir / crystal_file, 0)
-
-                # Write crystal files to output directory for reference
-                out_dir = OUT_PATH / model_name / system
-                out_dir.mkdir(parents=True, exist_ok=True)
-                write(out_dir / crystal_file.name, crystal)
 
                 # Get crystal energy and number of molecules per unit cell
                 crystal_energy = crystal.get_potential_energy()
@@ -996,4 +986,10 @@ def test_cposs209(metrics: dict[str, dict]) -> None:
     metrics
         All CPOSS209 metrics.
     """
-    return
+    # Write structures from the mock calculation for the app, keeping the
+    # per-system directories the app relies on to order structures
+    for system in set(INFO["systems"]):
+        out_dir = OUT_PATH / "mock" / system
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for struct_file in sorted((CALC_PATH / "mock" / system).glob("*.xyz")):
+            write(out_dir / struct_file.name, read(struct_file, 0))

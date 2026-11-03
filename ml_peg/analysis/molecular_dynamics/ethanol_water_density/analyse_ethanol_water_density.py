@@ -9,7 +9,11 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, rmse
+from ml_peg.analysis.utils.utils import (
+    load_metrics_config,
+    rmse,
+    write_element_info,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.molecular_dynamics.ethanol_water_density.calc_ethanol_water_density import (  # noqa: E501
@@ -37,18 +41,10 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 M_WATER = 18.01528  # g/mol
 M_ETOH = 46.06844  # g/mol
 
-OUT_PATH.mkdir(parents=True, exist_ok=True)
+# Every composition is a mixture of ethanol and water
+ELEMENTS = ["C", "H", "O"]
 
-# Save per-composition elemental info (and composition dir labels) for app filtering.
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*/*.traj",
-    index=0,
-    write_info=True,
-    write_structs=False,  # all files are "mock.traj", flat write would collide
-    out_path=OUT_PATH,
-    include_dirs=True,
-)
+OUT_PATH.mkdir(parents=True, exist_ok=True)
 
 
 def weight_to_mole_fraction(w):
@@ -550,4 +546,6 @@ def test_ethanol_water_density(metrics: dict[str, dict], curve_plots: None) -> N
     None
         The test validates fixture execution and writes artifacts.
     """
-    return
+    # Save per-composition elemental info for app filtering. The mock trajectories
+    # take days to generate and tell us nothing the compositions do not
+    write_element_info([ELEMENTS] * N_COMPOSITIONS, OUT_PATH)

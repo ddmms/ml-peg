@@ -37,7 +37,7 @@ dependencies = [
     "numpy<3,>=2.1.0; python_version >= '3.13'",
     "openpyxl<4,>=3.1.5",
     "orjson<4,>=3.9",
-    "plotly>=6,<7",
+    "plotly>=7,<8",
     "pytest>=9.0,<10.0",
     "pybtex>=0.26,<0.27",
     "pylatexenc>=2.10,<3",

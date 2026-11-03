@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import collections
 from pathlib import Path
+from shutil import copyfile
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
@@ -144,11 +145,6 @@ def grouped_data() -> dict[str, dict[str, list[dict]]]:
                     "ref": ref_val,
                 }
             )
-
-            # Copy structure to output for App
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / xyz_file.name, atoms)
 
     return results
 
@@ -305,4 +301,11 @@ def test_defectstab_analysis(
     formation_energies
         Parity plot data for formation energies.
     """
-    return
+    # Write structures from the mock calculation for the app. Systems without a
+    # reference are not plotted, so must not be written
+    structs_dir = OUT_PATH / "mock"
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    for label, ref in zip(INFO["filenames"], INFO["ref"], strict=True):
+        if ref is None:
+            continue
+        copyfile(CALC_PATH / "mock" / f"{label}.xyz", structs_dir / f"{label}.xyz")

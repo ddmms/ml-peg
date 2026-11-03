@@ -651,12 +651,20 @@ def struct_from_scatter(
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = point["pointNumber"] if mode == "traj" else 0
         else:
+            # Missing if the benchmark has not been fully analysed
+            if point["pointNumber"] >= len(structs):
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             struct = structs[point["pointNumber"]]
+            if not struct:
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = 0
 
-        frames = (
-            frame_groups[point["pointNumber"]] if frame_groups is not None else None
-        )
+        frames = None
+        if frame_groups is not None:
+            # Missing if the benchmark has not been fully analysed
+            if point["pointNumber"] >= len(frame_groups):
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
+            frames = frame_groups[point["pointNumber"]]
         return Div(
             Iframe(
                 srcDoc=generate_weas_html(
@@ -753,6 +761,8 @@ def struct_from_multi_scatters(
             struct = curve_structs
             index = idx
         else:
+            if idx >= len(curve_structs) or not curve_structs[idx]:
+                return Div()
             struct = curve_structs[idx]
             index = 0
 
