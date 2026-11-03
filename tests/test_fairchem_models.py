@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
+from yaml import safe_load
 
 from ml_peg.models.get_models import load_models
+
+MODELS_FILE = Path(__file__).parents[1] / "ml_peg" / "models" / "models.yml"
+REGISTRY = safe_load(MODELS_FILE.read_text(encoding="utf8"))
+FAIRCHEM_MODELS = tuple(
+    name for name, cfg in REGISTRY.items() if cfg["class_name"] == "FAIRChemCalculator"
+)
 
 NITRO_MODELS = (
     "uma-s-1p2p1-omol",
@@ -100,3 +109,17 @@ def test_nitro_models_use_batch_settings_in_float64(fake_fairchem, name):
     load_models((name,))[name].get_calculator(precision="high")
 
     assert fake_fairchem["inference_settings"] == _preset("batch", "float64")
+
+
+@pytest.mark.parametrize("name", FAIRCHEM_MODELS)
+def test_inference_settings_are_valid_presets(name):
+    """Every UMA entry names a preset fairchem actually provides."""
+    pytest.importorskip("fairchem.core")
+    from fairchem.core.units.mlip_unit.api.inference import (
+        InferenceSettings,
+        guess_inference_settings,
+    )
+
+    # Entries without inference_settings use the wrapper's "batch" default.
+    settings = (REGISTRY[name].get("kwargs") or {}).get("inference_settings", "batch")
+    assert isinstance(guess_inference_settings(settings), InferenceSettings)

@@ -882,7 +882,7 @@ class FairChemCalc(SumCalc):
             Loaded ASE fairchem Calculator.
         """
         from fairchem.core.units.mlip_unit.api.inference import (
-            NAME_TO_INFERENCE_SETTING,
+            guess_inference_settings,
         )
 
         fairchem_calculator = import_calculator(self.module, self.class_name)
@@ -895,11 +895,11 @@ class FairChemCalc(SumCalc):
         check_precision(precision)
         precision_map = {"low": "float32", "high": "float64"}
         dtype = self.default_dtype or precision_map[precision]
-        settings = NAME_TO_INFERENCE_SETTING[self.inference_settings]
+        settings = guess_inference_settings(self.inference_settings)
         # UMA Nitro only runs in float32, so use the standard path otherwise,
         # rather than letting fairchem fall back to its TF32 multigpu preset.
         if settings.nitro and dtype != "float32":
-            settings = NAME_TO_INFERENCE_SETTING["batch"]
+            settings = guess_inference_settings("batch")
         inference_settings = dataclasses.replace(settings, base_precision_dtype=dtype)
 
         predictor_kwargs, calc_kwargs = split_kwargs(
