@@ -61,6 +61,23 @@ class SkipActionError(Exception):
     """An action has no applicable data in the current app."""
 
 
+def _is_gzipped(request) -> bool:
+    """
+    Report whether a request body was compressed by ``compress_payload``.
+
+    Parameters
+    ----------
+    request
+        Completed Playwright POST request.
+
+    Returns
+    -------
+    bool
+        True if the body was sent gzipped.
+    """
+    return "gzip" in (request.headers.get("content-encoding") or "")
+
+
 def _callback_name(request) -> str | None:
     """
     Read the output name from a callback request.
@@ -157,6 +174,8 @@ class Journey:
         ):
             response = request.response()
             timing = request.timing
+            # Only a POST carries a request body, so only it can be compressed.
+            is_post = request.method == "POST"
             self.requests.append(
                 {
                     "path": urlsplit(request.url).path,
@@ -165,12 +184,9 @@ class Journey:
                     if timing["responseEnd"] >= 0
                     else None,
                     "failure": request.failure,
-                    "callback": _callback_name(request)
-                    if request.method == "POST"
-                    else None,
+                    "callback": _callback_name(request) if is_post else None,
                     # Explains a null callback: the body was gzipped and unreadable.
-                    "compressed": "gzip"
-                    in (request.headers.get("content-encoding") or ""),
+                    "compressed": _is_gzipped(request) if is_post else None,
                     "response_bytes": response.headers.get("content-length")
                     if response
                     else None,

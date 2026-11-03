@@ -26,6 +26,27 @@ def test_request_duration_sentinel(tmp_path, duration, expected):
     assert journey.requests[0]["duration_ms"] == expected
 
 
+@pytest.mark.parametrize(
+    "encoding,compressed,callback",
+    [(None, False, "table.data"), ("gzip", True, None)],
+)
+def test_compressed_callbacks_are_flagged(tmp_path, encoding, compressed, callback):
+    """Gzipped bodies are unreadable here, so the flag explains the missing name."""
+    journey = profiler.Journey(Mock(), tmp_path, 1000, 100)
+    request = Mock()
+    request.url = "http://localhost/_dash-update-component"
+    request.timing = {"responseEnd": 1.0}
+    request.method = "POST"
+    request.failure = None
+    request.response.return_value = None
+    request.headers = {"content-encoding": encoding} if encoding else {}
+    # Chromium withholds the Blob body of a compressed request.
+    request.post_data_json = None if encoding else {"output": "table.data"}
+    journey.finished(request)
+    assert journey.requests[0]["compressed"] is compressed
+    assert journey.requests[0]["callback"] == callback
+
+
 def test_measure_excludes_preparation_time_and_diagnostics(tmp_path, monkeypatch):
     """Previous work is neither charged to nor blamed on the next action."""
     clock = [0.0]
