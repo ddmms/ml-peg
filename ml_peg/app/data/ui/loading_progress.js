@@ -29,6 +29,7 @@
 
   var CEILING = 92; // never claim done before the app actually is
   var TIME_CONSTANT_MS = 1500; // how quickly the ease approaches CEILING
+  var TABLE_TIME_CONSTANT_MS = 500; // table updates usually finish much sooner
   var MAX_FRAME_MS = 100; // ignore time the main thread spent blocked
   // Stop the loop once nothing has needed it for this many consecutive frames
   // (~2s at 60fps); a DOM observer restarts it when a ring next appears.
@@ -86,7 +87,9 @@
 
       // Exponential ease towards CEILING — fast at first, then slower, which
       // reads as "working" without ever implying it is nearly finished.
-      prev.pct += (CEILING - prev.pct) * (delta / TIME_CONSTANT_MS);
+      var timeConstant = ring.closest(".mlpeg-table-spinner")
+        ? TABLE_TIME_CONSTANT_MS : TIME_CONSTANT_MS;
+      prev.pct += (CEILING - prev.pct) * (delta / timeConstant);
       paint(ring, prev.pct);
     }
 
@@ -119,7 +122,8 @@
    * Mirrors tick()'s stop test, or the two fight: any mutation would restart
    * the loop just because the finished start-up ring is still mounted. */
   function observeForRings() {
-    new MutationObserver(function () {
+    new MutationObserver(function (records) {
+      finishRemovedTables(records);
       if (running) {
         return;
       }
@@ -133,26 +137,42 @@
     }).observe(document.documentElement, { childList: true, subtree: true });
   }
 
-  // The shell waits for this promise before hiding the mask, so completion is
-  // painted while the ring is still visible. Share it across overlapping polls.
-  var completion;
-  window.__mlpegLoadingProgress.finishStartup = function () {
-    if (completion) {
-      return completion;
-    }
-    var ring = document.querySelector("#startup-mask .mlpeg-progress-ring");
-    if (!ring) {
-      return Promise.resolve();
-    }
+  // Shared by the startup mask and the final frame of table overlays.
+  function finishRing(ring) {
     var entry = state.get(ring) || { pct: 0, last: 0 };
     entry.done = true; // Stop the estimated-progress loop overwriting completion.
     state.set(ring, entry);
     var initial = entry.pct;
     var duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches
       ? 0 : 180;
-    completion = new Promise(function (resolve) {
+    return new Promise(function (resolve) {
       var started;
+      var settled = false;
+      var frame;
+      var hold;
+      var fallback;
+
+      function complete() {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        window.cancelAnimationFrame(frame);
+        window.clearTimeout(hold);
+        window.clearTimeout(fallback);
+        entry.pct = 100;
+        paint(ring, 100);
+        resolve();
+      }
+
       function finish(now) {
+        if (settled) {
+          return;
+        }
+        if (document.hidden) {
+          complete();
+          return;
+        }
         if (started === undefined) {
           started = now;
         }
@@ -160,15 +180,74 @@
         entry.pct = initial + (100 - initial) * fraction;
         paint(ring, entry.pct);
         if (fraction < 1) {
-          window.requestAnimationFrame(finish);
+          frame = window.requestAnimationFrame(finish);
         } else {
           // Leave a brief, visible completed frame before revealing the page.
-          window.setTimeout(resolve, 100);
+          hold = window.setTimeout(complete, 100);
         }
       }
-      window.requestAnimationFrame(finish);
+      if (!duration || document.hidden) {
+        complete();
+        return;
+      }
+      // Background tabs can pause frames. Dismiss independently of the animation,
+      // even if the tab becomes hidden after completion starts. Timers may throttle.
+      fallback = window.setTimeout(complete, 1000);
+      frame = window.requestAnimationFrame(finish);
     });
-    return completion;
+  }
+
+  // Dash unmounts custom spinners when loading ends. Keep a visual copy outside
+  // its spinner slot for completion, without delaying data or touching React's
+  // nodes. A new load replaces the copy immediately.
+  var finishingTables = new Map();
+  function finishRemovedTables(records) {
+    finishingTables.forEach(function (overlay, host) {
+      if (!host.isConnected || host.querySelector(".mlpeg-table-spinner")) {
+        overlay.remove();
+        finishingTables.delete(host);
+      }
+    });
+    records.forEach(function (record) {
+      var host = record.target.closest && record.target.closest(".mlpeg-table-loading");
+      if (!host || !host.isConnected || host.querySelector(".mlpeg-table-spinner")) {
+        return;
+      }
+      record.removedNodes.forEach(function (node) {
+        if (node.nodeType !== 1) {
+          return;
+        }
+        var spinner = node.matches(".mlpeg-table-spinner")
+          ? node : node.querySelector(".mlpeg-table-spinner");
+        if (!spinner || finishingTables.has(host)) {
+          return;
+        }
+        var original = spinner.querySelector(".mlpeg-progress-ring");
+        var overlay = spinner.cloneNode(true);
+        overlay.classList.replace("mlpeg-table-spinner", "mlpeg-table-completion");
+        var ring = overlay.querySelector(".mlpeg-progress-ring");
+        var entry = state.get(original);
+        state.set(ring, { pct: entry ? entry.pct : 0, last: 0 });
+        finishingTables.set(host, overlay);
+        host.appendChild(overlay);
+        finishRing(ring).then(function () {
+          overlay.remove();
+          if (finishingTables.get(host) === overlay) {
+            finishingTables.delete(host);
+          }
+        });
+      });
+    });
+  }
+
+  // The shell waits before hiding the mask. Share completion across polls.
+  var completion;
+  window.__mlpegLoadingProgress.finishStartup = function () {
+    var ring = document.querySelector("#startup-mask .mlpeg-progress-ring");
+    if (!completion && ring) {
+      completion = finishRing(ring);
+    }
+    return completion || Promise.resolve();
   };
 
   function init() {
