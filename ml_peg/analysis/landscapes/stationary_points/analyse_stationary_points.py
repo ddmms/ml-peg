@@ -255,12 +255,13 @@ def residual_forces() -> dict[str, list]:
     reference to compare against: what the model reports is a residual, saying
     how far the DFT structure is from being stationary under the model.
 
-    Reported as the RMS over the structure's force components, which against a
-    reference of zeros is exactly an RMSE, and so is the same statistic as
-    ``Path force RMSE``. That comparability is the point: on MACE-OFF the two
-    come out at 159 and 153 meV/Å, which says the model's force error at the
-    stationary points is the same size as along the paths between them -- one
-    systematic offset across the whole surface.
+    One value per structure, the RMS over its force components, which against a
+    reference of zeros is that structure's RMSE. ``Force RMSE`` pools every
+    component instead, as ``Path force RMSE`` does along the paths, so the two
+    compare directly: on mace-omol they come out at 129 and 126 meV/Å, which
+    says the model's force error at the stationary points is the same size as
+    along the paths between them -- one systematic offset across the whole
+    surface.
 
     Returns
     -------
@@ -323,49 +324,33 @@ def get_energy_rmse(stationary_energies: dict[str, list]) -> dict[str, float]:
     }
 
 
-def _percentile(values: dict[str, list], percentile: float) -> dict[str, float]:
-    """
-    Get one percentile of each model's per-structure values.
-
-    Parameters
-    ----------
-    values
-        Per-structure values for each model.
-    percentile
-        Percentile to take, 0 to 100.
-
-    Returns
-    -------
-    dict[str, float]
-        The percentile for each model, NaN where nothing was evaluated.
-    """
-    results = {}
-    for model_name in MODELS:
-        entries = np.asarray(values[model_name], dtype=float)
-        results[model_name] = (
-            float(np.percentile(entries, percentile))
-            if entries.size and np.isfinite(entries).all()
-            else np.nan
-        )
-    return results
-
-
 @pytest.fixture
-def get_residual_force(residual_forces: dict[str, list]) -> dict[str, float]:
+def get_force_rmse(residual_forces: dict[str, list]) -> dict[str, float]:
     """
-    Get the median residual force at the stationary points.
+    Get the force RMSE over every component at the stationary points.
+
+    DFT's force is zero at each of these geometries, so the error is the
+    model's own force. Pooled over every component of the 95 structures, as
+    ``get_path_force_rmse`` is over the path frames, so the two compare
+    directly.
 
     Parameters
     ----------
     residual_forces
-        Per-structure maximum force components.
+        Per-structure RMS forces. Requested so that their violin is written;
+        the RMSE itself is pooled from the components.
 
     Returns
     -------
     dict[str, float]
-        Median in meV/Å for each model.
+        RMSE in meV/Å for each model.
     """
-    return _percentile(residual_forces, 50)
+    results = {}
+    for model_name in MODELS:
+        frames = _read_frames(model_name, POINTS_GLOB)
+        predicted = np.concatenate([a.arrays["mlip_forces"].ravel() for a in frames])
+        results[model_name] = rmse(np.zeros_like(predicted), predicted) * EV_TO_MEV
+    return results
 
 
 @pytest.fixture
@@ -391,7 +376,7 @@ def get_path_energy_rmse() -> dict[str, float]:
 
 
 @pytest.fixture
-def get_path_force_rmse() -> dict[str, float]:
+def get_path_force_rmse(path_force_errors: dict[str, list]) -> dict[str, float]:
     """
     Get the force RMSE over every component of every path frame.
 
@@ -402,6 +387,12 @@ def get_path_force_rmse() -> dict[str, float]:
     of the data. On the reference set the two differ by about 2%, which is
     small but is the kind of silent deviation that makes a number
     non-comparable with force RMSEs quoted elsewhere.
+
+    Parameters
+    ----------
+    path_force_errors
+        Per-frame force RMSEs. Requested so that their violin is written; the
+        RMSE itself is pooled from the components.
 
     Returns
     -------
@@ -467,13 +458,13 @@ def saddle_drift() -> dict[str, list]:
     Saddles the search did not reach within its step budget are left out of
     this distribution and counted by ``Saddles converged`` instead.
 
-    They are left out rather than carried through as NaN because NaN would
-    make the median and mean NaN for every model: typically half the reference
-    saddles are not reached, so the metric would never produce a number. That
-    is the opposite of the minima, where a single failure should void the
-    result, and the difference is deliberate -- a minimum that will not relax
-    is a broken measurement, while a saddle the model has nowhere near is a
-    finding about the model.
+    They are left out rather than carried through as NaN because NaN would make
+    the median and 90th percentile NaN for every model: typically half the
+    reference saddles are not reached, so the metric would never produce a
+    number. That is the opposite of the minima, where a single failure should
+    void the result, and the difference is deliberate -- a minimum that will
+    not relax is a broken measurement, while a saddle the model has nowhere
+    near is a finding about the model.
 
     Returns
     -------
@@ -502,7 +493,7 @@ def _summarise_over_all(values: dict[str, list], statistic) -> dict[str, float]:
     values
         Per-structure values for each model.
     statistic
-        ``numpy.median`` or ``numpy.mean``.
+        ``numpy.median`` or ``_p90``.
 
     Returns
     -------
@@ -530,7 +521,7 @@ def _summarise_over_reached(values: dict[str, list], statistic) -> dict[str, flo
     values
         Per-structure values for each model.
     statistic
-        ``numpy.median`` or ``numpy.mean``.
+        ``numpy.median`` or ``_p90``.
 
     Returns
     -------
@@ -543,6 +534,23 @@ def _summarise_over_reached(values: dict[str, list], statistic) -> dict[str, flo
         finite = finite[np.isfinite(finite)]
         results[model_name] = float(statistic(finite)) if finite.size else np.nan
     return results
+
+
+def _p90(values: np.ndarray) -> float:
+    """
+    Get the 90th percentile, the edge of a distribution's tail.
+
+    Parameters
+    ----------
+    values
+        Per-structure values.
+
+    Returns
+    -------
+    float
+        The value 90% of the structures fall at or below.
+    """
+    return float(np.percentile(values, 90))
 
 
 @pytest.fixture
@@ -564,9 +572,11 @@ def get_minima_drift_median(minima_drift: dict[str, list]) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_minima_drift_mean(minima_drift: dict[str, list]) -> dict[str, float]:
+def get_minima_drift_p90(minima_drift: dict[str, list]) -> dict[str, float]:
     """
-    Get the mean distance a reference minimum travels.
+    Get the 90th percentile of the distance a reference minimum travels.
+
+    Read against the median: well above it means a few minima moved a long way.
 
     Parameters
     ----------
@@ -576,9 +586,9 @@ def get_minima_drift_mean(minima_drift: dict[str, list]) -> dict[str, float]:
     Returns
     -------
     dict[str, float]
-        Mean in Å for each model.
+        90th percentile in Å for each model.
     """
-    return _summarise_over_all(minima_drift, np.mean)
+    return _summarise_over_all(minima_drift, _p90)
 
 
 @pytest.fixture
@@ -625,13 +635,13 @@ def get_saddle_drift_median(saddle_drift: dict[str, list]) -> dict[str, float]:
 
 
 @pytest.fixture
-def get_saddle_drift_mean(saddle_drift: dict[str, list]) -> dict[str, float]:
+def get_saddle_drift_p90(saddle_drift: dict[str, list]) -> dict[str, float]:
     """
-    Get the mean distance a reached saddle sits from the reference one.
+    Get the 90th percentile distance of a reached saddle from the reference one.
 
-    Read against the median: a mean well above it means a few saddles landed a
-    long way off. The step budget truncates the slowest searches, which are
-    disproportionately the far-drifting ones, so this understates the skew of
+    Read against the median: well above it means a few saddles landed a long
+    way off. The step budget truncates the slowest searches, which are
+    disproportionately the far-drifting ones, so this understates the tail of
     the distribution that an unlimited search would produce.
 
     Parameters
@@ -642,9 +652,9 @@ def get_saddle_drift_mean(saddle_drift: dict[str, list]) -> dict[str, float]:
     Returns
     -------
     dict[str, float]
-        Mean in Å over the saddles that converged.
+        90th percentile in Å over the saddles that converged.
     """
-    return _summarise_over_reached(saddle_drift, np.mean)
+    return _summarise_over_reached(saddle_drift, _p90)
 
 
 @pytest.fixture
@@ -709,7 +719,7 @@ def mode_overlaps() -> dict[str, list]:
 @pytest.fixture
 @plot_violin(
     filename=OUT_PATH / "figure_reaction_coordinates.json",
-    title="Agreement with the DFT reaction coordinate",
+    title="Agreement with the DFT reaction mode",
     y_label="Imaginary mode overlap (cosine)",
     hoverdata={
         "Molecule": HESSIAN_INFO["molecule"],
@@ -1090,14 +1100,14 @@ def get_curvature_scaling_error(
 )
 def metrics(
     get_energy_rmse: dict[str, float],
-    get_residual_force: dict[str, float],
+    get_force_rmse: dict[str, float],
     get_path_energy_rmse: dict[str, float],
     get_path_force_rmse: dict[str, float],
     get_minima_drift_median: dict[str, float],
-    get_minima_drift_mean: dict[str, float],
+    get_minima_drift_p90: dict[str, float],
     get_saddles_converged: dict[str, float],
     get_saddle_drift_median: dict[str, float],
-    get_saddle_drift_mean: dict[str, float],
+    get_saddle_drift_p90: dict[str, float],
     get_connectivity: dict[str, float],
     get_mode_overlap: dict[str, float],
     get_reaction_coordinate_overlap: dict[str, float],
@@ -1115,22 +1125,22 @@ def metrics(
     ----------
     get_energy_rmse
         Energy RMSE at the stationary points.
-    get_residual_force
-        Median residual force at the stationary points.
+    get_force_rmse
+        Force RMSE at the stationary points.
     get_path_energy_rmse
         Energy RMSE along the paths.
     get_path_force_rmse
         Force RMSE along the paths.
     get_minima_drift_median
         Median distance a reference minimum travels.
-    get_minima_drift_mean
-        Mean distance a reference minimum travels.
+    get_minima_drift_p90
+        90th percentile of the distance a reference minimum travels.
     get_saddles_converged
         Fraction of reference saddles the search reaches.
     get_saddle_drift_median
         Median distance a reached saddle sits from the reference one.
-    get_saddle_drift_mean
-        Mean distance a reached saddle sits from the reference one.
+    get_saddle_drift_p90
+        90th percentile distance of a reached saddle from the reference one.
     get_connectivity
         Fraction of reference saddles joining the same two minima.
     get_mode_overlap
@@ -1151,17 +1161,17 @@ def metrics(
     """
     return {
         "Energy RMSE": get_energy_rmse,
-        "Residual force": get_residual_force,
+        "Force RMSE": get_force_rmse,
         "Path energy RMSE": get_path_energy_rmse,
         "Path force RMSE": get_path_force_rmse,
-        "Minima drift (median)": get_minima_drift_median,
-        "Minima drift (mean)": get_minima_drift_mean,
+        "Reconverged minima RMSD (median)": get_minima_drift_median,
+        "Reconverged minima RMSD (90th pct)": get_minima_drift_p90,
         "Saddles converged": get_saddles_converged,
-        "Saddle drift (median)": get_saddle_drift_median,
-        "Saddle drift (mean)": get_saddle_drift_mean,
+        "Reconverged saddle RMSD (median)": get_saddle_drift_median,
+        "Reconverged saddle RMSD (90th pct)": get_saddle_drift_p90,
         "Connectivity preserved": get_connectivity,
         "Normal mode overlap": get_mode_overlap,
-        "Reaction coordinate overlap": get_reaction_coordinate_overlap,
+        "Reaction mode overlap": get_reaction_coordinate_overlap,
         "Curvature scaling error": get_curvature_scaling_error,
         "Soft mode curvature error": get_soft_mode_error,
         "Reaction mode curvature": get_reaction_curvature,

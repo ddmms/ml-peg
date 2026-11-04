@@ -24,9 +24,10 @@ DATA_PATH = APP_ROOT / "data" / "landscapes" / "stationary_points"
 INFO_PATH = DATA_PATH / "info.json"
 
 # Which figure to show when a metric column is clicked. Several metrics share
-# one: the median and mean of a distribution are two readings of the same
-# violin, and showing it for either is what makes the pair interpretable --
-# a mean well above the median means a tail, visible in the plot and not in
+# one: the median and 90th percentile of a distribution are two readings of
+# the same violin, and showing it for either is what makes the pair
+# interpretable -- a 90th percentile well above the median means a tail,
+# visible in the plot and not in
 # the two numbers. Metrics with no distribution behind them, such as the
 # fractions, have no entry and clicking them does nothing.
 #
@@ -35,14 +36,14 @@ INFO_PATH = DATA_PATH / "info.json"
 # responding.
 FIGURES = {
     "Energy RMSE": "figure_stationary_energies.json",
-    "Residual force": "figure_residual_forces.json",
+    "Force RMSE": "figure_residual_forces.json",
     "Path force RMSE": "figure_path_forces.json",
-    "Minima drift (median)": "figure_minima_drift.json",
-    "Minima drift (mean)": "figure_minima_drift.json",
-    "Saddle drift (median)": "figure_saddle_drift.json",
-    "Saddle drift (mean)": "figure_saddle_drift.json",
+    "Reconverged minima RMSD (median)": "figure_minima_drift.json",
+    "Reconverged minima RMSD (90th pct)": "figure_minima_drift.json",
+    "Reconverged saddle RMSD (median)": "figure_saddle_drift.json",
+    "Reconverged saddle RMSD (90th pct)": "figure_saddle_drift.json",
     "Normal mode overlap": "figure_mode_overlaps.json",
-    "Reaction coordinate overlap": "figure_reaction_coordinates.json",
+    "Reaction mode overlap": "figure_reaction_coordinates.json",
     "Curvature scaling error": "figure_curvature_scaling.json",
     "Soft mode curvature error": "figure_soft_mode_error.json",
     "Reaction mode curvature": "figure_reaction_curvature.json",

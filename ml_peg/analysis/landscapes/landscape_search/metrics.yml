@@ -46,14 +46,14 @@ metrics:
     bad: 0.2
     weight: 1
     unit: fraction
-    tooltip: "Fraction of matched transition states joining the two minima that their DFT counterparts join. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
+    tooltip: "Fraction of all 67 reference transition states that the search both recovered and found joining the same two minima as in DFT. Taken over every reference rather than the recovered ones, so a model that finds few cannot score well on the few it finds. Where the reference records a saddle joining a minimum to itself, a degenerate rearrangement between symmetry-equivalent copies, the model is counted correct when both of its endpoints match that minimum."
     level_of_theory: ωB97X/6-31G(d)
   Off-reference minima:
     good: 0.0
     bad: 0.2
     weight: 0
     unit: fraction
-    tooltip: "Fraction of the model's minima whose bonding differs from the reference molecule. Not necessarily errors of structure: a model may find a genuine isomer and merely place it at the wrong energy. BH moves and NEB interpolations only happen along dihedral angles, so bonding framework would stay intact in an ideal case."
+    tooltip: "Fraction of the model's minima whose bonding differs from the reference molecule. Not necessarily errors of structure: a model may find a genuine isomer and merely place it at the wrong energy. The search only sets out to change conformation, with basin-hopping steps that rotate dihedral angles, so the bonding framework would stay intact in an ideal case."
     level_of_theory: ωB97X/6-31G(d)
   Distorted minima:
     good: 0.0

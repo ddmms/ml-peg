@@ -320,10 +320,7 @@ SEED = 0
 # finished travelling, which flatters the model: measured on MACE-OFF, relaxing
 # this to 1e-3 cuts paracetamol's median drift from 0.065 to 0.020 A, because
 # the last third of the journey happens along soft torsions at gradients below
-# 1e-3. The cliff is molecule-dependent -- paracetamol survives 1e-4 and breaks
-# at 1e-3, salicylic acid already breaks at 1e-4 -- so there is no looser value
-# that is safe across the set. 1e-5 is safe on both but saves only 6 to 25% of
-# the iterations, which is not worth the risk on the four molecules not tested.
+# 1e-3.
 MINIMISE_CONV_CRIT = 1e-6
 # topsearch defaults this to 200, which is not enough: on MACE-OFF these minima
 # need 460 to 670 iterations to reach the criterion above, and at 200 every one
@@ -334,9 +331,7 @@ MINIMISE_STEPS = 1000
 # A fixed protocol rather than a safe cutoff. Measured on MACE-OFF across the
 # full reference, the step count does NOT separate outcomes: a saddle can take
 # 541 steps and land 0.26 A from the DFT one, or 22 steps and land 0.30 A away.
-# So no budget can be justified by a gap in the distribution -- an earlier
-# version of this comment claimed one, and aspirin, which is 37 of the 67
-# saddles, falsified it.
+# So no budget can be justified by a gap in the distribution.
 #
 # What the budget does instead is truncate the slow tail, and that tail is
 # overwhelmingly made of failures. Measured over all 37 aspirin saddles, which
@@ -348,12 +343,13 @@ MINIMISE_STEPS = 1000
 # roughly twenty times faster.
 #
 # Two consequences to state wherever these numbers are quoted. Saddles that
-# would have converged slowly are reported as not converged, so this measures
+# would have converged slowly (but most likely away from the DFT TS)
+# are reported as not converged, so at worst, this measures
 # the model under a fixed search budget rather than in the limit. And because
-# the truncated tail is the far-drifting part, the mean drift is pulled down
-# towards the median -- on aspirin, mean 0.436 over everything that converged
-# against 0.099 inside the budget -- which suppresses the skew that reporting
-# both was meant to reveal. `steps` is recorded per saddle so any of this can
+# the truncated tail is the far-drifting part, the drift distribution loses its
+# far end -- on aspirin, the mean is 0.436 over everything that converged
+# against 0.099 inside the budget -- which hides part of the tail the 90th
+# percentile is there to show. `steps` is recorded per saddle so any of this can
 # be checked from the output.
 TS_STEPS = 150
 TS_CONV_CRIT = 1e-2
@@ -920,17 +916,6 @@ def _match_modes(
     """
     Pair every reference mode with a model mode, one to one, by overlap.
 
-    An eigenvalue window cannot do this job. A model whose stiff modes come
-    back uniformly softer than DFT -- GFN2-xTB is 15 to 20% soft on this
-    reference -- puts the correct partner outside any window tight enough to
-    be meaningful, and the mode is scored zero although the model has its
-    direction right. Matching on the overlap itself is indifferent to a
-    systematic scaling, which is then reported separately instead of silently
-    destroying the comparison.
-
-    One to one also handles degeneracy: modes free to mix within a degenerate
-    set are assigned among themselves rather than all claiming one partner.
-
     Parameters
     ----------
     reference
@@ -1016,29 +1001,10 @@ def test_hessians(mlip: tuple[str, Any]) -> None:
             out_atoms.info.update(
                 mode_overlap_median=float(np.median(matched)),
                 mode_overlap_min=float(matched.min()),
-                # The eigenvalues themselves, paired mode by mode, rather than
-                # a scaling derived from them. How to summarise the curvature
-                # is a real choice -- a least-squares slope is dominated by the
-                # stiffest modes, which on this reference span four orders of
-                # magnitude -- and keeping the pairs means that choice can be
-                # revisited in the analysis without recomputing any Hessian.
                 reference_eigenvalues=ref_values,
                 model_eigenvalues=paired,
-                # Diagnostic, not a metric. Counting negative eigenvalues is
-                # unreliable near zero: paracetamol's softest torsions sit at
-                # a few times 1e-3 eV/A^2 and three reference structures have
-                # one dip just below zero -- min01 at -7e-4, and two saddles
-                # with a spurious -1e-3 alongside their genuine -0.5. The real
-                # imaginary mode is still the most negative in every case, so
-                # the reaction coordinate below is unaffected.
                 n_negative_reference=int((ref_values < 0).sum()),
                 n_negative_model=int((model_values < 0).sum()),
-                # At a transition state the lowest mode is the reaction
-                # coordinate; whether the model agrees about its direction is
-                # a sharper question than the average mode. Stored raw: whether
-                # to count it when the model has no imaginary mode there is a
-                # judgement, and the eigenvalues beside it let the analysis
-                # make that judgement without recomputing a Hessian.
                 reaction_coordinate_overlap=(
                     float(matched[0])
                     if atoms.info["kind"] == "transition_state"

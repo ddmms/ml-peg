@@ -1,7 +1,3 @@
-# Only the metrics that `analyse_stationary_points.py` actually produces are
-# declared here. The rest of the benchmark -- reconvergence, connectivity and
-# Hessians -- is held in the commented block at the bottom and moves up as each
-# calculation lands, so this file never promises a number nothing computes.
 metrics:
   Energy RMSE:
     good: 1.0
@@ -9,11 +5,11 @@ metrics:
     unit: meV/atom
     tooltip: "Energy error at the 95 DFT minima and transition states, each method measured from its own per-molecule mean so a constant offset cancels."
     level_of_theory: ωB97X/6-31G(d)
-  Residual force:
+  Force RMSE:
     good: 130.0
     bad: 400.0
     unit: meV/Å
-    tooltip: "The model's own force where DFT's is zero. A floor of about 130 meV/Å applies: these are ωB97X/6-31G(d) geometries and no current model is trained on that functional."
+    tooltip: "Force error at the 95 DFT minima and transition states, where DFT's force is zero, so this is the RMS of the model's own force over every component. A floor of about 130 meV/Å applies: these are ωB97X/6-31G(d) geometries and no current model is trained on that functional."
     level_of_theory: ωB97X/6-31G(d)
   Path energy RMSE:
     good: 1.0
@@ -25,19 +21,19 @@ metrics:
     good: 130.0
     bad: 400.0
     unit: meV/Å
-    tooltip: "Force error along the paths, where DFT forces are non-zero. Subject to the same ~130 meV/Å functional floor as the residual force."
+    tooltip: "Force error along the paths, where DFT forces are non-zero. Subject to the same ~130 meV/Å functional floor as Force RMSE."
     level_of_theory: ωB97X/6-31G(d)
-  Minima drift (median):
+  Reconverged minima RMSD (median):
     good: 0.02
     bad: 0.3
     unit: Å
-    tooltip: "How far a reference minimum moves when relaxed under the model. By 0.3 Å it is a different conformer."
+    tooltip: "RMSD between each reference minimum and where it ends up when relaxed under the model. By 0.3 Å it is a different conformer."
     level_of_theory: ωB97X/6-31G(d)
-  Minima drift (mean):
-    good: 0.02
-    bad: 0.3
+  Reconverged minima RMSD (90th pct):
+    good: 0.05
+    bad: 0.5
     unit: Å
-    tooltip: "Mean of the same distribution. Well above the median means a few minima moved a long way."
+    tooltip: "90th percentile of the same distribution, distinguishing a model that holds most minima well but loses a few from one that is uniformly imprecise."
     level_of_theory: ωB97X/6-31G(d)
   Saddles converged:
     good: 0.95
@@ -45,17 +41,17 @@ metrics:
     unit: fraction
     tooltip: "Fraction of all 67 reference transition states where eigenvector following reaches a saddle within the step budget."
     level_of_theory: ωB97X/6-31G(d)
-  Saddle drift (median):
+  Reconverged saddle RMSD (median):
     good: 0.02
     bad: 0.3
     unit: Å
-    tooltip: "How far a reference transition state moves when reconverged, over those the search reached."
+    tooltip: "RMSD between each reference transition state and where it reconverges to, over those the search reached."
     level_of_theory: ωB97X/6-31G(d)
-  Saddle drift (mean):
-    good: 0.02
-    bad: 0.3
+  Reconverged saddle RMSD (90th pct):
+    good: 0.05
+    bad: 0.5
     unit: Å
-    tooltip: "Mean of the same distribution. The step budget truncates the far-drifting tail, so this understates the skew."
+    tooltip: "90th percentile of the same distribution. Saddles that never converge are left out here and counted by Saddles converged; the step budget truncates the far-drifting tail, so this understates it."
     level_of_theory: ωB97X/6-31G(d)
   Connectivity preserved:
     good: 0.9
@@ -69,7 +65,7 @@ metrics:
     unit: cosine
     tooltip: "Agreement with the DFT normal modes at the reference geometries, matched one to one after projecting out translation and rotation."
     level_of_theory: ωB97X/6-31G(d)
-  Reaction coordinate overlap:
+  Reaction mode overlap:
     good: 0.99
     bad: 0.8
     unit: cosine
@@ -107,10 +103,10 @@ metrics:
 # that cliff. 0.3 A survives only inside the endpoint identification, where
 # some cutoff is unavoidable.
 #
-# Median and mean are both reported because the difference between them is the
-# skew: the drift distribution has a long tail of structures the model moved a
-# long way, and a mean well above the median is how that tail shows up without
-# a percentile.
+# Median and 90th percentile are both reported, as in the landscape search: the
+# median says where the typical structure sits, and the 90th percentile whether
+# there is a tail of structures the model moved a long way. Both read directly
+# in Å, where a mean would mix the bulk and the tail into one number.
 #
 #
 # Mean first passage time between a chosen pair of minima, derived from the

@@ -98,13 +98,10 @@ SPIN = 1
 # benchmark asks, which is what a model finds when handed a structure.
 #
 # The archive holds twenty per molecule, evenly spaced through the trajectory
-# and reordered to Landscape17's atom ordering -- rMD17 and Landscape17
-# disagree about that for salicylic acid, malonaldehyde and azobenzene, and
-# nothing about the mismatch raises an error.
+# and reordered to Landscape17's atom ordering.
 STARTS = 5
 NEIGHBOURS = 6
-# 100, which is what the published runs used. The environment default in that
-# code is 5, which is not what any of them ran with.
+# 100, which is what the published runs used and we find is enough to find all minima.
 BASIN_HOPPING_STEPS = 100
 # The random seed still varies between runs, so two searches from the same
 # conformer are not identical either.

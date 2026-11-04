@@ -20,16 +20,18 @@ DATA_PATH = APP_ROOT / "data" / "landscapes" / "landscape_search"
 # 90th percentile of one distribution share a violin, which is what makes the
 # pair readable: a 90th percentile far above the median means a tail of badly
 # placed structures rather than a uniform offset, and that is visible in the
-# plot and not in the two numbers. The four fractions summarise counts rather
-# than a distribution, so they have no figure and clicking them does nothing.
+# plot and not in the two numbers. The fractions summarise counts rather than
+# a distribution, so they have no figure and clicking them does nothing.
 #
 # Every key must match a metric name in metrics.yml exactly. A stale key is
 # silent: the callback raises PreventUpdate and the column stops responding.
 FIGURES = {
-    "Minima RMSD (median)": "figure_minima_rmsd.json",
-    "Minima RMSD (90th pct)": "figure_minima_rmsd.json",
-    "Saddle RMSD (median)": "figure_saddle_rmsd.json",
-    "Saddle RMSD (90th pct)": "figure_saddle_rmsd.json",
+    "Matched minima RMSD (median)": "figure_minima_rmsd.json",
+    "Matched minima RMSD (90th pct)": "figure_minima_rmsd.json",
+    "Matched saddle RMSD (median)": "figure_saddle_rmsd.json",
+    "Matched saddle RMSD (90th pct)": "figure_saddle_rmsd.json",
+    "Nearest minima RMSD (median)": "figure_minima_nearest.json",
+    "Nearest saddle RMSD (median)": "figure_saddle_nearest.json",
 }
 
 
