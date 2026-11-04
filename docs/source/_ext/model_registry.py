@@ -17,6 +17,11 @@ if TYPE_CHECKING:
 
 MODELS_FILE = Path(__file__).parents[3] / "ml_peg" / "models" / "models.yml"
 NOTES_FILE = Path(__file__).parents[1] / "user_guide" / "model_notes.yml"
+MODEL_LINK_LABELS = {
+    "docs_url": "📖 Docs",
+    "source_url": "💻 Source code",
+    "download_url": "⬇ Model download",
+}
 
 
 def registry_entries(models_file: Path = MODELS_FILE) -> dict[str, str]:
@@ -124,8 +129,19 @@ def build_rst(entries: dict[str, str], notes: dict[str, Any]) -> str:
         for name in names:
             if not named_after_family:
                 lines += [name, "-" * len(name), ""]
-            if model_note := model_notes.get(name):
-                lines += [model_note.strip(), ""]
+            model_note = model_notes.get(name) or {}
+            for field, label in MODEL_LINK_LABELS.items():
+                if url := model_note.get(field):
+                    link = f"- `{label} <{url}>`__"
+                    if field == "download_url" and (
+                        download_notes := model_note.get("download_notes")
+                    ):
+                        link += f" ({download_notes.strip()})"
+                    lines.append(link)
+            if model_note:
+                lines.append("")
+            if description := model_note.get("notes"):
+                lines += [description.strip(), ""]
             lines += [".. code-block:: yaml", ""]
             lines += [
                 f"   {line}" if line.strip() else ""
