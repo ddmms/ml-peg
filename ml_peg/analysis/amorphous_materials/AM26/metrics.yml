@@ -1,0 +1,13 @@
+metrics:
+  Mean Energy RelRMSE:
+    good: 0.0
+    bad: 100.0
+    unit: "%"
+    level_of_theory: PBE
+    tooltip: Arithmetic mean of raw, unshifted per-atom Energy RelRMSE over the five equally weighted AM26 material systems.
+  Mean Force RelRMSE:
+    good: 0.0
+    bad: 100.0
+    unit: "%"
+    level_of_theory: PBE
+    tooltip: Arithmetic mean of Cartesian-component Force RelRMSE over the five equally weighted AM26 material systems.

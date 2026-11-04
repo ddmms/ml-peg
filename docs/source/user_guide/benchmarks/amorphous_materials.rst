@@ -2,6 +2,9 @@
 Amorphous materials
 ===================
 
+Benchmarks of numerical energy/force transferability, melt-quench simulations and
+structural properties of amorphous phases.
+
 Amorphous carbon melt-quench
 ============================
 
@@ -69,3 +72,180 @@ References
 
 .. [#ferrari] Ferrari *et al.* (2000), Phys. Rev. B 62, 11089.
    DOI: 10.1103/PhysRevB.62.11089
+
+
+AM26
+====
+
+Summary and scope
+-----------------
+
+AM26 tests the zero-shot numerical transferability of pretrained machine-learned
+interatomic potentials to amorphous materials. The full dataset contains 934
+structures: a-C (100), a-Si (324), a-SiO2 (80), a-GST (290) and a-LiPS (140).
+Required elements are C, Si, O, Ge, Sb, Te, Li, P and S.
+
+The calculation evaluates single-point energies and forces on every fixed input
+structure. It does not relax structures, request stress or run molecular dynamics.
+This ML-PEG benchmark covers only AM26's numerical energy/force test; its later
+structure, property and MD benchmarks are not included. The current manuscript is
+an arXiv preprint under peer review. [#am26-paper]_
+
+Metrics and scoring
+-------------------
+
+For each material system :math:`s`, define :math:`e_i=E_i/N_i` for structure
+:math:`i`. With DFT reference values :math:`e_i^{\mathrm{DFT}}` and raw model
+predictions :math:`e_i^{\mathrm{ML}}`, the energy metric is
+
+.. math::
+
+   R_{E,s} = 100\,
+   \frac{\sqrt{\frac{1}{n_s}\sum_i
+   (e_i^{\mathrm{ML}}-e_i^{\mathrm{DFT}})^2}}
+   {\operatorname{std}_{\mathrm{pop}}(\{e_i^{\mathrm{DFT}}\})}.
+
+Energy RMSE gives each structure equal weight within its system. Model energies
+are RAW, UNSHIFTED zero-shot predictions: no fitted offset, mean-residual
+subtraction, elemental reference fitting, pseudopotential-offset correction or
+target-domain calibration is applied.
+
+Concatenate and flatten all Cartesian force components within system :math:`s`.
+For the resulting :math:`m_s=3\sum_i N_i` components, the force metric is
+
+.. math::
+
+   R_{F,s} = 100\,
+   \frac{\sqrt{\frac{1}{m_s}\sum_j
+   (F_j^{\mathrm{ML}}-F_j^{\mathrm{DFT}})^2}}
+   {\operatorname{std}_{\mathrm{pop}}(\{F_j^{\mathrm{DFT}}\})}.
+
+Both reference standard deviations are population standard deviations
+(``ddof=0``). Each force component has equal weight; larger structures naturally
+contribute more components. This is neither an average of frame-level force
+RMSEs nor a comparison of force-vector magnitudes.
+
+The only two scored metrics, in percent, are
+
+.. math::
+
+   \text{Mean Energy RelRMSE} = \frac{1}{5}\sum_s R_{E,s},
+   \qquad
+   \text{Mean Force RelRMSE} = \frac{1}{5}\sum_s R_{F,s}.
+
+Each of the five systems has equal weight in each arithmetic mean. Required
+energy or force failures propagate to the affected system and overall metric;
+there is no successful-subset scoring or ``nanmean``. Energy and force failures
+are independent. Missing or misaligned output cannot receive a successful score.
+
+For both scored metrics, ``good=0%`` and ``bad=100%``. At 100%, RMSE equals the
+standard deviation of the corresponding reference distribution. Zero represents
+exact agreement and avoids an arbitrary non-zero good threshold based on current
+model performance. Standard ML-PEG linear normalisation maps 0% to score 1 and
+100% or greater to score 0. The two metrics have equal default weight.
+
+The app also shows the five system-specific Energy and Force RelRMSE values in
+two diagnostic heatmaps. These values do not add scored table columns or affect
+scoring. Colours saturate at 100%, but cell labels and hover retain values above
+100%; unavailable results are N/A. The static plots do not follow table filters.
+
+Reference calculations
+----------------------
+
+The ML-PEG level-of-theory identifier is exactly ``PBE``. Reference labels were
+generated with VASP 6.4.3 using the projector augmented-wave (PAW) method, the PBE
+exchange-correlation functional and the VASP PBE 5.4 pseudopotential set. The
+plane-wave cutoff was 520 eV; total energies were converged to 5e-5 eV/atom.
+No +U correction is active for these systems/elements. Settings follow the default
+Materials Project settings described in the AM26 manuscript. [#am26-paper]_
+
+PBE was chosen for consistency with reference labels used in pre-training, rather
+than as an optimal choice for every amorphous material. Agreement with these DFT
+labels does not necessarily imply agreement with experiment. Energies are in eV
+(or eV/atom after division by atom count), and forces are in eV/Å.
+
+Data provenance and availability
+--------------------------------
+
+Canonical file: ``data/am26.extxyz`` in the
+`author-controlled AM26 repository <https://github.com/vldgroup/AM26>`_.
+The production source is pinned to immutable revision
+``9218ee127f8db5ff06edecdf209f741d0eafb7c6``:
+
+`Download the pinned canonical file <https://raw.githubusercontent.com/vldgroup/AM26/9218ee127f8db5ff06edecdf209f741d0eafb7c6/data/am26.extxyz>`_.
+
+SHA-256 of the uncompressed file:
+
+.. code-block:: text
+
+   a071f537305e78e3bb1acf5dbffaa9acf1f79e2eb5081cb59218beddaf5a802a
+
+The existing ML-PEG GitHub helper caches the file under ``~/.cache/ml_peg``.
+AM26 verifies the checksum on every load, including cache hits, then requires all
+934 frames, the audited per-system counts and unique labels. A checksum mismatch
+raises an error; it is not accepted or automatically deleted/replaced.
+
+Dataset licensing and redistribution terms remain unsettled. This integration
+retrieves data directly from the author-controlled repository and does not use
+ML-PEG S3 or an ML-PEG-controlled mirror. Public repository availability is not
+a grant of redistribution permission; no dataset licence is asserted here.
+
+The a-Si structures derive from a filtered subset of a-Si-24. [#am26-si]_ The
+a-GST structures combine GST-GAP-22 AIMD configurations and its external validation
+set. [#am26-gst]_ Other structures were generated by melt-quench simulations using
+C-GAP-17 (a-C), [#gap17]_ SiOx-ACE-24 (a-SiO2), [#am26-silica]_ and the Li-P-S
+model of Fragapane and Deringer (a-LiPS). [#am26-lips]_ These structure-generation
+sources are distinct from the common AM26 PBE energy/force reference labels.
+
+Running and local development
+-----------------------------
+
+Using an already installed model, the normal ML-PEG commands are:
+
+.. code-block:: bash
+
+   ml_peg calc --category amorphous_materials --test AM26 --models <model-id>
+   ml_peg analyse --category amorphous_materials --test AM26 --models <model-id>
+
+Calculation writes ``outputs/<model-id>/am26_results.extxyz`` under the benchmark
+calculation directory. Analysis verifies full alignment against the independent
+canonical reference and generates the standard two-metric table, ``info.json``,
+``system_metrics.json`` and both heatmap JSON files under
+``ml_peg/app/data/amorphous_materials/AM26``. Predictions retain the original DFT
+energy, energy per atom, forces, labels, systems and input indices separately.
+
+Tool and computational resource disclosure
+------------------------------------------
+
+OpenAI Codex was used to assist repository inspection, implementation, test generation,
+and documentation drafting. Natascia L. Fragapane defined the scientific benchmark and
+requirements, provided the dataset, provenance, and authoritative validation targets,
+and reviewed the implementation and scientific behaviour. The implementation was
+validated by fresh end-to-end MACE-MP-0b3 inference over all 934 structures against the
+original AM26 results.
+
+AM26 references
+---------------
+
+.. [#am26-paper] Natascia L. Fragapane and Volker L. Deringer (2026),
+   *Amorphous materials as a frontier challenge for universal interatomic potentials*.
+   arXiv:2607.11384, under peer review. https://arxiv.org/abs/2607.11384
+
+.. [#am26-si] Louise A. M. Rosset, David A. Drabold and Volker L. Deringer (2025),
+   *Signatures of paracrystallinity in amorphous silicon from machine-learning-driven
+   molecular dynamics*. Nature Communications 16, 2360.
+   DOI: 10.1038/s41467-025-57406-4
+
+.. [#am26-gst] Yuxing Zhou, Wei Zhang, En Ma and Volker L. Deringer (2023),
+   *Device-scale atomistic modelling of phase-change memory materials*.
+   Nature Electronics 6, 746–754. DOI: 10.1038/s41928-023-01030-x
+
+.. [#am26-silica] Linus C. Erhard, Jochen Rohrer, Karsten Albe and
+   Volker L. Deringer (2024), *Modelling atomic and nanoscale structure in the
+   silicon–oxygen system through active machine learning*.
+   Nature Communications 15, 1927. DOI: 10.1038/s41467-024-45840-9
+
+.. [#am26-lips] Natascia L. Fragapane and Volker L. Deringer (2026),
+   *Li–P–S Electrolyte Materials as a Benchmark for Machine-Learned Interatomic
+   Potentials*. Journal of Chemical Theory and Computation 22, 3646–3659.
+   DOI: 10.1021/acs.jctc.5c02006

@@ -1,0 +1,27 @@
+implementers:
+  - name: "Natascia L. Fragapane"
+    github: "nfragapane"
+    email: "natascia.fragapane@chem.ox.ac.uk"
+contributors: []
+
+citations:
+  - bibtex_key: fragapane2026am26
+    role: benchmark_method
+  - bibtex_key: fragapane2026am26data
+    role: reference_data
+    detail: Canonical AM26 dataset
+  - bibtex_key: rosset2025paracrystallinity
+    role: reference_data
+    detail: a-Si source structures
+  - bibtex_key: zhou2023phasechange
+    role: reference_data
+    detail: a-GST source structures
+  - bibtex_key: deringer-2017-amorphous-carbon
+    role: inspired_by
+    detail: a-C structure-generation potential
+  - bibtex_key: erhard2024siliconoxygen
+    role: inspired_by
+    detail: a-SiO2 structure-generation potential
+  - bibtex_key: fragapane2026lips
+    role: inspired_by
+    detail: a-LiPS structure-generation potential
