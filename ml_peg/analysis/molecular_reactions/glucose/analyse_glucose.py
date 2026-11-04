@@ -184,6 +184,7 @@ def barrier_heights() -> dict[str, list]:
     reference_model = models[0]
     reference_reactions = all_reactions[reference_model]
     info = get_glucose_info(reference_model)
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
     with open(OUT_PATH / "info.json", "w") as f:
         json.dump(info, f, indent=1)
     reaction_ids = sorted(reference_reactions)
