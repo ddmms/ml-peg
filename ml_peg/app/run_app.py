@@ -43,6 +43,9 @@ app = Dash(
     title="ML-PEG",  # set browser tab title
     update_title=None,  # prevent the tab changing to Updating... during callbacks
     external_scripts=analytics_scripts(),
+    # Defaults to False, so responses are otherwise only compressed where a proxy
+    # does it (production nginx, not local runs). Needs flask-compress installed.
+    compress=True,
     # Benchmark cards mount their bodies lazily, so their control ids are absent
     # from the initial layout; allow callbacks to reference not-yet-present ids.
     suppress_callback_exceptions=True,
