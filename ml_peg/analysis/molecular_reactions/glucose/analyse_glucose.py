@@ -8,6 +8,7 @@ Proceedings of the National Academy of Sciences
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -18,7 +19,6 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
-    get_struct_info,
     load_metrics_config,
     mae,
 )
@@ -52,14 +52,29 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # ---------------------------------------------------------------------
 # Structure information
 # ---------------------------------------------------------------------
+def get_glucose_info(model_name: str) -> dict:
+    """
+    Build the info.json for plot.
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    include_filenames=True,
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
+    Parameters
+    ----------
+    model_name : str
+        Name of the model.
+
+    Returns
+    -------
+    dict
+       A dictionary with two keys of elements and filenames.
+    """
+    data = {"elements": [], "filenames": []}
+    reactions = load_reactions(model_name)
+    keys = list(reactions.keys())
+    keys = sorted(keys)
+    for key in keys:
+        data["filenames"].append(key)
+        data["elements"].append(reactions[key]["ts"].get_chemical_symbols())
+
+    return data
 
 
 # ---------------------------------------------------------------------
@@ -168,7 +183,9 @@ def barrier_heights() -> dict[str, list]:
     # Use the first model as the reference source.
     reference_model = models[0]
     reference_reactions = all_reactions[reference_model]
-
+    info = get_glucose_info(reference_model)
+    with open(OUT_PATH / "info.json", "w") as f:
+        json.dump(info, f, indent=1)
     reaction_ids = sorted(reference_reactions)
 
     results = {
