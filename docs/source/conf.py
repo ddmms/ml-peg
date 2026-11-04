@@ -212,21 +212,16 @@ html_search_language = "en"
 nitpicky = True
 
 
-def open_model_citations_in_new_tab(app, doctree, docname):
-    """Open paper links in model citation bullets in a separate browser tab."""
+def open_model_links_in_new_tab(app, doctree, docname):
+    """Open external links on the model guide in a separate browser tab."""
     if docname != "user_guide/models":
         return
-    for paragraph in doctree.findall(nodes.paragraph):
-        if not paragraph.children or not isinstance(paragraph[0], nodes.strong):
-            continue
-        if not paragraph[0].astext().startswith("Citation"):
-            continue
-        for reference in paragraph.findall(nodes.reference):
-            if reference.get("refuri", "").startswith("https://"):
-                reference["target"] = "_blank"
-                reference["rel"] = "noopener noreferrer"
+    for reference in doctree.findall(nodes.reference):
+        if reference.get("refuri", "").startswith(("https://", "http://")):
+            reference["target"] = "_blank"
+            reference["rel"] = "noopener noreferrer"
 
 
 def setup(app):
-    """Apply the model citation link behaviour when building documentation."""
-    app.connect("doctree-resolved", open_model_citations_in_new_tab)
+    """Apply the model guide link behaviour when building documentation."""
+    app.connect("doctree-resolved", open_model_links_in_new_tab)

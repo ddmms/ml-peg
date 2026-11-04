@@ -46,8 +46,43 @@ ASE-compatible calculator that needs no special setup, is just a YAML entry.
    ``docs/source/user_guide/model_notes.yml``. The model list in
    :doc:`Models </user_guide/models>` is generated from ``models.yml``, so the
    entry itself needs no copying — but a model family that is new to ML-PEG must
-   be added there, or the docs build fails.
+   be added there, or the docs build fails. Add links and citations as described
+   in `Model documentation and citations`_.
 6. **Check the entry loads and runs** — see `Checking a new entry`_.
+
+Model documentation and citations
+---------------------------------
+
+Add model-specific notes under ``models`` in
+``docs/source/user_guide/model_notes.yml``, keyed by the registry name.
+Use **📖 Docs** for usage instructions, **💻 Source code** for the implementation,
+and **⬇ Model download** for each model's file preview or release page. Match the version in the registry and name
+the file when a page offers several. For gated downloads, link to the model card.
+Use a direct download link if upstream provides no download page.
+External links on the model guide open in a new tab.
+
+Cite the model paper and any architecture or dataset papers requested by its
+authors. Add or reuse entries in ``model_references.bib`` in the same directory.
+Use unique lowercase, hyphen-separated keys such as ``mace-mp``, with matching
+``% begin mace-mp %`` and ``% end mace-mp %`` markers around each entry.
+Reuse the same entry for models sharing a paper.
+
+Follow this pattern inside a model's YAML text block, leaving a blank line
+before ``.. details::``:
+
+.. code-block:: rst
+
+   - **Citation:** Author et al. (year). `Paper title <https://doi.org/...>`__.
+
+   .. details:: BibTeX
+
+      .. literalinclude:: model_references.bib
+         :language: bibtex
+         :start-after: % begin model-key %
+         :end-before: % end model-key %
+
+Build the docs with ``cd docs && uv run make html`` and check the model's links,
+citation text, and expanded BibTeX.
 
 Model entry format
 ------------------

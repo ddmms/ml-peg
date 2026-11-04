@@ -35,7 +35,6 @@ families:
   TACE:
     class_names: [TACEAseCalc]
     notes: |
-      `Model documentation <https://tace.readthedocs.io/en/latest/guide/foundation.html>`_.
       Model weights are licensed under CC BY 4.0.
 
   Vivace:
@@ -59,16 +58,14 @@ families:
       multiplicity is ignored. Periodic systems automatically use DSF long-range
       Coulomb by default, though note that "All models were trained on isolated
       molecules and molecular clusters. They are not parameterized for bulk materials,
-      extended surfaces, or metallic systems." See the AIMNet2
-      `model documentation <https://isayevlab.github.io/aimnetcentral/models/guide/>`__.
+      extended surfaces, or metallic systems."
 
       Each AIMNet2 model is released as an ensemble of four independently trained
       members. ML-PEG benchmarks **only member 0 by default**, not the ensemble
       average. This matches the aimnetcentral default: the ``aimnet2`` and
       ``aimnet2-2025`` aliases resolve to ``aimnet2-wb97m-d3_0`` and
-      ``aimnet2-b973c-2025-d3_0`` respectively, and the
-      `model selection guide <https://isayevlab.github.io/aimnetcentral/models/guide/>`_
-      recommends a single member for production use, (all members have very similar
+      ``aimnet2-b973c-2025-d3_0`` respectively, and the upstream model selection
+      guide recommends a single member for production use, (all members have very similar
       accuracy on average). aimnetcentral does not provide an ensemble-averaging
       calculator. To benchmark a different member, set ``kwargs.model`` to its full
       name, e.g. ``aimnet2-wb97m-d3_2`` (``_0`` to ``_3`` are valid).
@@ -84,18 +81,42 @@ families:
 
 models:
   aimnet2: |
+    - `📖 Docs <https://isayevlab.github.io/aimnetcentral/models/guide/>`__
+    - `💻 Source code <https://github.com/isayevlab/aimnetcentral>`__
+    - `⬇ Model download <https://isayevlab.github.io/aimnetcentral/models/guide/#aimnet2-wb97m-d3-alias-aimnet2-aimnet2-wb97m>`__ (ensemble member 0)
+
     Described in Anstine, Zubatyuk and Isayev, *Chem. Sci.*, 2025, **16**,
     10228–10244, `doi:10.1039/d4sc08572h <https://doi.org/10.1039/d4sc08572h>`_.
   aimnet2-2025: |
+    - `📖 Docs <https://isayevlab.github.io/aimnetcentral/models/guide/>`__
+    - `💻 Source code <https://github.com/isayevlab/aimnetcentral>`__
+    - `⬇ Model download <https://isayevlab.github.io/aimnetcentral/models/guide/#aimnet2-2025-alias-aimnet2-2025>`__ (ensemble member 0)
+
     Described in Nayal, Cho and Isayev, *Mach. Learn.: Sci. Technol.*, 2026,
     **7**, 055033,
     `doi:10.1088/2632-2153/aea39f <https://doi.org/10.1088/2632-2153/aea39f>`_.
-  tace-oam-7m: TACE-OAM-7M (M).
-  tece-oam-rra-1p0: TECE-OAM-RRA-1.0 (XL).
-  tace-oam-l: TACE-OAM-L (L).
+  tace-oam-7m: |
+    - `📖 Docs <https://tace.readthedocs.io/en/latest/guide/foundation.html>`__
+    - `💻 Source code <https://github.com/xvzemin/tace>`__
+    - `⬇ Model download <https://huggingface.co/xvzemin/tace-foundations/blob/main/TACE-OAM-7M.pt>`__
+
+    TACE-OAM-7M (M).
+  tece-oam-rra-1p0: |
+    - `📖 Docs <https://tace.readthedocs.io/en/latest/guide/foundation.html>`__
+    - `💻 Source code <https://github.com/xvzemin/tace>`__
+    - `⬇ Model download <https://huggingface.co/xvzemin/tace-foundations/blob/main/TECE-OAM-RRA-1.0.pt>`__
+
+    TECE-OAM-RRA-1.0 (XL).
+  tace-oam-l: |
+    - `📖 Docs <https://tace.readthedocs.io/en/latest/guide/foundation.html>`__
+    - `💻 Source code <https://github.com/xvzemin/tace>`__
+    - `⬇ Model download <https://huggingface.co/xvzemin/tace-foundations/blob/main/TACE-OAM-L.pt>`__
+
+    TACE-OAM-L (L).
   mace-mp-0a: |
-    - `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html#pretrained-mace-mp-models>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html#pretrained-mace-mp-models>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-mp/releases/tag/mace_mp_0>`__ (``2023-12-03-mace-128-L1_epoch-199.model``)
     - **Citation:** Batatia et al. (2025).
       `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
 
@@ -114,8 +135,9 @@ models:
           :start-after: % begin mace %
           :end-before: % end mace %
   mace-mp-0b3: |
-    - `Docs <https://github.com/ACEsuit/mace-foundations#latest-recommended-foundation-models>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-mp/releases/tag/mace_mp_0b3>`__ (``mace-mp-0b3-medium.model``)
     - **Citation:** Batatia et al. (2025).
       `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
 
@@ -134,8 +156,9 @@ models:
           :start-after: % begin mace %
           :end-before: % end mace %
   mace-mpa-0: |
-    - `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-mp/releases/tag/mace_mpa_0>`__ (``mace-mpa-0-medium.model``)
     - **Citation:** Batatia et al. (2025).
       `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
 
@@ -154,8 +177,9 @@ models:
           :start-after: % begin mace %
           :end-before: % end mace %
   mace-omat-0: |
-    - `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-mp/releases/tag/mace_omat_0>`__ (``mace-omat-0-medium.model``)
     - **Citation:** Batatia et al. (2025).
       `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
 
@@ -174,8 +198,9 @@ models:
           :start-after: % begin mace %
           :end-before: % end mace %
   mace-matpes-r2scan: |
-    - `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-foundations/releases/tag/mace_matpes_0>`__ (``MACE-matpes-r2scan-omat-ft.model``)
     - **Citation:** Batatia et al. (2025).
       `A foundation model for atomistic materials chemistry <https://doi.org/10.1063/5.0297006>`__.
     - **Citation (architecture):** Batatia et al. (2022).
@@ -193,8 +218,9 @@ models:
           :start-after: % begin mace %
           :end-before: % end mace %
   mace-mh-1-omat: |
-    - `Docs <https://huggingface.co/mace-foundations/mace-mh-1>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://huggingface.co/mace-foundations/mace-mh-1>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-foundations/releases/tag/mace_mh_1>`__ (``mace-mh-1.model``)
     - **Citation:** Batatia et al. (2025).
       `Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields <https://arxiv.org/abs/2510.25380>`__.
 
@@ -205,8 +231,9 @@ models:
           :start-after: % begin mace-mh %
           :end-before: % end mace-mh %
   mace-off-23-L: |
-    - `Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html#mace-off23-transferable-organic-force-fields>`__
-    - `Repo <https://github.com/ACEsuit/mace-off>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html#mace-off23-transferable-organic-force-fields>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-off/blob/main/mace_off23/MACE-OFF23_large.model>`__
     - **Citation:** Kovács et al. (2025).
       `MACE-OFF: Short-Range Transferable Machine Learning Force Fields for Organic Molecules <https://doi.org/10.1021/jacs.4c07099>`__.
 
@@ -225,7 +252,9 @@ models:
           :start-after: % begin mace %
           :end-before: % end mace %
   mace-off-24-M: |
-    - `Repo <https://github.com/ACEsuit/mace-off>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-off/blob/main/mace_off24/MACE-OFF24_medium.model>`__
     - **Citation:** Kovács et al. (2025).
       `MACE-OFF: Short-Range Transferable Machine Learning Force Fields for Organic Molecules <https://doi.org/10.1021/jacs.4c07099>`__.
 
@@ -244,8 +273,9 @@ models:
           :start-after: % begin mace %
           :end-before: % end mace %
   mace-omol: |
-    - `Docs <https://github.com/ACEsuit/mace-foundations#latest-recommended-foundation-models>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/foundation_models.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-foundations/releases/tag/mace_omol_0>`__ (``MACE-omol-0-extra-large-1024.model``)
     - **Citation:** Batatia et al. (2025).
       `Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields <https://arxiv.org/abs/2510.25380>`__.
     - **Citation (dataset):** Levine et al. (2025).
@@ -263,8 +293,9 @@ models:
           :start-after: % begin omol25 %
           :end-before: % end omol25 %
   mace-mh-1-omol: |
-    - `Docs <https://huggingface.co/mace-foundations/mace-mh-1>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://huggingface.co/mace-foundations/mace-mh-1>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-foundations/releases/tag/mace_mh_1>`__ (``mace-mh-1.model``)
     - **Citation:** Batatia et al. (2025).
       `Cross Learning between Electronic Structure Theories for Unifying Molecular, Surface, and Inorganic Crystal Foundation Force Fields <https://arxiv.org/abs/2510.25380>`__.
 
@@ -275,8 +306,9 @@ models:
           :start-after: % begin mace-mh %
           :end-before: % end mace-mh %
   mace-polar-1-s: |
-    - `Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-foundations/releases/tag/mace_polar_1>`__ (``MACE-POLAR-1-S.model``)
     - **Citation:** Batatia et al. (2026).
       `MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry <https://arxiv.org/abs/2602.19411>`__.
 
@@ -287,8 +319,9 @@ models:
           :start-after: % begin mace-polar %
           :end-before: % end mace-polar %
   mace-polar-1-m: |
-    - `Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-foundations/releases/tag/mace_polar_1>`__ (``MACE-POLAR-1-M.model``)
     - **Citation:** Batatia et al. (2026).
       `MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry <https://arxiv.org/abs/2602.19411>`__.
 
@@ -299,8 +332,9 @@ models:
           :start-after: % begin mace-polar %
           :end-before: % end mace-polar %
   mace-polar-1-l: |
-    - `Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
-    - `Repo <https://github.com/ACEsuit/mace-foundations>`__
+    - `📖 Docs <https://mace-docs.readthedocs.io/en/latest/guide/polar_mace.html>`__
+    - `💻 Source code <https://github.com/ACEsuit/mace>`__
+    - `⬇ Model download <https://github.com/ACEsuit/mace-foundations/releases/tag/mace_polar_1>`__ (``MACE-POLAR-1-L.model``)
     - **Citation:** Batatia et al. (2026).
       `MACE-POLAR-1: A Polarisable Electrostatic Foundation Model for Molecular Chemistry <https://arxiv.org/abs/2602.19411>`__.
 
@@ -311,8 +345,9 @@ models:
           :start-after: % begin mace-polar %
           :end-before: % end mace-polar %
   dpa-3p3-1M-omat: |
-    - `Docs <https://huggingface.co/deepmodelingcommunity/DPA-3.3-1M>`__
-    - `Repo <https://github.com/deepmodeling/deepmd-kit>`__
+    - `📖 Docs <https://huggingface.co/deepmodelingcommunity/DPA-3.3-1M>`__
+    - `💻 Source code <https://github.com/deepmodeling/deepmd-kit>`__
+    - `⬇ Model download <https://huggingface.co/deepmodelingcommunity/DPA-3.3-1M/blob/main/DPA-3.3-1M.pt>`__
     - **Citation:** Zhang et al. (2026).
       `A graph neural network for the era of large atomistic models <https://doi.org/10.1038/s41524-026-02146-2>`__.
 
@@ -323,8 +358,9 @@ models:
           :start-after: % begin dpa3 %
           :end-before: % end dpa3 %
   dpa-4-nano-omat: |
-    - `Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
-    - `Repo <https://github.com/deepmodeling/deepmd-kit>`__
+    - `📖 Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
+    - `💻 Source code <https://github.com/deepmodeling/deepmd-kit>`__
+    - `⬇ Model download <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24/blob/main/DPA4-Nano-OMat24-v20260805.pt>`__
     - **Citation:** Li et al. (2026).
       `DPA4: Pushing the Accuracy-Cost Frontier of Interatomic Potentials with EMFA SO(2) Convolution <https://arxiv.org/abs/2606.02419>`__.
 
@@ -335,8 +371,9 @@ models:
           :start-after: % begin dpa4 %
           :end-before: % end dpa4 %
   dpa-4-neo-omat: |
-    - `Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
-    - `Repo <https://github.com/deepmodeling/deepmd-kit>`__
+    - `📖 Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
+    - `💻 Source code <https://github.com/deepmodeling/deepmd-kit>`__
+    - `⬇ Model download <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24/blob/main/DPA4-Neo-OMat24-v20260805.pt>`__
     - **Citation:** Li et al. (2026).
       `DPA4: Pushing the Accuracy-Cost Frontier of Interatomic Potentials with EMFA SO(2) Convolution <https://arxiv.org/abs/2606.02419>`__.
 
@@ -347,8 +384,9 @@ models:
           :start-after: % begin dpa4 %
           :end-before: % end dpa4 %
   dpa-4-plus-omat: |
-    - `Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
-    - `Repo <https://github.com/deepmodeling/deepmd-kit>`__
+    - `📖 Docs <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24>`__
+    - `💻 Source code <https://github.com/deepmodeling/deepmd-kit>`__
+    - `⬇ Model download <https://huggingface.co/deepmodelingcommunity/DPA4-OMat24/blob/main/DPA4-Plus-OMat24-v20260805.pt>`__
     - **Citation:** Li et al. (2026).
       `DPA4: Pushing the Accuracy-Cost Frontier of Interatomic Potentials with EMFA SO(2) Convolution <https://arxiv.org/abs/2606.02419>`__.
 
@@ -359,8 +397,9 @@ models:
           :start-after: % begin dpa4 %
           :end-before: % end dpa4 %
   orb-v3-consv-inf-omat: |
-    - `Docs <https://github.com/orbital-materials/orb-models>`__
-    - `Repo <https://github.com/orbital-materials/orb-models>`__
+    - `📖 Docs <https://github.com/orbital-materials/orb-models>`__
+    - `💻 Source code <https://github.com/orbital-materials/orb-models>`__
+    - `⬇ Model download <https://orbitalmaterials-public-models.s3.us-west-1.amazonaws.com/forcefields/orb-v3/orb-v3-conservative-inf-omat-20250404.ckpt>`__
     - **Citation:** Rhodes et al. (2025).
       `Orb-v3: atomistic simulation at scale <https://arxiv.org/abs/2504.06231>`__.
 
@@ -371,8 +410,9 @@ models:
           :start-after: % begin orb %
           :end-before: % end orb %
   orb-v3-direct-inf-omat: |
-    - `Docs <https://github.com/orbital-materials/orb-models>`__
-    - `Repo <https://github.com/orbital-materials/orb-models>`__
+    - `📖 Docs <https://github.com/orbital-materials/orb-models>`__
+    - `💻 Source code <https://github.com/orbital-materials/orb-models>`__
+    - `⬇ Model download <https://orbitalmaterials-public-models.s3.us-west-1.amazonaws.com/forcefields/orb-v3/orb-v3-direct-inf-omat-20250404.ckpt>`__
     - **Citation:** Rhodes et al. (2025).
       `Orb-v3: atomistic simulation at scale <https://arxiv.org/abs/2504.06231>`__.
 
@@ -383,8 +423,9 @@ models:
           :start-after: % begin orb %
           :end-before: % end orb %
   orb-v3-consv-omol: |
-    - `Docs <https://github.com/orbital-materials/orb-models>`__
-    - `Repo <https://github.com/orbital-materials/orb-models>`__
+    - `📖 Docs <https://github.com/orbital-materials/orb-models>`__
+    - `💻 Source code <https://github.com/orbital-materials/orb-models>`__
+    - `⬇ Model download <https://orbitalmaterials-public-models.s3.us-west-1.amazonaws.com/forcefields/orb-v3-conservative-omol-20250820.ckpt>`__
     - **Citation (architecture):** Rhodes et al. (2025).
       `Orb-v3: atomistic simulation at scale <https://arxiv.org/abs/2504.06231>`__.
 
@@ -395,8 +436,9 @@ models:
           :start-after: % begin orb %
           :end-before: % end orb %
   pet-mad: |
-    - `Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
-    - `Repo <https://github.com/lab-cosmo/upet>`__
+    - `📖 Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
+    - `💻 Source code <https://github.com/lab-cosmo/upet>`__
+    - `⬇ Model download <https://huggingface.co/lab-cosmo/upet/blob/main/models/pet-mad-s-v1.0.2.ckpt>`__
     - **Citation:** Mazitov et al. (2025).
       `PET-MAD as a lightweight universal interatomic potential for advanced materials modeling <https://doi.org/10.1038/s41467-025-65662-7>`__.
 
@@ -407,8 +449,9 @@ models:
           :start-after: % begin pet-mad %
           :end-before: % end pet-mad %
   pet-mad-s-1p5: |
-    - `Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
-    - `Repo <https://github.com/lab-cosmo/upet>`__
+    - `📖 Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
+    - `💻 Source code <https://github.com/lab-cosmo/upet>`__
+    - `⬇ Model download <https://huggingface.co/lab-cosmo/upet/blob/main/models/pet-mad-s-v1.5.0.ckpt>`__
     - **Citation:** Malosso et al. (2026).
       `High-quality, high-information datasets for universal atomistic machine learning <https://arxiv.org/abs/2603.02089>`__.
 
@@ -419,8 +462,9 @@ models:
           :start-after: % begin pet-mad-1p5 %
           :end-before: % end pet-mad-1p5 %
   pet-oam-xl: |
-    - `Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
-    - `Repo <https://github.com/lab-cosmo/upet>`__
+    - `📖 Docs <https://lab-cosmo.github.io/upet/latest/models.html>`__
+    - `💻 Source code <https://github.com/lab-cosmo/upet>`__
+    - `⬇ Model download <https://huggingface.co/lab-cosmo/upet/blob/main/models/pet-oam-xl-v1.0.0.ckpt>`__
     - **Citation:** Bigi et al. (2026).
       `Pushing the limits of unconstrained machine-learned interatomic potentials <https://doi.org/10.1088/2632-2153/ae6417>`__.
 
@@ -431,8 +475,9 @@ models:
           :start-after: % begin pet-oam %
           :end-before: % end pet-oam %
   uma-s-1p1-omat: |
-    - `Docs <https://huggingface.co/facebook/UMA>`__
-    - `Repo <https://github.com/facebookresearch/fairchem>`__
+    - `📖 Docs <https://huggingface.co/facebook/UMA>`__
+    - `💻 Source code <https://github.com/facebookresearch/fairchem>`__
+    - `⬇ Model download <https://huggingface.co/facebook/UMA>`__ (Hugging Face access required, ``checkpoints/uma-s-1p1.pt``)
     - **Citation:** Wood et al. (2025).
       `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
 
@@ -443,8 +488,9 @@ models:
           :start-after: % begin uma %
           :end-before: % end uma %
   uma-m-1p1-omat: |
-    - `Docs <https://huggingface.co/facebook/UMA>`__
-    - `Repo <https://github.com/facebookresearch/fairchem>`__
+    - `📖 Docs <https://huggingface.co/facebook/UMA>`__
+    - `💻 Source code <https://github.com/facebookresearch/fairchem>`__
+    - `⬇ Model download <https://huggingface.co/facebook/UMA>`__ (Hugging Face access required, ``checkpoints/uma-m-1p1.pt``)
     - **Citation:** Wood et al. (2025).
       `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
 
@@ -455,8 +501,9 @@ models:
           :start-after: % begin uma %
           :end-before: % end uma %
   uma-s-1p1-omol: |
-    - `Docs <https://huggingface.co/facebook/UMA>`__
-    - `Repo <https://github.com/facebookresearch/fairchem>`__
+    - `📖 Docs <https://huggingface.co/facebook/UMA>`__
+    - `💻 Source code <https://github.com/facebookresearch/fairchem>`__
+    - `⬇ Model download <https://huggingface.co/facebook/UMA>`__ (Hugging Face access required, ``checkpoints/uma-s-1p1.pt``)
     - **Citation:** Wood et al. (2025).
       `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
 
@@ -467,8 +514,9 @@ models:
           :start-after: % begin uma %
           :end-before: % end uma %
   uma-s-1p2-omol: |
-    - `Docs <https://huggingface.co/facebook/UMA>`__
-    - `Repo <https://github.com/facebookresearch/fairchem>`__
+    - `📖 Docs <https://huggingface.co/facebook/UMA>`__
+    - `💻 Source code <https://github.com/facebookresearch/fairchem>`__
+    - `⬇ Model download <https://huggingface.co/facebook/UMA>`__ (Hugging Face access required, ``checkpoints/uma-s-1p2.pt``)
     - **Citation:** Wood et al. (2025).
       `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
 
@@ -479,8 +527,9 @@ models:
           :start-after: % begin uma %
           :end-before: % end uma %
   uma-m-1p1-omol: |
-    - `Docs <https://huggingface.co/facebook/UMA>`__
-    - `Repo <https://github.com/facebookresearch/fairchem>`__
+    - `📖 Docs <https://huggingface.co/facebook/UMA>`__
+    - `💻 Source code <https://github.com/facebookresearch/fairchem>`__
+    - `⬇ Model download <https://huggingface.co/facebook/UMA>`__ (Hugging Face access required, ``checkpoints/uma-m-1p1.pt``)
     - **Citation:** Wood et al. (2025).
       `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
 
@@ -491,8 +540,9 @@ models:
           :start-after: % begin uma %
           :end-before: % end uma %
   mattersim-5M: |
-    - `Docs <https://microsoft.github.io/mattersim/>`__
-    - `Repo <https://github.com/microsoft/mattersim>`__
+    - `📖 Docs <https://microsoft.github.io/mattersim/>`__
+    - `💻 Source code <https://github.com/microsoft/mattersim>`__
+    - `⬇ Model download <https://github.com/microsoft/mattersim/blob/main/pretrained_models/mattersim-v1.0.0-5M.pth>`__
     - **Citation:** Yang et al. (2024).
       `MatterSim: A Deep Learning Atomistic Model Across Elements, Temperatures and Pressures <https://arxiv.org/abs/2405.04967>`__.
 
@@ -503,8 +553,9 @@ models:
           :start-after: % begin mattersim %
           :end-before: % end mattersim %
   mattersim-1M: |
-    - `Docs <https://microsoft.github.io/mattersim/>`__
-    - `Repo <https://github.com/microsoft/mattersim>`__
+    - `📖 Docs <https://microsoft.github.io/mattersim/>`__
+    - `💻 Source code <https://github.com/microsoft/mattersim>`__
+    - `⬇ Model download <https://github.com/microsoft/mattersim/blob/main/pretrained_models/mattersim-v1.0.0-1M.pth>`__
     - **Citation:** Yang et al. (2024).
       `MatterSim: A Deep Learning Atomistic Model Across Elements, Temperatures and Pressures <https://arxiv.org/abs/2405.04967>`__.
 
@@ -515,8 +566,9 @@ models:
           :start-after: % begin mattersim %
           :end-before: % end mattersim %
   grace-2l-omat: |
-    - `Docs <https://gracemaker.readthedocs.io/en/latest/gracemaker/foundation/>`__
-    - `Repo <https://github.com/ICAMS/grace-tensorpotential>`__
+    - `📖 Docs <https://gracemaker.readthedocs.io/en/latest/gracemaker/foundation/>`__
+    - `💻 Source code <https://github.com/ICAMS/grace-tensorpotential>`__
+    - `⬇ Model download <https://huggingface.co/AMS-ICAMS-RUB/grace-foundation-models/blob/kk/models/GRACE-2L-OMAT-model.tar.gz>`__
     - **Citation:** Lysogorskiy et al. (2026).
       `Graph atomic cluster expansion for foundational machine learning interatomic potentials <https://doi.org/10.1038/s41524-026-01979-1>`__.
 
@@ -527,8 +579,9 @@ models:
           :start-after: % begin grace %
           :end-before: % end grace %
   grace-2l-smax-omat-medium: |
-    - `Docs <https://gracemaker.readthedocs.io/en/latest/gracemaker/foundation/>`__
-    - `Repo <https://github.com/ICAMS/grace-tensorpotential>`__
+    - `📖 Docs <https://gracemaker.readthedocs.io/en/latest/gracemaker/foundation/>`__
+    - `💻 Source code <https://github.com/ICAMS/grace-tensorpotential>`__
+    - `⬇ Model download <https://huggingface.co/AMS-ICAMS-RUB/grace-foundation-models/blob/model-v3-uq-v6/models/GRACE-2L-SMAX-OMAT-medium-model.tar.gz>`__ (`float64 <https://huggingface.co/AMS-ICAMS-RUB/grace-foundation-models/blob/model-v3-uq-v6/models/GRACE-2L-SMAX-OMAT-medium-fp64-model.tar.gz>`__)
     - **Citation:** Bochkarev et al. (2026).
       `Exploring the extremes: atomic basis for multi-elemental materials science under complex thermodynamic conditions <https://arxiv.org/abs/2602.23489>`__.
 
@@ -539,8 +592,9 @@ models:
           :start-after: % begin grace-smax %
           :end-before: % end grace-smax %
   sevennet-omni-mpa: |
-    - `Docs <https://sevennet.readthedocs.io/en/latest/user_guide/pretrained.html#sevennet-omni>`__
-    - `Repo <https://github.com/MDIL-SNU/SevenNet>`__
+    - `📖 Docs <https://sevennet.readthedocs.io/en/latest/user_guide/pretrained.html#sevennet-omni>`__
+    - `💻 Source code <https://github.com/MDIL-SNU/SevenNet>`__
+    - `⬇ Model download <https://github.com/MDIL-SNU/SevenNet/releases/tag/v0.12.0.cp>`__ (``checkpoint_sevennet_omni.pth``)
     - **Citation:** Kim et al. (2026).
       `Optimizing cross-domain transfer for universal machine learning interatomic potentials <https://doi.org/10.1038/s41467-026-70195-8>`__.
 
@@ -550,3 +604,7 @@ models:
           :language: bibtex
           :start-after: % begin sevennet %
           :end-before: % end sevennet %
+  Vivace: |
+    - `📖 Docs <https://github.com/microsoft/simpoly#ase-quick-start>`__
+    - `💻 Source code <https://github.com/microsoft/simpoly/tree/main/src/simpoly/vivace>`__
+    - `⬇ Model download <https://huggingface.co/microsoft/simpoly/tree/main/checkpoints>`__
