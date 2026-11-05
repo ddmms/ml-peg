@@ -1072,7 +1072,12 @@ def build_nav(
         raise PreventUpdate
 
     register_weight_preset_callbacks(
-        summary_table, _default_weight_store_data(summary_table)
+        summary_table,
+        _default_weight_store_data(summary_table),
+        {
+            title: _default_weight_store_data(view["summary_table"])
+            for title, view in category_views.items()
+        },
     )
 
     @callback(

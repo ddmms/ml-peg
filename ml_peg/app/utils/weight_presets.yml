@@ -1,6 +1,12 @@
 # Summary-table weight presets. Each preset lists the category titles that stay
 # weighted (1.0); every other category is set to 0.0. Titles must match the
 # category `title:` values exactly. The "Random" preset is generated in code.
+# A category can instead map to a list of its tests (benchmark names), so only
+# those tests are weighted, e.g.:
+# Drug-Like Molecules:
+#   - Conformers:
+#       - Folmsbee
+#       - 37Conf8
 Materials:
   - Bulk Crystals
   - Surfaces
