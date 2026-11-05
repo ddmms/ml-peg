@@ -1,0 +1,10 @@
+metrics:
+  Diffusion coefficient log error:
+    good: 0.048790164169432
+    bad: 0.223143551314210
+    unit: null
+    tooltip: >-
+      Mean absolute natural log of model/reference diffusion ratios across
+      temperatures, averaged over elements. Good and bad limits correspond
+      to factors of 1.05 and 1.25, respectively.
+    level_of_theory: Experimental
