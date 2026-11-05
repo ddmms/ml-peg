@@ -28,8 +28,8 @@ TIMESTEP = 1  # fs, MD integration step
 # Frames are written every TRAJ_EVERY steps, so the stored spacing is
 # TIMESTEP * TRAJ_EVERY fs -- this must match the reference's spacing.
 TRAJ_EVERY = 1
-EQUIL_STEPS = 50  # equilibration steps (not recorded)
-RUN_STEPS = 3000  # production steps (recorded)
+EQUIL_STEPS = 50000  # equilibration steps (not recorded)
+RUN_STEPS = 600000  # production steps (recorded)
 
 
 @pytest.mark.slow
