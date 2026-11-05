@@ -1,12 +1,11 @@
-==========
-Benchmarks
-==========
-
+===Benchmarks
+===
 .. toctree::
     :maxdepth: 3
 
     alloy_metallurgy
     amorphous_materials
+    aqueous_solutions
     biomolecules
     bulk_crystal
     conformers
