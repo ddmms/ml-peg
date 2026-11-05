@@ -3,48 +3,16 @@
 from __future__ import annotations
 
 from ase import Atoms
-from ase.io import write
 import numpy as np
 import pytest
 
 from ml_peg.analysis.utils import aml_md_analysis as aml
 from ml_peg.analysis.utils import md_water_analysis as md
 from ml_peg.analysis.utils.dipoles import get_z_dipoles_frames
-from ml_peg.analysis.utils.water_trajectory import cached_frames, validated_frames
-from ml_peg.app.utils.water_comparison import render_subplot_component
 
 
-def make_frame(step=0):
-    """Build a periodic frame with velocities and run metadata."""
-    atoms = Atoms("Cu", positions=[[0, 0, 0]], cell=[4, 4, 4], pbc=True)
-    atoms.set_velocities([[0.01, 0.02, 0.03]])
-    atoms.info.update(step=step, charge=0, spin=1)
-    return atoms
-
-
-def test_validity_and_cache(tmp_path):
-    """Reject invalid runs and invalidate cached data when the source changes."""
-    path = tmp_path / "md-traj.extxyz"
-    assert validated_frames(path, 2) is None
-    write(path, [make_frame(0), make_frame(4)])
-    frames = validated_frames(path, 2)
-    assert len(frames) == 2
-    assert cached_frames(path) is frames
-    with pytest.warns(UserWarning, match="Expected"):
-        assert validated_frames(path, 3) is None
-    marker = tmp_path / "md-failed"
-    marker.touch()
-    assert validated_frames(path, 2) is None
-    marker.unlink()
-    write(path, make_frame(8), append=True)
-    assert len(validated_frames(path, 3)) == 3
-    path.write_text("1\ntruncated\n")
-    with pytest.warns(UserWarning, match="Invalid"):
-        assert validated_frames(path, 1) is None
-
-
-def test_signed_score_and_precomputed_plot():
-    """Signed cancellation is bounded, and the app displays analysis-generated data."""
+def test_signed_score_and_comparison_data():
+    """Signed cancellation is bounded and comparison data retains the curves."""
     ref = {"dipole": (np.array([0, 1]), np.array([-1.0, 1.0]))}
     pred = {"dipole": (np.array([0, 1]), np.array([1.0, -1.0]))}
     error = aml.compute_all_errors_vacf(ref, pred)["dipole"][2]
@@ -63,10 +31,9 @@ def test_signed_score_and_precomputed_plot():
         ref_key=lambda _: "ref",
     )
     point = bundle["models"]["m"]["metrics"]["dipole"][0]
-    result = render_subplot_component(
-        {"points": [{"customdata": ["dipole", point["data"]]}]}
-    )
-    assert len(result.children.figure["data"]) == 3
+    assert point["data"]["ref"] == [-1.0, 1.0]
+    assert point["data"]["pred"] == [1.0, -1.0]
+    assert "figure" not in point["data"]
 
 
 def test_periodic_water_neighbours():
@@ -80,23 +47,6 @@ def test_periodic_water_neighbours():
     totals, points = get_z_dipoles_frames([atoms], surface_idx_1=0, surface_idx_2=1)
     assert len(points) == 1
     assert np.all(np.isfinite(totals))
-
-
-def test_cached_arrays_preserve_units_and_masses(tmp_path):
-    """Cache converted data once and recover velocities using the saved masses."""
-    from ml_peg.analysis.utils.water_trajectory import trajectory_arrays
-
-    atoms = make_frame()
-    atoms.set_masses([70.0])
-    atoms.set_positions([[1, 2, 3]])
-    atoms.set_velocities([[0.01, 0.02, 0.03]])
-    path = tmp_path / "md-traj.extxyz"
-    write(path, [atoms, atoms])
-    positions, velocities = trajectory_arrays(path)
-    assert isinstance(positions, np.memmap)
-    assert trajectory_arrays(path)[0] is positions
-    np.testing.assert_allclose(positions[0], [[0.1, 0.2, 0.3]])
-    np.testing.assert_allclose(velocities[0], [[0.001, 0.002, 0.003]])
 
 
 def test_density_profile_accepts_validated_frames():
@@ -173,3 +123,30 @@ def test_molecular_dipole_profile_with_periodic_bond():
     expected = 0.3 * (0.2 + 0.5) / 64
     np.testing.assert_allclose(total, [expected])
     np.testing.assert_allclose(profile, [[3, expected]])
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    [
+        "ml_peg.app.aqueous_solutions.bulk_water.app_bulk_water",
+        "ml_peg.app.aqueous_solutions.ice.app_ice",
+        "ml_peg.app.surfaces.copper_water_interface.app_copper_water_interface",
+    ],
+)
+def test_restored_comparison_renderers(module_name):
+    """Each restored callback renders the curve payload without a shared helper."""
+    from importlib import import_module
+
+    module = import_module(module_name)
+    data = {
+        "x_values": [0, 1],
+        "ref": [1, 2],
+        "pred": [1, 1.5],
+        "error": [0, 0.5],
+        "xlabel": "Distance (nm)",
+        "ylabel": "g(r)",
+    }
+    result = module.render_subplot_component(
+        {"points": [{"customdata": ["O-H", data]}]}
+    )
+    assert result.children[1].src.startswith("data:image/png;base64,")

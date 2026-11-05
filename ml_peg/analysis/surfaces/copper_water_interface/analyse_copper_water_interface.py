@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import pickle
 
+from ase.io import read
 import numpy as np
 import plotly.graph_objects as go
 import pytest
@@ -314,13 +315,17 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
 
     for model_name in MODELS:
         model_traj = CALC_PATH / model_name / "md-traj.extxyz"
-        frames = md.validated_frames(model_traj, RUN_STEPS // TRAJ_EVERY)
-        if frames is None:
+        if (model_traj.parent / "md-failed").exists() or not model_traj.is_file():
             dipole_results[model_name] = np.nan
             continue
 
         # Compute the per-frame total z-dipole per unit area from the trajectory,
         # the same way as the water_slab_dipoles benchmark.
+        frames = read(model_traj, ":")
+        if len(frames) < RUN_STEPS // TRAJ_EVERY:
+            dipole_results[model_name] = np.nan
+            continue
+
         dipoles_z = get_z_dipoles(frames, q=DIPOLE_CHARGE)
 
         dipole_results[model_name] = np.abs(np.std(dipoles_z) - ref_dipole_stdev)
@@ -689,8 +694,12 @@ def created_dipole_profile() -> dict[str, dict]:
 
     for model_name in MODELS:
         model_traj = CALC_PATH / model_name / "md-traj.extxyz"
-        frames = md.validated_frames(model_traj, RUN_STEPS // TRAJ_EVERY)
-        if frames is None:
+        if (model_traj.parent / "md-failed").exists() or not model_traj.is_file():
+            profiles[model_name] = md.FAILED
+            continue
+
+        frames = read(model_traj, ":")
+        if len(frames) < RUN_STEPS // TRAJ_EVERY:
             profiles[model_name] = md.FAILED
             continue
 
