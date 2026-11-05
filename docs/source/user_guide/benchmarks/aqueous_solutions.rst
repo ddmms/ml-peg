@@ -51,12 +51,17 @@ Data availability
 
 Input data:
 
-* TODO: origin of the initial water box (who built it and how, or a citation).
+* The initial configuration is a periodic box of liquid water at the experimental
+  density under ambient conditions, containing 64 water molecules in a 12.42 Å cubic
+  cell.
 
 Reference data:
 
-* Ab initio molecular dynamics of the same system at the PBE-D3 level.
-  TODO: code, settings, trajectory length and citation.
+* A 100 ps ab initio molecular dynamics trajectory of the same system, generated
+  with CP2K at the PBE-D3(0) level (zero-damping D3 dispersion) and used in the
+  MACE-MP-0 study [1]_.
+* The curve similarity metrics also follow the scoring framework of Advincula
+  et al. [2]_.
 * RDF, VDOS and VACF analysis is adapted from:
 
   * C. Schran, F. L. Thiemann, P. Rowe, E. A. Müller, O. Marsalek, and A. Michaelides,
@@ -71,9 +76,9 @@ Ice
 Summary
 -------
 
-Performance in reproducing the structure and dynamics of ice, compared to ab initio
+Performance in reproducing the structure and dynamics of hexagonal ice Ih, compared to ab initio
 molecular dynamics. The system is 96 water molecules (288 atoms) in a
-13.49 x 15.58 x 14.64 Å orthorhombic cell. TODO: confirm the ice phase (e.g. ice Ih).
+13.49 x 15.58 x 14.64 Å orthorhombic cell.
 
 Metrics
 -------
@@ -109,11 +114,24 @@ Data availability
 
 Input data:
 
-* TODO: origin of the initial ice structure (who built it and how, or a citation).
+* A supplied ice Ih configuration containing 96 water molecules in an orthorhombic
+  simulation cell. Its original construction procedure and source have not been
+  established.
 
 Reference data:
 
-* Ab initio molecular dynamics of the same system at the PBE-D3 level.
-  TODO: code, settings, trajectory length and citation.
-* RDF, VDOS and VACF analysis is adapted from Schran et al. (2021), as for
+* A 100 ps ab initio molecular dynamics trajectory of the same system, generated
+  with CP2K at the PBE-D3(0) level (zero-damping D3 dispersion) and used in the
+  MACE-MP-0 study [1]_.
+* RDF, VDOS and VACF analysis is adapted from Schran et al. (2021), with the
+  curve similarity metrics also following Advincula et al. [2]_, as for
   `Bulk water`_.
+
+.. [1] I. Batatia et al., "A foundation model for atomistic materials chemistry,"
+   The Journal of Chemical Physics **163**, 184110 (2025).
+   https://doi.org/10.1063/5.0297006
+
+.. [2] X. R. Advincula, Y. Litman, J. Shi, F. Della Pia, C. Schran, and
+   A. Michaelides, "How Good Is DFT for Solid-Liquid Interfaces? A Comparison
+   With the Random-Phase Approximation for Water on Graphene,"
+   arXiv:2610.09685 (2026). https://arxiv.org/abs/2610.09685
