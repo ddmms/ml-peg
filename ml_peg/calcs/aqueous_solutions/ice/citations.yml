@@ -1,0 +1,29 @@
+implementers:
+  - name: "Xavier R. Advincula"
+    github: "xradvincula"
+
+contributors:
+  - name: "Isaac Parker"
+    github: "isaacparker30"
+
+citations:
+  - bibtex_key: batatia2025foundation
+    role: reference_data
+    detail: 100 ps CP2K PBE-D3(0) ice Ih trajectory
+  - bibtex_key: schran2021machine
+    role: upstream_framework
+    detail: RDF, VDOS and VACF analysis
+  - key: advincula2026watergraphene
+    title: "How Good Is DFT for Solid-Liquid Interfaces? A Comparison With the Random-Phase Approximation for Water on Graphene"
+    authors:
+      - "Xavier R. Advincula"
+      - "Yair Litman"
+      - "Jiuyang Shi"
+      - "Flaviano Della Pia"
+      - "Christoph Schran"
+      - "Angelos Michaelides"
+    year: 2026
+    role: benchmark_method
+    detail: Curve similarity scoring framework
+    doi: 10.48550/arXiv.2610.09685
+    url: https://arxiv.org/abs/2610.09685

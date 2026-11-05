@@ -1,0 +1,45 @@
+# Score cutoffs are provisional: 100 is exact agreement, 80 is 20% normalised
+# curve error. Application-based validation of the bad cutoffs is still needed.
+metrics:
+  rdf_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: "RDF similarity to AIMD (100 = identical curves, 80 = 20% normalised curve error)"
+    level_of_theory: PBE-D3
+  vdos_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: "Vibrational density of states similarity to AIMD (100 = identical curves)"
+    level_of_theory: PBE-D3
+  vacf_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: "Velocity autocorrelation similarity to AIMD (100 = identical curves)"
+    level_of_theory: PBE-D3
+  density_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: "Density profile similarity to AIMD (100 = identical curves)"
+    level_of_theory: PBE-D3
+  dipole_profile_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: "Signed integrated dipole profile similarity to AIMD (100 = identical curves)"
+    level_of_theory: PBE-D3
+  stdev_dipole_z_deviation:
+    good: 0.0
+    bad: 0.003
+    unit: e/Å
+    tooltip: "Absolute difference between model and reference z-dipole standard deviations"
+    level_of_theory: PBE-D3
+  Fraction Breakdown Candidates:
+    good: 0
+    bad: 1
+    unit: null
+    tooltip: Fraction of structures with z-dipole outside the band-gap window
+    level_of_theory: PBE-D3
