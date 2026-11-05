@@ -364,3 +364,103 @@ Input data:
 Reference data:
 
 * PBE conjugate gradient geomerty optimizations are performed via VASP, with a cutoff energy of 500 eV.
+
+
+Copper water interface
+======================
+
+Summary
+-------
+
+Performance in reproducing the structure, dynamics and dipole fluctuations of liquid
+water at a Cu(111) surface, compared to ab initio molecular dynamics. The system is a
+four-layer Cu(111) slab (120 Cu atoms) in contact with 165 water molecules (615 atoms
+in total), periodic in the surface plane only.
+
+Metrics
+-------
+
+Each model is used to run Langevin NVT molecular dynamics at 330 K with a 1 fs
+timestep. Hydrogen atoms are given the mass of deuterium and the bottom two Cu layers
+are held fixed. The first 50 ps are discarded as equilibration, and the following
+600 ps are used for analysis. A D3(BJ) dispersion correction is added to models that
+were not trained with dispersion.
+
+The RDF, VDOS, VACF, density profile and integrated dipole profile metrics are curve
+similarity scores. For each curve ``f`` (e.g. one element pair's RDF), the model curve
+is interpolated onto the reference grid and the score is
+``100 * (1 - sum|f_ref - f_model| / (sum f_ref + sum f_model))``, so 100 corresponds
+to perfect agreement. Each metric is the mean score over all curves of that type.
+
+1. RDF score
+
+Radial distribution functions for every element pair (Cu-Cu, Cu-O, Cu-H, O-O, O-H and
+H-H), computed up to half the shortest cell length.
+
+2. VDOS score
+
+Vibrational density of states for each element (Cu, O and H), obtained from the Fourier
+transform of the velocity autocorrelation function.
+
+3. VACF score
+
+Velocity autocorrelation function for each element (Cu, O and H), normalised to one at
+zero time. As VACFs can be negative, absolute values are used in the denominator of the
+score.
+
+4. Density score
+
+Distributions of O and H atoms along the surface normal, measured from the mean height
+of the top Cu layer in each frame (0.1 Å bins from -2 to 35 Å, each normalised to sum
+to one).
+
+5. Integrated dipole profile score
+
+The z-component of each water molecule's dipole is estimated with a point-charge model
+(-q on O and +q/2 on each H, with q = 0.5562 e), normalised by the surface area, and
+assigned to the height of its oxygen above the surface. The integrated profile at height
+z is the frame-averaged sum of the dipoles of all molecules below z, evaluated from 0 to
+35 Å.
+
+6. Dipole standard deviation error
+
+The total z-dipole of the water per unit surface area (e/Å) is calculated for every
+frame with the same point-charge model. The metric is the absolute difference between
+the standard deviation of this distribution and that of the reference.
+
+7. Fraction of breakdown candidates
+
+The fraction of frames whose total z-dipole per unit area lies outside the window
+-0.0197 to 0.0117 e/Å. Outside this window, the dipole is estimated to be large enough
+to close the band gap of the interfacial water, which signals the unphysical dipolar
+alignment (false metallisation) seen in short-ranged models.
+
+Benchmark speed
+---------------
+
+Very slow: 650,000 MD steps (650 ps at a 1 fs timestep) of a 615-atom system.
+TODO: rough runtime for a representative model, e.g. ``mace-mp-0a``, on named GPU.
+
+Data availability
+-----------------
+
+Input data:
+
+* Copper water interface structure from Ab-Initio molecular dynamics using the PBE-D3 level in CP2K. See [1].
+
+Reference data:
+
+* Ab initio molecular dynamics of the same system, run with CP2K at the PBE-D3 level. See [1] for details.
+* The dipole window used for breakdown candidates, and the point-charge model, follow:
+
+  * [1] I. J. Parker, M. J. Hoffmann, W. J. Baldwin, S. Han, S. Gupta, K. D. Fong,
+    A. Michaelides, C. Schran, S. De, and G. Csányi, "False Metallization in
+    Short-Ranged Machine Learned Interatomic Potentials," arXiv preprint
+    arXiv:2603.04228, 2026. https://doi.org/10.48550/arXiv.2603.04228
+
+* RDF, VDOS and VACF analysis is adapted from:
+
+  * C. Schran, F. L. Thiemann, P. Rowe, E. A. Müller, O. Marsalek, and A. Michaelides,
+    "Machine learning potentials for complex aqueous systems made simple," Proc. Natl.
+    Acad. Sci. U.S.A., vol. 118, e2110077118, Sept. 2021.
+    https://doi.org/10.1073/pnas.2110077118
