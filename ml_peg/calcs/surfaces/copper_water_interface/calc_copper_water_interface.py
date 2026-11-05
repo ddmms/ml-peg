@@ -4,14 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase.constraints import FixAtoms
 from ase.io import read
+from janus_core.calculations.md import NVT
 import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
-from ml_peg.calcs.utils.water_md import run_water_md
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -81,13 +82,25 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     write_dir = OUT_PATH / model_name
     write_dir.mkdir(parents=True, exist_ok=True)
 
-    run_water_md(
-        start_config,
-        write_dir,
+    # Run MD. equil_steps run first (not recorded); the trajectory is written
+    # every step from traj_start onwards so velocities are available for VACF/VDOS.
+    md = NVT(
+        struct=start_config,
+        temp=TEMPERATURE,
+        steps=EQUIL_STEPS + RUN_STEPS,
         equil_steps=EQUIL_STEPS,
-        run_steps=RUN_STEPS,
         timestep=TIMESTEP,
-        temperature=TEMPERATURE,
         friction=FRICTION,
+        stats_every=100,
         traj_every=TRAJ_EVERY,
+        traj_start=EQUIL_STEPS,
+        file_prefix=write_dir / "md",
+        write_kwargs={"columns": ["symbols", "positions", "momenta", "masses"]},
     )
+
+    try:
+        md.run()
+    except Exception as exc:
+        warn(f"Error running MD: {exc}", stacklevel=2)
+        # Mark the run invalid so analysis skips the partial trajectory.
+        (write_dir / "md-failed").touch()
