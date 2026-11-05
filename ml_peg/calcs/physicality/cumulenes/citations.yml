@@ -1,0 +1,28 @@
+implementers:
+  - name: "Tomas Karella"
+    github: "karellat"
+    email: "karella@lanl.gov"
+
+contributors:
+  - name: "Nicholas Lubbers"
+    github: "lubbersnick"
+    email: "nlubbers@lanl.gov"
+  - name: "Yulia Pimonova"
+    github: "yuliapimonova"
+    email: "ypimonova@lanl.gov"
+  - name: "Roxana Bujack"
+    github: "bujack"
+    email: "bujack@lanl.gov"
+
+  - key: joshi2023expressive
+    role: inspired_by
+    title: On the Expressive Power of Geometric Graph Neural Networks
+    authors:
+      - Chaitanya K. Joshi
+      - Cristian Bodnar
+      - Simon V. Mathis
+      - Taco Cohen
+      - Pietro Liò
+    year: 2023
+    doi: "10.48550/arXiv.2301.09308"
+    url: https://arxiv.org/abs/2301.09308
