@@ -40,7 +40,7 @@ EV_TO_KCAL = units.mol / units.kcal
 
 RXN_IDS = tuple(range(1, 21))
 
-# Reference barriers in eV (Appendix B.5 of arXiv:2401.00096), from DFT (r2SCAN)
+# Reference barriers in eV (Appendix B.5 of arXiv:2401.00096), from DFT (PBE-D3(BJ))
 REF_BARRIERS_EV = {
     1: 1.7194,
     2: 1.9241,
