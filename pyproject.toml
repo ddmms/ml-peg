@@ -67,7 +67,7 @@ grace = [
 ]
 mace = [
     "mace-torch == 0.3.17",
-    "graph-longrange == 0.4.0",
+    "graph-longrange == 0.4.4",
 ]
 
 # MACE 0.3.17 exposes its compiled cuEq kernels through the CUDA 12 extra.
@@ -77,6 +77,8 @@ mace-cueq = [
     # Keep the cuEq frontend and compiled kernels on the same tested release.
     "cuequivariance-torch == 0.8.1; sys_platform == 'linux'",
     "cuequivariance-ops-torch-cu12 == 0.8.1; sys_platform == 'linux'",
+    # Reproduce the CUDA combination validated with MACE on our GPU tests.
+    "torch == 2.14.1; sys_platform == 'linux'",
 ]
 
 mattersim = [
@@ -325,6 +327,11 @@ conflicts = [
     [
         { extra = "mace-cueq" },
         { extra = "vivace" },
+    ],
+    # The tested cuEq torch pin exceeds UPET's torch upper bound.
+    [
+        { extra = "mace-cueq" },
+        { extra = "upet" },
     ],
 ]
 
