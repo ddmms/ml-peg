@@ -383,7 +383,7 @@ Metrics
 Each model is used to run Langevin NVT molecular dynamics at 330 K with a 1 fs
 timestep. Hydrogen atoms are given the mass of deuterium and the bottom two Cu layers
 are held fixed. The first 50 ps are discarded as equilibration, and the following
-600 ps are used for analysis. A D3(BJ) dispersion correction is added to models that
+300 ps are used for analysis. A D3(BJ) dispersion correction is added to models that
 were not trained with dispersion.
 
 The RDF, VDOS, VACF, density profile and integrated dipole profile metrics are curve
@@ -438,8 +438,8 @@ alignment (false metallisation) seen in short-ranged models.
 Benchmark speed
 ---------------
 
-Very slow: 650,000 MD steps (650 ps at a 1 fs timestep) of a 615-atom system.
-TODO: rough runtime for a representative model, e.g. ``mace-mp-0a``, on named GPU.
+Very slow: 350,000 MD steps (350 ps at a 1 fs timestep) of a 615-atom system.
+Estimated runtime with ``mh-1-omol`` is approximately one day.
 
 Data availability
 -----------------

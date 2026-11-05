@@ -44,7 +44,7 @@ Benchmark speed
 ---------------
 
 Very slow: 650,000 MD steps (325 ps at a 0.5 fs timestep) of a 192-atom system.
-TODO: rough runtime for a representative model, e.g. ``mace-mp-0a``, on named GPU.
+Measured runtime with ``mh-1-omol`` is just over 10 hours.
 
 Data availability
 -----------------
@@ -107,7 +107,7 @@ Benchmark speed
 ---------------
 
 Very slow: 650,000 MD steps (325 ps at a 0.5 fs timestep) of a 288-atom system.
-TODO: rough runtime for a representative model, e.g. ``mace-mp-0a``, on named GPU.
+Measured runtime with ``mh-1-omol`` is approximately 15 hours.
 
 Data availability
 -----------------
