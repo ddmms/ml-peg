@@ -16,7 +16,11 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.aqueous_solutions.bulk_water.calc_water import TIMESTEP, TRAJ_EVERY
+from ml_peg.calcs.aqueous_solutions.bulk_water.calc_water import (
+    RUN_STEPS,
+    TIMESTEP,
+    TRAJ_EVERY,
+)
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -64,7 +68,13 @@ def created_rdfs() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of RDFs for all models.
     """
-    return md.create_rdfs(MODELS, DATA_PATH, CALC_PATH, RDF_CURVE_PATH)
+    return md.create_rdfs(
+        MODELS,
+        DATA_PATH,
+        CALC_PATH,
+        RDF_CURVE_PATH,
+        expected_frames=RUN_STEPS // TRAJ_EVERY,
+    )
 
 
 @pytest.fixture
@@ -136,7 +146,7 @@ def build_rdf_interactive_data(
         metric_key="rdf_score",
         metric_label="RDF Score",
         ylabel="g(r)",
-        xlabel="Distance (Å)",
+        xlabel="Distance (nm)",
         errors_fn=aml.compute_all_errors,
         ref_key=lambda m: "ref",
         xlim=[0, 0.6],
@@ -159,7 +169,12 @@ def created_vdos() -> dict[str, dict]:
         Dictionary of VDOS for all models.
     """
     return md.create_vdos(
-        MODELS, DATA_PATH, CALC_PATH, VDOS_CURVE_PATH, dt=TIMESTEP * TRAJ_EVERY
+        MODELS,
+        DATA_PATH,
+        CALC_PATH,
+        VDOS_CURVE_PATH,
+        dt=TIMESTEP * TRAJ_EVERY,
+        expected_frames=RUN_STEPS // TRAJ_EVERY,
     )
 
 
@@ -255,7 +270,12 @@ def created_vacf() -> dict[str, dict]:
         Dictionary of VACF for all models.
     """
     return md.create_vacf(
-        MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH, dt=TIMESTEP * TRAJ_EVERY
+        MODELS,
+        DATA_PATH,
+        CALC_PATH,
+        VACF_CURVE_PATH,
+        dt=TIMESTEP * TRAJ_EVERY,
+        expected_frames=RUN_STEPS // TRAJ_EVERY,
     )
 
 

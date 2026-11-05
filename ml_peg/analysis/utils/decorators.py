@@ -2611,9 +2611,9 @@ def cell_to_bar(
     filename
         Path where JSON data with pre-made figures will be saved.
     x_label
-        Label for x-axis (typically "Score"). Default is None.
+        Label for x-axis (typically species or pair names). Default is None.
     y_label
-        Label for y-axis (typically "Names of Variables"). Default is None.
+        Label for y-axis (typically "Score"). Default is None.
     title_template
         Template for plot titles with {model} and {metric} placeholders.
         Default is "{model} - {metric}".
@@ -2674,10 +2674,7 @@ def cell_to_bar(
                     values = [minfo["value"] for minfo in metric_info]
 
                     # Build hovertemplate
-                    hovertemplate = (
-                        "<b>Score: </b>%{x}<br><b>Ref: </b>%{y}<br>"
-                        "<b>Label: </b>%{customdata[0]}<br>"
-                    )
+                    hovertemplate = "<b>Label: </b>%{x}<br><b>Score: </b>%{y}<br>"
                     # Create figure
                     fig = go.Figure()
                     fig.add_trace(

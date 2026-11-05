@@ -19,7 +19,6 @@ from pathlib import Path
 import pickle
 
 from ase import Atoms
-from ase.io import read
 import numpy as np
 
 # Default z-binning relative to the surface, as a single (start, stop, step) tuple in
@@ -58,6 +57,7 @@ def get_surface_z(
 def compute_density_profiles(
     frames: list[Atoms],
     elements: tuple[str, ...] = ("O", "H"),
+    *,
     surface_idx_1: int = 90,
     surface_idx_2: int = 120,
     z_bins: tuple[float, float, float] = DEFAULT_Z_BINS,
@@ -111,6 +111,8 @@ def create_density_profiles(
     calc_path: Path,
     curve_path: Path,
     elements: tuple[str, ...] = ("O", "H"),
+    *,
+    expected_frames: int,
 ) -> dict[str, dict]:
     """
     Create density profiles for the reference and all models.
@@ -132,6 +134,8 @@ def create_density_profiles(
         Path to write per-model density curve pickles for app use.
     elements
         Chemical symbols to build a profile for. Default is ("O", "H").
+    expected_frames
+        Minimum production frame count required for a successful model run.
 
     Returns
     -------
@@ -147,19 +151,20 @@ def create_density_profiles(
     if not curve_path.exists():
         curve_path.mkdir(parents=True, exist_ok=True)
 
+    from ml_peg.analysis.utils import md_water_analysis as md
+
     for model_name in models:
         model_dir = calc_path / model_name
-        if not model_dir.exists():
-            continue
 
         traj_file = model_dir / "md-traj.extxyz"
-        if not traj_file.exists():
+        frames = md.validated_frames(traj_file, expected_frames)
+        if frames is None:
+            profiles[model_name] = md.FAILED
             continue
 
         if not (curve_path / model_name).exists():
             (curve_path / model_name).mkdir(parents=True, exist_ok=True)
 
-        frames = read(traj_file, ":")
         profiles[model_name] = compute_density_profiles(frames, elements=elements)
 
         # Write density curves to file for app use
