@@ -77,7 +77,6 @@ mace-cueq = [
     # Keep the cuEq frontend and compiled kernels on the same tested release.
     "cuequivariance-torch == 0.8.1; sys_platform == 'linux'",
     "cuequivariance-ops-torch-cu12 == 0.8.1; sys_platform == 'linux'",
-    # Reproduce the CUDA combination validated with MACE on our GPU tests.
     "torch == 2.14.1; sys_platform == 'linux'",
 ]
 
