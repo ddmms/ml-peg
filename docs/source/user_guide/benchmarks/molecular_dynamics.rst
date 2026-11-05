@@ -158,6 +158,72 @@ Reference data:
 * Experimental
 
 
+Battery electrolyte densities
+=============================
+
+Summary
+-------
+
+Performance in predicting the densities of 25 battery electrolyte systems at
+298.2 K: six neat glyme and carbonate solvents (DME, DEGDME, TEGDME, PC, DEG,
+DMC), and 19 electrolytes formed from NaPF6, NaOTf, NaTFSI and KPF6 at 0.1, 0.5
+and 1.0 M. Systems contain roughly 500-2200 atoms.
+
+Because the same salts appear across several solvents and concentrations, the
+benchmark separates general liquid-density performance from the harder question
+of whether a potential handles concentrated ionic environments.
+
+Metrics
+-------
+
+1. Density MAE
+2. Density RMSE
+3. Density MAPE
+4. Stable runs (%)
+
+For each system, the density is the average over an NPT molecular dynamics run
+at 298.2 K and 1 atm with a 1 fs timestep. The first 300 ps of each 500 ps
+trajectory is discarded, leaving 200 ps of production. Densities are compared
+to experimental values at 298.2 K.
+
+Density errors are reported for stable systems. Stable runs is the percentage of systems
+that complete the full simulation with finite positions, energies and forces.
+
+Computational cost
+------------------
+
+High: 500 ps of NPT MD per system, for 25 systems per model.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Kumar et al., Prediction and Experimental Verification of Electrolyte
+  Solvation Structure from an OMol25-Trained Interatomic Potential.
+  arXiv:2603.20183 [physics.chem-ph]
+* https://github.com/KMNitesh05/sodium-ion-battery-electrolyte-dataset
+
+Reference data:
+
+* Same as input data
+* Experimental
+
+Concentrations
+^^^^^^^^^^^^^^
+
+Each electrolyte is labelled by its nominal (starting) salt concentration,
+which is encoded in the structure file name, e.g. ``napf6_diglyme_1M.xyz``
+or ``napf6_dme_0.5M.xyz``. The nominal value sets the number of ion pairs
+and solvent molecules used to build the initial simulation box.
+
+Because the box volume relaxes during NPT equilibration, the molarity of the
+equilibrated system differs from the nominal value. The ``concentration_M``
+column of the reference CSV gives this equilibrated concentration, calculated
+from the number of salt formula units and the equilibrated box volume.
+Neat solvents have no salt and are listed at 0 M.
+
+
 Bond length distribution
 ========================
 
