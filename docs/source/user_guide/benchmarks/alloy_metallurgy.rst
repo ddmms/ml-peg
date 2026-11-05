@@ -173,3 +173,77 @@ Reference data:
     Rühl, S., and Wolverton, C., "The Open Quantum Materials Database (OQMD):
     assessing the accuracy of DFT formation energies", *npj Computational
     Materials* 1, 15010 (2015). https://doi.org/10.1038/npjcompumats.2015.10
+
+
+Al3Ti Polymorphs
+================
+
+Summary
+-------
+
+Titanium-trialuminide (Al3Ti) exists in different polymorphs, with varying geometries and formation energies.
+This benchmark assesses formation energies, relaxed cell geometry, and whether a model preserves the DFT stability ordering.
+
+
+Metrics
+-------
+
+Bulk properties
+^^^^^^^^^^^^^^^
+
+Calculated for 3 Al3Ti polymorph structures (L1_2, D0_22, D0_23).
+Each structure is relaxed with the LBFGS optimiser with FrechetCellFilter applied, until the maximum atomic force is
+below 1×10⁻⁶ eV/Å or 1000 steps are reached. Elemental reference energies are
+derived from the relaxed pure-element structures and used to compute formation
+energies.
+
+1. Formation Energy MAE (eV/atom)
+
+   Mean absolute error between model and DFT formation energies per atom, averaged
+   over the three polymorphs. The good target (4 meV/atom) is about half the
+   smallest DFT polymorph gap (D0_23–D0_22: 7.887 meV/atom), while the bad
+   threshold (30 meV/atom) is about the full DFT energy span (D0_23–L1_2:
+   31.850 meV/atom). These are accuracy targets derived from the
+   `Ghosh et al. <https://doi.org/10.1007/s11669-006-9007-4>`_ reference
+   energies, not estimates of DFT uncertainty. MAE does not guarantee the correct
+   polymorph order; that is scored separately.
+
+2. Relative Stability Ordering Accuracy (%)
+
+   Percentage of the three polymorph pairs whose predicted formation-energy order
+   matches DFT. Lower formation energy indicates greater stability. The DFT order
+   from lowest to highest formation energy is D0_23, D0_22, and L1_2. A score of
+   100% means all three pairwise comparisons agree with DFT; a score of 0% means
+   none agree. A predicted tie counts as incorrect when DFT distinguishes the pair.
+
+3. Volume MAE (Å³/atom)
+
+   Mean absolute error of the relaxed cell volume divided by its atom count,
+   averaged over the three polymorphs.
+
+4. Lattice Parameter MAPE (%)
+
+   Mean absolute percentage error of relaxed cell lengths, weighted equally across
+   polymorphs. For D0_22 and D0_23, average both basal errors against the DFT
+   :math:`a` before averaging with the :math:`c` error. For L1_2, compare all
+   three lengths with the DFT :math:`a`. Missing structures make both geometry
+   metrics unavailable.
+
+
+Benchmark speed
+------------------
+
+* **Bulk properties** (``test_al3ti_polymorphs``): Fast — 5 bulk cell relaxations
+  per model; about 15 seconds for ``mace-mp-0a`` on an NVIDIA A100 80 GB GPU.
+
+
+Data availability
+-----------------
+
+Input structures:
+
+* Input structures were generated according to the reference lattice parameters.
+
+Reference data:
+
+* `Ghosh et al. <https://doi.org/10.1007/s11669-006-9007-4>`_ report formation energies and relaxed lattice parameters for all three polymorphs using the GGA-PW91 functional.
