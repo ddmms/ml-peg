@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import base64
+from io import BytesIO
 import json
 
-from dash import Input, Output, State, callback, dcc, no_update
+from dash import Input, Output, State, callback, dcc, html, no_update
 from dash.html import Div
+import matplotlib.pyplot as plt
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
@@ -13,7 +16,6 @@ from ml_peg.app.utils.build_callbacks import plot_with_download_controls
 from ml_peg.app.utils.load import read_plot
 from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, TABLE_HINT
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
-from ml_peg.app.utils.water_comparison import render_subplot_component
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -24,6 +26,87 @@ DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces/copper
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "copper_water_interface"
 INFO_PATH = DATA_PATH / "info.json"
 METRICS = ["rdf_score", "vdos_score", "vacf_score", "density_score"]
+
+
+def render_subplot_component(click_data: dict) -> html.Div | None:
+    """
+    Render comparison plot for clicked bar.
+
+    Parameters
+    ----------
+    click_data
+        Click data from bar chart containing data.
+
+    Returns
+    -------
+    html.Div | None
+        Component containing comparison plot.
+    """
+    if not click_data or "points" not in click_data:
+        return html.Div("Click on a bar to see comparison.")
+
+    point = click_data["points"][0]
+    if "customdata" not in point or len(point["customdata"]) < 2:
+        return html.Div(f"No data available: {point.keys()}")
+
+    rdf_data = point["customdata"][1]  # Get RDF data from customdata
+    pair_name = point["customdata"][0]  # Get pair name
+
+    # Create matplotlib figure
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    ax1, ax2 = axes
+
+    # Load data
+    x_values = rdf_data["x_values"]
+    ref_values = rdf_data["ref"]
+    pred_values = rdf_data["pred"]
+    error = rdf_data["error"]
+    xlabel = rdf_data["xlabel"]
+    ylabel = rdf_data["ylabel"]
+
+    # Plot Reference and Predicted RDFs
+    ax1.plot(x_values, ref_values, "b-", label="Reference", linewidth=2)
+    ax1.plot(x_values, pred_values, "r--", label="Predicted", linewidth=2)
+    ax1.set_xlabel(xlabel)
+    ax1.set_ylabel(ylabel)
+    ax1.set_title(f"Comparison: {pair_name}")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+
+    # Plot Error
+    ax2.plot(x_values, error, "k-", label="Error", linewidth=2)
+    ax2.set_xlabel(xlabel)
+    ax2.set_ylabel(rf"${{\Delta}}${ylabel}")
+    ax2.set_title("Error")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3)
+
+    # Check if xlim is provided
+    if "xlim" in rdf_data:
+        ax1.set_xlim(rdf_data["xlim"])
+        ax2.set_xlim(rdf_data["xlim"])
+
+    # Log y-axis for spectra (VDOS); only on ax1, the error curve is signed.
+    if rdf_data.get("ylog"):
+        ax1.set_yscale("log")
+
+    # Convert to base64 for display
+    buffer = BytesIO()
+    plt.tight_layout()
+    plt.savefig(buffer, format="png", dpi=150, bbox_inches="tight")
+    buffer.seek(0)
+    image_base64 = base64.b64encode(buffer.read()).decode()
+    plt.close()
+
+    return html.Div(
+        [
+            html.H4(f"Comparison: {pair_name}"),
+            html.Img(
+                src=f"data:image/png;base64,{image_base64}",
+                style={"maxWidth": "100%", "border": "1px solid #ccc"},
+            ),
+        ]
+    )
 
 
 class CopperWaterInterfaceApp(BaseApp):

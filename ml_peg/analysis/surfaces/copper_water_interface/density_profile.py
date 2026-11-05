@@ -19,6 +19,7 @@ from pathlib import Path
 import pickle
 
 from ase import Atoms
+from ase.io import read
 import numpy as np
 
 # Default z-binning relative to the surface, as a single (start, stop, step) tuple in
@@ -157,13 +158,17 @@ def create_density_profiles(
         model_dir = calc_path / model_name
 
         traj_file = model_dir / "md-traj.extxyz"
-        frames = md.validated_frames(traj_file, expected_frames)
-        if frames is None:
+        if (model_dir / "md-failed").exists() or not traj_file.is_file():
             profiles[model_name] = md.FAILED
             continue
 
         if not (curve_path / model_name).exists():
             (curve_path / model_name).mkdir(parents=True, exist_ok=True)
+
+        frames = read(traj_file, ":")
+        if len(frames) < expected_frames:
+            profiles[model_name] = md.FAILED
+            continue
 
         profiles[model_name] = compute_density_profiles(frames, elements=elements)
 

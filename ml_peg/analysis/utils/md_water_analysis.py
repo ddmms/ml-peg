@@ -19,11 +19,8 @@ from warnings import warn
 from ase.io import read
 import mdtraj as mdt
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from ml_peg.analysis.utils import aml_md_analysis as aml
-from ml_peg.analysis.utils.water_trajectory import trajectory_arrays, validated_frames
 
 # ASE writes/reads positions and velocities in Å; mdtraj stores them in nm.
 ANG_TO_NM = 0.1
@@ -52,8 +49,9 @@ def _load_positions(traj_file: Path, topology: str) -> mdt.Trajectory:
     mdtraj.Trajectory
         Position trajectory with cell information injected.
     """
+    frames = read(traj_file, ":")
     top_frame = mdt.load_frame(str(topology), 0)
-    xyz, _ = trajectory_arrays(traj_file)
+    xyz = np.array([atoms.get_positions() for atoms in frames]) * ANG_TO_NM
     trj = mdt.Trajectory(xyz, top_frame.topology)
     n_frames = len(trj)
     trj.unitcell_lengths = top_frame.unitcell_lengths.repeat(n_frames, axis=0)
@@ -83,10 +81,9 @@ def _load_velocities(traj_file: Path, topology: str) -> mdt.Trajectory:
     mdtraj.Trajectory
         Velocity "trajectory" with cell information injected.
     """
+    frames = read(traj_file, ":")
     top_pdb = mdt.load_pdb(str(topology))
-    _, vel = trajectory_arrays(traj_file)
-    if not np.isfinite(vel).all():
-        raise ValueError("Trajectory has missing or non-finite velocities")
+    vel = np.array([atoms.get_velocities() for atoms in frames]) * ANG_TO_NM
     trj = mdt.Trajectory(vel, top_pdb.topology)
     n_frames = len(trj)
     trj.unitcell_lengths = np.repeat(top_pdb.unitcell_lengths, n_frames, axis=0)
@@ -204,12 +201,14 @@ def create_rdfs(
         if (model_dir / "md-failed").exists():
             rdfs[model_name] = FAILED
             continue
-        if validated_frames(traj_file, expected_frames) is None:
+        if not traj_file.is_file():
             rdfs[model_name] = FAILED
             continue
 
         try:
             test_trj = _load_positions(traj_file, ref_topology)
+            if len(test_trj) < expected_frames:
+                raise ValueError("Incomplete production trajectory")
 
             rdfs[model_name] = aml.compute_all_rdfs(test_trj)
         except Exception as exc:
@@ -298,12 +297,14 @@ def create_vdos(
         if (model_dir / "md-failed").exists():
             vdos[model_name] = FAILED
             continue
-        if validated_frames(traj_file, expected_frames) is None:
+        if not traj_file.is_file():
             vdos[model_name] = FAILED
             continue
 
         try:
             test_vel = _load_velocities(traj_file, ref_topology)
+            if len(test_vel) < expected_frames:
+                raise ValueError("Incomplete production trajectory")
 
             vdos[model_name] = aml.compute_all_vdos(test_vel, dt)
         except Exception as exc:
@@ -383,12 +384,14 @@ def create_vacf(
         if (model_dir / "md-failed").exists():
             vacf[model_name] = FAILED
             continue
-        if validated_frames(traj_file, expected_frames) is None:
+        if not traj_file.is_file():
             vacf[model_name] = FAILED
             continue
 
         try:
             test_vel = _load_velocities(traj_file, ref_topology)
+            if len(test_vel) < expected_frames:
+                raise ValueError("Incomplete production trajectory")
 
             # Reference and model VACFs are compared by interpolation onto a common
             # time axis (see aml.compute_all_errors_vacf), so trajectory lengths need
@@ -572,34 +575,6 @@ def build_bar_data(
                     point_data["xlim"] = xlim
                 if ylog:
                     point_data["ylog"] = True
-
-                fig = make_subplots(
-                    rows=1, cols=2, subplot_titles=(f"Comparison: {pair}", "Error")
-                )
-                for label, values in (
-                    ("Reference", point_data["ref"]),
-                    ("Predicted", point_data["pred"]),
-                ):
-                    fig.add_trace(
-                        go.Scatter(x=point_data["x_values"], y=values, name=label),
-                        row=1,
-                        col=1,
-                    )
-                fig.add_trace(
-                    go.Scatter(
-                        x=point_data["x_values"], y=point_data["error"], name="Error"
-                    ),
-                    row=1,
-                    col=2,
-                )
-                fig.update_xaxes(title_text=xlabel)
-                fig.update_yaxes(title_text=ylabel, row=1, col=1)
-                fig.update_yaxes(title_text=f"Difference in {ylabel}", row=1, col=2)
-                if xlim is not None:
-                    fig.update_xaxes(range=xlim)
-                if ylog:
-                    fig.update_yaxes(type="log", row=1, col=1)
-                point_data["figure"] = fig.to_plotly_json()
 
                 pair_point_list.append(
                     {
