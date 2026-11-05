@@ -1,0 +1,12 @@
+implementers:
+  - name: "Xavier R. Advincula"
+    github: "xradvincula"
+
+contributors:
+  - name: "Isaac Parker"
+    github: "isaacparker30"
+
+citations:
+  - bibtex_key: schran2021machine
+    role: upstream_framework
+    detail: RDF, VDOS and VACF analysis

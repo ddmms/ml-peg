@@ -1,0 +1,13 @@
+implementers:
+  - name: "Isaac Parker"
+    github: "isaacparker30"
+
+contributors: []
+
+citations:
+  - bibtex_key: parker2026false
+    role: benchmark_method
+    detail: PBE-D3 reference data
+  - bibtex_key: schran2021machine
+    role: upstream_framework
+    detail: RDF, VDOS and VACF analysis
