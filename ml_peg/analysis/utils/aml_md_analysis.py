@@ -825,9 +825,8 @@ def compute_all_errors_vacf(ref_fnc, test_fnc):
         # Rescale array in case of different resolution
         test_data = np.interp(data[0], test_fnc[name][0], test_fnc[name][1])
         diff = data[1] - test_data
-        mae = np.sum(np.abs(diff)) / (
-            np.sum(np.abs(data[1])) + np.sum(np.abs(test_data))
-        )
+        denominator = np.sum(np.abs(data[1])) + np.sum(np.abs(test_data))
+        mae = np.sum(np.abs(diff)) / denominator if denominator else 0.0
         error[name] = [data[0], diff, mae]
     return error
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 import pickle
 
-from ase.io import read
 import numpy as np
 import plotly.graph_objects as go
 import pytest
@@ -29,6 +28,7 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.surfaces.copper_water_interface.calc_copper_water_interface import (  # noqa: E501
+    RUN_STEPS,
     TIMESTEP,
     TRAJ_EVERY,
 )
@@ -99,7 +99,13 @@ def created_rdfs() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of RDFs for all models.
     """
-    return md.create_rdfs(MODELS, DATA_PATH, CALC_PATH, RDF_CURVE_PATH)
+    return md.create_rdfs(
+        MODELS,
+        DATA_PATH,
+        CALC_PATH,
+        RDF_CURVE_PATH,
+        expected_frames=RUN_STEPS // TRAJ_EVERY,
+    )
 
 
 @pytest.fixture
@@ -171,7 +177,7 @@ def build_rdf_interactive_data(
         metric_key="rdf_score",
         metric_label="RDF Score",
         ylabel="g(r)",
-        xlabel="Distance (Å)",
+        xlabel="Distance (nm)",
         errors_fn=aml.compute_all_errors,
         ref_key=lambda m: "ref",
         xlim=[0, 0.6],
@@ -194,7 +200,12 @@ def created_vdos() -> dict[str, dict]:
         Dictionary of VDOS for all models.
     """
     return md.create_vdos(
-        MODELS, DATA_PATH, CALC_PATH, VDOS_CURVE_PATH, dt=TIMESTEP * TRAJ_EVERY
+        MODELS,
+        DATA_PATH,
+        CALC_PATH,
+        VDOS_CURVE_PATH,
+        dt=TIMESTEP * TRAJ_EVERY,
+        expected_frames=RUN_STEPS // TRAJ_EVERY,
     )
 
 
@@ -303,12 +314,13 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
 
     for model_name in MODELS:
         model_traj = CALC_PATH / model_name / "md-traj.extxyz"
-        if not model_traj.exists():
+        frames = md.validated_frames(model_traj, RUN_STEPS // TRAJ_EVERY)
+        if frames is None:
+            dipole_results[model_name] = np.nan
             continue
 
         # Compute the per-frame total z-dipole per unit area from the trajectory,
         # the same way as the water_slab_dipoles benchmark.
-        frames = read(model_traj, ":")
         dipoles_z = get_z_dipoles(frames, q=DIPOLE_CHARGE)
 
         dipole_results[model_name] = np.abs(np.std(dipoles_z) - ref_dipole_stdev)
@@ -436,6 +448,7 @@ def fraction_breakdown_candidates(
     results = {"ref": None} | dict.fromkeys(MODELS)
     for key in ("ref", *MODELS):
         if key not in raw:
+            results[key] = np.nan
             continue
         dipoles = np.asarray(raw[key])
         results[key] = (
@@ -460,7 +473,12 @@ def created_vacf() -> dict[str, dict]:
         Dictionary of VACF for all models.
     """
     return md.create_vacf(
-        MODELS, DATA_PATH, CALC_PATH, VACF_CURVE_PATH, dt=TIMESTEP * TRAJ_EVERY
+        MODELS,
+        DATA_PATH,
+        CALC_PATH,
+        VACF_CURVE_PATH,
+        dt=TIMESTEP * TRAJ_EVERY,
+        expected_frames=RUN_STEPS // TRAJ_EVERY,
     )
 
 
@@ -557,7 +575,13 @@ def created_density() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of density profiles for all models.
     """
-    return create_density_profiles(MODELS, DATA_PATH, CALC_PATH, DENSITY_CURVE_PATH)
+    return create_density_profiles(
+        MODELS,
+        DATA_PATH,
+        CALC_PATH,
+        DENSITY_CURVE_PATH,
+        expected_frames=RUN_STEPS // TRAJ_EVERY,
+    )
 
 
 @pytest.fixture
@@ -665,10 +689,11 @@ def created_dipole_profile() -> dict[str, dict]:
 
     for model_name in MODELS:
         model_traj = CALC_PATH / model_name / "md-traj.extxyz"
-        if not model_traj.exists():
+        frames = md.validated_frames(model_traj, RUN_STEPS // TRAJ_EVERY)
+        if frames is None:
+            profiles[model_name] = md.FAILED
             continue
 
-        frames = read(model_traj, ":")
         _, all_dipoles = get_z_dipoles_frames(frames)
         z_bins, profile = get_z_dipoles_average_integrated_profile(
             all_dipoles, n_frames=len(frames)
@@ -696,7 +721,7 @@ def dipole_profile_scores(created_dipole_profile: dict[str, dict]) -> dict[str, 
     return md.property_scores(
         created_dipole_profile,
         MODELS,
-        errors_fn=aml.compute_all_errors,
+        errors_fn=aml.compute_all_errors_vacf,
         ref_key=lambda m: "ref",
     )
 
@@ -750,7 +775,7 @@ def build_dipole_profile_plot(
     return {"ref": created_dipole_profile["ref"]["dipole"]} | {
         model_name: created_dipole_profile[model_name]["dipole"]
         for model_name in MODELS
-        if created_dipole_profile.get(model_name)
+        if isinstance(created_dipole_profile.get(model_name), dict)
     }
 
 

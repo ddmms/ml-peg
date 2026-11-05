@@ -14,12 +14,16 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 import pickle
+from warnings import warn
 
 from ase.io import read
 import mdtraj as mdt
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from ml_peg.analysis.utils import aml_md_analysis as aml
+from ml_peg.analysis.utils.water_trajectory import trajectory_arrays, validated_frames
 
 # ASE writes/reads positions and velocities in Å; mdtraj stores them in nm.
 ANG_TO_NM = 0.1
@@ -48,9 +52,8 @@ def _load_positions(traj_file: Path, topology: str) -> mdt.Trajectory:
     mdtraj.Trajectory
         Position trajectory with cell information injected.
     """
-    frames = read(traj_file, ":")
     top_frame = mdt.load_frame(str(topology), 0)
-    xyz = np.array([atoms.get_positions() for atoms in frames]) * ANG_TO_NM
+    xyz, _ = trajectory_arrays(traj_file)
     trj = mdt.Trajectory(xyz, top_frame.topology)
     n_frames = len(trj)
     trj.unitcell_lengths = top_frame.unitcell_lengths.repeat(n_frames, axis=0)
@@ -80,9 +83,10 @@ def _load_velocities(traj_file: Path, topology: str) -> mdt.Trajectory:
     mdtraj.Trajectory
         Velocity "trajectory" with cell information injected.
     """
-    frames = read(traj_file, ":")
     top_pdb = mdt.load_pdb(str(topology))
-    vel = np.array([atoms.get_velocities() for atoms in frames]) * ANG_TO_NM
+    _, vel = trajectory_arrays(traj_file)
+    if not np.isfinite(vel).all():
+        raise ValueError("Trajectory has missing or non-finite velocities")
     trj = mdt.Trajectory(vel, top_pdb.topology)
     n_frames = len(trj)
     trj.unitcell_lengths = np.repeat(top_pdb.unitcell_lengths, n_frames, axis=0)
@@ -140,7 +144,12 @@ def get_elements(data_path: Path) -> list:
 
 
 def create_rdfs(
-    models: list, data_path: Path, calc_path: Path, curve_path: Path
+    models: list,
+    data_path: Path,
+    calc_path: Path,
+    curve_path: Path,
+    *,
+    expected_frames: int,
 ) -> dict[str, dict]:
     """
     Create RDFs for all models.
@@ -155,6 +164,9 @@ def create_rdfs(
         Path to the calculation outputs (one subdir per model).
     curve_path
         Path to write per-model RDF curve pickles for app use.
+
+    expected_frames
+        Minimum number of production frames required for a valid run.
 
     Returns
     -------
@@ -179,6 +191,7 @@ def create_rdfs(
         model_dir = calc_path / model_name
 
         if not model_dir.exists():
+            rdfs[model_name] = FAILED
             continue
 
         # Check if rdf curves directory exists for model, if not create it
@@ -191,12 +204,18 @@ def create_rdfs(
         if (model_dir / "md-failed").exists():
             rdfs[model_name] = FAILED
             continue
-        if not traj_file.exists():
+        if validated_frames(traj_file, expected_frames) is None:
+            rdfs[model_name] = FAILED
             continue
 
-        test_trj = _load_positions(traj_file, ref_topology)
+        try:
+            test_trj = _load_positions(traj_file, ref_topology)
 
-        rdfs[model_name] = aml.compute_all_rdfs(test_trj)
+            rdfs[model_name] = aml.compute_all_rdfs(test_trj)
+        except Exception as exc:
+            warn(f"Unable to analyse {model_name}: {exc}", stacklevel=2)
+            rdfs[model_name] = FAILED
+            continue
 
         # Make sure keys are in alphabetical order
         rdfs_keys = list(rdfs[model_name].keys())
@@ -220,6 +239,8 @@ def create_vdos(
     calc_path: Path,
     curve_path: Path,
     dt: float = 1,
+    *,
+    expected_frames: int,
 ) -> dict[str, dict]:
     """
     Create VDOS for all models.
@@ -237,6 +258,9 @@ def create_vdos(
     dt
         Time between stored trajectory frames, in fs. Must match the spacing used
         to build the reference so the frequency/time axes align.
+
+    expected_frames
+        Minimum number of production frames required for a valid run.
 
     Returns
     -------
@@ -261,6 +285,7 @@ def create_vdos(
         model_dir = calc_path / model_name
 
         if not model_dir.exists():
+            vdos[model_name] = FAILED
             continue
 
         # Check if vdos curves directory exists for model, if not create it
@@ -273,12 +298,18 @@ def create_vdos(
         if (model_dir / "md-failed").exists():
             vdos[model_name] = FAILED
             continue
-        if not traj_file.exists():
+        if validated_frames(traj_file, expected_frames) is None:
+            vdos[model_name] = FAILED
             continue
 
-        test_vel = _load_velocities(traj_file, ref_topology)
+        try:
+            test_vel = _load_velocities(traj_file, ref_topology)
 
-        vdos[model_name] = aml.compute_all_vdos(test_vel, dt)
+            vdos[model_name] = aml.compute_all_vdos(test_vel, dt)
+        except Exception as exc:
+            warn(f"Unable to analyse {model_name}: {exc}", stacklevel=2)
+            vdos[model_name] = FAILED
+            continue
 
         # Write rdf curves to file for app use
         with open(curve_path / model_name / "vdos_curves.pkl", "wb") as f_out:
@@ -293,6 +324,8 @@ def create_vacf(
     calc_path: Path,
     curve_path: Path,
     dt: float = 1,
+    *,
+    expected_frames: int,
 ) -> dict[str, dict]:
     """
     Create VACF for all models.
@@ -310,6 +343,9 @@ def create_vacf(
     dt
         Time between stored trajectory frames, in fs. Must match the spacing used
         to build the reference so the frequency/time axes align.
+
+    expected_frames
+        Minimum number of production frames required for a valid run.
 
     Returns
     -------
@@ -334,6 +370,7 @@ def create_vacf(
         model_dir = calc_path / model_name
 
         if not model_dir.exists():
+            vacf[model_name] = FAILED
             continue
 
         # Check if vacf curves directory exists for model, if not create it
@@ -346,16 +383,22 @@ def create_vacf(
         if (model_dir / "md-failed").exists():
             vacf[model_name] = FAILED
             continue
-        if not traj_file.exists():
+        if validated_frames(traj_file, expected_frames) is None:
+            vacf[model_name] = FAILED
             continue
 
-        test_vel = _load_velocities(traj_file, ref_topology)
+        try:
+            test_vel = _load_velocities(traj_file, ref_topology)
 
-        # Reference and model VACFs are compared by interpolation onto a common
-        # time axis (see aml.compute_all_errors_vacf), so trajectory lengths need
-        # not match: the precomputed reference is used directly for every model.
-        vacf[f"ref_{model_name}"] = vacf["ref"]
-        vacf[model_name] = aml.compute_all_vacfs(test_vel, dt)
+            # Reference and model VACFs are compared by interpolation onto a common
+            # time axis (see aml.compute_all_errors_vacf), so trajectory lengths need
+            # not match: the precomputed reference is used directly for every model.
+            vacf[f"ref_{model_name}"] = vacf["ref"]
+            vacf[model_name] = aml.compute_all_vacfs(test_vel, dt)
+        except Exception as exc:
+            warn(f"Unable to analyse {model_name}: {exc}", stacklevel=2)
+            vacf[model_name] = FAILED
+            continue
 
         # Write vacf curves to file for app use
         with open(curve_path / model_name / "vacf_curves.pkl", "wb") as f_out:
@@ -529,6 +572,34 @@ def build_bar_data(
                     point_data["xlim"] = xlim
                 if ylog:
                     point_data["ylog"] = True
+
+                fig = make_subplots(
+                    rows=1, cols=2, subplot_titles=(f"Comparison: {pair}", "Error")
+                )
+                for label, values in (
+                    ("Reference", point_data["ref"]),
+                    ("Predicted", point_data["pred"]),
+                ):
+                    fig.add_trace(
+                        go.Scatter(x=point_data["x_values"], y=values, name=label),
+                        row=1,
+                        col=1,
+                    )
+                fig.add_trace(
+                    go.Scatter(
+                        x=point_data["x_values"], y=point_data["error"], name="Error"
+                    ),
+                    row=1,
+                    col=2,
+                )
+                fig.update_xaxes(title_text=xlabel)
+                fig.update_yaxes(title_text=ylabel, row=1, col=1)
+                fig.update_yaxes(title_text=f"Difference in {ylabel}", row=1, col=2)
+                if xlim is not None:
+                    fig.update_xaxes(range=xlim)
+                if ylog:
+                    fig.update_yaxes(type="log", row=1, col=1)
+                point_data["figure"] = fig.to_plotly_json()
 
                 pair_point_list.append(
                     {
