@@ -287,6 +287,29 @@ FairChem/UMA entries use the dedicated ``FAIRChemCalculator`` branch:
        model_name: uma-s-1p1
        task_name: omat
 
+``model_name`` and ``task_name`` are passed to fairchem's
+``get_predict_unit`` and ``FAIRChemCalculator`` respectively. ``kwargs`` may
+also set ``inference_settings``, the name of a fairchem inference preset
+(``fairchem.core.units.mlip_unit.api.inference.NAME_TO_INFERENCE_SETTING``).
+It defaults to ``batch``, which matches fairchem's default before 2.25. Use
+``nitro`` to run with `UMA Nitro
+<https://facebookresearch.github.io/fairchem/ase-calculator#default-mode-nitro>`_.
+Nitro only supports float32, so ``precision="high"`` (or an ``overwrite_dtype``
+of ``float64``) falls back to ``batch`` rather than fairchem's TF32 preset:
+
+.. code-block:: yaml
+
+   uma-s-1p2p1-omat:
+     module: fairchem.core
+     class_name: FAIRChemCalculator
+     device: auto
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model_name: uma-s-1p2p1
+       task_name: omat
+       inference_settings: nitro
+
 PET-MAD entries use UPET's ``UPETCalculator``:
 
 .. code-block:: yaml
