@@ -66,8 +66,17 @@ grace = [
     "tensorpotential == 0.6.0",
 ]
 mace = [
-    "mace-torch == 0.3.16",
+    "mace-torch == 0.3.17",
     "graph-longrange == 0.4.0",
+]
+
+# MACE 0.3.17 exposes its compiled cuEq kernels through the CUDA 12 extra.
+mace-cueq = [
+    "ml-peg[mace]",
+    "mace-torch[cueq,cueq-cuda-12] == 0.3.17; sys_platform == 'linux'",
+    # Keep the cuEq frontend and compiled kernels on the same tested release.
+    "cuequivariance-torch == 0.8.1; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu12 == 0.8.1; sys_platform == 'linux'",
 ]
 
 mattersim = [
@@ -296,6 +305,26 @@ conflicts = [
     [
       { extra = "vivace" },
       { extra = "mace" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "dpa" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "uma" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "mattersim" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "sevenn" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "vivace" },
     ],
 ]
 
