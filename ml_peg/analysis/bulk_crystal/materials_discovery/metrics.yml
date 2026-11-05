@@ -1,0 +1,64 @@
+metrics:
+  Full F1:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    tooltip: "F1 score over the full WBM test set"
+    level_of_theory: PBE
+    weight: 1.0
+  Full DAF:
+    good: 6.0
+    bad: 1.0
+    unit: null
+    tooltip: "Discovery acceleration factor over the full WBM test set"
+    level_of_theory: PBE
+    weight: 1.0
+  Full MAE:
+    good: 0.0
+    bad: 0.2
+    unit: eV/atom
+    tooltip: "Formation-energy mean absolute error over the full WBM test set"
+    level_of_theory: PBE
+    weight: 1.0
+  Unique F1:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    tooltip: "F1 score for unique structure prototypes"
+    level_of_theory: PBE
+    weight: 1.0
+  Unique DAF:
+    good: 6.0
+    bad: 1.0
+    unit: null
+    tooltip: "Discovery acceleration factor for unique structure prototypes"
+    level_of_theory: PBE
+    weight: 1.0
+  Unique MAE:
+    good: 0.0
+    bad: 0.2
+    unit: eV/atom
+    tooltip: "Formation-energy mean absolute error for unique structure prototypes"
+    level_of_theory: PBE
+    weight: 1.0
+  10k F1:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    tooltip: "F1 score for the 10,000 most stable predicted unique prototypes"
+    level_of_theory: PBE
+    weight: 1.0
+  10k DAF:
+    good: 6.0
+    bad: 1.0
+    unit: null
+    tooltip: "Discovery acceleration factor for the 10,000 most stable predictions"
+    level_of_theory: PBE
+    weight: 1.0
+  10k MAE:
+    good: 0.0
+    bad: 0.2
+    unit: eV/atom
+    tooltip: "Formation-energy mean absolute error for the 10,000 most stable predictions"
+    level_of_theory: PBE
+    weight: 1.0
