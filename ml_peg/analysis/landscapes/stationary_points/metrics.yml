@@ -1,0 +1,124 @@
+metrics:
+  Energy RMSE:
+    good: 1.0
+    bad: 10.0
+    unit: meV/atom
+    tooltip: "Energy error at the 95 DFT minima and transition states, each method measured from its own per-molecule mean so a constant offset cancels."
+    level_of_theory: ωB97X/6-31G(d)
+  Force RMSE:
+    good: 130.0
+    bad: 400.0
+    unit: meV/Å
+    tooltip: "Force error at the 95 DFT minima and transition states, where DFT's force is zero, so this is the RMS of the model's own force over every component. A floor of about 130 meV/Å applies: these are ωB97X/6-31G(d) geometries and no current model is trained on that functional."
+    level_of_theory: ωB97X/6-31G(d)
+  Path energy RMSE:
+    good: 1.0
+    bad: 10.0
+    unit: meV/atom
+    tooltip: "The same energy error along the 11,173 steepest-descent frames joining the stationary points: the shape of the surface between them."
+    level_of_theory: ωB97X/6-31G(d)
+  Path force RMSE:
+    good: 130.0
+    bad: 400.0
+    unit: meV/Å
+    tooltip: "Force error along the paths, where DFT forces are non-zero. Subject to the same ~130 meV/Å functional floor as Force RMSE."
+    level_of_theory: ωB97X/6-31G(d)
+  Reconverged minima RMSD (median):
+    good: 0.02
+    bad: 0.3
+    unit: Å
+    tooltip: "RMSD between each reference minimum and where it ends up when relaxed under the model. By 0.3 Å it is a different conformer."
+    level_of_theory: ωB97X/6-31G(d)
+  Reconverged minima RMSD (90th pct):
+    good: 0.05
+    bad: 0.5
+    unit: Å
+    tooltip: "90th percentile of the same distribution, distinguishing a model that holds most minima well but loses a few from one that is uniformly imprecise."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddles converged:
+    good: 0.95
+    bad: 0.3
+    unit: fraction
+    tooltip: "Fraction of all 67 reference transition states where eigenvector following reaches a saddle within the step budget."
+    level_of_theory: ωB97X/6-31G(d)
+  Reconverged saddle RMSD (median):
+    good: 0.02
+    bad: 0.3
+    unit: Å
+    tooltip: "RMSD between each reference transition state and where it reconverges to, over those the search reached."
+    level_of_theory: ωB97X/6-31G(d)
+  Reconverged saddle RMSD (90th pct):
+    good: 0.05
+    bad: 0.5
+    unit: Å
+    tooltip: "90th percentile of the same distribution. Saddles that never converge are left out here and counted by Saddles converged; the step budget truncates the far-drifting tail, so this understates it."
+    level_of_theory: ωB97X/6-31G(d)
+  Connectivity preserved:
+    good: 0.9
+    bad: 0.4
+    unit: fraction
+    tooltip: "Fraction of all 67 reference transition states whose steepest-descent paths reach the same two minima as DFT. A saddle can sit in the right place and still rewire the network."
+    level_of_theory: ωB97X/6-31G(d)
+  Normal mode overlap:
+    good: 0.99
+    bad: 0.8
+    unit: cosine
+    tooltip: "Agreement with the DFT normal modes at the reference geometries, matched one to one after projecting out translation and rotation."
+    level_of_theory: ωB97X/6-31G(d)
+  Reaction mode overlap:
+    good: 0.99
+    bad: 0.8
+    unit: cosine
+    tooltip: "Agreement with the DFT imaginary mode, over the saddles where the model has one at all. Read with Saddles converged."
+    level_of_theory: ωB97X/6-31G(d)
+  Curvature scaling error:
+    good: 0.02
+    bad: 0.2
+    unit: fraction
+    tooltip: "Distance from 1 of the least-squares slope of model against DFT eigenvalues. Weighted by eigenvalue, so it describes the stiff modes."
+    level_of_theory: ωB97X/6-31G(d)
+  Soft mode curvature error:
+    good: 0.02
+    bad: 0.2
+    unit: eV/Å²
+    tooltip: "Absolute eigenvalue error over the softest third of the modes, where a landscape lives. Absolute rather than relative because these eigenvalues approach zero."
+    level_of_theory: ωB97X/6-31G(d)
+  Reaction mode curvature:
+    good: 1.0
+    bad: 0.3
+    unit: ratio
+    tooltip: "The model's imaginary eigenvalue over DFT's: the curvature along the reaction coordinate, which sets the tunnelling correction and the TST prefactor."
+    level_of_theory: ωB97X/6-31G(d)
+
+# Pending. Each of these moves into `metrics` above when its calculation lands
+# in `calc_stationary_points.py`. Thresholds are kept here so the reasoning is
+# not lost, not because they are settled.
+#
+# None of these binarise a distance. An earlier design counted a structure as
+# "held" if it stayed within 0.3 A, which cut straight through a populated part
+# of the measured distribution: on MACE-OFF the drifts run continuously from
+# 0.010 to 0.303 A and only then jump to 0.458. One aspirin saddle was measured
+# twice, 0.2991 and 0.3031 A, and the threshold put the two measurements of the
+# same structure on opposite sides. Reporting the distribution instead removes
+# that cliff. 0.3 A survives only inside the endpoint identification, where
+# some cutoff is unavoidable.
+#
+# Median and 90th percentile are both reported, as in the landscape search: the
+# median says where the typical structure sits, and the 90th percentile whether
+# there is a tail of structures the model moved a long way. Both read directly
+# in Å, where a mean would mix the bulk and the tail into one number.
+#
+#
+# Mean first passage time between a chosen pair of minima, derived from the
+# reconverged network and compared with the same quantity from the DFT
+# landscape. This is the first metric here that tests the kinetics the
+# landscape implies rather than its geometry, so a model can reproduce every
+# structure and still fail it. Thresholds to be set once the spread across
+# models is known: an order of magnitude is the obvious scale, but that should
+# be justified rather than assumed.
+#  MFPT error (log10):
+#    good:
+#    bad:
+#    unit: log10 ratio
+#    tooltip: ""
+#    level_of_theory: ωB97X/6-31G(d)

@@ -17,6 +17,7 @@ Benchmarks
     molecular_crystal
     molecular_dynamics
     molecular_reactions
+    landscapes
     nebs
     non_covalent_interactions
     physicality
