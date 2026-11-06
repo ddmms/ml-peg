@@ -16,6 +16,7 @@ import pytest
 from tqdm import tqdm
 import zntrack
 
+from ml_peg.calcs.utils.run_log import log_run
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -125,95 +126,101 @@ class S24Benchmark(zntrack.Node):
 
     def run(self):
         """Run S24 energy calculations."""
-        # Add D3 calculator and use double precision for this test
-        calc = self.model.get_calculator(precision="high")
-        calc = self.model.add_d3_calculator(calc)
+        with log_run(OUT_PATH, self.model_name):
+            # Add D3 calculator and use double precision for this test
+            calc = self.model.get_calculator(precision="high")
+            calc = self.model.add_d3_calculator(calc)
 
-        data = (
-            download_s3_data(filename="S24.zip", key="inputs/surfaces/S24/S24.zip")
-            / "s24/s24_data.extxyz"
-        )
-        atoms_list = read(data, ":")
-
-        for i in tqdm(
-            range(0, len(atoms_list), 3),
-            desc=f"Processing Triplets for model: {self.model_name}",
-        ):
-            surface = atoms_list[i]
-            mol_surface = atoms_list[i + 1]
-            molecule = atoms_list[i + 2]
-
-            # Create sys_id
-            sys_id = f"{(i // 3) + 1:03d}"
-
-            # Store reference energies
-            try:
-                surface.info["ref_energy"] = surface.get_potential_energy()
-            except Exception as exc:
-                warn(f"Error calculating energy for {sys_id}: {exc}", stacklevel=2)
-                surface.info["ref_energy"] = np.nan
-            try:
-                mol_surface.info["ref_energy"] = mol_surface.get_potential_energy()
-            except Exception as exc:
-                warn(f"Error calculating energy for {sys_id}: {exc}", stacklevel=2)
-                mol_surface.info["ref_energy"] = np.nan
-            try:
-                molecule.info["ref_energy"] = molecule.get_potential_energy()
-            except Exception as exc:
-                warn(f"Error calculating energy for {sys_id}: {exc}", stacklevel=2)
-                molecule.info["ref_energy"] = np.nan
-
-            # Store system information
-            surface_formula = surface.get_chemical_formula()
-            molecule_formula = molecule.get_chemical_formula()
-
-            # Count number of adsorbates
-            adsorbate_count = self.count_adsorbates(surface, mol_surface, molecule)
-
-            if adsorbate_count > 1:
-                system_name = f"{surface_formula}-{adsorbate_count}x{molecule_formula}"
-            else:
-                system_name = f"{surface_formula}-{molecule_formula}"
-
-            mol_surface.info["name"] = system_name
-            mol_surface.info["adsorbate_count"] = adsorbate_count
-            mol_surface.info["sys_id"] = sys_id
-            mol_surface.info["system_name"] = system_name
-
-            # Evaluate with the model
-            triplet = [surface, mol_surface, molecule]
-            self.evaluate_energies(triplet, calc)
-
-            # Calculate and store adsorption energies
-            try:
-                surface_energy = surface.get_potential_energy()
-                mol_surf_energy = mol_surface.get_potential_energy()
-                molecule_energy = molecule.get_potential_energy()
-                pred_ads_energy = self.compute_adsorption_energy(
-                    surface_energy, mol_surf_energy, molecule_energy, adsorbate_count
-                )
-            except Exception as exc:
-                warn(f"Error calculating energy for {sys_id}: {exc}", stacklevel=2)
-                pred_ads_energy = np.nan
-
-            ref_surface_energy = surface.info["ref_energy"]
-            ref_mol_surf_energy = mol_surface.info["ref_energy"]
-            ref_molecule_energy = molecule.info["ref_energy"]
-            ref_ads_energy = self.compute_adsorption_energy(
-                ref_surface_energy,
-                ref_mol_surf_energy,
-                ref_molecule_energy,
-                adsorbate_count,
+            data = (
+                download_s3_data(filename="S24.zip", key="inputs/surfaces/S24/S24.zip")
+                / "s24/s24_data.extxyz"
             )
+            atoms_list = read(data, ":")
 
-            # Store adsorption energies in mol_surface
-            mol_surface.info["adsorption_energy"] = pred_ads_energy
-            mol_surface.info["ref_adsorption_energy"] = ref_ads_energy
+            for i in tqdm(
+                range(0, len(atoms_list), 3),
+                desc=f"Processing Triplets for model: {self.model_name}",
+            ):
+                surface = atoms_list[i]
+                mol_surface = atoms_list[i + 1]
+                molecule = atoms_list[i + 2]
 
-            # Save individual molecule-surface structure using sys_id
-            write_dir = OUT_PATH / self.model_name
-            write_dir.mkdir(parents=True, exist_ok=True)
-            write(write_dir / f"{sys_id}.xyz", mol_surface)
+                # Create sys_id
+                sys_id = f"{(i // 3) + 1:03d}"
+
+                # Store reference energies
+                try:
+                    surface.info["ref_energy"] = surface.get_potential_energy()
+                except Exception as exc:
+                    warn(f"Error calculating energy for {sys_id}: {exc}", stacklevel=2)
+                    surface.info["ref_energy"] = np.nan
+                try:
+                    mol_surface.info["ref_energy"] = mol_surface.get_potential_energy()
+                except Exception as exc:
+                    warn(f"Error calculating energy for {sys_id}: {exc}", stacklevel=2)
+                    mol_surface.info["ref_energy"] = np.nan
+                try:
+                    molecule.info["ref_energy"] = molecule.get_potential_energy()
+                except Exception as exc:
+                    warn(f"Error calculating energy for {sys_id}: {exc}", stacklevel=2)
+                    molecule.info["ref_energy"] = np.nan
+
+                # Store system information
+                surface_formula = surface.get_chemical_formula()
+                molecule_formula = molecule.get_chemical_formula()
+
+                # Count number of adsorbates
+                adsorbate_count = self.count_adsorbates(surface, mol_surface, molecule)
+
+                if adsorbate_count > 1:
+                    system_name = (
+                        f"{surface_formula}-{adsorbate_count}x{molecule_formula}"
+                    )
+                else:
+                    system_name = f"{surface_formula}-{molecule_formula}"
+
+                mol_surface.info["name"] = system_name
+                mol_surface.info["adsorbate_count"] = adsorbate_count
+                mol_surface.info["sys_id"] = sys_id
+                mol_surface.info["system_name"] = system_name
+
+                # Evaluate with the model
+                triplet = [surface, mol_surface, molecule]
+                self.evaluate_energies(triplet, calc)
+
+                # Calculate and store adsorption energies
+                try:
+                    surface_energy = surface.get_potential_energy()
+                    mol_surf_energy = mol_surface.get_potential_energy()
+                    molecule_energy = molecule.get_potential_energy()
+                    pred_ads_energy = self.compute_adsorption_energy(
+                        surface_energy,
+                        mol_surf_energy,
+                        molecule_energy,
+                        adsorbate_count,
+                    )
+                except Exception as exc:
+                    warn(f"Error calculating energy for {sys_id}: {exc}", stacklevel=2)
+                    pred_ads_energy = np.nan
+
+                ref_surface_energy = surface.info["ref_energy"]
+                ref_mol_surf_energy = mol_surface.info["ref_energy"]
+                ref_molecule_energy = molecule.info["ref_energy"]
+                ref_ads_energy = self.compute_adsorption_energy(
+                    ref_surface_energy,
+                    ref_mol_surf_energy,
+                    ref_molecule_energy,
+                    adsorbate_count,
+                )
+
+                # Store adsorption energies in mol_surface
+                mol_surface.info["adsorption_energy"] = pred_ads_energy
+                mol_surface.info["ref_adsorption_energy"] = ref_ads_energy
+
+                # Save individual molecule-surface structure using sys_id
+                write_dir = OUT_PATH / self.model_name
+                write_dir.mkdir(parents=True, exist_ok=True)
+                write(write_dir / f"{sys_id}.xyz", mol_surface)
 
 
 def build_project(repro: bool = False) -> None:
