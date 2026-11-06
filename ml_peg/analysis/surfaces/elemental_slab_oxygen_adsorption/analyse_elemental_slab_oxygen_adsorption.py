@@ -75,6 +75,23 @@ def ref_adsorption_energy(structs: list) -> float:
     return compute_adsorption_energy(*(struct.info["ref_energy"] for struct in structs))
 
 
+def slab_element(structs: list) -> str:
+    """
+    Get the element of the clean slab from all frames of a calculation output.
+
+    Parameters
+    ----------
+    structs
+        Surface, molecule+surface, and molecule structures.
+
+    Returns
+    -------
+    str
+        Element symbol of the clean slab.
+    """
+    return structs[0].get_chemical_symbols()[0]
+
+
 # Extract system metadata from mock calculation (filenames)
 SYSTEM_INFO = get_struct_info(
     calc_path=CALC_PATH,
@@ -83,11 +100,14 @@ SYSTEM_INFO = get_struct_info(
     include_filenames=True,
     out_path=OUT_PATH,
     write_structs=True,
-    per_file_info={"ref_adsorption_energy": ref_adsorption_energy},
+    per_file_info={
+        "ref_adsorption_energy": ref_adsorption_energy,
+        "slab_element": slab_element,
+    },
 )
 
-# Each slab is elemental, so frame 0 of each file has a single element
-ELEMENTS = [elements[0] for elements in SYSTEM_INFO["elements"]]
+# Frame 1 (slab+oxygen) is read for filtering, so take the slab element from frame 0
+ELEMENTS = SYSTEM_INFO["slab_element"]
 
 # Reference values are taken from the mock calculation, which is always complete
 REF_ENERGIES = SYSTEM_INFO["ref_adsorption_energy"]

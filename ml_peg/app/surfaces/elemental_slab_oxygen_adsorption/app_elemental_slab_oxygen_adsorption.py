@@ -26,17 +26,14 @@ DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#e
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"
 INFO_PATH = DATA_PATH / "info.json"
 METRIC_COLUMNS = ("MAE", "U MAE", "non-U MAE")
+# Structures are only written out for the mock calculation
+STRUCTS_DIR = "mock"
 STRUCT_ID = f"{BENCHMARK_NAME}-struct-placeholder"
 
 
-def _element_to_struct(model: str) -> dict[str, str]:
+def _element_to_struct() -> dict[str, str]:
     """
-    Map each element to its structure file for a model, e.g. "Fe" -> "Fe54-O.xyz".
-
-    Parameters
-    ----------
-    model
-        Name of the model whose structure files are mapped.
+    Map each element to its structure file, e.g. "Fe" -> "Fe54-O.xyz".
 
     Returns
     -------
@@ -44,25 +41,26 @@ def _element_to_struct(model: str) -> dict[str, str]:
         Structure filename, keyed by element symbol.
     """
     element_to_struct = {}
-    for struct_file in sorted((DATA_PATH / model).glob("*.xyz")):
+    for struct_file in sorted((DATA_PATH / STRUCTS_DIR).glob("*.xyz")):
         match = re.match(r"([A-Z][a-z]?)\d", struct_file.stem)
         if match:
             element_to_struct[match.group(1)] = struct_file.name
     return element_to_struct
 
 
-def _struct_from_periodic_table(model: str, graph_id: str) -> None:
+# Energies are single-point, so all models share the mock calculation's structures
+ELEMENT_TO_STRUCT = _element_to_struct()
+
+
+def _struct_from_periodic_table(graph_id: str) -> None:
     """
     Attach callback to show a structure when an element is clicked.
 
     Parameters
     ----------
-    model
-        Name of the model whose periodic table is clicked.
     graph_id
         ID for the Dash periodic table being clicked.
     """
-    element_to_struct = _element_to_struct(model)
 
     @callback(
         Output(STRUCT_ID, "children", allow_duplicate=True),
@@ -89,13 +87,18 @@ def _struct_from_periodic_table(model: str, graph_id: str) -> None:
         if not points:
             raise PreventUpdate
 
+        # Blank cells of the periodic table have no element to show
         element = points[0].get("text", "").split("<br>")[0].strip()
-        struct_file = element_to_struct.get(element)
+        if not element:
+            raise PreventUpdate
+
+        struct_file = ELEMENT_TO_STRUCT.get(element)
         if not struct_file:
             return Div(f"No structure for {element}.")
 
         struct = (
-            f"/assets/surfaces/elemental_slab_oxygen_adsorption/{model}/{struct_file}"
+            f"/assets/surfaces/elemental_slab_oxygen_adsorption/"
+            f"{STRUCTS_DIR}/{struct_file}"
         )
         return Div(
             Iframe(
@@ -135,8 +138,8 @@ class ElementalSlabOxygenAdsorptionApp(BaseApp):
         # Switching model or metric clears the previous model's structure
         clear_from_table_cell(table_id=self.table_id, plot_ids=[STRUCT_ID])
 
-        for model, graph_id in graph_ids.items():
-            _struct_from_periodic_table(model, graph_id)
+        for graph_id in graph_ids.values():
+            _struct_from_periodic_table(graph_id)
 
 
 def get_app() -> ElementalSlabOxygenAdsorptionApp:
