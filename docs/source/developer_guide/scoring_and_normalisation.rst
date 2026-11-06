@@ -56,6 +56,48 @@ and should be passed to the ``@build_table`` decorator in the analysis file, e.g
        weights=DEFAULT_WEIGHTS,
    )
 
+Benchmark and category weights
+------------------------------
+
+Default weights for whole benchmarks and whole categories are set in the category's
+``ml_peg/app/[category]/[category].yml`` file. ``weight`` sets the category's weight in
+the overall score, and ``benchmark_weights`` sets the weight of individual benchmarks
+within that category's score. Benchmarks that are not listed default to a weight of 1:
+
+.. code-block:: yaml
+
+   title: NEBs
+   description: Nudged Elastic Band comparisons
+   weight: 1
+   benchmark_weights:
+     OC20NEB: 0
+     grambow_organics: 0
+
+Keys under ``benchmark_weights`` must match the benchmark's directory name, and appending
+``" Score"`` to form the summary table column is handled by the app.
+
+A weight of 0 excludes the column from the score entirely: it contributes to neither the
+weighted sum nor the sum of weights, so it does not drag the score down, and the column is
+dimmed in the table. This is not the same as scoring 0. If every benchmark in a category is
+weighted 0, that category has no score.
+
+Weights set this way are defaults only. Users can still change them in the app, using the
+weight boxes below each column, or the weight presets in the sidebar.
+
+Slow benchmarks are weighted 0 by default
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Benchmarks whose calculations are marked ``@pytest.mark.slow``, ``@pytest.mark.very_slow``
+or ``@pytest.mark.multi_day`` are excluded from default scores, since results for them are
+sparse and expensive to reproduce across models. Users who want them can re-weight them in
+the app.
+
+This is a manual mirror of the pytest speed markers, so when adding a slow benchmark, or
+changing an existing benchmark's speed marker, remember to update ``benchmark_weights``
+to match. ``tests/test_speed_markers.py::test_slow_benchmarks_are_zero_weighted`` enforces
+this, and will fail with the entry that needs adding. The reverse is not enforced: a fast
+benchmark may be weighted 0 for its own reasons.
+
 Scoring and normalisation
 -------------------------
 
