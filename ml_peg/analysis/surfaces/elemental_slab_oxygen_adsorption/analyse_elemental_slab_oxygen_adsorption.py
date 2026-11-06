@@ -34,23 +34,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Extract system metadata from mock calculation (filenames)
-SYSTEM_INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    index="1",
-    include_filenames=True,
-    out_path=OUT_PATH,
-    write_structs=True,
-)
-
-# Each slab is elemental, so frame 0 of each file has a single element
-ELEMENTS = [elements[0] for elements in SYSTEM_INFO["elements"]]
-
-# Transition metals commonly given a Hubbard U correction in GGA+U training data,
-# as analysed in Warford et al. (https://doi.org/10.1088/2632-2153/ae6be5)
-U_ELEMENTS = frozenset({"Co", "Cr", "Fe", "Mn", "Mo", "Ni", "V", "W"})
-
 
 def compute_adsorption_energy(
     surface_e: float, mol_surf_e: float, molecule_e: float
@@ -75,6 +58,45 @@ def compute_adsorption_energy(
     return mol_surf_e - (surface_e + molecule_e)
 
 
+def ref_adsorption_energy(structs: list) -> float:
+    """
+    Compute reference adsorption energy from all frames of a calculation output.
+
+    Parameters
+    ----------
+    structs
+        Surface, molecule+surface, and molecule structures.
+
+    Returns
+    -------
+    float
+        Reference adsorption energy.
+    """
+    return compute_adsorption_energy(*(struct.info["ref_energy"] for struct in structs))
+
+
+# Extract system metadata from mock calculation (filenames)
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index="1",
+    include_filenames=True,
+    out_path=OUT_PATH,
+    write_structs=True,
+    per_file_info={"ref_adsorption_energy": ref_adsorption_energy},
+)
+
+# Each slab is elemental, so frame 0 of each file has a single element
+ELEMENTS = [elements[0] for elements in SYSTEM_INFO["elements"]]
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = SYSTEM_INFO["ref_adsorption_energy"]
+
+# Transition metals commonly given a Hubbard U correction in GGA+U training data,
+# as analysed in Warford et al. (https://doi.org/10.1088/2632-2153/ae6be5)
+U_ELEMENTS = frozenset({"Co", "Cr", "Fe", "Mn", "Mo", "Ni", "V", "W"})
+
+
 @pytest.fixture
 def adsorption_energies() -> dict[str, list]:
     """
@@ -85,8 +107,7 @@ def adsorption_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted adsorption energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         for label in SYSTEM_INFO["filenames"]:
@@ -95,34 +116,16 @@ def adsorption_energies() -> dict[str, list]:
                 results[model_name].append(float("nan"))
                 continue
 
-            structs = read(system_path, index=":")
-
-            surface, mol_surface, molecule = structs
+            surface, mol_surface, molecule = read(system_path, index=":")
 
             # Get predicted energies
             surface_e = surface.get_potential_energy()
             mol_surf_e = mol_surface.get_potential_energy()
             molecule_e = molecule.get_potential_energy()
-            pred_ads_energy = compute_adsorption_energy(
-                surface_e, mol_surf_e, molecule_e
+            results[model_name].append(
+                compute_adsorption_energy(surface_e, mol_surf_e, molecule_e)
             )
-            results[model_name].append(pred_ads_energy)
 
-            # Get reference energies (only store once)
-            if not ref_stored:
-                ref_surface_e = surface.info["ref_energy"]
-                ref_mol_surf_e = mol_surface.info["ref_energy"]
-                ref_molecule_e = molecule.info["ref_energy"]
-                ref_ads_energy = compute_adsorption_energy(
-                    ref_surface_e, ref_mol_surf_e, ref_molecule_e
-                )
-                results["ref"].append(ref_ads_energy)
-
-        if not ref_stored:
-            if len(results["ref"]) == len(SYSTEM_INFO["filenames"]):
-                ref_stored = True
-            else:
-                results["ref"] = []
     return results
 
 
@@ -142,11 +145,10 @@ def periodic_tables(adsorption_energies: dict[str, list]) -> None:
         model_name: {
             element: pred - ref
             for element, pred, ref in zip(
-                ELEMENTS, pred_energies, ref_energies, strict=True
+                ELEMENTS, adsorption_energies[model_name], ref_energies, strict=True
             )
         }
         for model_name in MODELS
-        if (pred_energies := adsorption_energies[model_name])
     }
 
     # Share one colour scale across models, wide enough that no error is clipped.
@@ -224,15 +226,12 @@ def _subset_mae(
 
     results = {}
     for model_name in MODELS:
-        if not adsorption_energies[model_name]:
-            results[model_name] = np.nan
-            continue
         preds = [
             energy
             for energy, keep in zip(adsorption_energies[model_name], mask, strict=True)
             if keep
         ]
-        results[model_name] = mae(refs, preds) if preds else np.nan
+        results[model_name] = mae(refs, preds)
     return results
 
 

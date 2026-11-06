@@ -1357,7 +1357,9 @@ def plot_periodic_table(
                     raise ValueError("`symlog_scale` must be positive")
 
                 if plot_min is None or plot_max is None:
-                    data_limit = np.nanmax(np.abs(grid))
+                    # Fall back to the linear threshold if every value is missing
+                    finite = np.abs(grid[np.isfinite(grid)])
+                    data_limit = finite.max() if finite.size else symlog_scale
                     plot_min = -data_limit if plot_min is None else plot_min
                     plot_max = data_limit if plot_max is None else plot_max
 
