@@ -1,0 +1,14 @@
+metrics:
+  Force MAE:
+    good: 0.05
+    bad: 0.5
+    unit: eV/Å
+    tooltip: "Force component MAE on all 2,000 structures. NaN unless all are evaluated. Provisional thresholds."
+    level_of_theory: r2SCAN
+  Stress MAE:
+    good: 0
+    bad: 1.6
+    unit: GPa
+    weight: 0
+    tooltip: "Voigt stress component MAE on the 256 structures with a reference stress. NaN unless all are evaluated. Not scored, thresholds only colour the cell."
+    level_of_theory: r2SCAN

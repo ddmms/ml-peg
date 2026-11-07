@@ -1,0 +1,39 @@
+implementers:
+  - name: "Sofiia Chorna"
+    github: "sofiia-chorna"
+
+contributors: []
+
+citations:
+  - key: "malosso-2026-mad16"
+    role: reference_data
+    title: "High-quality, high-information datasets for universal atomistic machine learning"
+    authors:
+      - "Cesare Malosso"
+      - "Filippo Bigi"
+      - "Paolo Pegolo"
+      - "Joseph W. Abbott"
+      - "Philip Loche"
+      - "Mariana Rossi"
+      - "Tiago J. Goncalves"
+      - "Sandip De"
+      - "Michele Ceriotti"
+      - "Arslan Mazitov"
+    year: 2026
+    doi: "10.48550/arXiv.2603.02089"
+    url: null
+  - key: "malosso-2026-mad16-record"
+    role: reference_data
+    title: "A high-quality, high-information dataset for universal atomistic machine learning"
+    authors:
+      - "Cesare Malosso"
+      - "Filippo Bigi"
+      - "Paolo Pegolo"
+      - "Joseph W. Abbott"
+      - "Philip Loche"
+      - "Mariana Rossi"
+      - "Michele Ceriotti"
+      - "Arslan Mazitov"
+    year: 2026
+    doi: "10.24435/materialscloud:jc-9f"
+    url: null
