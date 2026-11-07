@@ -781,7 +781,7 @@ Input structures:
   supercells are constructed from the equilibrium lattice parameter obtained via EOS
   fitting.
 
-Reference data:
+Reference data (DFT with the PBE exchange-correlation functional):
 
 * Zhang, L., Csányi, G., van der Giessen, E., & Maresca, F. (2024). "Efficiency,
   Accuracy, and Transferability of Machine Learning Potentials: Application to
