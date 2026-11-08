@@ -344,16 +344,17 @@ def test_global_weights_presets_and_reload(ready_page, page_errors):
     page = ready_page
     score(page, "summary-table", 0.65)
     page.get_by_text("Weight presets", exact=True).click()
-    page.get_by_role("button", name="Random", exact=True).click()
+    page.get_by_role("button", name="Test Beta", exact=True).click()
     page.locator("#weight-preset-apply").click()
     page.wait_for_function(
         """() => JSON.parse(sessionStorage.getItem(
-            'summary-table-weight-store'))['Alpha Score'] !== 1"""
+            'summary-table-weight-store'))['Alpha Score'] === 0"""
     )
     weights = page.evaluate(
         "JSON.parse(sessionStorage.getItem('summary-table-weight-store'))"
     )
-    value = str(weights["Alpha Score"])
+    assert weights == {"Alpha Score": 0, "Beta Score": 1}
+    value = "0"
     expect(page.locator('[id="global-summary-table-Alpha Score-input"]')).to_have_value(
         value
     )
@@ -368,3 +369,32 @@ def test_global_weights_presets_and_reload(ready_page, page_errors):
         "1"
     )
     score(page, "summary-table", 0.65)
+
+
+@pytest.mark.parametrize("central", [False, True])
+@pytest.mark.parametrize("commit", ["Enter", "Tab"])
+def test_empty_weight_restores_stored_value(ready_page, page_errors, central, commit):
+    """Empty edits restore the displayed weight without changing stored scores."""
+    page = ready_page
+    score(page, "summary-table", 0.65)
+    page.locator("#global-weights > summary").click()
+    prefix = "global-" if central else ""
+    field = f"{prefix}summary-table-Alpha Score-input"
+    edit(page, field, 3)
+    score(page, "summary-table", 0.525)
+    control = page.locator(f'[id="{field}"]')
+    control.fill("")
+    control.press(commit)
+    expect(control).to_have_value("3")
+    for other in ["", "global-"]:
+        expect(
+            page.locator(f'[id="{other}summary-table-Alpha Score-input"]')
+        ).to_have_value("3")
+    assert (
+        page.evaluate(
+            "JSON.parse(sessionStorage.getItem('summary-table-weight-store'))"
+            "['Alpha Score']"
+        )
+        == 3
+    )
+    score(page, "summary-table", 0.525)

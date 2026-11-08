@@ -21,6 +21,7 @@ from dash import (
     ctx,
     dcc,
     no_update,
+    set_props,
 )
 from dash.dash_table import DataTable
 from dash.exceptions import PreventUpdate
@@ -978,13 +979,24 @@ def register_weight_callbacks(
 
         Returns
         -------
-        dict[str, float]
-            Stored weights for each input box.
+        dict[str, float] or dash.NoUpdate
+            Stored weights, or no store update when restoring an empty input.
         """
         trigger_id = ctx.triggered_id
 
         if trigger_id == f"{input_id}-input":
-            if input_weight is None or stored_weights.get(column) == input_weight:
+            if input_weight is None:
+                set_props(
+                    f"{input_id}-input",
+                    {
+                        "value": stored_weights.get(
+                            column, default_weights.get(column, 1.0)
+                        )
+                    },
+                )
+                # Return normally so Dash delivers the input restoration.
+                return no_update
+            if stored_weights.get(column) == input_weight:
                 raise PreventUpdate
             stored_weights[column] = input_weight
         elif trigger_id == reset_id and n_clicks > 0:
