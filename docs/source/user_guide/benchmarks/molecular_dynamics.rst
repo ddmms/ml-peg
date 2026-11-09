@@ -326,6 +326,12 @@ Benchmark speed
 Multi-day: 50 boxes × 1.2 ns (76,065 atoms in total), about 140 MACE-OFF23(M) A100
 GPU-days per model, the most expensive benchmark in this category.
 
+Pre-computed runs of each model are stored in the ML-PEG S3 bucket and used by default.
+The calculation skips any model whose runs are already on S3 (pass ``--recompute`` to
+rerun it), and the analysis downloads the runs of any box that has not been run locally
+(about 0.7 GB per model). The analysis fails for a model with neither local nor S3 runs,
+so use ``--models`` to restrict it to models that have been run.
+
 Data availability
 -----------------
 

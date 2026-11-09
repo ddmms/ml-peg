@@ -62,10 +62,12 @@ from ml_peg.calcs.molecular_dynamics.binary_mixtures.calc_binary_mixtures import
     EQUILIBRATION_PS,
     PRODUCTION_PS,
     PS,
+    RUNS_KEY,
     TIMESTEP,
     TRAJ_INTERVAL,
 )
-from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.utils.utils import BENCHMARK_DATA_DIR, download_s3_data
+from ml_peg.data.data import exists
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -73,6 +75,8 @@ CATEGORY = "molecular_dynamics"
 BENCHMARK = "binary_mixtures"
 CALC_PATH = CALCS_ROOT / CATEGORY / BENCHMARK / "outputs"
 OUT_PATH = APP_ROOT / "data" / CATEGORY / BENCHMARK
+# Pre-computed runs downloaded from S3, for models not run locally
+RUNS_CACHE = BENCHMARK_DATA_DIR / BENCHMARK / "outputs"
 
 MODELS = get_model_names(current_models)
 D3_MODEL_NAMES = build_dispersion_name_map()
@@ -135,6 +139,74 @@ write_struct_info(
 )
 
 
+@cache
+def s3_run_dir(model_name: str) -> Path | None:
+    """
+    Get the directory of a model's pre-computed runs, downloading them if needed.
+
+    A cached copy is reused without checking S3; delete the cached zip and its
+    extracted directory to download runs that have been re-uploaded.
+
+    Parameters
+    ----------
+    model_name
+        Model name.
+
+    Returns
+    -------
+    Path | None
+        Directory of the extracted runs, or ``None`` if they are not on S3.
+    """
+    run_dir = RUNS_CACHE / model_name
+    if not run_dir.is_dir():
+        key = RUNS_KEY.format(model=model_name)
+        if not exists(key):
+            return None
+        download_s3_data(
+            key=key, filename=Path(BENCHMARK, "outputs", f"{model_name}.zip")
+        )
+    return run_dir
+
+
+def run_path(model_name: str, box_id: str, suffix: str) -> Path:
+    """
+    Get a calc output of one box, preferring local runs to those on S3.
+
+    Choosing per box lets a box rerun locally replace its pre-computed run.
+
+    Parameters
+    ----------
+    model_name
+        Model name.
+    box_id
+        Box identifier.
+    suffix
+        ``.csv`` (scalar log) or ``.traj`` (frames).
+
+    Returns
+    -------
+    Path
+        Path to the output file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the box was neither run locally nor found on S3.
+    """
+    local = CALC_PATH / model_name / f"{box_id}.csv"
+    if local.exists():
+        return local.with_name(f"{box_id}{suffix}")
+    run_dir = s3_run_dir(model_name)
+    if run_dir is not None and (run_dir / f"{box_id}.csv").exists():
+        return run_dir / f"{box_id}{suffix}"
+    raise FileNotFoundError(
+        f"No run of {box_id} for {model_name}: not in {local.parent}, and "
+        f"{RUNS_KEY.format(model=model_name)} is missing from S3 (or not public), "
+        "or does not contain the box. Run the calc for this model, or exclude it "
+        "with --models."
+    )
+
+
 def model_box_result(model_name: str, box_id: str) -> BoxResult:
     """
     Calculate statistics of one model's run of one box.
@@ -158,7 +230,7 @@ def model_box_result(model_name: str, box_id: str) -> BoxResult:
     ValueError
         If the run did not reach ``TOTAL_PS``.
     """
-    csv_path = CALC_PATH / model_name / f"{box_id}.csv"
+    csv_path = run_path(model_name, box_id, ".csv")
     prod = read_production(csv_path, EQUILIBRATION_PS, TOTAL_PS)
     return box_result(prod, N_MOLECULES[box_id], label=f"{model_name}/{box_id}")
 
@@ -180,7 +252,7 @@ def model_frame_checks(model_name: str, box_id: str) -> tuple[bool, float]:
         Whether bonding changed and the mean like-neighbour fraction (NaN for
         pure boxes).
     """
-    with Trajectory(CALC_PATH / model_name / f"{box_id}.traj") as traj:
+    with Trajectory(run_path(model_name, box_id, ".traj")) as traj:
         indices = [
             round(t / TRAJ_EVERY_PS)
             for t in FRAME_TIMES_PS
@@ -202,10 +274,19 @@ def box_results() -> dict[str, dict[str, BoxResult]]:
     dict[str, dict[str, BoxResult]]
         Statistics keyed by model and box.
     """
-    return {
+    results = {
         model_name: {box_id: model_box_result(model_name, box_id) for box_id in BOX_IDS}
         for model_name in MODELS
     }
+    for model_name in MODELS:
+        n_local = sum(
+            (CALC_PATH / model_name / f"{box_id}.csv").exists() for box_id in BOX_IDS
+        )
+        print(
+            f"[runs] {model_name}: {n_local} boxes from {CALC_PATH / model_name}, "
+            f"{len(BOX_IDS) - n_local} from S3 ({RUNS_CACHE / model_name})"
+        )
+    return results
 
 
 def box_estimates(
@@ -757,7 +838,7 @@ def convergence_plots(box_results, flags) -> None:
     """
     for model_name, model_results in box_results.items():
         for box_id, result in model_results.items():
-            data = pd.read_csv(CALC_PATH / model_name / f"{box_id}.csv")
+            data = pd.read_csv(run_path(model_name, box_id, ".csv"))
             values = {
                 "h": observables(data, N_MOLECULES[box_id])["h"],
                 "density": data.density_g_cm3.to_numpy(),
@@ -795,7 +876,7 @@ def mixing_convergence_plots(box_results) -> None:
     for model_name, results in box_results.items():
         series = {}
         for box_id in BOX_IDS:
-            data = pd.read_csv(CALC_PATH / model_name / f"{box_id}.csv")
+            data = pd.read_csv(run_path(model_name, box_id, ".csv"))
             series[box_id] = (
                 data.time_ps.to_numpy(),
                 observables(data, N_MOLECULES[box_id]),
@@ -862,7 +943,7 @@ def final_structures() -> None:
     """Write the last frame of each run for the app."""
     for model_name in MODELS:
         for box_id in BOX_IDS:
-            with Trajectory(CALC_PATH / model_name / f"{box_id}.traj") as traj:
+            with Trajectory(run_path(model_name, box_id, ".traj")) as traj:
                 atoms = traj[-1]
             (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
             write(OUT_PATH / model_name / f"{box_id}.xyz", atoms)

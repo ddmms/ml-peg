@@ -28,9 +28,9 @@ reference and the MLIPs share one estimator. Treat the public names in
 
 ## Running and sharing results
 
-The runs are too long for users to repeat, so results are shared as app data
-rather than as calc outputs. Run each box as a separate job (`--box-id` from 0
-to 49; a rerun continues from the last saved frame):
+The runs are too long for users to repeat, so each model's runs are run once and
+shared on S3. Run each box as a separate job (`--box-id` from 0 to 49; a rerun
+continues from the last saved frame):
 
 ```bash
 pytest -v ml_peg/calcs/molecular_dynamics/binary_mixtures/calc_binary_mixtures.py \
@@ -38,38 +38,51 @@ pytest -v ml_peg/calcs/molecular_dynamics/binary_mixtures/calc_binary_mixtures.p
 ```
 
 This writes `outputs/<model>/<box_id>.csv` (scalars every 100 fs) and
-`<box_id>.traj` (frames every 10 ps). When all 50 boxes are complete, add the
-model to the existing app data with:
+`<box_id>.traj` (frames every 10 ps). A model whose runs are already on S3 (see
+below) is skipped, unless it already has local outputs or `--recompute` is
+passed.
+
+When all 50 boxes are complete, zip the model's output directory (about
+0.7 GB), so that others can analyse it without rerunning the MD:
+
+```bash
+cd ml_peg/calcs/molecular_dynamics/binary_mixtures/outputs
+zip -r <model>.zip <model>
+```
+
+Only maintainers can upload to S3. Open an issue on
+[ddmms/ml-peg](https://github.com/ddmms/ml-peg/issues) with the "New model"
+template, saying that these are binary mixtures runs. The zip is too large to
+attach to a GitHub issue, so include a link where it can be downloaded (e.g.
+Zenodo or a file-sharing service). A maintainer then uploads it, public-read
+(the default):
+
+```bash
+ml_peg upload --key outputs/molecular_dynamics/binary_mixtures/<model>.zip \
+    --filename <model>.zip --credentials credentials.json
+```
+
+Meanwhile, add the model to the existing app data with:
 
 ```bash
 ml_peg analyse --category molecular_dynamics --test binary_mixtures \
     --models <model> --update
 ```
 
+The analysis takes each box from `outputs/<model>/` if it was run locally, and
+otherwise from the model's zip on S3, which is downloaded to and extracted in
+`~/.cache/ml_peg/binary_mixtures/outputs/`. So a box rerun locally with
+`--recompute --box-id <n>` replaces just that box. A model with neither local
+nor S3 runs fails the analysis, so pass `--models` rather than analysing every
+model in `models.yml`. The cached runs are not checked against S3 again: after a
+zip is re-uploaded, delete both the cached `<model>.zip` and the extracted
+`<model>/` directory.
+
 All of the app data for a model, including the final structures, is written
 to `ml_peg/app/data/molecular_dynamics/binary_mixtures/<model>/` (about 6 MB),
 so the app needs none of the calc outputs. The updated app data is then
 published in `app/data/data.tar.gz` on S3 (see the developer guide's Data
 page), which users download to view the results.
-
-The MD is the expensive stage, so also archive the calc outputs, in case the
-analysis or `metrics.yml` changes. Zip the model's output directory (about
-0.7 GB) and upload it:
-
-```bash
-cd ml_peg/calcs/molecular_dynamics/binary_mixtures/outputs
-zip -r <model>.zip <model>
-ml_peg upload --key outputs/molecular_dynamics/binary_mixtures/<model>.zip \
-    --filename <model>.zip --credentials credentials.json
-```
-
-To re-analyse a model, download its zip and unzip it in `outputs/`:
-
-```bash
-ml_peg download --key outputs/molecular_dynamics/binary_mixtures/<model>.zip \
-    --filename <model>.zip
-unzip <model>.zip
-```
 
 ## Data contract
 

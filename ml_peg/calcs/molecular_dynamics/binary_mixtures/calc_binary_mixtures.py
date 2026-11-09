@@ -12,6 +12,7 @@ restarts and structural checks.
 from __future__ import annotations
 
 import csv
+from functools import cache
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -24,6 +25,7 @@ import pytest
 from scipy import constants
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.data.data import exists
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -34,6 +36,8 @@ EQUILIBRATION_PS = 200.0
 PRODUCTION_PS = 1000.0
 DATA_ZIP = "binary_mixtures.zip"
 DATA_KEY = f"inputs/molecular_dynamics/binary_mixtures/{DATA_ZIP}"
+# Zip of one model's outputs/<model>/ directory, uploaded once all boxes are run
+RUNS_KEY = "outputs/molecular_dynamics/binary_mixtures/{model}.zip"
 PS = constants.pico * units.s
 TIMESTEP = 1 * units.fs
 TDAMP = 50 * units.fs  # thermostat time constant
@@ -81,6 +85,24 @@ def get_density_g_cm3(atoms: Atoms) -> float:
         Density in g/cm^3.
     """
     return (atoms.get_masses().sum() / atoms.get_volume()) * AMU_PER_A3_TO_G_PER_CM3
+
+
+@cache
+def runs_on_s3(model_name: str) -> bool:
+    """
+    Check whether a model's pre-computed runs can be downloaded from S3.
+
+    Parameters
+    ----------
+    model_name
+        Model name.
+
+    Returns
+    -------
+    bool
+        Whether the zip of the model's outputs is on S3.
+    """
+    return exists(RUNS_KEY.format(model=model_name))
 
 
 def restart_state(traj_path: Path, csv_path: Path) -> tuple[Atoms | None, int]:
@@ -217,7 +239,7 @@ def run_npt(atoms: Atoms, calc, out_stem: Path, run_ps: float) -> None:
 @pytest.mark.multi_day
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_binary_mixtures(
-    mlip: tuple[str, Any], box_id: int, run_ps: float | None
+    mlip: tuple[str, Any], box_id: int, run_ps: float | None, recompute: bool
 ) -> None:
     """
     Run one binary mixtures box.
@@ -231,7 +253,19 @@ def test_binary_mixtures(
     run_ps
         Total NPT length (equilibration plus production) in ps. ``None`` runs
         the benchmark protocol, ``EQUILIBRATION_PS + PRODUCTION_PS``.
+    recompute
+        Whether to run the box even if the model's runs are already on S3.
     """
+    model_name, model = mlip
+    out_dir = OUT_PATH / model_name
+    # Only defer to S3 for models with no local outputs: once any box has been run
+    # here (e.g. with --recompute), keep running and restarting its boxes
+    if not recompute and not any(out_dir.glob("*.csv")) and runs_on_s3(model_name):
+        pytest.skip(
+            f"Pre-computed runs are on S3 at {RUNS_KEY.format(model=model_name)}, "
+            "and are downloaded by the analysis; pass --recompute to rerun"
+        )
+
     if run_ps is None:
         run_ps = EQUILIBRATION_PS + PRODUCTION_PS
     data_path = (
@@ -249,11 +283,9 @@ def test_binary_mixtures(
     )
     box_path = data_path / "boxes" / f"{box_ids[box_id]}.xyz"
 
-    model_name, model = mlip
     calc = model.get_calculator(precision=PRECISION)
     calc = model.add_d3_calculator(calc)
 
-    out_dir = OUT_PATH / model_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
     atoms = read(box_path)
