@@ -88,8 +88,7 @@ EXP_DENSITY = {
 # Element filtering info for the app
 INFO = get_struct_info(
     calc_path=CALC_PATH,
-    model_name=MODELS[0] if MODELS else "mace-mp-0a",
-    glob_pattern="*/*.xyz",
+    glob_pattern="*/replica0_quenched.xyz",
     write_info=True,
     write_structs=False,
     out_path=OUT_PATH,

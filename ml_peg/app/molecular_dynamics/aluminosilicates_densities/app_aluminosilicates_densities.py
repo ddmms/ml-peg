@@ -317,7 +317,6 @@ def get_app() -> AluminosilicatesDensitiesApp:
             Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
-        framework_ids="mace-polar-1",
     )
 
 
