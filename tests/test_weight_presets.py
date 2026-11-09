@@ -1,3 +1,5 @@
+"""Tests for the summary-table weight presets."""
+
 from __future__ import annotations
 
 from yaml import safe_load
@@ -7,6 +9,7 @@ from ml_peg.app.utils.weight_presets import WEIGHT_PRESETS
 
 
 def test_preset_categories_match_category_titles():
+    """Every category named in a preset matches a real category title."""
     category_files = [
         path for path in APP_ROOT.glob("*/*.yml") if path.parent.name != "utils"
     ]
