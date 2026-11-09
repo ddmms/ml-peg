@@ -127,7 +127,7 @@ def run_npt(atoms, calc, output_fname, temperature):
 
 
 @pytest.mark.framework("mace-polar-1")
-@pytest.mark.very_slow
+@pytest.mark.multi_day
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_liquid_densities(mlip: tuple[str, Any], temperature_idx: int) -> None:
     """

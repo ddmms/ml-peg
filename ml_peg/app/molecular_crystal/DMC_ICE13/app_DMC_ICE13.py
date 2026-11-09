@@ -65,7 +65,7 @@ def get_app() -> DMCICE13App:
     """
     return DMCICE13App(
         name=BENCHMARK_NAME,
-        framework_ids="mace-multihead",
+        framework_ids=["mace-multihead", "mace-mp"],
         description="Lattice energies for 13 ice polymorphs.",
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "dmc_ice13_metrics_table.json",

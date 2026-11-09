@@ -1,0 +1,21 @@
+implementers:
+  - name: "Petr Grigorev"
+    github: "pgrigorev"
+
+contributors: []
+
+citations:
+  - bibtex_key: cak-2014-bop
+    role: reference_data
+  - bibtex_key: nitol-2022-ti-zr
+    role: reference_data
+  - bibtex_key: soulairol-2010-fe-cr
+    role: reference_data
+  - bibtex_key: he-2005-ni
+    role: reference_data
+  - bibtex_key: dezerald-2014-fe
+    role: reference_data
+  - bibtex_key: wang-2018-fe-bain
+    role: reference_data
+  - bibtex_key: lejaeghere2016reproducibility
+    role: benchmark_method

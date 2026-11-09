@@ -31,10 +31,10 @@ of structures. Models receive a score of 0, 0.5, or 1, based on whether the pred
 lowest and highest energy pairs match the reference predictions, and this is averaged
 for all 157 combinations.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take a couple of minutes to run on CPU.
+Fast: tests are likely to take a couple of minutes to run on CPU.
 
 Data availability
 -----------------
@@ -47,7 +47,9 @@ Input data:
   * R. Tran, J. Lan, M. Shuaibi, B. M. Wood, S. Goyal, A. Das, J. Heras-Domingo, A. Kolluru, A. Rizvi, N. Shoghi, A. Sriram, F. Therrien, J. Abed, O. Voznyy, E. H. Sargent, Z. Ulissi, and C. L. Zitnick, “The Open Catalyst 2022 (OC22) data set and challenges for oxide electro catalysts,” ACS Catal., vol.13, pp. 3066–3084, Mar. 2023.
 
 * Structures containing oxygen (O) and several transition metals (Co, Cr, Fe, Mn, Mo,
-  Ni, V and W) were exlcuded due to Hubbard U correction
+  Ni, V and W) were excluded due to Hubbard U correction, as analysed in:
+
+  * T. Warford, F. L. Thiemann, G. Csányi, "Better without U: impact of selective Hubbard U correction on foundational MLIPs," Machine Learning: Science and Technology, 2026, 7:035033. https://doi.org/10.1088/2632-2153/ae6be5
 
 Reference data:
 
@@ -73,10 +75,10 @@ energy is calculated by taking the difference between the energy of the surface 
 molecule and the sum of individual surface and molecule energies. This is compared to
 the reference adsorption energy, calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
@@ -119,10 +121,10 @@ MAE of adsorption energies
 For each adsorbate-surface reaction, the adsorption energy is calculated as the difference between the energy of the surface + molecule and the sum of individual surface and molecule energies. This is compared to the PBE reference
 adsorption energy from the CMR database.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take a couple of minutes to run on CPU.
+Fast: tests are likely to take a couple of minutes to run on CPU.
 
 Data availability
 -----------------
@@ -152,7 +154,31 @@ Performance in predicting adsorption energies for oxygen on elemental slabs.
 Metrics
 -------
 
-Adsorption energy error
+1. MAE
+
+Mean absolute error of the adsorption energy, over all elements.
+
+2. U MAE
+
+Mean absolute error of the adsorption energy, over elements commonly given a Hubbard U
+correction in GGA+U training data, such as the Materials Project (Co, Cr, Fe, Mn, Mo,
+Ni, V and W). The reference calculations are PBE throughout, without a Hubbard U
+correction, so this metric isolates the error for elements where models trained on
+GGA+U data are expected to carry a systematic offset. Excluded from the benchmark
+score, since these systems are also included in the MAE.
+
+The choice of elements, and the systematic offset this metric isolates, follow Warford et al. (see Data availability).
+
+3. non-U MAE
+
+Mean absolute error of the adsorption energy, over the remaining elements. Excluded
+from the benchmark score, since these systems are also included in the MAE.
+
+Selecting a model shows a periodic table of its signed adsorption energy error
+(predicted - reference) for each element, and selecting an element visualises the
+corresponding slab with the adsorbed oxygen. The periodic table uses a symlog
+colormap, so elements predicted well stay near the midpoint colour while the
+worst elements remain distinguishable from one another.
 
 For each slab, two single points are performed.
 The first is for the isolated slab and the second is the slab with
@@ -160,13 +186,17 @@ an oxygen placed on-top of the site furthest along the slab's normal
 direction. The distance between the oxygen and the site is that which
 minimizes the energy according to MACE-MatPES-r2SCAN.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
+
+The benchmark data is from:
+
+* T. Warford, F. L. Thiemann, G. Csányi, "Better without U: impact of selective Hubbard U correction on foundational MLIPs," Machine Learning: Science and Technology, 2026, 7:035033. https://doi.org/10.1088/2632-2153/ae6be5
 
 Input data:
 
@@ -178,12 +208,10 @@ Input data:
 
 Reference data:
 
-* PBE single points are performed with the MatPESStatic set, with a cutoff energy of 520 eV.
+* PBE single points are performed with the MatPESStatic set, with a cutoff energy of 520 eV, using:
 
   * A. D. Kaplan, R. Liu, J. Qi, T. W. Ko, B. Deng, J. Riebesell, G. Ceder, K. A. Persson, S. P. Ong, "A Foundational Potential Energy Surface Dataset for Materials," arXiv preprint arXiv:2503.04070, 2025. https://doi.org/10.48550/arXiv.2503.04070
   * S. P. Ong, W. D. Richards, A. Jain, G. Hautier, M. Kocher, S. Cholia, D. Gunter, V. Chevrier, K. A. Persson, G. Ceder, "Python Materials Genomics (pymatgen): A Robust, Open-Source Python Library for Materials Analysis," Comput. Mater. Sci., 2013, 68, 314–319. https://doi.org/10.1016/j.commatsci.2012.10.028
-
-* Tran et al. relaxed the slabs using spin-polarized PBE calculations performed in VASP, with a cutoff energy of 400 eV.
 
 
 SBH17
@@ -205,10 +233,10 @@ One is of the clean surface with the adsorbate in the gas phase far from the sur
 the second is of the transition state structure with the adsorbate at the surface
 (minimum barrier geometry to dissociation and chemisorption).
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
@@ -250,10 +278,10 @@ effective binding energy and binding length (i.e. minimum of adsorption energy c
 each strain condition. This is compared to the reference binding energy & length,
 calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Very low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 Data availability
 -----------------
@@ -262,7 +290,7 @@ Input data:
 
 * Structures were taken from:
 
-  * D. W. Lim, X. R. Advincula, W. C. Witt, F. L. Thiemann, C. Schran, “Revealing Strain Effects on the Graphene-Water Contact Angle Using a Machine Learning Potential,” *awaiting publication* (arXiv:2601.20134)
+  * D. W. Lim, X. R. Advincula, W. C. Witt, F. L. Thiemann, C. Schran, “Strain-Dependent Wetting of Graphene,” Chemical Science (2026). https://doi.org/10.1039/d6sc05377g
 
 Reference data:
 
@@ -297,7 +325,7 @@ The mean absolute error is computed over all 36,718 surfaces.
 
 Root mean squared error of cleavage energy predictions across all surfaces.
 
-Computational cost
+Benchmark speed
 ------------------
 
 Medium: benchmark involves only single-point calculations, but for 36,718 slab-bulk pairs. Takes roughly 5-20 minutes on GPU or a few hours on CPUs.
@@ -320,7 +348,7 @@ Publication:
 
 * A. Mehdizadeh and P. Schindler, "Surface stability modeling with universal
   machine learning interatomic potentials: a comprehensive cleavage energy
-  benchmarking study," Mach. Learn.: Sci. Technol., 2025.
+  benchmarking study," AI for Science 1, 025002 (2025).
   https://iopscience.iop.org/article/10.1088/3050-287X/ae1408
 
 
@@ -343,10 +371,10 @@ For each slab, a geometry optimization (F_max = 0.05 eV/Å) is performed, where 
 
 * Energetic ranking (using the surface energy)
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take half an hour.
+Medium: tests are likely to take half an hour.
 
 Data availability
 -----------------

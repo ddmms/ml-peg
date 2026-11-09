@@ -1,0 +1,14 @@
+implementers:
+  - name: "Panagiotis Kourtis"
+    github: "PKourtis"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: kocer2024machinelearningpotentialsredox
+    role: reference_data
+  - bibtex_key: batatia2026mace
+    role: benchmark_method

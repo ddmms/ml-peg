@@ -38,9 +38,7 @@ def _ase_atoms_to_phonopy_atoms(atoms: Atoms) -> PhonopyAtoms:
     PhonopyAtoms
         Equivalent phonopy atom container.
     """
-    return PhonopyAtoms(
-        atoms.symbols, cell=atoms.cell, positions=atoms.positions, pbc=True
-    )
+    return PhonopyAtoms(atoms.symbols, cell=atoms.cell, positions=atoms.positions)
 
 
 def _ase_atoms_to_phonopy(
@@ -152,6 +150,7 @@ def init_phonopy_from_ref(
     symprec: float = 1e-5,
     displacement_dataset: dict | None = None,
     displacement_distance: float | None = None,
+    is_plusminus: bool | str = "auto",
     **kwargs: Any,
 ) -> Phonopy:
     """
@@ -175,6 +174,9 @@ def init_phonopy_from_ref(
         Displacement distance used to generate new displacements when
         ``displacement_dataset`` is omitted. Set to ``None`` to require an
         explicit displacement dataset.
+    is_plusminus
+        Passed to ``Phonopy.generate_displacements`` when new displacements are
+        generated. Defaults to phonopy's ``"auto"`` behaviour.
     **kwargs
         Additional keyword arguments forwarded to ``Phonopy``.
 
@@ -195,7 +197,9 @@ def init_phonopy_from_ref(
     if displacement_dataset is not None:
         phonons.dataset = displacement_dataset
     elif displacement_distance is not None:
-        phonons.generate_displacements(distance=displacement_distance)
+        phonons.generate_displacements(
+            distance=displacement_distance, is_plusminus=is_plusminus
+        )
     else:
         raise ValueError(
             'Either "displacement_dataset" or "displacement_distance" is required when '

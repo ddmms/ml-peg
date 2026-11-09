@@ -29,7 +29,9 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
+@pytest.mark.framework("mlip_audit")
 def test_folmsbee(mlip: tuple[str, Any]) -> None:
     """
     Benchmark the Folmsbee dataset.
@@ -40,7 +42,6 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
         Name of model and model object to get calculator.
     """
     model_name, model = mlip
-    calc = model.get_calculator()
     calc = model.get_calculator(precision="high")
 
     data_input_dir = download_s3_data(

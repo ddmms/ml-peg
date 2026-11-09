@@ -1,0 +1,12 @@
+implementers:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+contributors:
+  - name: "Balazs Pota"
+    github: "bpota"
+
+citations:
+  - bibtex_key: Loew2025
+    role: reference_data

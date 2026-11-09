@@ -9,8 +9,6 @@ This benchmark computes fundamental properties of BCC iron including:
 - Surface energies (100, 110, 111, 112)
 - Generalized stacking fault energy curves (110, 112)
 - Traction-separation curves (100, 110)
-
-This benchmark is computationally expensive and marked with @pytest.mark.slow.
 """
 
 from __future__ import annotations
@@ -972,7 +970,7 @@ def run_iron_properties(model_name: str, model: Any) -> None:
     print(f"[{model_name}] Done. Results saved to {write_dir}")
 
 
-@pytest.mark.slow
+@pytest.mark.medium
 @pytest.mark.parametrize("model_name", MODELS)
 def test_iron_properties(model_name: str) -> None:
     """

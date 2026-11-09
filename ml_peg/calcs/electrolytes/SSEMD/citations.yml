@@ -1,0 +1,13 @@
+implementers:
+  - name: "Thiago Reschützegger"
+    github: "ThiagoReschutzegger"
+
+contributors: []
+
+citations:
+  - bibtex_key: reschutzegger2026equivariant
+    role: benchmark_method
+  - bibtex_key: lopez2024concerted
+    role: reference_data
+  - bibtex_key: schran2021machine
+    role: benchmark_method

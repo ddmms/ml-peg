@@ -22,10 +22,10 @@ For each complex, the interaction energy is calculated by taking the difference 
 between the host-guest complex and the sum of the individual host and guest energies. This is
 compared to the reference interaction energy, calculated in the same way.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Fast: tests are likely to take minutes to run on CPU.
 
 Data availability
 -----------------
@@ -86,10 +86,10 @@ between the host-guest complex and the sum of the individual host and guest ener
 compared to the reference binding energy, calculated in the same way.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Fast: tests are likely to take minutes to run on CPU.
 
 
 Data availability
@@ -129,10 +129,10 @@ energy between the ligand-fragment complex and the sum of the individual ligand 
 protein fragment energies. This is compared to the reference interaction energy.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Fast: tests are likely to take minutes to run on CPU.
 
 
 Data availability
@@ -192,10 +192,10 @@ other is neutral, the interaction energy error is calculated. This metric report
 MAE for these ion-neutral interaction systems.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take minutes to run on CPU.
+Fast: tests are likely to take minutes to run on CPU.
 
 Data availability
 -----------------

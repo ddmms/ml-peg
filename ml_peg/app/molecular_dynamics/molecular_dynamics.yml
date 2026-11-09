@@ -1,3 +1,13 @@
 title: Molecular Dynamics
-description: Liquid Densities, Water Densities, Aluminosilicates Densities
+description: Liquid Densities, Polymer Densities, Water Densities, Stability, Aluminosilicates Densities
 weight: 0
+benchmark_weights:
+  bond_length_distribution: 0
+  ethanol_water_density: 0
+  inference_speed: 0
+  liquid_densities: 0
+  polymers: 0
+  ring_planarity: 0
+  stability: 0
+  water_density: 0
+  aluminosilicates_densities: 0

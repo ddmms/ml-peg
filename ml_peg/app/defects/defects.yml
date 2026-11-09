@@ -1,0 +1,5 @@
+title: Defects
+description: Defect properties, including defect formation energies, relative stability and split vacancy formation energies from regular vacancies.
+weight: 1
+benchmark_weights:
+  split_vacancy: 0

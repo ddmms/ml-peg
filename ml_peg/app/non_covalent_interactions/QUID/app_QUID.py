@@ -11,10 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "QUID"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/non_covalent_interactions.html#quid"
 DATA_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "QUID"
@@ -31,12 +28,12 @@ class QUIDApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
+        model_dir = DATA_PATH / "mock"
         if model_dir.exists():
             # Note: sorting different to rxn_count order in calc
             ts_files = sorted(model_dir.glob("*.xyz"))
             structs = [
-                f"/assets/non_covalent_interactions/QUID/{MODELS[0]}/{ts_file.name}"
+                f"/assets/non_covalent_interactions/QUID/mock/{ts_file.name}"
                 for ts_file in ts_files
             ]
         else:

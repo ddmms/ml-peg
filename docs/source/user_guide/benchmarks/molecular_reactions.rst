@@ -23,10 +23,10 @@ For each of the 20 reactions, the barrier is calculated from single point energi
 the reactant and transition state structures. The mean absolute error against the
 reference barriers is reported in kcal/mol.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests involve single point calculations on 40 small molecular structures, and are
+Fast: tests involve single point calculations on 40 small molecular structures, and are
 likely to take less than a minute to run on CPU.
 
 Data availability
@@ -76,10 +76,10 @@ and reference reaction energy is passed through a soft threshold (at 0.05
 kcal/mol) to give a value between 0 and 1, and these are averaged across all
 pairs. Pairs for which the model fails to produce an energy score 0.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: only single-point energies are evaluated, so tests run quickly even for the
+Fast: only single-point energies are evaluated, so tests run quickly even for the
 full dataset. Minutes on CPU and GPU.
 
 Data availability
@@ -94,3 +94,54 @@ Input structures:
 Reference data:
 
 * Same as input data
+
+
+Grambow barrier heights
+=======================
+
+Summary
+-------
+
+Performance in predicting reaction barrier heights for elementary organic
+reactions from the Grambow dataset, comprising almost 12,000 reactant, product
+and transition state triplets of small neutral molecules containing H, C, N and
+O. The benchmark is targeted at barrier heights and reaction energies.
+
+Metrics
+-------
+
+1. Barrier height MAE
+
+For each reaction, a single point energy is computed for the reactant, product
+and transition state. The activation energy (barrier height) is the transition
+state energy minus the reactant energy, and the reaction energy is
+the product energy minus the reactant energy. The reported metrics are the mean
+absolute errors of the activation energy and the reaction energy against the
+reference.
+
+2. Grambow score
+
+The overall score is the mlipaudit soft-threshold score combining the
+activation energy and reaction energy errors.
+
+A density scatter plot shows the predicted against reference activation energies
+on clicking the barrier height column.
+
+Benchmark speed
+------------------
+
+Fast: around 36,000 single point inference calls (three states per reaction). Minutes on GPU, tens of minutes to hours on CPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Grambow, C.A., Pattanaik, L. & Green, W.H. Reactants, products, and
+  transition states of elementary chemical reactions based on quantum
+  chemistry. Sci Data 7, 137 (2020). DOI: 10.1038/s41597-020-0460-4
+
+Reference data:
+
+* Same as input data
+* :math:`\omega B97X-D3/def2-TZVP` level of theory.

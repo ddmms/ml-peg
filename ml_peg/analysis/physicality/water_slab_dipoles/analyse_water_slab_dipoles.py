@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
 
 from ase import units
@@ -22,7 +23,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map()
 CALC_PATH = CALCS_ROOT / "physicality" / "water_slab_dipoles" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "physicality" / "water_slab_dipoles"
 
@@ -42,6 +43,7 @@ EV_TO_KJ_PER_MOL = units.mol / units.kJ
 DIPOLE_BAD_THRESHOLD = 4.45 * epsilon_0 / e * 10 ** (-10)
 
 
+@cache
 def get_dipoles() -> dict[str, np.ndarray]:
     """
     Get total dipole per unit area in z direction.
@@ -56,9 +58,9 @@ def get_dipoles() -> dict[str, np.ndarray]:
     # chosen to match revPBE-D3 dipole
     q = 0.5562  # e
     for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if model_dir.exists():
-            atoms = read(model_dir / "slab-traj.extxyz", ":")
+        traj_path = CALC_PATH / model_name / "slab-traj.extxyz"
+        if traj_path.exists():
+            atoms = read(traj_path, ":")
             dipoles = np.zeros(len(atoms))
             for i, struc in enumerate(atoms):
                 o_index = [atom.index for atom in struc if atom.number == 8]

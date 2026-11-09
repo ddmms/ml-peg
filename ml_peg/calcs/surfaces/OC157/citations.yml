@@ -1,0 +1,15 @@
+implementers:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+citations:
+  - bibtex_key: chanussot2021open
+    role: benchmark_method
+  - bibtex_key: tran2023open
+    role: benchmark_method

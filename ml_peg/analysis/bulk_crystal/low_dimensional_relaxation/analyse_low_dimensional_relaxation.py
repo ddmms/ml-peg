@@ -12,7 +12,11 @@ import pandas as pd
 import plotly.graph_objects as go
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    merge_saved_models,
+    plot_density_scatter,
+)
 from ml_peg.analysis.utils.utils import (
     build_density_inputs,
     get_struct_info,
@@ -42,13 +46,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 ENERGY_OUTLIER_MIN = -40
 ENERGY_OUTLIER_MAX = 40
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*/*.xyz",
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
 
 # Dimensionality-specific configuration
 DIM_CONFIGS = {
@@ -522,6 +519,9 @@ def _build_force_violin(dimensionality: str) -> None:
         )
         figures_per_model[model_name] = fig.to_plotly_json()
 
+    # Preserve figures for models not being analysed
+    figures_per_model = merge_saved_models(figures_per_model, out_filename)
+
     out_filename.parent.mkdir(parents=True, exist_ok=True)
     with open(out_filename, "w") as f:
         json.dump(figures_per_model, f)
@@ -592,4 +592,10 @@ def test_low_dimensional_relaxation(
     force_violin_1d
         Triggers 1D max-force convergence violin plot generation.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*/*.xyz",
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+    )

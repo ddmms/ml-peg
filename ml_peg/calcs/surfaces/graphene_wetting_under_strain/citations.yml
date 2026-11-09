@@ -1,0 +1,9 @@
+implementers:
+  - name: "Darren Lim"
+    github: "dwl38"
+
+contributors: []
+
+citations:
+  - bibtex_key: lim2026straindependentwettinggraphene
+    role: benchmark_method

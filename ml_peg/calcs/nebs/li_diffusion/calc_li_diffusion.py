@@ -61,7 +61,7 @@ def relaxed_structs() -> dict[str, Atoms]:
     return relaxed_structs
 
 
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("model_name", MODELS)
 def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], model_name: str) -> None:
     """
@@ -108,7 +108,7 @@ def test_li_diffusion_b(relaxed_structs: dict[str, Atoms], model_name: str) -> N
             print(np.nan, np.nan, np.nan, file=out)
 
 
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("model_name", MODELS)
 def test_li_diffusion_c(relaxed_structs: dict[str, Atoms], model_name: str) -> None:
     """

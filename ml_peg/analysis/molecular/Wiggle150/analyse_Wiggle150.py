@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import shutil
 
 from ase.io import read
 import pytest
@@ -21,7 +20,7 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map()
 CALC_PATH = CALCS_ROOT / "molecular" / "Wiggle150" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular" / "Wiggle150"
 
@@ -101,10 +100,6 @@ def relative_energies() -> dict[str, list[float]]:
 
             if not ref_stored:
                 results["ref"].append(atoms.info["relative_energy_ref_kcal"])
-
-            dest_dir = OUT_PATH / model_name
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy(xyz_file, dest_dir / xyz_file.name)
 
         results[model_name] = model_predictions
 

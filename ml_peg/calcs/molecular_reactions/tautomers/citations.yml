@@ -1,0 +1,13 @@
+implementers:
+  - name: "Leon Wehrhan"
+    github: "lwehrhan"
+
+contributors:
+  - name: "Silvia Acosta-Gutiérrez"
+    github: "sacostagutz"
+  - name: "Lucien Walewski"
+    github: "lwalew"
+
+citations:
+  - bibtex_key: wahl-2020-tautobase
+    role: benchmark_method

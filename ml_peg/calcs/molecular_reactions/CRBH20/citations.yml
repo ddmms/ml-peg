@@ -1,0 +1,9 @@
+implementers:
+  - name: "William Deng"
+    github: "Quantumplations"
+
+contributors: []
+
+citations:
+  - bibtex_key: batatia2025foundation
+    role: benchmark_method
