@@ -365,14 +365,6 @@ conflicts = [
         { extra = "nequip" },
         { extra = "mace-cueq" },
     ],
-    [
-        { extra = "nequip" },
-        { extra = "dpa" },
-    ],
-    [
-        { extra = "nequip" },
-        { extra = "vivace" },
-    ],
 ]
 
 constraint-dependencies = [
