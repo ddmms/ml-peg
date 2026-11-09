@@ -415,10 +415,10 @@ Hugging Face:
        filename: aceff_v2.0.ckpt
        revision: 67ad6a3b06ee9b44cfbac3bc32117dd6276e9122
 
-AIMNet2, GRACE, SevenNet, MatterSim and Vivace entries similarly select their
-wrappers through ``class_name`` (``AIMNet2ASE``, ``grace_fm``,
-``SevenNetCalculator``, ``MatterSimCalculator`` and ``MLFFCalculator``
-respectively).
+AIMNet2, GRACE, SevenNet, MatterSim, Vivace and NequIP entries similarly select
+their wrappers through ``class_name`` (``AIMNet2ASE``, ``grace_fm``,
+``SevenNetCalculator``, ``MatterSimCalculator``, ``MLFFCalculator`` and
+``NequIPCalculator`` respectively).
 
 Other ASE-compatible MLIP calculators can usually be added by specifying their
 ``module``, ``class_name`` and constructor ``kwargs``. Any ``class_name`` that

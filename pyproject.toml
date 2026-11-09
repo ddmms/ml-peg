@@ -90,6 +90,14 @@ mattersim = [
 mlipaudit = [
     "mlipaudit == 0.1.8; python_version < '3.14'",
 ]
+nequip = [
+    "nequip == 0.19.1",
+    # GPU kernels, used automatically on CUDA:
+    "openequivariance == 0.7.0; sys_platform == 'linux'",
+    "cuequivariance-torch == 0.8.1; sys_platform == 'linux'",
+    # This must match torch's CUDA build, which is CUDA 13 for the torch locked on Linux:
+    "cuequivariance-ops-torch-cu13 == 0.8.1; sys_platform == 'linux'",
+]
 orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
 ]
@@ -347,6 +355,23 @@ conflicts = [
     [
         { extra = "mace-cueq" },
         { extra = "upet" },
+    ],
+    # nequip needs e3nn>=0.6, but MACE's graph-longrange pins e3nn==0.4.4.
+    [
+        { extra = "nequip" },
+        { extra = "mace" },
+    ],
+    [
+        { extra = "nequip" },
+        { extra = "mace-cueq" },
+    ],
+    [
+        { extra = "nequip" },
+        { extra = "dpa" },
+    ],
+    [
+        { extra = "nequip" },
+        { extra = "vivace" },
     ],
 ]
 

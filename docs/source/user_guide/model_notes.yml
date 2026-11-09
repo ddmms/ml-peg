@@ -110,6 +110,39 @@ families:
       structure. The model includes its own dispersion correction, and covers H, B,
       C, N, O, F, Si, P, S, Cl, Br and I.
 
+  NequIP and Allegro:
+    class_names: [NequIPCalculator]
+    notes: |
+      Install these float32 models with ``uv sync --extra nequip``. They are compiled
+      with ``nequip-compile`` on first use on each machine and thread count, which
+      needs a C++ compiler. The model packages are from
+      `Zenodo <https://doi.org/10.5281/zenodo.23472045>`__.
+
+      - **Citation:** Kavanagh et al. (2026).
+        `Fast and Accurate Equivariant Foundation Models for Atomistic Simulation <https://arxiv.org/abs/2607.28461>`__.
+
+      - **Citation (architecture):** Batzner et al. (2022).
+        `E(3)-equivariant graph neural networks for data-efficient and accurate interatomic potentials <https://doi.org/10.1038/s41467-022-29939-5>`__;
+        Musaelian et al. (2023).
+        `Learning local equivariant representations for large-scale atomistic dynamics <https://doi.org/10.1038/s41467-023-36329-y>`__.
+
+      .. details:: BibTeX
+
+         .. literalinclude:: model_references.bib
+            :language: bibtex
+            :start-after: % begin nequip-oam %
+            :end-before: % end nequip-oam %
+
+         .. literalinclude:: model_references.bib
+            :language: bibtex
+            :start-after: % begin nequip %
+            :end-before: % end nequip %
+
+         .. literalinclude:: model_references.bib
+            :language: bibtex
+            :start-after: % begin allegro %
+            :end-before: % end allegro %
+
 models:
   aceff-2p0:
     docs_url: https://huggingface.co/Acellera/AceFF-2.0

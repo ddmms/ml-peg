@@ -321,6 +321,7 @@ def load_models(
         GraceCalc,
         MatterSimCalc,
         MockCalc,
+        NequIPCalc,
         OrbCalc,
         SevenNetCalc,
         TaceCalc,
@@ -483,6 +484,15 @@ def load_models(
                     revision=kwargs.pop("revision", None),
                     device=cfg.get("device", "auto"),
                     default_dtype=cfg.get("overwrite_dtype", None),
+                    kwargs=kwargs,
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "NequIPCalculator":
+                kwargs = cfg.get("kwargs", {})
+                loaded_models[name] = NequIPCalc(
+                    device=cfg.get("device", "auto"),
+                    compile=kwargs.pop("compile", True),
                     kwargs=kwargs,
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
