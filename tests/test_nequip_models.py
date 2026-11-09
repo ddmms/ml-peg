@@ -129,7 +129,7 @@ def test_nequip_compile_variants(monkeypatch):
     nequip = {"enable_OpenEquivariance", "enable_CuEquivariance"}
     allegro = {"enable_CuEquivarianceContracter", "enable_TritonContracter"}
     plain = ("aotinductor", None)
-    installed = {"openequivariance", "cuequivariance_ops_torch"}
+    installed = {"openequivariance", "cuequivariance_ops_torch", "triton"}
     monkeypatch.setattr(models, "find_spec", lambda name: name in installed)
     monkeypatch.setattr(torch, "__version__", "2.8.0+cu128")
 
@@ -140,6 +140,7 @@ def test_nequip_compile_variants(monkeypatch):
     ]
     assert models._nequip_compile_variants(allegro, "cuda") == [
         ("aotinductor", "enable_CuEquivarianceContracter"),
+        ("aotinductor", "enable_TritonContracter"),
         plain,
     ]
     monkeypatch.setattr(torch, "__version__", "2.10.0")
@@ -147,6 +148,12 @@ def test_nequip_compile_variants(monkeypatch):
         "aotinductor",
         "enable_OpenEquivariance",
     )
+    # e.g. ROCm, without cuEquivariance:
+    installed.discard("cuequivariance_ops_torch")
+    assert models._nequip_compile_variants(allegro, "cuda") == [
+        ("aotinductor", "enable_TritonContracter"),
+        plain,
+    ]
     installed.clear()
     assert models._nequip_compile_variants(nequip | allegro, "cuda") == [plain]
 

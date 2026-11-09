@@ -389,6 +389,7 @@ def _patch_metatomic_nvalchemi_max_neighbors() -> None:
 _NEQUIP_KERNEL_PACKAGES = {
     "enable_OpenEquivariance": "openequivariance",
     "enable_CuEquivarianceContracter": "cuequivariance_ops_torch",
+    "enable_TritonContracter": "triton",
 }
 
 
@@ -430,8 +431,8 @@ def _nequip_compile_variants(
     List the ways to compile a NequIP package for a device, fastest first.
 
     On CUDA, NequIP models use OpenEquivariance kernels if installed, and
-    cuEquivariance for Allegro models. AOTInductor without GPU kernels comes
-    last.
+    cuEquivariance then Triton for Allegro models. AOTInductor without GPU
+    kernels comes last.
 
     Parameters
     ----------
