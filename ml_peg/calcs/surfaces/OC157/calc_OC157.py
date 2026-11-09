@@ -16,6 +16,7 @@ import pytest
 from tqdm import tqdm
 import zntrack
 
+from ml_peg.calcs.utils.run_log import log_run
 from ml_peg.calcs.utils.utils import chdir, download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -134,50 +135,53 @@ class OC157Benchmark(zntrack.Node):
 
     def run(self):
         """Run OC157 energy calculations."""
-        # Add D3 calculator and use double precision for this test
-        calc = self.model.get_calculator(precision="high")
-        calc = self.model.add_d3_calculator(calc)
+        with log_run(OUT_PATH, self.model_name):
+            # Add D3 calculator and use double precision for this test
+            calc = self.model.get_calculator(precision="high")
+            calc = self.model.add_d3_calculator(calc)
 
-        base_dir = (
-            download_s3_data(
-                filename="OC157.zip", key="inputs/surfaces/OC157/OC157.zip"
+            base_dir = (
+                download_s3_data(
+                    filename="OC157.zip", key="inputs/surfaces/OC157/OC157.zip"
+                )
+                / "OC_Dataset"
             )
-            / "OC_Dataset"
-        )
-        n_systems = 200
-        skip_hubbard_u = True
+            n_systems = 200
+            skip_hubbard_u = True
 
-        triplets = []
-        system_ids = []
-        system_compositions = []
+            triplets = []
+            system_ids = []
+            system_compositions = []
 
-        for idx in tqdm(range(1, n_systems + 1), desc="Loading OC157 systems"):
-            sys_id = f"{idx:03d}"
-            sys_dir = base_dir / sys_id
+            for idx in tqdm(range(1, n_systems + 1), desc="Loading OC157 systems"):
+                sys_id = f"{idx:03d}"
+                sys_dir = base_dir / sys_id
 
-            if skip_hubbard_u and self._incar_has_hubbard_u(sys_dir / "1" / "INCAR"):
-                continue
+                if skip_hubbard_u and self._incar_has_hubbard_u(
+                    sys_dir / "1" / "INCAR"
+                ):
+                    continue
 
-            poscar = (sys_dir / "1" / "POSCAR").read_text().splitlines()[0].strip()
-            system_ids.append(sys_id)
-            system_compositions.append(poscar)
+                poscar = (sys_dir / "1" / "POSCAR").read_text().splitlines()[0].strip()
+                system_ids.append(sys_id)
+                system_compositions.append(poscar)
 
-            trio_atoms = []
-            for member in (1, 2, 3):
-                subdir = sys_dir / str(member)
-                atoms = self._read_structure(subdir)
-                energy = self._find_energy(subdir / "OUTCAR")
-                atoms.info["ref_energy"] = energy
-                atoms.info["composition"] = poscar
-                atoms.info["sys_id"] = sys_id
-                trio_atoms.append(atoms)
-            triplets.append(trio_atoms)
+                trio_atoms = []
+                for member in (1, 2, 3):
+                    subdir = sys_dir / str(member)
+                    atoms = self._read_structure(subdir)
+                    energy = self._find_energy(subdir / "OUTCAR")
+                    atoms.info["ref_energy"] = energy
+                    atoms.info["composition"] = poscar
+                    atoms.info["sys_id"] = sys_id
+                    trio_atoms.append(atoms)
+                triplets.append(trio_atoms)
 
-        for trio in tqdm(triplets, desc="Evaluating model on triplets"):
-            self.evaluate_energies(trio, calc)
-            write_dir = OUT_PATH / self.model_name
-            write_dir.mkdir(parents=True, exist_ok=True)
-            write(write_dir / f"{trio[-1].info['sys_id']}.xyz", trio)
+            for trio in tqdm(triplets, desc="Evaluating model on triplets"):
+                self.evaluate_energies(trio, calc)
+                write_dir = OUT_PATH / self.model_name
+                write_dir.mkdir(parents=True, exist_ok=True)
+                write(write_dir / f"{trio[-1].info['sys_id']}.xyz", trio)
 
 
 def build_project(repro: bool = False) -> None:
