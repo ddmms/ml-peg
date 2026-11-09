@@ -250,7 +250,8 @@ Boxes contain 100 to 521 molecules (952 to 2,300
 atoms), with edges of at least 25 Å so that periodic images stay outside the receptive
 field of typical MLIPs. Each box is built from low-energy conformers, annealed and
 pre-equilibrated with OpenFF Sage (openff-2.3.0) at the experimental density. Every
-N-methylacetamide molecule starts trans, as amide rotation is far slower than the run.
+N-methylacetamide molecule starts trans, its dominant conformation (amide rotation is
+slow).
 
 Each box is simulated once with NPT MD (isotropic MTK barostat, 1 fs timestep, 1 atm)
 for 0.2 ns of equilibration followed by 1 ns of production.
