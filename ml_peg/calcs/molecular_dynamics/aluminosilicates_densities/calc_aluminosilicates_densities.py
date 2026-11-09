@@ -82,11 +82,11 @@ PRECISION_OVERRIDES = {
     "mace-omat-0": "low",
     "mace-matpes-r2scan": "low",
     "mace-mh-1-omat": "low",
-    "mace-omol": "low",
     "mace-mh-1-omol": "low",
+    "mace-polar-1-l": "low",
+    "mace-omol": "low",
     "mace-polar-1-s": "low",
     "mace-polar-1-m": "low",
-    "mace-polar-1-l": "low",
     "mattersim-5M": "low",
 }
 
@@ -185,16 +185,16 @@ def run_melt_quench(atoms, model_name, model, log_prefix: Path):
     step_counter = {"steps": 0}
     stop_watchdog = threading.Event()
 
-    def watchdog_timer(max_minutes=15, target_steps=1000):
+    def watchdog_timer(max_minutes=200, target_steps=1000):
         """
-        Monitor simulation progress and terminate execution if hanging is detected.
+        Warn if the simulation appears to be progressing very slowly.
 
         Parameters
         ----------
-        max_minutes : int, default=15
-            Maximum allowed time in minutes without sufficient progress.
+        max_minutes : int, default=200
+            Time in minutes after which progress is checked.
         target_steps : int, default=1000
-            Number of steps expected to be completed within the time limit.
+            Number of steps expected to be completed within that time.
 
         Returns
         -------
@@ -208,12 +208,12 @@ def run_melt_quench(atoms, model_name, model, log_prefix: Path):
             if elapsed_min > max_minutes and step_counter["steps"] < target_steps:
                 ps_done = step_counter["steps"] * TIMESTEP_PS
                 print(
-                    f"[ABORT] Job appears stuck: only {step_counter['steps']} steps "
-                    f"({ps_done:.3f} ps) simulated in {elapsed_min:.1f} minutes. "
-                    f"Check trajectory: {traj_hot_path}",
+                    f"[WARNING] Slow run: only {step_counter['steps']} steps "
+                    f"({ps_done:.3f} ps) in {elapsed_min:.1f} minutes. "
+                    f"Check {log_prefix}_00_nvt_hot.log.  ",
                     flush=True,
                 )
-                os._exit(1)
+                return
 
     watchdog_thread = threading.Thread(target=watchdog_timer, daemon=True)
     watchdog_thread.start()
