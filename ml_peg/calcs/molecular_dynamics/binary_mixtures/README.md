@@ -2,7 +2,7 @@
 
 Enthalpy of mixing (ΔHmix), mixture density and excess volume (V^E) for 10
 binary liquid mixtures at three compositions each, plus the pure-liquid
-densities not already scored by `liquid_densities` (50 boxes in total). Each
+densities not already scored by `liquid_densities` (49 boxes in total). Each
 box is run once per model: 0.2 ns NPT equilibration and 1 ns production.
 
 ## Inputs
@@ -29,7 +29,7 @@ reference and the MLIPs share one estimator. Treat the public names in
 ## Running and sharing results
 
 The runs are too long for users to repeat, so each model's runs are run once and
-shared on S3. Run each box as a separate job (`--box-id` from 0 to 49; a rerun
+shared on S3. Run each box as a separate job (`--box-id` from 0 to 48; a rerun
 continues from the last saved frame):
 
 ```bash
@@ -42,7 +42,7 @@ This writes `outputs/<model>/<box_id>.csv` (scalars every 100 fs) and
 below) is skipped, unless it already has local outputs or `--recompute` is
 passed.
 
-When all 50 boxes are complete, zip the model's output directory (about
+When all 49 boxes are complete, zip the model's output directory (about
 0.7 GB), so that others can analyse it without rerunning the MD:
 
 ```bash

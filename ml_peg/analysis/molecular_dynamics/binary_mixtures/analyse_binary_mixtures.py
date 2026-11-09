@@ -7,7 +7,7 @@ liquid densities benchmark already scores most of the pure liquids and mixture
 density errors are mostly pure-density errors. Box means and their
 uncertainties come from the autocorrelation estimator in
 ``ml_peg.analysis.utils.timeseries`` (see ``mixing.py``). Metric confidence
-intervals are bootstrapped at the level of the 50 boxes, so the correlation
+intervals are bootstrapped at the level of the 49 boxes, so the correlation
 between compositions that share pure boxes is included. Every property is
 scored by MAE and by MAZE, which divides each error by a fixed,
 model-independent σ_ref from ``systems.csv`` or ``pure.csv`` (experimental

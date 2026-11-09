@@ -1,7 +1,7 @@
 """
 Run NPT MD of binary liquid mixtures and their pure components.
 
-The 50 boxes (30 mixture compositions of 10 binaries and 20 pure liquids) were
+The 49 boxes (30 mixture compositions of 10 binaries and 19 pure liquids) were
 pre-equilibrated with OpenFF Sage at the experimental density. Each box is run
 for 0.2 ns of equilibration followed by 1 ns of production at the box's
 ``exp_temperature`` and 1 atm. Scalars are logged every 100 fs to a CSV for the

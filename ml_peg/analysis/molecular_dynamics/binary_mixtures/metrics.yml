@@ -9,15 +9,15 @@
 # protocol changes.
 metrics:
   ΔHmix MAE:
-    good: 0.11
-    bad: 2.9
+    good: 0.097
+    bad: 3.5
     unit: kJ mol^-1
     tooltip: Mean absolute error of the enthalpy of mixing (30 points)
     level_of_theory: Experimental
     weight: 0
   ΔHmix MAZE:
-    good: 0.82
-    bad: 25.0
+    good: 0.93
+    bad: 39.0
     unit: null
     tooltip: Mean absolute z-score of the enthalpy of mixing (30 points), dividing
       each error by a fixed sqrt(σ_exp² + σ_Sage²), where σ_Sage is the spread of
@@ -25,14 +25,14 @@ metrics:
     level_of_theory: Experimental
   Density MAE:
     good: 0.001
-    bad: 0.052
+    bad: 0.064
     unit: g cm^-3
     tooltip: Mean absolute error of the mixture densities (27 points)
     level_of_theory: Experimental
     weight: 0
   Density MAZE:
     good: 1.1
-    bad: 51.0
+    bad: 70.0
     unit: null
     tooltip: Mean absolute z-score of the mixture densities (27 points), dividing
       each error by a fixed sqrt(σ_exp² + σ_Sage²), where σ_Sage is the spread of
@@ -40,15 +40,15 @@ metrics:
     level_of_theory: Experimental
     weight: 0
   V^E MAE:
-    good: 0.13
-    bad: 1.2
+    good: 0.11
+    bad: 1.6
     unit: cm^3 mol^-1
     tooltip: Mean absolute error of the excess molar volume (27 points)
     level_of_theory: Experimental
     weight: 0
   V^E MAZE:
-    good: 0.97
-    bad: 9.3
+    good: 1.1
+    bad: 17.0
     unit: null
     tooltip: Mean absolute z-score of the excess molar volume (27 points), dividing
       each error by a fixed sqrt(σ_exp² + σ_Sage²), where σ_Sage is the spread of
@@ -56,16 +56,16 @@ metrics:
     level_of_theory: Experimental
   Pure density MAE:
     good: 0.001
-    bad: 0.052
+    bad: 0.064
     unit: g cm^-3
-    tooltip: Mean absolute error of the pure-liquid densities (20 points)
+    tooltip: Mean absolute error of the pure-liquid densities (19 points)
     level_of_theory: Experimental
     weight: 0
   Pure density MAZE:
     good: 1.1
-    bad: 51.0
+    bad: 70.0
     unit: null
-    tooltip: Mean absolute z-score of the pure-liquid densities (20 points),
+    tooltip: Mean absolute z-score of the pure-liquid densities (19 points),
       dividing each error by a fixed sqrt(σ_exp² + σ_Sage²), where σ_Sage is the
       spread of 5 independent Sage runs (weight 0, as the liquid densities
       benchmark scores most of these liquids)
@@ -75,7 +75,7 @@ metrics:
     good: 0
     bad: 10
     unit: null
-    tooltip: Number of the 50 boxes with a convergence, sampling, bonding or demixing
+    tooltip: Number of the 49 boxes with a convergence, sampling, bonding or demixing
       flag, or a missing run (not scored)
     level_of_theory: null
     weight: 0
