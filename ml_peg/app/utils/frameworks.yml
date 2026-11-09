@@ -90,6 +90,30 @@ matbench-discovery:
       - Kristin A. Persson
     year: 2025
 
+mad-2-bench:
+  bibtex_key: malosso2026highqualityhighinformationdatasetsuniversal
+  label: MAD-2 test
+  type: framework
+  color: "#b45309"
+  text_color: "#ffffff"
+  description: "Compare model errors in forces, comparable energies and bulk stress across six DFT references, on structures selected from the MAD-2 test set."
+  project_url: "https://doi.org/10.24435/materialscloud:9g-68"
+  paper_url: "https://arxiv.org/abs/2603.02089"
+  citation:
+    title: "High-quality, high-information datasets for universal atomistic machine learning"
+    authors:
+      - Cesare Malosso
+      - Filippo Bigi
+      - Paolo Pegolo
+      - Joseph W. Abbott
+      - Philip Loche
+      - Mariana Rossi
+      - Tiago J. Goncalves
+      - Sandip De
+      - Michele Ceriotti
+      - Arslan Mazitov
+    year: 2026
+
 mace-multihead:
   bibtex_key: batatia2025crosslearningelectronicstructure
   label: Multihead Cross Learning

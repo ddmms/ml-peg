@@ -1,0 +1,4 @@
+title: MAD-2 test
+description: MAD-2 test frames with six DFT reference labels.
+weight: 0
+framework: mad-2-bench
