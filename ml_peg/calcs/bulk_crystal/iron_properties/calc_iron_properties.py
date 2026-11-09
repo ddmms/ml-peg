@@ -658,7 +658,7 @@ def run_sfe_calculation(
     return {
         "displacements": displacements,
         "sfe_J_per_m2": sfe_j_per_m2,
-        "max_sfe": max(sfe_j_per_m2),
+        "max_sfe": np.max(sfe_j_per_m2),  # NaN if any energy failed
     }
 
 
