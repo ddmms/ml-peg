@@ -1,0 +1,16 @@
+metrics:
+  MAE_energies:
+    good: 5.0
+    bad: 40.0
+    weight: 1.0
+    unit: kJ/mol
+    tooltip: "Mean Absolute Error for all reaction energies"
+    level_of_theory: PBE
+
+  MAE_barriers:
+    good: 5.0
+    bad: 40.0
+    weight: 1.0
+    unit: kJ/mol
+    tooltip: "Mean Absolute Error for all reaction barriers"
+    level_of_theory: PBE
