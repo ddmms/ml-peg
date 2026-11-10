@@ -317,12 +317,9 @@ for water + pyridine and 1-methylimidazole + ethanol.
 Limitations
 -----------
 
-* Nuclei are classical, so quantum nuclear effects on hydrogen bonding (relevant for the
-  aqueous systems) are not included.
-* There is no fluorine, ether, carboxylic acid, carbamate or sulfur system.
-* N-methylacetamide starts all trans, so its small cis fraction is missing.
-* The systems come from the Sage training and validation data and the ThermoML
-  archive, so the chemistry covered is limited to what has been measured.
+* Nuclei are classical, so quantum nuclear effects on hydrogen bonding are not included.
+* Coverage of elements and functional groups is limited. For examplek, there is no fluorine,
+  ether, carboxylic acid, carbamate or sulfur system.
 * The noise behind σ_ref and the thresholds comes from Sage, which may have different
   correlation times from MLIPs.
 
