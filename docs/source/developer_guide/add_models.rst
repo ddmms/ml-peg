@@ -231,8 +231,9 @@ The common fields are:
    setting it. The field may be set for any model, so it can be applied across a
    whole models file, but wrappers whose backend has no dtype argument warn that
    it has no effect. Those wrappers ignore the requested ``precision`` too: DPA
-   checkpoints are fixed at float32, SevenNet exposes no precision argument, and
-   Vivace takes its dtype from the checkpoint metadata.
+   checkpoints are fixed at float32, SevenNet exposes no precision argument,
+   NequIP packages fix their model dtype, and Vivace takes its dtype from the
+   checkpoint metadata.
 
    Set the precision through this field rather than ``kwargs``: a dtype argument
    in ``kwargs`` is rejected, since it would override both ``precision`` and
@@ -415,10 +416,10 @@ Hugging Face:
        filename: aceff_v2.0.ckpt
        revision: 67ad6a3b06ee9b44cfbac3bc32117dd6276e9122
 
-AIMNet2, GRACE, SevenNet, MatterSim and Vivace entries similarly select their
-wrappers through ``class_name`` (``AIMNet2ASE``, ``grace_fm``,
-``SevenNetCalculator``, ``MatterSimCalculator`` and ``MLFFCalculator``
-respectively).
+AIMNet2, GRACE, SevenNet, MatterSim, Vivace and NequIP entries similarly select
+their wrappers through ``class_name`` (``AIMNet2ASE``, ``grace_fm``,
+``SevenNetCalculator``, ``MatterSimCalculator``, ``MLFFCalculator`` and
+``NequIPCalculator`` respectively).
 
 Other ASE-compatible MLIP calculators can usually be added by specifying their
 ``module``, ``class_name`` and constructor ``kwargs``. Any ``class_name`` that
