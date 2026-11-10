@@ -409,12 +409,18 @@ Metrics
 
 1. Reaction energy MAE
 
-   For each reaction pathway, the energy error is calculated as
+   Mean Absolute Error (compared to PBE DFT reference data) for the reaction energy of all reactions not involving identical initial and final states (up to symmetry)
+   Reaction energies are calculated as the energy of the final state minus the energy of the initial state for each mechanism.
+
+2. Reaction barrier MAE
+
+   Mean Absolute Error (compared to PBE DFT reference data) for the reaction barrier of all reactions.
+   Reaction barriers are calculated as the energy of the transition state minus the energy of the initial state for each mechanism.
 
 Benchmark speed
 ------------------
 
-Fast: tests are likely to take five to ten minutes.
+Fast: tests are likely to take less than a minute.
 
 Data availability
 -----------------
