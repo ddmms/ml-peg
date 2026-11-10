@@ -93,6 +93,8 @@ def test_compile_caches_by_package_and_thread_count(monkeypatch, tmp_path):
 def test_nequip_kernels(monkeypatch):
     """Installed GPU kernels are listed in order of preference, on CUDA only."""
     pytest.importorskip("torch")
+    # NequIP packages also offer enable_CuEquivariance, unused as (currently) slower
+    # than no kernels
     nequip = {OEQ, "enable_CuEquivariance"}
     allegro = ["enable_CuEquivarianceContracter", "enable_TritonContracter"]
     installed = {"openequivariance", "cuequivariance_ops_torch", "triton"}
@@ -120,6 +122,7 @@ def test_nequip_falls_back_to_eager_model(monkeypatch):
     with pytest.warns(UserWarning) as warnings:
         model.get_calculator(precision="high")
     messages = [str(w.message) for w in warnings if "NequIP model" in str(w.message)]
+    assert len(messages) == 4
     assert "openequivariance" in messages[0]
     assert "no compiler" in messages[1]
     assert messages[2].startswith("Skipping the eager NequIP model")
@@ -144,6 +147,21 @@ def test_eager_nequip_model_uses_gpu_kernels(monkeypatch):
 
     dataclasses.replace(model, compile=False).get_calculator(precision="high")
     assert applied == [{"modifier": OEQ}]
+
+
+def test_nequip_registry_options(tmp_path):
+    """``compile: false`` loads the eager model, and ``overwrite_dtype`` only warns."""
+    pytest.importorskip("nequip")
+    name = "nequip-oam-s-0p2"
+    kwargs = REGISTRY[name]["kwargs"] | {"compile": False}
+    config = REGISTRY[name] | {"kwargs": kwargs, "overwrite_dtype": "float64"}
+    path = tmp_path / "models.yml"
+    path.write_text(yaml.safe_dump({name: config}))
+    model = load_models((name,), filepath=path)[name]
+
+    assert not model.compile
+    with pytest.warns(UserWarning, match="overwrite_dtype 'float64' has no effect"):
+        model.get_calculator(precision="high")
 
 
 # Failed compilation falls back to the eager model with this warning
