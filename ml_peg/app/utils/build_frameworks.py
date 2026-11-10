@@ -42,6 +42,7 @@ class CategoryView(TypedDict):
     summary_table: DataTable
     weight_components: Div
     tests: list[CategoryTest]
+    framework: str | None
 
 
 class _FrameworkViewRequired(TypedDict):
@@ -317,12 +318,37 @@ def build_framework_page_layout(
         # against — the framework pages kept the inline grid and missed that.
         sections.append(Div(cards, className="mlpeg-benchmark-grid"))
 
+    has_scores = summary_table is not None and any(
+        isinstance(value, int | float) and not isinstance(value, bool)
+        for row in summary_table.data
+        for key, value in row.items()
+        if key != "id"
+    )
+
+    speed_block = []
+    if any(framework_view["speeds"].values()):
+        speed_block = [build_speed_panel(framework_view["speeds"])]
+
     summary_block = []
-    if summary_table is not None:
+    if has_scores:
         # Wrap in the same scroll-card as category pages so a wide framework
         # summary (e.g. MACE-POLAR-1's many benchmark columns) scrolls inside
         # its card instead of spanning the whole page.
         summary_block = [
+            Div(
+                (
+                    "These benchmarks also appear on their category pages and "
+                    "share the same benchmark controls, so weight and threshold "
+                    "edits stay in sync across both views."
+                ),
+                style={
+                    "fontSize": "13px",
+                    "fontStyle": "italic",
+                    "color": "var(--mlpeg-ink-3)",
+                    "marginTop": "8px",
+                    "marginBottom": "8px",
+                },
+            ),
             Div(
                 Div(
                     Div(
@@ -349,22 +375,8 @@ def build_framework_page_layout(
                 scope="All source references. Model and element filters do not apply.",
             ),
             *description_box_block,
-            Div(
-                (
-                    "These benchmarks also appear on their category pages and "
-                    "share the same benchmark controls, so weight and threshold "
-                    "edits stay in sync across both views."
-                ),
-                style={
-                    "fontSize": "13px",
-                    "fontStyle": "italic",
-                    "color": "var(--mlpeg-ink-3)",
-                    "marginTop": "8px",
-                    "marginBottom": "8px",
-                },
-            ),
             *summary_block,
-            build_speed_panel(framework_view["speeds"]),
+            *speed_block,
             build_collapse_controls(),
             *sections,
         ]

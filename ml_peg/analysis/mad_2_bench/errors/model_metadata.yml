@@ -1,0 +1,2076 @@
+fairchem-uma-m-1p1-omat:
+  aliases:
+  - uma-m-1p1-omat
+  checkpoint: uma-m-1p1.pt from huggingface facebook/UMA ce3b2744ff57c0f49a010b763efcbfe9ba82e2e1, fairchem-core 2.25.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: fairchem:uma-m-1p1@omat
+  mad_energy_target: null
+  molecular_only: false
+  name: UMA m 1.1, OMat head
+  stress: true
+  supported_elements: null
+  training_data: OC20, ODAC23, OMat24, OMC25, OMol25 multi task, omat head, PBE+U
+fairchem-uma-s-1p1-omat:
+  aliases:
+  - uma-s-1p1-omat
+  checkpoint: uma-s-1p1.pt from huggingface facebook/UMA ce3b2744ff57c0f49a010b763efcbfe9ba82e2e1, fairchem-core 2.25.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: fairchem:uma-s-1p1@omat
+  mad_energy_target: null
+  molecular_only: false
+  name: UMA s 1.1, OMat head
+  stress: true
+  supported_elements: null
+  training_data: OC20, ODAC23, OMat24, OMC25, OMol25 multi task, omat head, PBE+U
+fairchem-uma-s-1p2-omat:
+  checkpoint: uma-s-1p2.pt from huggingface facebook/UMA ce3b2744ff57c0f49a010b763efcbfe9ba82e2e1, fairchem-core 2.25.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: fairchem:uma-s-1p2@omat
+  mad_energy_target: null
+  molecular_only: false
+  name: UMA s 1.2, OMat head
+  stress: true
+  supported_elements: null
+  training_data: OC20, ODAC23, OMat24, OMC25, OMol25 multi task, omat head, PBE+U
+fairchem-uma-s-1p2p1-ft-r2scan-omat:
+  checkpoint: uma-s-1p2p1-ft-r2scan.pt from huggingface facebook/UMA ce3b2744ff57c0f49a010b763efcbfe9ba82e2e1, fairchem-core
+    2.25.0
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: same-family
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: fairchem:uma-s-1p2p1-ft-r2scan@omat
+  mad_energy_target: energy
+  molecular_only: false
+  name: UMA s 1.2.1 r2SCAN fine-tune, OMat head
+  stress: true
+  supported_elements: null
+  training_data: uma-s-1p2p1 (OC20, ODAC23, OMat24, OMC25, OMol25) fine tuned on MAD-1.6, r2SCAN
+fairchem-uma-s-1p2p1-omat:
+  checkpoint: uma-s-1p2p1.pt from huggingface facebook/UMA ce3b2744ff57c0f49a010b763efcbfe9ba82e2e1, fairchem-core 2.25.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: fairchem:uma-s-1p2p1@omat
+  mad_energy_target: null
+  molecular_only: false
+  name: UMA s 1.2.1, OMat head
+  stress: true
+  supported_elements: null
+  training_data: OC20, ODAC23, OMat24, OMC25, OMol25 multi task, omat head, PBE+U
+fairchem-uma-s-1p2p1-omol:
+  checkpoint: uma-s-1p2p1.pt from huggingface facebook/UMA ce3b2744ff57c0f49a010b763efcbfe9ba82e2e1, fairchem-core 2.25.0
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: fairchem:uma-s-1p2p1@omol
+  mad_energy_target: null
+  molecular_only: true
+  name: UMA s 1.2.1, OMol head
+  stress: true
+  supported_elements: null
+  training_data: OC20, ODAC23, OMat24, OMC25, OMol25 multi task, omol head, wB97M-V
+grace-GRACE-1L-OAM:
+  checkpoint: grace cache folder GRACE-1L-OAM, tensorpotential 0.6.2.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: grace:GRACE-1L-OAM
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L OAM
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+grace-GRACE-1L-OMAT:
+  checkpoint: grace cache folder GRACE-1L-OMAT, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-1L-OMAT
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L OMAT
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+grace-GRACE-1L-OMAT-large-base:
+  checkpoint: grace cache folder GRACE-1L-OMAT-large-base, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-1L-OMAT-large-base
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L OMAT large base
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+grace-GRACE-1L-OMAT-large-ft-AM:
+  checkpoint: grace cache folder GRACE-1L-OMAT-large-ft-AM, tensorpotential 0.6.2.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: grace:GRACE-1L-OMAT-large-ft-AM
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L OMAT large ft-AM
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+grace-GRACE-1L-OMAT-large-ft-E:
+  checkpoint: grace cache folder GRACE-1L-OMAT-large-ft-E, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-1L-OMAT-large-ft-E
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L OMAT large ft-E
+  stress: true
+  supported_elements: null
+  training_data: OMat24, the base model refitted with more weight on energies, PBE+U
+grace-GRACE-1L-OMAT-medium-base:
+  checkpoint: grace cache folder GRACE-1L-OMAT-medium-base, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-1L-OMAT-medium-base
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L OMAT medium base
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+grace-GRACE-1L-OMAT-medium-ft-AM:
+  checkpoint: grace cache folder GRACE-1L-OMAT-medium-ft-AM, tensorpotential 0.6.2.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: grace:GRACE-1L-OMAT-medium-ft-AM
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L OMAT medium ft-AM
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+grace-GRACE-1L-OMAT-medium-ft-E:
+  checkpoint: grace cache folder GRACE-1L-OMAT-medium-ft-E, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-1L-OMAT-medium-ft-E
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L OMAT medium ft-E
+  stress: true
+  supported_elements: null
+  training_data: OMat24, the base model refitted with more weight on energies, PBE+U
+grace-GRACE-1L-SMAX-OMAT-large:
+  checkpoint: grace cache folder GRACE-1L-SMAX-OMAT-large, tensorpotential 0.6.2.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources: null
+  identifier: grace:GRACE-1L-SMAX-OMAT-large
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L SMAX OMAT large
+  stress: true
+  supported_elements: null
+  training_data: SMAX and OMat24, PBE+U
+grace-GRACE-1L-SMAX-large:
+  checkpoint: grace cache folder GRACE-1L-SMAX-large, tensorpotential 0.6.2.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources: null
+  identifier: grace:GRACE-1L-SMAX-large
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 1L SMAX large
+  stress: true
+  supported_elements: null
+  training_data: SMAX only, PBE
+grace-GRACE-2L-OAM:
+  checkpoint: grace cache folder GRACE-2L-OAM, tensorpotential 0.6.2.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: grace:GRACE-2L-OAM
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L OAM
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+grace-GRACE-2L-OMAT:
+  aliases:
+  - grace-2l-omat
+  checkpoint: grace cache folder GRACE-2L-OMAT, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-2L-OMAT
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L OMAT
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+grace-GRACE-2L-OMAT-large-base:
+  checkpoint: grace cache folder GRACE-2L-OMAT-large-base, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-2L-OMAT-large-base
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L OMAT large base
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+grace-GRACE-2L-OMAT-large-ft-AM:
+  checkpoint: grace cache folder GRACE-2L-OMAT-large-ft-AM, tensorpotential 0.6.2.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: grace:GRACE-2L-OMAT-large-ft-AM
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L OMAT large ft-AM
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+grace-GRACE-2L-OMAT-large-ft-E:
+  checkpoint: grace cache folder GRACE-2L-OMAT-large-ft-E, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-2L-OMAT-large-ft-E
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L OMAT large ft-E
+  stress: true
+  supported_elements: null
+  training_data: OMat24, the base model refitted with more weight on energies, PBE+U
+grace-GRACE-2L-OMAT-medium-base:
+  checkpoint: grace cache folder GRACE-2L-OMAT-medium-base, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-2L-OMAT-medium-base
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L OMAT medium base
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+grace-GRACE-2L-OMAT-medium-ft-AM:
+  checkpoint: grace cache folder GRACE-2L-OMAT-medium-ft-AM, tensorpotential 0.6.2.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: grace:GRACE-2L-OMAT-medium-ft-AM
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L OMAT medium ft-AM
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+grace-GRACE-2L-OMAT-medium-ft-E:
+  checkpoint: grace cache folder GRACE-2L-OMAT-medium-ft-E, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-2L-OMAT-medium-ft-E
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L OMAT medium ft-E
+  stress: true
+  supported_elements: null
+  training_data: OMat24, the base model refitted with more weight on energies, PBE+U
+grace-GRACE-2L-SMAX-OMAT-large:
+  checkpoint: grace cache folder GRACE-2L-SMAX-OMAT-large, tensorpotential 0.6.2.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources: null
+  identifier: grace:GRACE-2L-SMAX-OMAT-large
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L SMAX OMAT large
+  stress: true
+  supported_elements: null
+  training_data: SMAX and OMat24, PBE+U
+grace-GRACE-2L-SMAX-OMAT-medium:
+  aliases:
+  - grace-2l-smax-omat-medium
+  checkpoint: grace cache folder GRACE-2L-SMAX-OMAT-medium, tensorpotential 0.6.2.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources: null
+  identifier: grace:GRACE-2L-SMAX-OMAT-medium
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L SMAX OMAT medium
+  stress: true
+  supported_elements: null
+  training_data: SMAX and OMat24, PBE+U
+grace-GRACE-2L-SMAX-large:
+  checkpoint: grace cache folder GRACE-2L-SMAX-large, tensorpotential 0.6.2.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources: null
+  identifier: grace:GRACE-2L-SMAX-large
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L SMAX large
+  stress: true
+  supported_elements: null
+  training_data: SMAX only, PBE
+grace-GRACE-2L-SMAX-medium:
+  checkpoint: grace cache folder GRACE-2L-SMAX-medium, tensorpotential 0.6.2.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources: null
+  identifier: grace:GRACE-2L-SMAX-medium
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 2L SMAX medium
+  stress: true
+  supported_elements: null
+  training_data: SMAX only, PBE
+grace-GRACE-3L-OMAT-large:
+  checkpoint: grace cache folder GRACE-3L-OMAT-large, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-3L-OMAT-large
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 3L OMAT large
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+grace-GRACE-3L-OMAT-large-ft-AM:
+  checkpoint: grace cache folder GRACE-3L-OMAT-large-ft-AM, tensorpotential 0.6.2.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: grace:GRACE-3L-OMAT-large-ft-AM
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE 3L OMAT large ft-AM
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+grace-GRACE-FS-OAM:
+  checkpoint: grace cache folder GRACE-FS-OAM, tensorpotential 0.6.2.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: grace:GRACE-FS-OAM
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE FS OAM
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+grace-GRACE-FS-OMAT:
+  checkpoint: grace cache folder GRACE-FS-OMAT, tensorpotential 0.6.2.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: grace:GRACE-FS-OMAT
+  mad_energy_target: null
+  molecular_only: false
+  name: GRACE FS OMAT
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+mace-large:
+  checkpoint: MACE_MPtrj_2022.9.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:large
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0 large
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-large-0b2:
+  checkpoint: mace-large-density-agnesi-stress.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:large-0b2
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0b2 large
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-mace-matpes-pbe-0:
+  checkpoint: MACE-matpes-pbe-omat-ft.model, mace-torch 0.3.17
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: same-family
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources:
+  - matpes/pbe
+  identifier: mace:mace-matpes-pbe-0
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MatPES PBE-0
+  stress: true
+  supported_elements: null
+  training_data: MatPES PBE, fine tuned from OMat24, PBE
+mace-mace-matpes-r2scan-0:
+  aliases:
+  - mace-matpes-r2scan
+  checkpoint: MACE-matpes-r2scan-omat-ft.model, mace-torch 0.3.17
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: mace:mace-matpes-r2scan-0
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MatPES r2SCAN-0
+  stress: true
+  supported_elements: null
+  training_data: MatPES r2SCAN, fine tuned from OMat24, r2SCAN
+mace-medium:
+  aliases:
+  - mace-mp-0a
+  checkpoint: 2023-12-03-mace-128-L1_epoch-199.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:medium
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0 medium
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-medium-0b:
+  checkpoint: mace_agnesi_medium.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:medium-0b
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0b medium
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-medium-0b2:
+  checkpoint: mace-medium-density-agnesi-stress.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:medium-0b2
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0b2 medium
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-medium-0b3:
+  aliases:
+  - mace-mp-0b3
+  checkpoint: mace-mp-0b3-medium.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:medium-0b3
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0b3 medium
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-medium-mpa-0:
+  aliases:
+  - mace-mpa-0
+  checkpoint: mace-mpa-0-medium.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  - alexandria/static
+  identifier: mace:medium-mpa-0
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MPA-0 medium
+  stress: true
+  supported_elements: null
+  training_data: MPtrj and sAlex, PBE+U
+mace-medium-omat-0:
+  aliases:
+  - mace-omat-0
+  checkpoint: mace-omat-0-medium.model, mace-torch 0.3.17
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: mace:medium-omat-0
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-OMAT-0 medium
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+mace-small:
+  checkpoint: 2023-12-10-mace-128-L0_energy_epoch-249.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:small
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0 small
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-small-0b:
+  checkpoint: mace_agnesi_small.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:small-0b
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0b small
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-small-0b2:
+  checkpoint: mace-small-density-agnesi-stress.model, mace-torch 0.3.17
+  energy_corrections: none, raw MPtrj energies documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: mace:small-0b2
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-MP-0b2 small
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+mace-small-omat-0:
+  checkpoint: mace-omat-0-small.model, mace-torch 0.3.17
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: mace:small-omat-0
+  mad_energy_target: null
+  molecular_only: false
+  name: MACE-OMAT-0 small
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+maceoff-large:
+  aliases:
+  - mace-off-23-L
+  checkpoint: MACE-OFF23_large.model, mace-torch 0.3.17
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: maceoff:large
+  mad_energy_target: null
+  molecular_only: true
+  name: MACE-OFF23 large
+  stress: true
+  supported_elements: null
+  training_data: SPICE v1, 10 elements, wB97M-D3(BJ)
+maceoff-medium:
+  checkpoint: MACE-OFF23_medium.model, mace-torch 0.3.17
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: maceoff:medium
+  mad_energy_target: null
+  molecular_only: true
+  name: MACE-OFF23 medium
+  stress: true
+  supported_elements: null
+  training_data: SPICE v1, 10 elements, wB97M-D3(BJ)
+maceoff-small:
+  checkpoint: MACE-OFF23_small.model, mace-torch 0.3.17
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: maceoff:small
+  mad_energy_target: null
+  molecular_only: true
+  name: MACE-OFF23 small
+  stress: true
+  supported_elements: null
+  training_data: SPICE v1, 10 elements, wB97M-D3(BJ)
+maceomol-extra_large:
+  aliases:
+  - mace-omol
+  checkpoint: MACE-omol-0-extra-large-1024.model, mace-torch 0.3.17
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: maceomol:extra_large
+  mad_energy_target: null
+  molecular_only: true
+  name: MACE-OMol-0 extra large
+  stress: true
+  supported_elements: null
+  training_data: OMol25 100M, wB97M-V
+matgl-CHGNet-PES-MatPES-PBE-1M-2026.9:
+  checkpoint: huggingface materialyze/CHGNet-PES-MatPES-PBE-1M-2026.9 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: same-family
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources:
+  - matpes/pbe
+  identifier: matgl:CHGNet-PES-MatPES-PBE-1M-2026.9
+  mad_energy_target: null
+  molecular_only: false
+  name: CHGNet MatPES PBE 1M 2026.9
+  stress: true
+  supported_elements: null
+  training_data: MatPES PBE, PBE
+matgl-CHGNet-PES-MatPES-PBE-2025.2.10:
+  checkpoint: huggingface materialyze/CHGNet-PES-MatPES-PBE-2025.2.10 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: same-family
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources:
+  - matpes/pbe
+  identifier: matgl:CHGNet-PES-MatPES-PBE-2025.2.10
+  mad_energy_target: null
+  molecular_only: false
+  name: CHGNet MatPES PBE 2025.2.10
+  stress: true
+  supported_elements: null
+  training_data: MatPES PBE, PBE
+matgl-CHGNet-PES-MatPES-r2SCAN-1M-2026.9:
+  checkpoint: huggingface materialyze/CHGNet-PES-MatPES-r2SCAN-1M-2026.9 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: matgl:CHGNet-PES-MatPES-r2SCAN-1M-2026.9
+  mad_energy_target: null
+  molecular_only: false
+  name: CHGNet MatPES r2SCAN 1M 2026.9
+  stress: true
+  supported_elements: null
+  training_data: MatPES r2SCAN, r2SCAN
+matgl-CHGNet-PES-MatPES-r2SCAN-2025.2.10:
+  checkpoint: huggingface materialyze/CHGNet-PES-MatPES-r2SCAN-2025.2.10 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: matgl:CHGNet-PES-MatPES-r2SCAN-2025.2.10
+  mad_energy_target: null
+  molecular_only: false
+  name: CHGNet MatPES r2SCAN 2025.2.10
+  stress: true
+  supported_elements: null
+  training_data: MatPES r2SCAN, r2SCAN
+matgl-M3GNet-PES-MatPES-PBE-2025.2:
+  checkpoint: huggingface materialyze/M3GNet-PES-MatPES-PBE-2025.2 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: same-family
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources:
+  - matpes/pbe
+  identifier: matgl:M3GNet-PES-MatPES-PBE-2025.2
+  mad_energy_target: null
+  molecular_only: false
+  name: M3GNet MatPES PBE 2025.2
+  stress: true
+  supported_elements: null
+  training_data: MatPES PBE, PBE
+matgl-M3GNet-PES-MatPES-r2SCAN-2025.2:
+  checkpoint: huggingface materialyze/M3GNet-PES-MatPES-r2SCAN-2025.2 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: matgl:M3GNet-PES-MatPES-r2SCAN-2025.2
+  mad_energy_target: null
+  molecular_only: false
+  name: M3GNet MatPES r2SCAN 2025.2
+  stress: true
+  supported_elements: null
+  training_data: MatPES r2SCAN, r2SCAN
+matgl-QET-PES-MatPES-PBE-2025.2:
+  checkpoint: huggingface materialyze/QET-PES-MatPES-PBE-2025.2 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: same-family
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources:
+  - matpes/pbe
+  identifier: matgl:QET-PES-MatPES-PBE-2025.2
+  mad_energy_target: null
+  molecular_only: false
+  name: QET MatPES PBE 2025.2
+  stress: true
+  supported_elements: null
+  training_data: MatPES PBE, PBE
+matgl-QET-PES-MatPES-r2SCAN-2025.2:
+  checkpoint: huggingface materialyze/QET-PES-MatPES-r2SCAN-2025.2 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: matgl:QET-PES-MatPES-r2SCAN-2025.2
+  mad_energy_target: null
+  molecular_only: false
+  name: QET MatPES r2SCAN 2025.2
+  stress: true
+  supported_elements: null
+  training_data: MatPES r2SCAN, r2SCAN
+matgl-TensorNet-PES-MatPES-PBE-2025.2:
+  checkpoint: huggingface materialyze/TensorNet-PES-MatPES-PBE-2025.2 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: same-family
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources:
+  - matpes/pbe
+  identifier: matgl:TensorNet-PES-MatPES-PBE-2025.2
+  mad_energy_target: null
+  molecular_only: false
+  name: TensorNet MatPES PBE 2025.2
+  stress: true
+  supported_elements: null
+  training_data: MatPES PBE, PBE
+matgl-TensorNet-PES-MatPES-PBE-2025.2-m:
+  checkpoint: huggingface materialyze/TensorNet-PES-MatPES-PBE-2025.2-m (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: same-family
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources:
+  - matpes/pbe
+  identifier: matgl:TensorNet-PES-MatPES-PBE-2025.2-m
+  mad_energy_target: null
+  molecular_only: false
+  name: TensorNet MatPES PBE 2025.2 m
+  stress: true
+  supported_elements: null
+  training_data: MatPES PBE, PBE
+matgl-TensorNet-PES-MatPES-r2SCAN-2025.2:
+  checkpoint: huggingface materialyze/TensorNet-PES-MatPES-r2SCAN-2025.2 (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: matgl:TensorNet-PES-MatPES-r2SCAN-2025.2
+  mad_energy_target: null
+  molecular_only: false
+  name: TensorNet MatPES r2SCAN 2025.2
+  stress: true
+  supported_elements: null
+  training_data: MatPES r2SCAN, r2SCAN
+matgl-TensorNet-PES-MatPES-r2SCAN-2025.2-m:
+  checkpoint: huggingface materialyze/TensorNet-PES-MatPES-r2SCAN-2025.2-m (model.json, model.pt, state.pt), matgl 4.1.3
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: matgl:TensorNet-PES-MatPES-r2SCAN-2025.2-m
+  mad_energy_target: null
+  molecular_only: false
+  name: TensorNet MatPES r2SCAN 2025.2 m
+  stress: true
+  supported_elements: null
+  training_data: MatPES r2SCAN, r2SCAN
+mattersim-mattersim-v1.0.0-1m:
+  aliases:
+  - mattersim-1M
+  checkpoint: mattersim-v1.0.0-1m.pth shipped with mattersim 1.2.5, mattersim 1.2.5
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources: null
+  identifier: mattersim:mattersim-v1.0.0-1m
+  mad_energy_target: null
+  molecular_only: false
+  name: MatterSim v1.0.0 1M
+  stress: true
+  supported_elements: null
+  training_data: MatterSim generated structures, 3M (1m) or 6M (5m), PBE, PBE
+mattersim-mattersim-v1.0.0-5m:
+  aliases:
+  - mattersim-5M
+  checkpoint: mattersim-v1.0.0-5m.pth shipped with mattersim 1.2.5, mattersim 1.2.5
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources: null
+  identifier: mattersim:mattersim-v1.0.0-5m
+  mad_energy_target: null
+  molecular_only: false
+  name: MatterSim v1.0.0 5M
+  stress: true
+  supported_elements: null
+  training_data: MatterSim generated structures, 3M (1m) or 6M (5m), PBE, PBE
+orb-orb-mptraj-only-v2:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-mptraj-only-v2, orb-models 0.7.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: orb:orb-mptraj-only-v2
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v2, MPtrj only
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+orb-orb-v2:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v2, orb-models 0.7.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  - alexandria/static
+  identifier: orb:orb-v2
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v2
+  stress: true
+  supported_elements: null
+  training_data: MPtrj and sAlex, PBE+U
+orb-orb-v3-conservative-20-mpa:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-conservative-20-mpa, orb-models 0.7.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  - alexandria/static
+  identifier: orb:orb-v3-conservative-20-mpa
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v3 conservative 20 MPA
+  stress: true
+  supported_elements: null
+  training_data: MPtrj and sAlex, PBE+U
+orb-orb-v3-conservative-20-omat:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-conservative-20-omat, orb-models 0.7.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: orb:orb-v3-conservative-20-omat
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v3 conservative 20 OMat
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+orb-orb-v3-conservative-inf-mpa:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-conservative-inf-mpa, orb-models 0.7.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  - alexandria/static
+  identifier: orb:orb-v3-conservative-inf-mpa
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v3 conservative inf MPA
+  stress: true
+  supported_elements: null
+  training_data: MPtrj and sAlex, PBE+U
+orb-orb-v3-conservative-inf-omat:
+  aliases:
+  - orb-v3-consv-inf-omat
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-conservative-inf-omat, orb-models 0.7.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: orb:orb-v3-conservative-inf-omat
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v3 conservative inf OMat
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+orb-orb-v3-conservative-omol:
+  aliases:
+  - orb-v3-consv-omol
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-conservative-omol, orb-models 0.7.0
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: orb:orb-v3-conservative-omol
+  mad_energy_target: null
+  molecular_only: true
+  name: Orb v3 conservative OMol
+  stress: true
+  supported_elements: null
+  training_data: OMol25, wB97M-V
+orb-orb-v3-direct-20-mpa:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-direct-20-mpa, orb-models 0.7.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  - alexandria/static
+  identifier: orb:orb-v3-direct-20-mpa
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v3 direct 20 MPA
+  stress: true
+  supported_elements: null
+  training_data: MPtrj and sAlex, PBE+U
+orb-orb-v3-direct-20-omat:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-direct-20-omat, orb-models 0.7.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: orb:orb-v3-direct-20-omat
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v3 direct 20 OMat
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+orb-orb-v3-direct-inf-mpa:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-direct-inf-mpa, orb-models 0.7.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  - alexandria/static
+  identifier: orb:orb-v3-direct-inf-mpa
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v3 direct inf MPA
+  stress: true
+  supported_elements: null
+  training_data: MPtrj and sAlex, PBE+U
+orb-orb-v3-direct-inf-omat:
+  aliases:
+  - orb-v3-direct-inf-omat
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-direct-inf-omat, orb-models 0.7.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: orb:orb-v3-direct-inf-omat
+  mad_energy_target: null
+  molecular_only: false
+  name: Orb v3 direct inf OMat
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+orb-orb-v3-direct-omol:
+  checkpoint: orb-models 0.7.0 pretrained registry orb-v3-direct-omol, orb-models 0.7.0
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: orb:orb-v3-direct-omol
+  mad_energy_target: null
+  molecular_only: true
+  name: Orb v3 direct OMol
+  stress: false
+  supported_elements: null
+  training_data: OMol25, wB97M-V
+sevenn-7net-0:
+  checkpoint: SevenNet_0__11Jul2024/checkpoint_sevennet_0.pth, sevenn 0.13.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: sevenn:7net-0
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet-0
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+sevenn-7net-l3i5:
+  checkpoint: SevenNet_l3i5/checkpoint_l3i5.pth, sevenn 0.13.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  identifier: sevenn:7net-l3i5
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet l3i5
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, PBE+U
+sevenn-7net-mf-ompa-mpa:
+  checkpoint: SevenNet_MF_ompa/checkpoint_sevennet_mf_ompa.pth, sevenn 0.13.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  - alexandria/static
+  identifier: sevenn:7net-mf-ompa@mpa
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet MF-ompa, MPA head
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, sAlex and OMat24 multi fidelity, PBE+U
+sevenn-7net-mf-ompa-omat24:
+  checkpoint: SevenNet_MF_ompa/checkpoint_sevennet_mf_ompa.pth, sevenn 0.13.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: sevenn:7net-mf-ompa@omat24
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet MF-ompa, OMat24 head
+  stress: true
+  supported_elements: null
+  training_data: MPtrj, sAlex and OMat24 multi fidelity, PBE+U
+sevenn-7net-omat:
+  checkpoint: SevenNet_omat/checkpoint_sevennet_omat.pth, sevenn 0.13.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: sevenn:7net-omat
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet OMat
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+sevenn-7net-omni-matpes_pbe:
+  checkpoint: SevenNet_omni/checkpoint_sevennet_omni.pth, sevenn 0.13.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: u-differs
+    mad/r2scan: incompatible
+    matpes/pbe: same-family
+    matpes/r2scan: functional-differs
+    mptrj/static: u-differs
+    omat24/static: u-differs
+  energy_scale_sources:
+  - matpes/pbe
+  identifier: sevenn:7net-omni@matpes_pbe
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet Omni, MatPES PBE head
+  stress: true
+  supported_elements: null
+  training_data: 15 datasets multi task (MPtrj, sAlex, OMat24, MatPES PBE, MatPES r2SCAN, MAD-1.0 PBEsol, OMol25, SPICE and
+    others), MatPES PBE head, PBE
+sevenn-7net-omni-matpes_r2scan:
+  checkpoint: SevenNet_omni/checkpoint_sevennet_omni.pth, sevenn 0.13.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: sevenn:7net-omni@matpes_r2scan
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet Omni, MatPES r2SCAN head
+  stress: true
+  supported_elements: null
+  training_data: 15 datasets multi task (MPtrj, sAlex, OMat24, MatPES PBE, MatPES r2SCAN, MAD-1.0 PBEsol, OMol25, SPICE and
+    others), MatPES r2SCAN head, r2SCAN
+sevenn-7net-omni-mpa:
+  aliases:
+  - sevennet-omni-mpa
+  checkpoint: SevenNet_omni/checkpoint_sevennet_omni.pth, sevenn 0.13.0
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - mptrj/static
+  - alexandria/static
+  identifier: sevenn:7net-omni@mpa
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet Omni, MPA head
+  stress: true
+  supported_elements: null
+  training_data: 15 datasets multi task (MPtrj, sAlex, OMat24, MatPES PBE, MatPES r2SCAN, MAD-1.0 PBEsol, OMol25, SPICE and
+    others), MPtrj and sAlex head, PBE+U
+sevenn-7net-omni-omat24:
+  checkpoint: SevenNet_omni/checkpoint_sevennet_omni.pth, sevenn 0.13.0
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: sevenn:7net-omni@omat24
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet Omni, OMat24 head
+  stress: true
+  supported_elements: null
+  training_data: 15 datasets multi task (MPtrj, sAlex, OMat24, MatPES PBE, MatPES r2SCAN, MAD-1.0 PBEsol, OMol25, SPICE and
+    others), OMat24 head, PBE+U
+sevenn-7net-omni-omol25_high:
+  checkpoint: SevenNet_omni/checkpoint_sevennet_omni.pth, sevenn 0.13.0
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: sevenn:7net-omni@omol25_high
+  mad_energy_target: null
+  molecular_only: true
+  name: SevenNet Omni, OMol25 head
+  stress: true
+  supported_elements: null
+  training_data: 15 datasets multi task (MPtrj, sAlex, OMat24, MatPES PBE, MatPES r2SCAN, MAD-1.0 PBEsol, OMol25, SPICE and
+    others), OMol25 high spin head, wB97M-V
+sevenn-7net-omni-pet_mad:
+  checkpoint: SevenNet_omni/checkpoint_sevennet_omni.pth, sevenn 0.13.0
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources: null
+  identifier: sevenn:7net-omni@pet_mad
+  mad_energy_target: null
+  molecular_only: false
+  name: SevenNet Omni, PET-MAD head
+  stress: true
+  supported_elements: null
+  training_data: 15 datasets multi task (MPtrj, sAlex, OMat24, MatPES PBE, MatPES r2SCAN, MAD-1.0 PBEsol, OMol25, SPICE and
+    others), MAD-1 head, PBEsol
+upet-pet-mad-m-1.6.0:
+  checkpoint: pet-mad-m-v1.6.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: same-family
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-mad-m@1.6.0
+  mad_energy_target: atomization_energy
+  molecular_only: false
+  name: PET-MAD m 1.6.0
+  stress: true
+  supported_elements: null
+  training_data: MAD-1.6, fine tuned from OMat24, r2SCAN
+upet-pet-mad-s-1.6.0:
+  checkpoint: pet-mad-s-v1.6.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: same-family
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-mad-s@1.6.0
+  mad_energy_target: atomization_energy
+  molecular_only: false
+  name: PET-MAD s 1.6.0
+  stress: true
+  supported_elements: null
+  training_data: MAD-1.6, fine tuned from OMat24, r2SCAN
+upet-pet-mad-xs:
+  checkpoint: pet-mad-xs-v1.6.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: same-family
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-mad-xs
+  mad_energy_target: atomization_energy
+  molecular_only: false
+  name: PET-MAD xs
+  stress: true
+  supported_elements: null
+  training_data: MAD-1.6, fine tuned from OMat24, r2SCAN
+upet-pet-mols-s:
+  checkpoint: pet-mols-s-v1.1.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-mols-s
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-MolS s
+  stress: true
+  supported_elements:
+  - H
+  - C
+  - N
+  - O
+  - F
+  - Na
+  - Mg
+  - P
+  - S
+  - Cl
+  - K
+  - Ca
+  training_data: MAD-1.0 then a CSD molecular crystal subsample, 12 elements, PBE0+MBD
+upet-pet-oam-l:
+  checkpoint: pet-oam-l-v0.1.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: upet:pet-oam-l
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OAM l
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+upet-pet-oam-xl-1.0.0:
+  aliases:
+  - pet-oam-xl
+  checkpoint: pet-oam-xl-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown, MP2020 corrections not documented
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - alexandria/static
+  - mptrj/static
+  identifier: upet:pet-oam-xl@1.0.0
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OAM xl 1.0.0
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then sAlex and MPtrj, PBE+U
+upet-pet-omad-l:
+  checkpoint: pet-omad-l-v0.1.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources: null
+  identifier: upet:pet-omad-l
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMAD l
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then MAD-1.0, PBEsol
+upet-pet-omad-s:
+  checkpoint: pet-omad-s-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources: null
+  identifier: upet:pet-omad-s
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMAD s
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then MAD-1.0, PBEsol
+upet-pet-omad-xs:
+  checkpoint: pet-omad-xs-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources: null
+  identifier: upet:pet-omad-xs
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMAD xs
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then MAD-1.0, PBEsol
+upet-pet-omat-l:
+  checkpoint: pet-omat-l-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: upet:pet-omat-l
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMat l
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+upet-pet-omat-m:
+  checkpoint: pet-omat-m-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: upet:pet-omat-m
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMat m
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+upet-pet-omat-s:
+  checkpoint: pet-omat-s-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: upet:pet-omat-s
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMat s
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+upet-pet-omat-xl-1.0.0:
+  checkpoint: pet-omat-xl-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: upet:pet-omat-xl@1.0.0
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMat xl 1.0.0
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+upet-pet-omat-xs:
+  checkpoint: pet-omat-xs-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: same-family
+    mad/r2scan: incompatible
+    matpes/pbe: u-differs
+    matpes/r2scan: functional-differs
+    mptrj/static: same-family
+    omat24/static: same-family
+  energy_scale_sources:
+  - omat24/static
+  identifier: upet:pet-omat-xs
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMat xs
+  stress: true
+  supported_elements: null
+  training_data: OMat24, PBE+U
+upet-pet-omatpes-l-0.1.0:
+  checkpoint: pet-omatpes-l-v0.1.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: none, the source labels are raw VASP energies
+  energy_relation:
+    alexandria/static: functional-differs
+    mad/r2scan: incompatible
+    matpes/pbe: functional-differs
+    matpes/r2scan: same-family
+    mptrj/static: functional-differs
+    omat24/static: functional-differs
+  energy_scale_sources:
+  - matpes/r2scan
+  identifier: upet:pet-omatpes-l@0.1.0
+  mad_energy_target: null
+  molecular_only: false
+  name: PET-OMatPES l 0.1.0
+  stress: true
+  supported_elements: null
+  training_data: OMat24 then MatPES r2SCAN, r2SCAN
+upet-pet-omol-l:
+  checkpoint: pet-omol-l-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-omol-l
+  mad_energy_target: null
+  molecular_only: true
+  name: PET-OMol l
+  stress: true
+  supported_elements: null
+  training_data: OMol25, wB97M-V
+upet-pet-omol-m:
+  checkpoint: pet-omol-m-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-omol-m
+  mad_energy_target: null
+  molecular_only: true
+  name: PET-OMol m
+  stress: true
+  supported_elements: null
+  training_data: OMol25, wB97M-V
+upet-pet-omol-s:
+  checkpoint: pet-omol-s-v1.0.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-omol-s
+  mad_energy_target: null
+  molecular_only: true
+  name: PET-OMol s
+  stress: true
+  supported_elements: null
+  training_data: OMol25, wB97M-V
+upet-pet-spice-l:
+  checkpoint: pet-spice-l-v0.2.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-spice-l
+  mad_energy_target: null
+  molecular_only: true
+  name: PET-SPICE l
+  stress: true
+  supported_elements: null
+  training_data: SPICE, 17 elements, wB97M-D3
+upet-pet-spice-s:
+  checkpoint: pet-spice-s-v0.2.0.ckpt from huggingface lab-cosmo/upet 06774bd774562c6f801024f380c5af3026c66b60, upet 0.3.1
+  energy_corrections: unknown
+  energy_relation:
+    alexandria/static: incompatible
+    mad/r2scan: incompatible
+    matpes/pbe: incompatible
+    matpes/r2scan: incompatible
+    mptrj/static: incompatible
+    omat24/static: incompatible
+  energy_scale_sources: null
+  identifier: upet:pet-spice-s
+  mad_energy_target: null
+  molecular_only: true
+  name: PET-SPICE s
+  stress: true
+  supported_elements: null
+  training_data: SPICE, 17 elements, wB97M-D3

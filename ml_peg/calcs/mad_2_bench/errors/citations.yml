@@ -1,0 +1,17 @@
+implementers:
+  - name: "Sofiia Chorna"
+    github: "sofiia-chorna"
+
+citations:
+  - bibtex_key: kaplan2025foundationalpotentialenergysurface
+    role: reference_method
+    detail: MatPES PBE and r2SCAN
+  - bibtex_key: barroso-luque-2024-omat24
+    role: reference_method
+    detail: OMat24 and sAlex
+  - bibtex_key: schmidt-2023-alexandria
+    role: reference_method
+    detail: Alexandria PBE
+  - bibtex_key: deng-2023-chgnet
+    role: reference_method
+    detail: MPtrj

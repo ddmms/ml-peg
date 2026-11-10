@@ -13,6 +13,7 @@ Benchmarks
     defects
     electrolytes
     f_block
+    mad-2-bench
     molecular
     molecular_crystal
     molecular_dynamics

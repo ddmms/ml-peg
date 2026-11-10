@@ -502,11 +502,13 @@ def build_category(
                 category_descrip = category_info.get("description", "")
                 category_weight = category_info.get("weight", 1)
                 benchmark_weights = category_info.get("benchmark_weights", {})
+                category_framework = category_info.get("framework")
         except FileNotFoundError:
             category_title = category
             category_descrip = ""
             category_weight = 1
             benchmark_weights = {}
+            category_framework = None
 
         category_to_title[category] = category_title
 
@@ -558,6 +560,7 @@ def build_category(
             "summary_table": summary_table,
             "weight_components": weight_components,
             "tests": test_entries,
+            "framework": category_framework,
         }
 
     # Register callback for all benchmark tables -> category table
@@ -707,6 +710,21 @@ def build_nav(
         for framework_id in framework_order
     }
 
+    moved_categories = {
+        category_name: framework_paths[category_view["framework"]]
+        for category_name, category_view in category_views.items()
+        if category_view["framework"] in framework_paths
+    }
+    moved_category_paths = {
+        category_paths[category_name]: framework_path
+        for category_name, framework_path in moved_categories.items()
+    }
+    sidebar_category_paths = {
+        category_name: path
+        for category_name, path in category_paths.items()
+        if category_name not in moved_categories
+    }
+
     _summary_label_style = {
         "cursor": "pointer",
         "fontWeight": "600",
@@ -726,7 +744,7 @@ def build_nav(
             Div(
                 id="sidebar-nav",
                 children=build_sidebar(
-                    "/", category_paths, framework_paths, framework_labels
+                    "/", sidebar_category_paths, framework_paths, framework_labels
                 ),
                 **{"role": "navigation", "aria-label": "Benchmark navigation"},
             ),
@@ -994,7 +1012,10 @@ def build_nav(
     register_bug_report_callbacks(global_state_stores)
     register_search_callbacks(
         build_search_entries(
-            category_paths, framework_paths, framework_labels, category_views
+            {**category_paths, **moved_categories},
+            framework_paths,
+            framework_labels,
+            category_views,
         )
     )
 
@@ -1220,8 +1241,9 @@ def build_nav(
         """
         if expand_pref not in ("expanded", "collapsed"):
             expand_pref = None
+        pathname = moved_category_paths.get(pathname, pathname)
         sidebar_children = build_sidebar(
-            pathname, category_paths, framework_paths, framework_labels
+            pathname, sidebar_category_paths, framework_paths, framework_labels
         )
 
         if pathname in (None, "", "/", "/summary"):

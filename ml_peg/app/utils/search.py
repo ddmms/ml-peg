@@ -52,7 +52,8 @@ def build_search_entries(
     Parameters
     ----------
     category_paths
-        Mapping of category title to its URL path.
+        Mapping of category title to its URL path. Categories mapped to a framework
+        path get no entry of their own.
     framework_paths
         Mapping of framework ID to its URL path.
     framework_labels
@@ -68,6 +69,7 @@ def build_search_entries(
     entries = [
         {"label": category_title, "kind": "Category", "href": category_path}
         for category_title, category_path in category_paths.items()
+        if category_path not in framework_paths.values()
     ]
 
     entries.extend(
