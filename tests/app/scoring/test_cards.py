@@ -77,6 +77,10 @@ def test_individual_toggle_sends_only_expansion_state(ready_page, page_errors):
             lambda request: (
                 "_dash-update-component" in request.url
                 and "bench-body" in request.post_data_json["output"]
+                and any(
+                    '"type":"bench-toggle"' in prop
+                    for prop in request.post_data_json.get("changedPropIds", [])
+                )
             )
         ) as pending:
             header.click()
