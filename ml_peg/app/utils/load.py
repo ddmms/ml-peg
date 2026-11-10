@@ -12,6 +12,7 @@ from dash.dcc import Graph
 import orjson
 
 from ml_peg.analysis.utils.utils import calc_metric_scores, get_table_style
+from ml_peg.app.utils.model_order import order_model_rows
 from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.speed import speed_for_table_path
 from ml_peg.app.utils.utils import (
@@ -92,7 +93,7 @@ def rebuild_table(
     none_to_nan(data)
     # Hide models with no result in any metric column for this benchmark
     # An empty row cannot currenrly gain data
-    data = drop_empty_model_rows(data)
+    data = order_model_rows(drop_empty_model_rows(data))
 
     model_name_map = dict(table_json.get("model_name_map") or {})
     thresholds = clean_thresholds(table_json.get("thresholds"))

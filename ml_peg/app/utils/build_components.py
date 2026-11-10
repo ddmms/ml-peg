@@ -19,6 +19,7 @@ import yaml
 from ml_peg import __version__
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
 from ml_peg.app.utils.build_credits import build_benchmark_credit_components
+from ml_peg.app.utils.model_order import order_model_rows
 from ml_peg.app.utils.register_callbacks import (
     register_category_table_callbacks,
     register_download_callbacks,
@@ -248,7 +249,7 @@ def build_summary_table(
         for empty_column in empty_columns:
             weights[empty_column] = 0.0
 
-    data = calc_table_scores(data, weights=weights)
+    data = order_model_rows(calc_table_scores(data, weights=weights))
 
     columns_headers = ("MLIP", "Score") + tuple(key + " Score" for key in tables)
 
