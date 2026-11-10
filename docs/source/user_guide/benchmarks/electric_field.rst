@@ -87,7 +87,7 @@ information only, with weight 0.
 Computational cost
 ------------------
 
-Low: tests are likely to take seconds to minutes to run on CPU for each model.
+Fast: tests are likely to take seconds to minutes to run on CPU for each model.
 
 The workload is fixed and the same for every model: 80 single-point energy
 calculations, 40 per family, with no geometry optimisation and no dynamics. Systems
