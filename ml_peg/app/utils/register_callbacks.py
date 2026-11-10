@@ -33,6 +33,7 @@ from ml_peg.analysis.utils.utils import (
     get_table_style,
     update_score_style,
 )
+from ml_peg.app.utils.model_order import order_model_rows, register_model_order_reset
 from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
     SUMMARY_TABLE_ID,
@@ -172,6 +173,7 @@ def register_summary_table_callbacks(
         and the prefix of its `-scores-store`, `-weight-store`, and
         `-computed-store`. Default is "summary-table".
     """
+    register_model_order_reset(prefix)
     default_rows = deepcopy(initial_rows) if initial_rows else []
 
     @callback(
@@ -227,6 +229,7 @@ def register_summary_table_callbacks(
         Input(f"{prefix}-computed-store", "data"),
         Input("cmap-store", "data"),
         State(f"{prefix}-weight-store", "data"),
+        Input("model-order-store", "data", allow_optional=True),
         prevent_initial_call="initial_duplicate",
         optional=True,
         **COMPRESS_STORES,
@@ -236,6 +239,7 @@ def register_summary_table_callbacks(
         computed_store: list[dict] | None,
         cmap_name: str | None,
         stored_weights: dict[str, float] | None,
+        model_order: dict | None = None,
     ) -> tuple[list[dict], list[dict], list[dict]]:
         """
         Sync the visible summary table from cached unfiltered rows.
@@ -250,6 +254,8 @@ def register_summary_table_callbacks(
             Matplotlib colormap name from the cmap store.
         stored_weights
             Current column weights, used to dim any zero-weight column.
+        model_order
+            Global alphabetical/random ordering mode and stable random seed.
 
         Returns
         -------
@@ -260,7 +266,9 @@ def register_summary_table_callbacks(
             raise PreventUpdate
 
         visible_rows = drop_empty_model_rows(computed_store)
-        filtered_rows = filter_rows_by_models(visible_rows, selected_models)
+        filtered_rows = order_model_rows(
+            filter_rows_by_models(visible_rows, selected_models), model_order
+        )
         base_style = (
             get_table_style(
                 filtered_rows,
@@ -324,10 +332,12 @@ def register_category_table_callbacks(
         for). The suffix is stripped from the id to derive the score column key.
         Default is "-summary-table".
     """
+    register_model_order_reset(table_id)
 
     @callback(
         Output(table_id, "data", allow_duplicate=True),
         Output(table_id, "style_data_conditional", allow_duplicate=True),
+        Output(table_id, "tooltip_data", allow_duplicate=True),
         Input(f"{table_id}-raw-data-store", "data"),
         State(f"{table_id}-computed-store", "data"),
         State(f"{table_id}-weight-store", "data"),
@@ -337,6 +347,7 @@ def register_category_table_callbacks(
         State("cmap-store", "data"),
         State(f"{table_id}-raw-tooltip-store", "data"),
         State(table_id, "columns"),
+        State("model-order-store", "data", allow_optional=True),
         prevent_initial_call=True,
         optional=True,
         **COMPRESS_STORES,
@@ -351,7 +362,8 @@ def register_category_table_callbacks(
         cmap_name: str | None,
         raw_tooltips: dict[str, str] | None,
         current_columns: list[dict] | None,
-    ) -> list[dict]:
+        model_order: dict | None = None,
+    ) -> tuple[list[dict], list[dict], list[dict]]:
         """
         Update visible table from cached data when the raw data store changes.
 
@@ -375,18 +387,24 @@ def register_category_table_callbacks(
             Stored raw tooltip text for the table.
         current_columns
             Current table columns.
+        model_order
+            Global alphabetical/random ordering mode and stable random seed.
 
         Returns
         -------
-        list[dict]
-            Updated rows for the visible table.
+        tuple[list[dict], list[dict], list[dict]]
+            Updated rows, styles and aligned tooltips for the visible table.
         """
         display_rows = get_scores(
             stored_raw_data, stored_computed_data, thresholds, toggle_value
         )
         scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
-        filtered_rows = filter_rows_by_models(display_rows, selected_models)
-        filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+        filtered_rows = order_model_rows(
+            filter_rows_by_models(display_rows, selected_models), model_order
+        )
+        filtered_scores = order_model_rows(
+            filter_rows_by_models(scored_rows, selected_models), model_order
+        )
         style = (
             get_table_style(
                 filtered_rows,
@@ -404,7 +422,7 @@ def register_category_table_callbacks(
             metric_levels=metric_levels,
             model_configs=model_configs,
         )
-        return filtered_rows, style
+        return filtered_rows, style, tooltip_data
 
     # Benchmark tables
     if use_thresholds:
@@ -426,6 +444,7 @@ def register_category_table_callbacks(
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(table_id, "columns"),
+            Input("model-order-store", "data", allow_optional=True),
             # "initial_duplicate" (not True): a benchmark table re-mounted on
             # navigation must re-derive its scores from the persisted weight/
             # threshold stores, otherwise it shows the build-time default and a
@@ -446,6 +465,7 @@ def register_category_table_callbacks(
             stored_computed_data: list[dict] | None,
             raw_tooltips: dict[str, str] | None,
             current_columns: list[dict] | None,
+            model_order: dict | None = None,
         ) -> tuple[
             list[dict],
             list[dict],
@@ -472,6 +492,8 @@ def register_category_table_callbacks(
                 Table data.
             stored_computed_data
                 Latest table rows emitted by the table.
+            model_order
+                Global alphabetical/random ordering mode and stable random seed.
             """
             if not stored_raw_data or current_columns is None:
                 raise PreventUpdate
@@ -497,8 +519,12 @@ def register_category_table_callbacks(
                 display_rows = get_scores(
                     stored_raw_data, scored_rows, thresholds, toggle_value
                 )
-                filtered_rows = filter_rows_by_models(display_rows, selected_models)
-                filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+                filtered_rows = order_model_rows(
+                    filter_rows_by_models(display_rows, selected_models), model_order
+                )
+                filtered_scores = order_model_rows(
+                    filter_rows_by_models(scored_rows, selected_models), model_order
+                )
                 style = (
                     get_table_style(
                         filtered_rows,
@@ -543,8 +569,12 @@ def register_category_table_callbacks(
             display_rows = get_scores(
                 metrics_data, scored_rows, thresholds, toggle_value
             )
-            filtered_rows = filter_rows_by_models(display_rows, selected_models)
-            filtered_scores = filter_rows_by_models(scored_rows, selected_models)
+            filtered_rows = order_model_rows(
+                filter_rows_by_models(display_rows, selected_models), model_order
+            )
+            filtered_scores = order_model_rows(
+                filter_rows_by_models(scored_rows, selected_models), model_order
+            )
             style = (
                 get_table_style(
                     filtered_rows,
@@ -590,6 +620,7 @@ def register_category_table_callbacks(
             Input("cmap-store", "data"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
+            Input("model-order-store", "data", allow_optional=True),
             # "initial_duplicate": re-derive on re-mount so a returning user's
             # weights persist (see update_benchmark_table_scores).
             prevent_initial_call="initial_duplicate",
@@ -602,6 +633,7 @@ def register_category_table_callbacks(
             cmap_name: str | None,
             table_data: list[dict] | None,
             computed_store: list[dict] | None,
+            model_order: dict | None = None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
             # Always use computed_store (full unfiltered rows) as the source so
             # that re-selecting a model restores it. Fall back to table_data only
@@ -625,7 +657,9 @@ def register_category_table_callbacks(
             # to/from NaN when benchmark weights change, so filter on the fly here
             # rather than removing rows from the store.
             filtered_rows = drop_empty_model_rows(
-                filter_rows_by_models(scored_rows, selected_models)
+                order_model_rows(
+                    filter_rows_by_models(scored_rows, selected_models), model_order
+                )
             )
             style = (
                 get_table_style(
@@ -644,7 +678,9 @@ def register_category_table_callbacks(
                 model_configs=model_configs,
             )
 
-            if not table_data or len(filtered_rows) != len(table_data):
+            if not table_data or [row.get("MLIP") for row in filtered_rows] != [
+                row.get("MLIP") for row in table_data
+            ]:
                 return filtered_rows, style, tooltip_data, scored_rows
 
             patch = Patch()
@@ -672,6 +708,7 @@ def register_category_table_callbacks(
             Input("selected-models-store", "data"),
             Input("cmap-store", "data"),
             State(f"{table_id}-weight-store", "data"),
+            Input("model-order-store", "data", allow_optional=True),
             # "initial_duplicate": re-sync the rendered table from its computed
             # store on re-mount so edits persist across navigation.
             prevent_initial_call="initial_duplicate",
@@ -682,6 +719,7 @@ def register_category_table_callbacks(
             selected_models: list[str] | None,
             cmap_name: str | None,
             stored_weights: dict[str, float] | None,
+            model_order: dict | None = None,
         ) -> tuple[list[dict], list[dict], list[dict]]:
             """
             Sync the visible category table from its cached unfiltered rows.
@@ -692,6 +730,8 @@ def register_category_table_callbacks(
                 Cached unfiltered rows for the category summary.
             selected_models
                 Currently selected model names.
+            model_order
+                Global alphabetical/random ordering mode and stable random seed.
 
             Returns
             -------
@@ -702,7 +742,9 @@ def register_category_table_callbacks(
                 raise PreventUpdate
 
             filtered_rows = drop_empty_model_rows(
-                filter_rows_by_models(computed_store, selected_models)
+                order_model_rows(
+                    filter_rows_by_models(computed_store, selected_models), model_order
+                )
             )
             style = (
                 get_table_style(

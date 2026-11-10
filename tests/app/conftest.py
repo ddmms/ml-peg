@@ -130,7 +130,9 @@ def set_model_visible(page, model: str, visible: bool) -> None:  # noqa: ANN001
     expect(search).to_be_focused()
     search.fill(model)
     # Wait for the list to narrow: the wanted option renders before it does.
-    expect(page.get_by_role("option").filter(has_not_text=model)).to_have_count(0)
+    expect(
+        page.locator(".dash-dropdown-option").filter(has_not_text=model)
+    ).to_have_count(0)
     # Search matches substrings, so name the wanted option exactly.
     option = page.get_by_role("option", name=model, exact=True)
     expect(option).to_have_count(1)
