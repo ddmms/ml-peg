@@ -909,6 +909,7 @@ class NequIPCalc(SumCalc):
 
     device: Device | str = Device.AUTO
     compile: bool = True
+    default_dtype: str | None = None
     kwargs: dict = dataclasses.field(default_factory=dict)
 
     def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
@@ -932,6 +933,7 @@ class NequIPCalc(SumCalc):
             Loaded NequIP ASE calculator.
         """
         check_precision(precision)
+        warn_precision_unused("NequIPCalculator", self.default_dtype)
         from nequip.utils.dtype import torch_default_dtype
         import torch
 

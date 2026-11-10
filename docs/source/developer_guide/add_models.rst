@@ -231,8 +231,9 @@ The common fields are:
    setting it. The field may be set for any model, so it can be applied across a
    whole models file, but wrappers whose backend has no dtype argument warn that
    it has no effect. Those wrappers ignore the requested ``precision`` too: DPA
-   checkpoints are fixed at float32, SevenNet exposes no precision argument, and
-   Vivace takes its dtype from the checkpoint metadata.
+   checkpoints are fixed at float32, SevenNet exposes no precision argument,
+   NequIP packages fix their model dtype, and Vivace takes its dtype from the
+   checkpoint metadata.
 
    Set the precision through this field rather than ``kwargs``: a dtype argument
    in ``kwargs`` is rejected, since it would override both ``precision`` and

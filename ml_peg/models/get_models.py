@@ -493,6 +493,7 @@ def load_models(
                 loaded_models[name] = NequIPCalc(
                     device=cfg.get("device", "auto"),
                     compile=kwargs.pop("compile", True),
+                    default_dtype=cfg.get("overwrite_dtype", None),
                     kwargs=kwargs,
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
