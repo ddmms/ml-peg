@@ -105,9 +105,10 @@ families:
       ``TMDNETCalculator``, which always passes float32 inputs to the model, so both
       ``low`` and ``high`` precision run in float32 (the model itself also supports
       float64), and ``overwrite_dtype`` has no effect. The checkpoint is downloaded
-      from Hugging Face at the pinned ``revision``. Structures without
-      ``atoms.info["charge"]`` are evaluated as neutral. The model includes its own
-      dispersion correction, and covers H, B, C, N, O, F, Si, P, S, Cl, Br and I.
+      from Hugging Face at the pinned ``revision``. ``TMDNETCalculator`` reads the
+      total charge from ``atoms.info["charge"]``, so it must be set on every
+      structure. The model includes its own dispersion correction, and covers H, B,
+      C, N, O, F, Si, P, S, Cl, Br and I.
 
 models:
   aceff-2p0:

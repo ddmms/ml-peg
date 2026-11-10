@@ -1188,8 +1188,6 @@ class TorchMDNetCalc(SumCalc):
         Calculator
             Loaded TorchMD-Net ASE calculator.
         """
-        from ase.calculators.calculator import all_changes
-
         check_precision(precision)
         if self.default_dtype is not None:
             warn(
@@ -1207,36 +1205,13 @@ class TorchMDNetCalc(SumCalc):
             reserved=("model_file", "device", "dtype"),
         )
 
-        class DefaultChargeTMDNETCalculator(tmdnet_calculator):
-            """TorchMD-Net calculator that defaults to a neutral total charge."""
-
-            def calculate(
-                self, atoms=None, properties=None, system_changes=all_changes
-            ):
-                """
-                Calculate properties, defaulting to a neutral charge if unset.
-
-                Parameters
-                ----------
-                atoms
-                    Structure to evaluate.
-                properties
-                    Properties to calculate.
-                system_changes
-                    Changes since the last calculation.
-                """
-                # TMDNETCalculator raises KeyError without info["charge"]. Set it on
-                # atoms in place so check_state sees matching info and reuses results.
-                atoms.info.setdefault("charge", 0)
-                super().calculate(atoms, properties, system_changes)
-
         from huggingface_hub import hf_hub_download
 
         model_file = hf_hub_download(
             repo_id=self.repo_id, filename=self.filename, revision=self.revision
         )
         device = Device.resolve_auto() if self.device == Device.AUTO else self.device
-        return DefaultChargeTMDNETCalculator(
+        return tmdnet_calculator(
             model_file=model_file, device=device, **calculator_kwargs
         )
 

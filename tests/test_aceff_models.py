@@ -75,7 +75,7 @@ def calculator(aceff):
 @pytest.fixture
 def water(calculator):
     """
-    Build a water molecule without charge information, using the AceFF calculator.
+    Build a neutral water molecule, using the AceFF calculator.
 
     Parameters
     ----------
@@ -89,6 +89,7 @@ def water(calculator):
     """
     calculator.reset()
     atoms = molecule("H2O")
+    atoms.info["charge"] = 0
     atoms.calc = calculator
     return atoms
 
@@ -217,19 +218,6 @@ def test_aceff_warns_overwrite_dtype_unused(aceff):
         model.get_calculator(precision="high")
 
 
-def test_aceff_defaults_to_neutral_charge(water):
-    """Structures without ``info["charge"]`` are evaluated as neutral."""
-    default_energy = water.get_potential_energy()
-
-    neutral = water.copy()
-    neutral.info["charge"] = 0
-    neutral.calc = water.calc
-
-    assert water.info["charge"] == 0
-    assert np.isfinite(default_energy)
-    assert neutral.get_potential_energy() == pytest.approx(default_energy)
-
-
 def test_aceff_uses_explicit_charge(water):
     """An explicit total charge is kept and changes the predicted energy."""
     neutral_energy = water.get_potential_energy()
@@ -242,8 +230,8 @@ def test_aceff_uses_explicit_charge(water):
     assert charged_energy != pytest.approx(neutral_energy)
 
 
-def test_aceff_caches_results_with_default_charge(water):
-    """Setting the default charge does not invalidate cached results."""
+def test_aceff_caches_results(water):
+    """Repeated property requests reuse the cached results."""
     calc = water.calc
     evals = calc.evals
 
@@ -274,6 +262,7 @@ def test_aceff_runs_in_float32(aceff, precision):
     torch = pytest.importorskip("torch")
     calc = aceff.get_calculator(precision=precision)
     atoms = molecule("H2O")
+    atoms.info["charge"] = 0
     atoms.calc = calc
 
     assert np.isfinite(atoms.get_potential_energy())
