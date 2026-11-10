@@ -1,0 +1,15 @@
+implementers:
+  - name: "Panagiotis Kourtis"
+    github: "PKourtis"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+
+citations:
+  - bibtex_key: batatia2025foundation
+    role: benchmark_method
+  - bibtex_key: magduau2023interintra_volumescans
+    role: inspired_by

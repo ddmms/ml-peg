@@ -29,16 +29,16 @@ from ml_peg.data.data import download
 # Quieten the per-request werkzeug access log so test output stays readable.
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
-# Stand-in for the published data tarball (~800 KB against ~9 GB): a handful of
+# Stand-in for the published data tarball (~750 KB against ~9 GB): a handful of
 # benchmarks, published once to the ml-peg-data bucket and never overwritten. A
-# changed fixture is a new -v2 object plus a bump here. The bucket has no
+# changed fixture is a new -v3 object plus a bump here. The bucket has no
 # versioning, so the digest is what actually enforces that: a swapped object
-# fails loudly instead of quietly changing what the suite tests. (The object as
-# uploaded also carries macOS "__MACOSX/" resource-fork entries, which
-# extraction skips.)
-FIXTURE_VERSION = "v1"
+# fails loudly instead of quietly changing what the suite tests. (Extraction
+# only takes members under the version prefix, so any stray archive entries,
+# such as macOS "__MACOSX/" resource forks, are skipped.)
+FIXTURE_VERSION = "v2"
 FIXTURE_KEY = f"tests/ui-fixture-{FIXTURE_VERSION}.zip"
-FIXTURE_SHA256 = "b0fab46961813f329702b6d464171efc02edf73503c7c4c5069db7f91935564f"
+FIXTURE_SHA256 = "16571227683f2a73120e22b41c2f2f0821bc1ad969d65da71cad312ccc9b5c98"
 FIXTURE_ARCHIVE = BENCHMARK_DATA_DIR / f"ui-fixture-{FIXTURE_VERSION}.zip"
 
 # Benchmarks the fixture supplies, chosen for coverage per KB rather than size:

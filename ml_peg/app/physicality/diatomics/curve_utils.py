@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+from functools import lru_cache
 import io
 import json
 import math
@@ -53,25 +54,8 @@ def load_model_curves(
         The mapping is empty when the model has no curves for this view.
     """
     selected_element = None if element_value == overview_label else element_value
-    model_curve_dir = Path(curve_dir) / model_name
-    if not model_curve_dir.exists():
-        return selected_element, {}
-
     filtered: dict[str, dict] = {}
-    for curve_file in model_curve_dir.glob("*.json"):
-        # Curve files are written as "{pair}.json" with a matching "pair" key, so
-        # the view filter can be applied to the filename and skip reading the
-        # files that are not needed. Only ~2% of a model's curves are in any view.
-        try:
-            first, second = curve_file.stem.split("-")
-        except ValueError:
-            first = second = curve_file.stem
-        if selected_element is None:
-            if first != second:
-                continue
-        elif selected_element not in (first, second):
-            continue
-
+    for curve_file in _selected_curve_files(curve_dir, model_name, selected_element):
         try:
             curve = json.loads(curve_file.read_text())
         except Exception:
@@ -79,6 +63,112 @@ def load_model_curves(
         filtered[curve.get("pair") or curve_file.stem] = curve
 
     return selected_element, filtered
+
+
+def _selected_curve_files(
+    curve_dir: str | Path, model_name: str, selected_element: str | None
+) -> list[Path]:
+    """
+    Find only the curve files used by this model and element view.
+
+    Parameters
+    ----------
+    curve_dir
+        Directory containing model subfolders of curve files.
+    model_name
+        Model whose curves to select.
+    selected_element
+        Element symbol, or ``None`` for homonuclear curves.
+
+    Returns
+    -------
+    list[Path]
+        Selected curve paths sorted by filename.
+    """
+    selected = []
+    for path in (Path(curve_dir) / model_name).glob("*.json"):
+        try:
+            first, second = path.stem.split("-")
+        except ValueError:
+            first = second = path.stem
+        if (selected_element is None and first == second) or (
+            selected_element is not None and selected_element in (first, second)
+        ):
+            selected.append(path)
+    return sorted(selected)
+
+
+def _preview_png(
+    curve_dir: str | Path,
+    model_name: str,
+    element_value: str | None,
+    overview_label: str,
+) -> tuple[bytes, float, float]:
+    """
+    Reuse previews until their source files change, including additions/removals.
+
+    Parameters
+    ----------
+    curve_dir
+        Directory containing model subfolders of curve files.
+    model_name
+        Model whose preview to render.
+    element_value
+        Selected element or overview label. ``None`` also selects the overview.
+    overview_label
+        Dropdown label representing the homonuclear overview.
+
+    Returns
+    -------
+    tuple[bytes, float, float]
+        PNG bytes and the preview width and height in pixels.
+    """
+    root = Path(curve_dir).resolve()
+    element = None if element_value == overview_label else element_value
+    version = []
+    for path in _selected_curve_files(root, model_name, element):
+        try:
+            stat = path.stat()
+        except FileNotFoundError:
+            continue
+        version.append((path.name, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))
+    return _cached_preview_png(root, model_name, element, tuple(version))
+
+
+@lru_cache(maxsize=16)
+def _cached_preview_png(
+    curve_dir: Path,
+    model_name: str,
+    element: str | None,
+    source_version: tuple[tuple[str, int, int, int], ...],
+) -> tuple[bytes, float, float]:
+    """
+    Keep at most 16 rendered previews per process, keyed by source metadata.
+
+    Parameters
+    ----------
+    curve_dir
+        Resolved directory containing model subfolders of curve files.
+    model_name
+        Model whose preview to render.
+    element
+        Element symbol, or ``None`` for the homonuclear overview.
+    source_version
+        Cache key containing each selected file's name, size, and modification
+        and change timestamps in nanoseconds.
+
+    Returns
+    -------
+    tuple[bytes, float, float]
+        PNG bytes and the preview width and height in pixels.
+    """
+    return render_periodic_curve_gallery_png(
+        curve_dir=curve_dir,
+        model_name=model_name,
+        element_value=element,
+        overview_label="",
+        dpi=200,
+    )
 
 
 def _build_periodic_curve_gallery(
@@ -505,12 +595,11 @@ def register_image_gallery_callbacks(
             raise PreventUpdate
 
         try:
-            png_bytes, width, height = render_periodic_curve_gallery_png(
+            png_bytes, width, height = _preview_png(
                 curve_dir=curve_base,
                 model_name=model_name,
                 element_value=element_value,
                 overview_label=overview_label,
-                dpi=200,
             )
         except PreventUpdate:
             # Say which directory was empty rather than leaving a blank plot,

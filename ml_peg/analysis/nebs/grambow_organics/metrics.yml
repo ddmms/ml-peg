@@ -1,0 +1,15 @@
+metrics:
+  Convergence Rate:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1
+    tooltip: Fraction of NEB reaction simulations that converged below the final force threshold.
+    level_of_theory: null
+  Barrier Height MAE:
+    good: 1.0
+    bad: 10.0
+    unit: kcal/mol
+    weight: 1
+    tooltip: Mean absolute error of final forward NEB barriers across all reactions, including unconverged estimates. Missing or invalid energies give NaN.
+    level_of_theory: wB97X-D3/def2-TZVP

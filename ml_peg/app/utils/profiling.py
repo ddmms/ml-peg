@@ -7,9 +7,11 @@ import cProfile
 import json
 import os
 from pathlib import Path
+from threading import Lock
 from time import perf_counter
 from uuid import uuid4
 
+from dash._compression import decompress_payload
 from flask import Flask, request
 from werkzeug.middleware.profiler import ProfilerMiddleware
 
@@ -64,6 +66,28 @@ def profile_startup(directory: Path | None):
         )
 
 
+def _request_payload(compressed: bool) -> dict | None:
+    """
+    Read the callback request body, un-gzipping it when needed.
+
+    Parameters
+    ----------
+    compressed
+        Whether the request carries a gzipped body (``compress_payload``).
+
+    Returns
+    -------
+    dict | None
+        Decoded payload, or None if it cannot be read.
+    """
+    if not compressed:
+        return request.get_json(silent=True)
+    try:
+        return decompress_payload(request.data)
+    except (ValueError, OSError):
+        return None
+
+
 def enable_request_profiling(server: Flask, directory: Path | None) -> None:
     """
     Profile Dash requests and record callback names and payload sizes.
@@ -86,9 +110,12 @@ def enable_request_profiling(server: Flask, directory: Path | None) -> None:
         """Capture the callback output name without recording its inputs."""
         if not request.environ.get("ml_peg.profiling"):
             return
-        metadata = {"request_bytes": request.content_length}
+        # request_bytes is the on-the-wire size, so compressed for callbacks using
+        # compress_payload; "compressed" distinguishes those from small raw ones.
+        compressed = "gzip" in (request.headers.get("Content-Encoding") or "")
+        metadata = {"request_bytes": request.content_length, "compressed": compressed}
         if request.path.endswith("/_dash-update-component"):
-            payload = request.get_json(silent=True)
+            payload = _request_payload(compressed)
             if isinstance(payload, dict):
                 metadata["callback"] = payload.get("output")
         request.environ["ml_peg.profile"] = metadata
@@ -144,6 +171,10 @@ def enable_request_profiling(server: Flask, directory: Path | None) -> None:
     profiled = ProfilerMiddleware(
         original, stream=None, profile_dir=str(directory), filename_format=filename
     )
+    # cProfile claims a process-global sys.monitoring tool id, so two overlapping
+    # profiled requests raise "Another profiling tool is already active" and 500.
+    # The browser profiler loads layout and dependencies in parallel, so serialise.
+    profile_lock = Lock()
 
     def dispatch(environ, start_response):
         """
@@ -166,7 +197,10 @@ def enable_request_profiling(server: Flask, directory: Path | None) -> None:
             ("/_dash-layout", "/_dash-dependencies", "/_dash-update-component")
         ):
             environ["ml_peg.profiling"] = True
-            return profiled(environ, start_response)
+            # Timings start inside ProfilerMiddleware, so waiting here is not
+            # counted against the request that waited.
+            with profile_lock:
+                return profiled(environ, start_response)
         return original(environ, start_response)
 
     server.wsgi_app = dispatch

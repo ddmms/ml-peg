@@ -41,16 +41,6 @@ METRIC_ID_TO_LABEL: dict[str, str] = {
     FREE_ENERGY_2000K_METRIC_ID: "ΔF (2000 K) mean",
 }
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    include_filenames=True,
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-    model_name="DFT",
-)
-
 
 def _load_pickle(path: Path) -> Any | None:
     """
@@ -482,3 +472,12 @@ def test_phonons_ti64_analysis(
     table_path = OUT_PATH / "phonons_ti64_metrics_table.json"
     assert table_path.exists()
     assert SCATTER_FILENAME.exists()
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        include_filenames=True,
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+        model_name="DFT",
+    )

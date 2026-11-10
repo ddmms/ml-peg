@@ -11,11 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-# Get all models
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Wiggle150"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular.html#wiggle150"
@@ -34,13 +30,13 @@ class Wiggle150App(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        structs_dir = DATA_PATH / MODELS[0]
+        structs_dir = DATA_PATH / "mock"
         structure_files = sorted(
             structs_dir.glob("*.xyz"), key=lambda path: int(path.stem)
         )
 
         structs = [
-            f"/assets/molecular/{BENCHMARK_NAME}/{MODELS[0]}/{path.name}"
+            f"/assets/molecular/{BENCHMARK_NAME}/mock/{path.name}"
             for path in structure_files
         ]
 

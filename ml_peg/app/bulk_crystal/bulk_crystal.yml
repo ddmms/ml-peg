@@ -1,3 +1,9 @@
 title: Bulk Crystals
 description: Bulk crystal properties, including elastic moduli, phonons, and lattice constants.
 weight: 1
+benchmark_weights:
+  elasticity: 0
+  high_pressure_relaxation: 0
+  low_dimensional_relaxation: 0
+  phonons: 0
+  thermal_conductivity: 0

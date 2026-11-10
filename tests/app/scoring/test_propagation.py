@@ -284,3 +284,22 @@ def test_repeated_default_resets_preserve_scores(ready_page, page_errors):
         chain(page, 0.5, 0.4, 0.65)
         expect(page.locator('[id="B1-table-M1-input"]')).to_have_value("1")
         expect(page.locator('[id="B1-table-M1-bad-threshold"]')).to_have_value("10")
+
+
+@pytest.mark.parametrize(
+    "field,button,default",
+    [
+        ("B1-table-M1-input", "B1-table-reset-button", "1"),
+        ("B1-table-M1-bad-threshold", "B1-table-reset-thresholds-button", "10"),
+    ],
+)
+def test_reset_pending_edit(ready_page, page_errors, field, button, default):
+    """Reset restores an edited control before its debounced value is stored."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    control = page.locator(f'[id="{field}"]')
+    expect(control).to_have_value(default)
+    control.fill("7")
+    page.locator(f"#{button}").click()
+    expect(control).to_have_value(default)
+    score(page, "B1-table", 0.5)
