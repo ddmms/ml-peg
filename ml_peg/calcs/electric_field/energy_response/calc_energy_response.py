@@ -15,6 +15,7 @@ from warnings import warn
 from ase.io import read, write
 import numpy as np
 import pytest
+from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_github_data
 from ml_peg.models import current_models
@@ -63,7 +64,9 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
         tmp_file = write_dir / f"{dataset}.tmp"
         tmp_file.unlink(missing_ok=True)
 
-        for i, mol in enumerate(mols):
+        for i, mol in enumerate(
+            tqdm(mols, desc=f"{model_name} {Path(dataset).stem}", unit="struct")
+        ):
             mol.info["REF_energy"] = mol.get_potential_energy()
             mol_calc = copy(clean_calc)
             mol.calc = mol_calc
