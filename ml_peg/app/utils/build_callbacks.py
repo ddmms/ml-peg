@@ -192,7 +192,7 @@ def plot_from_table_cell(
         Output(plot_id, "children"),
         Output(table_id, "active_cell"),
         Input(table_id, "active_cell"),
-        State(table_id, "derived_viewport_data"),
+        State(table_id, "data"),
     )
     def show_plot(active_cell, current_table_data) -> Div:
         """
@@ -203,7 +203,7 @@ def plot_from_table_cell(
         active_cell
             Clicked cell in Dash table.
         current_table_data
-            Visible table rows after sorting, filtering and pagination.
+            Current table data (includes live updates from callbacks).
 
         Returns
         -------
