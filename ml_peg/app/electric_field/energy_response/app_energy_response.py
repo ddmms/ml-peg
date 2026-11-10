@@ -62,7 +62,7 @@ class EnergyResponseApp(BaseApp):
 
         structs_model = get_structs_model()
         structs_dir = DATA_PATH / structs_model
-        assets_prefix = f"assets/electric_field/energy_response/{structs_model}"
+        assets_prefix = f"/assets/electric_field/energy_response/{structs_model}"
 
         alkane_structs = [
             f"{assets_prefix}/{p.name}"
