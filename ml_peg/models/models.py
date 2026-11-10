@@ -424,15 +424,12 @@ def _download_nequip_package(url: str) -> str:
     return str(path)
 
 
-def _nequip_compile_variants(
-    modifiers: set[str], device: str
-) -> list[tuple[str, str | None]]:
+def _nequip_kernels(modifiers: set[str], device: str) -> list[str]:
     """
-    List the ways to compile a NequIP package for a device, fastest first.
+    List the installed GPU kernels a NequIP package can use on a device, fastest first.
 
-    On CUDA, NequIP models use OpenEquivariance kernels if installed, and
-    cuEquivariance then Triton for Allegro models. AOTInductor without GPU
-    kernels comes last.
+    On CUDA, NequIP models use OpenEquivariance kernels if installed, and cuEquivariance
+    then Triton for Allegro models.
 
     Parameters
     ----------
@@ -443,24 +440,21 @@ def _nequip_compile_variants(
 
     Returns
     -------
-    list[tuple[str, str | None]]
-        ``nequip-compile`` mode and GPU kernel modifier (or ``None``) of each variant.
+    list[str]
+        GPU kernel modifiers to try.
     """
     import torch
 
-    variants = []
-    if torch.device(device).type == "cuda":
-        torch_version = tuple(int(part) for part in torch.__version__.split(".")[:2])
-        for modifier, package in _NEQUIP_KERNEL_PACKAGES.items():
-            if modifier in modifiers and find_spec(package):
-                # OpenEquivariance needs torch 2.9 for AOTInductor:
-                old = modifier == "enable_OpenEquivariance" and torch_version < (2, 9)
-                variants.append(("torchscript" if old else "aotinductor", modifier))
-    return [*variants, ("aotinductor", None)]
+    cuda = torch.device(device).type == "cuda"
+    return [
+        kernel
+        for kernel, package in _NEQUIP_KERNEL_PACKAGES.items()
+        if cuda and kernel in modifiers and find_spec(package)
+    ]
 
 
 def _compile_nequip_package(
-    model: str, device: str, mode: str = "aotinductor", modifier: str | None = None
+    model: str, device: str, modifier: str | None = None
 ) -> str:
     """
     Compile a NequIP package once per machine type and thread count, returning the file.
@@ -473,8 +467,6 @@ def _compile_nequip_package(
         Path to the ``.nequip.zip`` package.
     device
         Device to compile for, which the compiled model must then be loaded on.
-    mode
-        ``nequip-compile`` mode, ``aotinductor`` or ``torchscript``.
     modifier
         GPU kernel modifier to compile with, if any.
 
@@ -510,14 +502,14 @@ def _compile_nequip_package(
 
     model = str(Path(model).absolute())  # as nequip-compile runs in the cache directory
     digest = hashlib.sha256(Path(model).read_bytes()).hexdigest()
-    key = [digest[:16], device, hardware, mode]
+    key = [digest[:16], device, hardware]
     if modifier:
         kernels = importlib.import_module(_NEQUIP_KERNEL_PACKAGES[modifier])
         key += [modifier, f"{kernels.__name__}{kernels.__version__}"]
 
     key += [f"torch{torch.__version__}", f"nequip{nequip.__version__}"]
     name = re.sub(r"[^\w.+-]", "_", "-".join(key))
-    suffix = ".nequip.pth" if mode == "torchscript" else ".nequip.pt2"
+    suffix = ".nequip.pt2"
     path = Path.home() / ".cache" / "ml_peg" / "nequip" / "compiled" / f"{name}{suffix}"
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -528,7 +520,7 @@ def _compile_nequip_package(
             fd, partial = tempfile.mkstemp(suffix=suffix, dir=path.parent)
             os.close(fd)
             command = [sys.executable, "-m", "nequip.scripts.compile", model, partial]
-            command += ["--mode", mode, "--device", device, "--target", "ase"]
+            command += ["--mode", "aotinductor", "--device", device, "--target", "ase"]
             if modifier:
                 command += ["--modifiers", modifier]
             try:
@@ -555,8 +547,7 @@ def _load_nequip_calculator(
     """
     Load a NequIP package once per process, compiled if requested.
 
-    On CUDA, compiled and eager models alike use the first GPU kernels that
-    load.
+    On CUDA, compiled and eager models alike use the first GPU kernels that load.
 
     Parameters
     ----------
@@ -565,8 +556,8 @@ def _load_nequip_calculator(
     device
         Device to load the model on.
     compile
-        Whether to compile the model. Each variant that fails is skipped with a
-        warning, ending with the eager model.
+        Whether to compile the model, trying each GPU kernel and then none. Each
+        attempt that fails is skipped with a warning, ending with the eager model.
     options
         JSON-encoded keyword arguments for the ``NequIPCalculator`` constructors.
 
@@ -585,34 +576,23 @@ def _load_nequip_calculator(
         ``NequIPCalculator`` with float64 inputs.
 
         NequIP keeps its data (positions, cell) in float64 and runs the model in the
-        package's ``model_dtype``. ``NequIPCalculator`` builds the data with
-        ``torch.get_default_dtype()``, relying on nequip's first load making float64
-        the process-wide default, which ML-PEG restores after loading.
+        package's ``model_dtype`` (typically float32). ``NequIPCalculator`` builds the
+        data with ``torch.get_default_dtype()``, relying on NequIP's first load making
+        float64 the process-wide default, which ML-PEG restores after loading.
         """
 
-        def calculate(self, *args: Any, **kwargs: Any) -> None:
-            """
-            Run ``NequIPCalculator.calculate`` with float64 as torch's default dtype.
-
-            Parameters
-            ----------
-            *args
-                Positional arguments for ``NequIPCalculator.calculate``.
-            **kwargs
-                Keyword arguments for ``NequIPCalculator.calculate``.
-            """
-            with torch_default_dtype(torch.float64):
-                super().calculate(*args, **kwargs)
+        calculate = torch_default_dtype(torch.float64)(NequIPCalculator.calculate)
 
     kwargs = json.loads(options)
     eager = MLPEGNequIPCalculator._from_saved_model(model, device=device, **kwargs)
-    variants = _nequip_compile_variants(set(get_all_modifiers(eager.model)), device)
-    for mode, modifier in variants if compile else ():
+    kernels = _nequip_kernels(set(get_all_modifiers(eager.model)), device)
+    for kernel in (
+        [*kernels, None] if compile else ()
+    ):  # AOTInductor without GPU kernels comes last
         try:
-            if modifier:
-                # GPU kernel libraries must be imported before loading the model
-                importlib.import_module(_NEQUIP_KERNEL_PACKAGES[modifier])
-            path = _compile_nequip_package(model, device, mode, modifier)
+            if kernel:  # GPU kernel libraries must be imported before loading the model
+                importlib.import_module(_NEQUIP_KERNEL_PACKAGES[kernel])
+            path = _compile_nequip_package(model, device, kernel)
             return MLPEGNequIPCalculator.from_compiled_model(
                 path, device=device, **kwargs
             )
@@ -620,13 +600,13 @@ def _load_nequip_calculator(
         except Exception as error:
             details = getattr(error, "stderr", None) or repr(error)
             warn(
-                f"Skipping the {mode} NequIP model with "
-                f"{modifier or 'no GPU kernels'}: {details[-2000:]}",
+                f"Skipping the compiled NequIP model with "
+                f"{kernel or 'no GPU kernels'}: {details[-2000:]}",
                 stacklevel=2,
             )
 
     # eager models use the first GPU kernels that load too:
-    for kernel in [modifier for _, modifier in variants if modifier]:
+    for kernel in kernels:
         try:
             importlib.import_module(_NEQUIP_KERNEL_PACKAGES[kernel])
             # swapped-in modules may be built on the CPU:

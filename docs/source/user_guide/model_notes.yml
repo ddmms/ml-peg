@@ -115,7 +115,7 @@ families:
     notes: |
       Install these float32 models with ``uv sync --extra nequip``. They are compiled
       with ``nequip-compile`` on first use on each machine and thread count, which
-      needs a C++ compiler. The model packages are from
+      needs a C++ compiler. The model packages are taken from
       `Zenodo <https://doi.org/10.5281/zenodo.23472045>`__.
 
       - **Citation:** Kavanagh et al. (2026).

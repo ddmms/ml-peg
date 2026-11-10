@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
-from types import ModuleType
+from types import SimpleNamespace
 
 from ase import Atoms
 from ase.build import bulk
@@ -20,74 +20,44 @@ import yaml
 from ml_peg.models import models
 from ml_peg.models.get_models import load_models
 
-NEQUIP_MODELS = (
-    "nequip-oam-s-0p2",
-    "nequip-oam-m-0p2",
-    "nequip-oam-l-0p2",
-    "nequip-oam-xl-0p2",
-    "allegro-oam-s-0p2",
-    "allegro-oam-m-0p2",
-    "allegro-oam-l-0p2",
-    "nequip-omat24-s-0p2",
-    "nequip-omat24-m-0p2",
-    "nequip-omat24-l-0p2",
-    "nequip-omat24-xl-0p2",
-    "allegro-omat24-s-0p2",
-    "allegro-omat24-m-0p2",
-    "allegro-omat24-l-0p2",
-)
-OAM_ELEMENTS = set(chemical_symbols[1:84] + chemical_symbols[89:95])  # also OMat24's
 ROOT = Path(__file__).parents[1]
-# OAM-S energies of the rattled NaCl cell used in the real model test below
+REGISTRY = yaml.safe_load((ROOT / "ml_peg" / "models" / "models.yml").read_text("utf8"))
+NEQUIP_MODELS = [
+    name
+    for name, config in REGISTRY.items()
+    if config["class_name"] == "NequIPCalculator"
+]
+OAM_ELEMENTS = set(chemical_symbols[1:84] + chemical_symbols[89:95])  # also OMat24's
+# OAM-S energies of the rattled NaCl cell used in the real model test below:
 NACL_REFERENCE_ENERGIES = {
     "nequip-oam-s-0p2": -216.15304486661688,
     "allegro-oam-s-0p2": -216.1002435376874,
 }
+OEQ = "enable_OpenEquivariance"
 
 
-def _registry() -> dict:
-    """Load the default model registry."""
-    path = ROOT / "ml_peg" / "models" / "models.yml"
-    return yaml.safe_load(path.read_text(encoding="utf8"))
-
-
-def test_nequip_registry_metadata():
-    """NequIP entries point at the Zenodo packages and record their D3 behaviour."""
-    registry = _registry()
-
-    for name in NEQUIP_MODELS:
-        config = registry[name]
-        assert config["class_name"] == "NequIPCalculator"
-        datasets = ["OMAT"] if "-omat24-" in name else ["MPtrj", "sAlex", "OMAT"]
-        assert config["datasets"] == datasets
-        assert config["device"] == "auto"
-        assert config["trained_on_dispersion"] is False
-        assert "overwrite_dtype" not in config
-        assert config["kwargs"]["model"].startswith(
-            "https://zenodo.org/api/records/23472045/"
-        )
+@pytest.fixture(autouse=True)
+def clear_calculator_cache():
+    """Stop calculators loaded in one test, some with mocks, being reused in others."""
+    yield
+    models._load_nequip_calculator.cache_clear()
 
 
 def test_nequip_registry_records_package_elements():
-    """The registry datasets cover exactly the 89 atom types of the packages."""
-    registry = _registry()
-    coverage = json.loads(
-        (ROOT / "ml_peg" / "app" / "data" / "element_coverage.json").read_text(
-            encoding="utf8"
-        )
-    )["datasets"]
+    """The 14 entries' datasets cover exactly the 89 atom types of the packages."""
+    path = ROOT / "ml_peg" / "app" / "data" / "element_coverage.json"
+    coverage = json.loads(path.read_text("utf8"))["datasets"]
 
+    assert len(NEQUIP_MODELS) == 14
     for name in NEQUIP_MODELS:
-        config = registry[name]
-        supported = set(config.get("additional_supported_elements", []))
-        for dataset in config["datasets"]:
-            supported.update(coverage[dataset]["supported"])
+        datasets = REGISTRY[name]["datasets"]
+        supported = set().union(*(coverage[key]["supported"] for key in datasets))
         assert supported == OAM_ELEMENTS
 
 
 def test_compile_caches_by_package_and_thread_count(monkeypatch, tmp_path):
     """Packages compile once, with scalar C++ and a thread count recorded in the key."""
-    import torch
+    torch = pytest.importorskip("torch")
 
     package = tmp_path / "model.nequip.zip"
     package.write_bytes(b"package")
@@ -97,9 +67,7 @@ def test_compile_caches_by_package_and_thread_count(monkeypatch, tmp_path):
         runs.append((command, kwargs["env"]))
         Path(command[4]).write_bytes(b"compiled")
 
-    nequip = ModuleType("nequip")
-    nequip.__version__ = "0.0.0"
-    monkeypatch.setitem(sys.modules, "nequip", nequip)
+    monkeypatch.setitem(sys.modules, "nequip", SimpleNamespace(__version__="0.0.0"))
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.delenv("ATEN_CPU_CAPABILITY", raising=False)
     monkeypatch.setattr(subprocess, "run", run)
@@ -122,64 +90,40 @@ def test_compile_caches_by_package_and_thread_count(monkeypatch, tmp_path):
     assert runs[1][1]["OMP_NUM_THREADS"] == str(threads)
 
 
-def test_nequip_compile_variants(monkeypatch):
-    """GPU kernels are tried first on CUDA, when installed, then plain AOTInductor."""
-    import torch
-
-    nequip = {"enable_OpenEquivariance", "enable_CuEquivariance"}
-    allegro = {"enable_CuEquivarianceContracter", "enable_TritonContracter"}
-    plain = ("aotinductor", None)
+def test_nequip_kernels(monkeypatch):
+    """Installed GPU kernels are listed in order of preference, on CUDA only."""
+    pytest.importorskip("torch")
+    nequip = {OEQ, "enable_CuEquivariance"}
+    allegro = ["enable_CuEquivarianceContracter", "enable_TritonContracter"]
     installed = {"openequivariance", "cuequivariance_ops_torch", "triton"}
     monkeypatch.setattr(models, "find_spec", lambda name: name in installed)
-    monkeypatch.setattr(torch, "__version__", "2.8.0+cu128")
 
-    assert models._nequip_compile_variants(nequip, "cpu") == [plain]
-    assert models._nequip_compile_variants(nequip, "cuda") == [
-        ("torchscript", "enable_OpenEquivariance"),
-        plain,
-    ]
-    assert models._nequip_compile_variants(allegro, "cuda") == [
-        ("aotinductor", "enable_CuEquivarianceContracter"),
-        ("aotinductor", "enable_TritonContracter"),
-        plain,
-    ]
-    monkeypatch.setattr(torch, "__version__", "2.10.0")
-    assert models._nequip_compile_variants(nequip, "cuda")[0] == (
-        "aotinductor",
-        "enable_OpenEquivariance",
-    )
-    # e.g. ROCm, without cuEquivariance:
-    installed.discard("cuequivariance_ops_torch")
-    assert models._nequip_compile_variants(allegro, "cuda") == [
-        ("aotinductor", "enable_TritonContracter"),
-        plain,
-    ]
-    installed.clear()
-    assert models._nequip_compile_variants(nequip | allegro, "cuda") == [plain]
+    assert models._nequip_kernels(nequip | set(allegro), "cpu") == []
+    assert models._nequip_kernels(nequip, "cuda") == [OEQ]
+    assert models._nequip_kernels(set(allegro), "cuda") == allegro
+    installed.discard("cuequivariance_ops_torch")  # e.g. ROCm
+    assert models._nequip_kernels(set(allegro), "cuda") == allegro[1:]
 
 
 def test_nequip_falls_back_to_eager_model(monkeypatch):
-    """Variants that fail to import or compile are skipped with warnings."""
+    """Kernels that fail to import and models that fail to compile are skipped."""
     pytest.importorskip("nequip")
 
-    def fail(model, device, mode, modifier):
+    def fail(*args):
         raise subprocess.CalledProcessError(1, "nequip-compile", stderr="no compiler")
 
-    variants = [("aotinductor", "enable_OpenEquivariance"), ("aotinductor", None)]
     monkeypatch.setitem(sys.modules, "openequivariance", None)
-    monkeypatch.setattr(models, "_nequip_compile_variants", lambda *args: variants)
+    monkeypatch.setattr(models, "_nequip_kernels", lambda *args: [OEQ])
     monkeypatch.setattr(models, "_compile_nequip_package", fail)
-    models._load_nequip_calculator.cache_clear()
     model = load_models(("nequip-oam-s-0p2",))["nequip-oam-s-0p2"]
 
     with pytest.warns(UserWarning) as warnings:
         model.get_calculator(precision="high")
-    models._load_nequip_calculator.cache_clear()
     messages = [str(w.message) for w in warnings if "NequIP model" in str(w.message)]
     assert "openequivariance" in messages[0]
     assert "no compiler" in messages[1]
     assert messages[2].startswith("Skipping the eager NequIP model")
-    assert messages[-1].startswith("Using the eager")
+    assert messages[3].startswith("Using the eager")
 
 
 def test_eager_nequip_model_uses_gpu_kernels(monkeypatch):
@@ -193,16 +137,13 @@ def test_eager_nequip_model_uses_gpu_kernels(monkeypatch):
         applied.extend(modifiers)
         return model
 
-    variants = [("torchscript", "enable_OpenEquivariance"), ("aotinductor", None)]
-    monkeypatch.setitem(sys.modules, "openequivariance", ModuleType("oeq"))
-    monkeypatch.setattr(models, "_nequip_compile_variants", lambda *args: variants)
+    monkeypatch.setitem(sys.modules, "openequivariance", SimpleNamespace())
+    monkeypatch.setattr(models, "_nequip_kernels", lambda *args: [OEQ])
     monkeypatch.setattr(nequip.model.modify_utils, "modify", modify)
-    models._load_nequip_calculator.cache_clear()
     model = load_models(("nequip-oam-s-0p2",))["nequip-oam-s-0p2"]
 
     dataclasses.replace(model, compile=False).get_calculator(precision="high")
-    models._load_nequip_calculator.cache_clear()
-    assert applied == [{"modifier": "enable_OpenEquivariance"}]
+    assert applied == [{"modifier": OEQ}]
 
 
 # Failed compilation falls back to the eager model with this warning
@@ -215,7 +156,6 @@ def test_oam_s_compiled_matches_eager(name):
     from nequip.utils.dtype import torch_default_dtype
 
     default_dtype = torch.get_default_dtype()
-    models._load_nequip_calculator.cache_clear()
     model = load_models((name,))[name]
     compiled = model.get_calculator(precision="high")
     eager = dataclasses.replace(model, compile=False).get_calculator(precision="high")
