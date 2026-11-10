@@ -12,34 +12,11 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-# Get all models
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Energy response"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/electric_field.html#energy-response"
 DATA_PATH = APP_ROOT / "data" / "electric_field" / "energy_response"
 INFO_PATH = DATA_PATH / "info.json"
-
-
-def get_structs_model() -> str:
-    """
-    Get the first model with structure files written for the viewer.
-
-    Geometries are identical for every model, so any model that has files serves
-    equally well. Resolving the first one that does mirrors the analysis, and keeps
-    the viewer working when the leading model has no results.
-
-    Returns
-    -------
-    str
-        Name of the first model with structure files, falling back to the first model.
-    """
-    for model_name in MODELS:
-        if any((DATA_PATH / model_name).glob("*_[0-9]*.xyz")):
-            return model_name
-    return MODELS[0]
 
 
 class EnergyResponseApp(BaseApp):
@@ -60,9 +37,10 @@ class EnergyResponseApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure-cumulene",
         )
 
-        structs_model = get_structs_model()
-        structs_dir = DATA_PATH / structs_model
-        assets_prefix = f"/assets/electric_field/energy_response/{structs_model}"
+        # Geometries are identical for every model, so the analysis writes one set of
+        # structures, from the mock calculation
+        structs_dir = DATA_PATH / "mock"
+        assets_prefix = "/assets/electric_field/energy_response/mock"
 
         alkane_structs = [
             f"{assets_prefix}/{p.name}"

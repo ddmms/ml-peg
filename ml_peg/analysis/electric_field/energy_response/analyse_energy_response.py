@@ -15,7 +15,7 @@ from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     load_metrics_config,
     mae,
-    write_struct_info,
+    write_element_info,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -246,45 +246,31 @@ def energy_response() -> dict[str, dict]:
                 )
 
             results[model_name][dataset] = np.array(responses)
-            write_app_structs(model_name, dataset, ref_pairs, pairs)
 
     return results
 
 
-def write_app_structs(
-    model_name: str,
-    dataset: str,
-    ref_pairs: dict[str, tuple[Atoms, Atoms]],
-    pairs: dict[str, tuple[Atoms, Atoms]],
-) -> None:
+def write_app_data() -> None:
     """
-    Write structures to app data, one file per field structure for the viewer.
+    Write structures and element info for the app, from the mock calculation.
 
-    Files follow the reference formula order, falling back to the reference structure
-    for anything the model is missing, because the app maps a clicked parity point to
-    a structure file by index. Existing files are overwritten so that the numbering
-    never outlives the order it was written for.
-
-    Parameters
-    ----------
-    model_name
-        Name of the model the structures were calculated with.
-    dataset
-        Dataset filename (e.g. ``"ALKANES.xyz"``).
-    ref_pairs
-        Zero-field and field structure for each formula, fixing the order.
-    pairs
-        Zero-field and field structure for each formula, for this model.
+    Geometries are identical for every model, since each pair differs only in its
+    recorded field, so the mock structures serve every model and per-model copies
+    would only duplicate them. Files are named by position within the dataset,
+    because the app maps a clicked parity point to a structure file by index.
     """
-    structs_dir = OUT_PATH / model_name
+    structs_dir = OUT_PATH / "mock"
     structs_dir.mkdir(parents=True, exist_ok=True)
 
-    ordered = [pairs.get(formula, ref_pairs[formula]) for formula in ref_pairs]
-    write(structs_dir / dataset, [struct for pair in ordered for struct in pair])
+    elements = []
+    for dataset in DATASETS:
+        dataset_stem = Path(dataset).stem
+        for i, (_, field) in enumerate(get_reference_pairs(dataset).values()):
+            write(structs_dir / f"{dataset_stem}_{i:04d}.xyz", field)
+            elements.append(sorted(set(field.get_chemical_symbols())))
 
-    dataset_stem = Path(dataset).stem
-    for i, (_, field) in enumerate(ordered):
-        write(structs_dir / f"{dataset_stem}_{i:04d}.xyz", [field])
+    # Elements per point, rather than the combined set, for partial filtering
+    write_element_info(elements, OUT_PATH)
 
 
 @pytest.fixture
@@ -540,9 +526,7 @@ def test_energy_response(
         "Please run mock calculation."
     )
 
-    # Element info for the app's periodic table filter. Without it the benchmark is
-    # left out of filtering entirely, rather than being filtered on C and H
-    write_struct_info(
-        data_path=[MOCK_PATH / dataset for dataset in DATASETS],
-        out_path=OUT_PATH,
-    )
+    # Structures for the viewer, and element info for the app's periodic table filter.
+    # Without the latter the benchmark is left out of filtering entirely, rather than
+    # being filtered on C and H
+    write_app_data()
