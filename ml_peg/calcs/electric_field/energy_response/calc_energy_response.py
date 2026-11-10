@@ -76,6 +76,8 @@ def test_energy_response(mlip: tuple[str, Any]) -> None:
                 mol.get_potential_energy()
             except Exception as exc:
                 warn(f"Error calculating energy: {exc}", stacklevel=2)
+                # Detach first: extxyz refuses to write a stored energy and the NaN
+                mol.calc = None
                 mol.info["energy"] = np.nan
             write(tmp_file, mol, append=(i > 0), format="extxyz")
             mol.calc = None

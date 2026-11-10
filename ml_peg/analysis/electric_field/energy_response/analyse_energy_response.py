@@ -254,10 +254,8 @@ def write_app_data() -> None:
     """
     Write structures and element info for the app, from the mock calculation.
 
-    Geometries are identical for every model, since each pair differs only in its
-    recorded field, so the mock structures serve every model and per-model copies
-    would only duplicate them. Files are named by position within the dataset,
-    because the app maps a clicked parity point to a structure file by index.
+    Geometries are identical for every model, so one set of structures serves all.
+    Files are named by position, as the app maps a clicked point to a file by index.
     """
     structs_dir = OUT_PATH / "mock"
     structs_dir.mkdir(parents=True, exist_ok=True)
@@ -269,7 +267,7 @@ def write_app_data() -> None:
             write(structs_dir / f"{dataset_stem}_{i:04d}.xyz", field)
             elements.append(sorted(set(field.get_chemical_symbols())))
 
-    # Elements per point, rather than the combined set, for partial filtering
+    # Per point, rather than the combined set, for partial filtering
     write_element_info(elements, OUT_PATH)
 
 
@@ -526,7 +524,5 @@ def test_energy_response(
         "Please run mock calculation."
     )
 
-    # Structures for the viewer, and element info for the app's periodic table filter.
-    # Without the latter the benchmark is left out of filtering entirely, rather than
-    # being filtered on C and H
+    # Structures for the viewer, and elements for the app's periodic table filter
     write_app_data()

@@ -37,8 +37,7 @@ class EnergyResponseApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure-cumulene",
         )
 
-        # Geometries are identical for every model, so the analysis writes one set of
-        # structures, from the mock calculation
+        # Geometries are identical for every model, so analysis writes one set
         structs_dir = DATA_PATH / "mock"
         assets_prefix = "/assets/electric_field/energy_response/mock"
 
