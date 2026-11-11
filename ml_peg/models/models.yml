@@ -33,6 +33,66 @@ aimnet2-2025:
     # Alias for ensemble member 0 (aimnet2-b973c-2025-d3_0), not the 4-member ensemble average.
     model: "aimnet2-2025"
 
+allegro-oam-l-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OAM-L-0.2.nequip.zip/content"
+
+allegro-oam-m-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OAM-M-0.2.nequip.zip/content"
+
+allegro-oam-s-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OAM-S-0.2.nequip.zip/content"
+
+allegro-omat24-l-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OMat24-L-0.2.nequip.zip/content"
+
+allegro-omat24-m-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OMat24-M-0.2.nequip.zip/content"
+
+allegro-omat24-s-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OMat24-S-0.2.nequip.zip/content"
+
 dpa-3p3-1M-omat:
   module: deepmd.calculator
   class_name: DP
@@ -253,6 +313,86 @@ mattersim-5M:
   level_of_theory: PBE
   kwargs:
     load_path: "mattersim-v1.0.0-5m"
+
+nequip-oam-l-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OAM-L-0.2.nequip.zip/content"
+
+nequip-oam-m-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OAM-M-0.2.nequip.zip/content"
+
+nequip-oam-s-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OAM-S-0.2.nequip.zip/content"
+
+nequip-oam-xl-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OAM-XL-0.2.nequip.zip/content"
+
+nequip-omat24-l-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OMat24-L-0.2.nequip.zip/content"
+
+nequip-omat24-m-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OMat24-M-0.2.nequip.zip/content"
+
+nequip-omat24-s-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OMat24-S-0.2.nequip.zip/content"
+
+nequip-omat24-xl-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OMat24-XL-0.2.nequip.zip/content"
 
 orb-v3-consv-inf-omat:
   module: orb_models.forcefield.inference.calculator
