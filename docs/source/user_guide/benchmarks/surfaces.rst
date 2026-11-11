@@ -417,7 +417,7 @@ Metrics
 Benchmark speed
 ------------------
 
-Fast: tests are likely to take less than a minute.
+Fast: tests are likely to take less than a minute. A test of mace-mh-1-omat model on a NVIDIA GeForce RTX 5080 GPU. 
 
 Data availability
 -----------------
