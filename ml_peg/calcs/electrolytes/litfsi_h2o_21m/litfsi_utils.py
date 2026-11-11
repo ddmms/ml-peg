@@ -10,6 +10,8 @@ X-ray structure factor S(q).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -327,6 +329,30 @@ def run_stage(
     return md.struct
 
 
+@contextmanager
+def atomic_path(path: Path) -> Iterator[Path]:
+    """
+    Write a data product so that it exists only once it is complete.
+
+    Yields a temporary path next to ``path``, which is renamed to ``path``
+    when the block ends without an exception. A job killed mid-write leaves
+    the temporary file behind, never a truncated product.
+
+    Parameters
+    ----------
+    path : Path
+        Final path of the data product.
+
+    Yields
+    ------
+    Path
+        Temporary path to write to.
+    """
+    tmp_path = path.with_name(f"{path.name}.tmp")
+    yield tmp_path
+    os.replace(tmp_path, path)
+
+
 def write_density_json(
     model_name: str,
     stats_file: Path,
@@ -383,7 +409,8 @@ def write_density_json(
         "density_full": rho.tolist(),
     }
     out_file.parent.mkdir(parents=True, exist_ok=True)
-    out_file.write_text(json.dumps(summary, indent=2))
+    with atomic_path(out_file) as tmp_file:
+        tmp_file.write_text(json.dumps(summary, indent=2))
     return summary
 
 

@@ -12,6 +12,7 @@ import pytest
 
 from ml_peg.calcs.electrolytes.litfsi_h2o_21m import calc_litfsi_h2o_21m as calc_module
 from ml_peg.calcs.electrolytes.litfsi_h2o_21m.litfsi_utils import (
+    atomic_path,
     resume_state,
     run_stage,
 )
@@ -314,7 +315,8 @@ def test_calculator_failure_keeps_complete_data(tmp_path: Path, monkeypatch) -> 
     monkeypatch.setattr(calc_module, "OUT_PATH", tmp_path)
     data_dir = tmp_path / "broken"
     data_dir.mkdir()
-    (data_dir / "nvt_trajectory.extxyz").touch()
+    with atomic_path(data_dir / "nvt_trajectory.extxyz") as tmp_file:
+        write(tmp_file, [frame_at(0), frame_at(TRAJ_EVERY)], format="extxyz")
 
     with pytest.warns(UserWarning, match="Could not build the calculator"):
         failed = calc_module.run_reference_md("broken", BrokenModel())
@@ -322,3 +324,34 @@ def test_calculator_failure_keeps_complete_data(tmp_path: Path, monkeypatch) -> 
     assert failed == [calc_module.CELL_P16]
     assert not (data_dir / f"failed_{calc_module.CELL_P64}.json").exists()
     assert (data_dir / f"failed_{calc_module.CELL_P16}.json").exists()
+
+
+def test_calculator_failure_marks_incomplete_product(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """
+    Check a product interrupted mid-write does not count as complete.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory provided by pytest.
+    monkeypatch
+        Pytest fixture, used to redirect the output directory.
+    """
+    monkeypatch.setattr(calc_module, "OUT_PATH", tmp_path)
+    data_dir = tmp_path / "broken"
+    data_dir.mkdir()
+    product = data_dir / "nvt_trajectory.extxyz"
+
+    with pytest.raises(KeyboardInterrupt), atomic_path(product) as tmp_file:
+        tmp_file.write_text("1534\nLattice=")
+        raise KeyboardInterrupt
+
+    assert not product.exists()
+
+    with pytest.warns(UserWarning, match="Could not build the calculator"):
+        failed = calc_module.run_reference_md("broken", BrokenModel())
+
+    assert failed == [calc_module.CELL_P64, calc_module.CELL_P16]
+    assert (data_dir / f"failed_{calc_module.CELL_P64}.json").exists()

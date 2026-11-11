@@ -76,6 +76,7 @@ import numpy as np
 import pytest
 
 from ml_peg.calcs.electrolytes.litfsi_h2o_21m.litfsi_utils import (
+    atomic_path,
     compute_rdf,
     compute_sq_travis_style,
     identify_o_types,
@@ -120,7 +121,8 @@ DENSITY_WINDOW_PS = (50.0, 200.0)
 
 CELL_P64 = "p64_w170"
 CELL_P16 = "p16_w42"
-# Data product that marks the MD of each cell as complete.
+# Data product that marks the MD of each cell as complete. Both are written
+# through ``atomic_path``, so a file that exists is a complete one.
 CELL_PRODUCTS = {CELL_P64: "nvt_trajectory.extxyz", CELL_P16: "density.json"}
 
 
@@ -234,7 +236,8 @@ def run_cell(
             **md_kwargs,
         )
         traj = ase_read(f"{prefix}-traj.extxyz", index=":")
-        ase_write(data_dir / "nvt_trajectory.extxyz", traj, format="extxyz")
+        with atomic_path(data_dir / "nvt_trajectory.extxyz") as tmp_file:
+            ase_write(tmp_file, traj, format="extxyz")
     else:
         # NPT only on the small cell, for the density.
         prefix = work_dir / f"{cell}-npt_prod"
@@ -250,7 +253,8 @@ def run_cell(
             **md_kwargs,
         )
         # Last frame at the model's own density, for the structure viewer.
-        ase_write(data_dir / "npt_final.xyz", final, format="extxyz")
+        with atomic_path(data_dir / "npt_final.xyz") as tmp_file:
+            ase_write(tmp_file, final, format="extxyz")
         write_density_json(
             data_dir.name,
             Path(f"{prefix}-stats.dat"),
