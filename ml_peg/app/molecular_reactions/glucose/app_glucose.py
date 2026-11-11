@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
@@ -11,16 +13,18 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Glucose"
+
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html"
 )
+
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "glucose"
+
 INFO_PATH = DATA_PATH / "info.json"
+
+STRUCTURE_PATH = DATA_PATH / "mock"
 
 
 class GlucoseApp(BaseApp):
@@ -33,22 +37,17 @@ class GlucoseApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        # Find structures from the first available model.
-        structs = []
+        # Load reaction IDs in exactly the same order as the parity plot.
+        with INFO_PATH.open(encoding="utf8") as file:
+            info = json.load(file)
 
-        for model_name in MODELS:
-            model_dir = DATA_PATH / model_name
+        reaction_ids = info["filenames"]
 
-            if model_dir.exists():
-                base_labels = sorted(
-                    f.stem.rsplit("_", 1)[0] for f in model_dir.glob("*_rct.xyz")
-                )
-
-                structs = [
-                    f"/assets/molecular_reactions/glucose/{model_name}/{label}_rct.xyz"
-                    for label in base_labels
-                ]
-                break
+        # Each scatter point corresponds to one reactant structure.
+        structs = [
+            (f"/assets/molecular_reactions/glucose/mock/{reaction_id}_rct.xyz")
+            for reaction_id in reaction_ids
+        ]
 
         plot_from_table_column(
             table_id=self.table_id,
@@ -71,7 +70,7 @@ def get_app() -> GlucoseApp:
     Returns
     -------
     GlucoseApp
-        Benchmark layout and callback registration.
+        Glucose benchmark app.
     """
     return GlucoseApp(
         name=BENCHMARK_NAME,

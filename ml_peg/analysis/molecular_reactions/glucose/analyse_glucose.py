@@ -1,19 +1,13 @@
-"""
-Analyse the glucose dataset for pyrolysis.
-
-Zhao, Qiyuan, and Brett M. Savoie.
-Proceedings of the National Academy of Sciences
-120.34 (2023): e2305884120
-"""
+"""Analyse the glucose reaction benchmark."""
 
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
+import warnings
 
 from ase import units
 from ase.io import read, write
+import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -25,18 +19,17 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
-from ml_peg.models.get_models import load_models
+from ml_peg.models.get_models import get_model_names
 
-# ---------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Paths and configuration
+# ---------------------------------------------------------------------------
 
-MODELS = load_models(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map()
-
-EV_TO_KCAL = units.mol / units.kcal
+MODELS = get_model_names(current_models)
 
 CALC_PATH = CALCS_ROOT / "molecular_reactions" / "glucose" / "outputs"
+
+DATASET_PATH = CALCS_ROOT / "molecular_reactions" / "glucose" / "glucose_dataset.xyz"
 
 OUT_PATH = APP_ROOT / "data" / "molecular_reactions" / "glucose"
 
@@ -48,291 +41,379 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
-# ---------------------------------------------------------------------
-# Structure information
-# ---------------------------------------------------------------------
-def get_glucose_info(model_name: str) -> dict:
+EV_TO_KCAL = units.mol / units.kcal
+
+# This list is populated by barrier_heights().
+# plot_parity reads it after the decorated function has returned.
+REACTION_LABELS: list[str] = []
+
+
+# ---------------------------------------------------------------------------
+# Reference dataset
+# ---------------------------------------------------------------------------
+def load_reference_reactions() -> dict[str, dict]:
     """
-    Build the info.json for plot.
-
-    Parameters
-    ----------
-    model_name : str
-        Name of the model.
+    Load and validate all reference reactant-TS pairs.
 
     Returns
     -------
-    dict
-       A dictionary with two keys of elements and filenames.
+    dict[str, dict]
+        Reaction ID mapped to its reactant and transition-state structures.
     """
-    data = {"elements": [], "filenames": []}
-    reactions = load_reactions(model_name)
-    keys = list(reactions.keys())
-    keys = sorted(keys)
-    for key in keys:
-        data["filenames"].append(key)
-        data["elements"].append(reactions[key]["ts"].get_chemical_symbols())
+    if not DATASET_PATH.exists():
+        raise FileNotFoundError(f"Glucose reference dataset not found: {DATASET_PATH}")
 
-    return data
+    structures = read(DATASET_PATH, index=":")
 
-
-# ---------------------------------------------------------------------
-# Read and organize reaction structures
-# ---------------------------------------------------------------------
-
-
-def load_reactions(model_name: str) -> dict:
-    """
-    Read the multi-frame XYZ file and organize structures by reaction ID.
-
-    Each reaction must contain exactly one reactant and one TS.
-
-    Parameters
-    ----------
-    model_name : str
-        Name of the model.
-
-    Returns
-    -------
-    dict
-        Dictionary containing reactant and TS structures for each reaction.
-    """
-    xyz_path = CALC_PATH / model_name / OUTPUT_FILENAME
-
-    structures = read(xyz_path, index=":")
-
-    reactions = {}
+    reactions: dict[str, dict] = {}
 
     for atoms in structures:
-        info = atoms.info
-
-        required_keys = [
-            "reaction_id",
-            "type",
-            "ref_energy",
-            "model_energy",
-        ]
-
-        missing_keys = [key for key in required_keys if key not in info]
-
-        if missing_keys:
-            raise ValueError(f"{xyz_path}: missing metadata {missing_keys}")
-
         reaction_id = str(atoms.info["reaction_id"]).strip().strip('"')
-        structure_type = str(info["type"]).lower()
+        structure_type = atoms.info.get("type")
+
+        if reaction_id is None:
+            raise ValueError("A structure in the reference dataset has no reaction_id.")
 
         if structure_type not in ("reactant", "ts"):
             raise ValueError(
-                f"Unexpected structure type '{structure_type}' "
-                f"for reaction {reaction_id}"
+                f"Invalid structure type {structure_type!r} for reaction {reaction_id}."
             )
+
+        if "ref_energy" not in atoms.info:
+            raise ValueError(
+                f"Missing ref_energy for reaction {reaction_id} ({structure_type})."
+            )
+
+        reaction_id = str(reaction_id)
 
         if reaction_id not in reactions:
             reactions[reaction_id] = {}
 
         if structure_type in reactions[reaction_id]:
             raise ValueError(
-                f"Duplicate {structure_type} for reaction {reaction_id} in {model_name}"
+                f"Duplicate {structure_type} structure "
+                f"for reaction {reaction_id} in reference dataset."
             )
 
         reactions[reaction_id][structure_type] = atoms
 
-    # Validate reaction pairs
+    # Reference data must contain complete reaction pairs.
+    incomplete = [
+        reaction_id
+        for reaction_id, pair in reactions.items()
+        if set(pair) != {"reactant", "ts"}
+    ]
+
+    if incomplete:
+        raise ValueError(
+            "Incomplete reference reaction pairs: " + ", ".join(incomplete[:10])
+        )
+
+    return dict(sorted(reactions.items()))
+
+
+# ---------------------------------------------------------------------------
+# Mock structures for the application
+# ---------------------------------------------------------------------------
+
+
+def write_glucose_structures(
+    reference_reactions: dict[str, dict],
+) -> None:
+    """
+    Write reference structures for the application.
+
+    Parameters
+    ----------
+    reference_reactions
+        A dictionary with reaction index as key with information of reaction.
+    """
+    structures_dir = OUT_PATH / "mock"
+    structures_dir.mkdir(parents=True, exist_ok=True)
+
+    # Remove old files to avoid retaining reactions from an older dataset.
+    for old_file in structures_dir.glob("*_rct.xyz"):
+        old_file.unlink()
+
+    for reaction_id, pair in reference_reactions.items():
+        write(
+            structures_dir / f"{reaction_id}_rct.xyz",
+            [pair["reactant"], pair["ts"]],
+            format="extxyz",
+        )
+
+
+def write_glucose_info(
+    reference_reactions: dict[str, dict],
+) -> None:
+    """
+    Write metadata used by the application.
+
+    Parameters
+    ----------
+    reference_reactions
+        A dictionary with reaction index as key with information of reaction.
+    """
+    info = {
+        "filenames": [],
+        "elements": [],
+    }
+
+    for reaction_id, pair in reference_reactions.items():
+        reactant = pair["reactant"]
+
+        info["filenames"].append(reaction_id)
+        info["elements"].append(sorted(set(reactant.get_chemical_symbols())))
+
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+
+    import json
+
+    with (OUT_PATH / "info.json").open("w", encoding="utf8") as file:
+        json.dump(info, file, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Model calculation outputs
+# ---------------------------------------------------------------------------
+
+
+def load_reactions(model_name: str) -> dict[str, dict]:
+    """
+    Load calculated reactant-TS pairs for one model.
+
+    Parameters
+    ----------
+    model_name
+        A str for matching calculators in ML-PEG.
+
+    Returns
+    -------
+    dict[str, dict]
+        Reaction ID mapped to its reactant and transition-state structures.
+    """
+    output_file = CALC_PATH / model_name / OUTPUT_FILENAME
+
+    if not output_file.exists():
+        warnings.warn(
+            f"No glucose calculation output found for {model_name}: "
+            f"{output_file}. All predictions will be NaN.",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+        return {}
+
+    structures = read(output_file, index=":")
+
+    reactions: dict[str, dict] = {}
+
+    for atoms in structures:
+        reaction_id = str(atoms.info["reaction_id"]).strip().strip('"')
+        structure_type = atoms.info.get("type")
+
+        if reaction_id is None:
+            warnings.warn(
+                f"{model_name}: structure without reaction_id was skipped.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
+
+        if structure_type not in ("reactant", "ts"):
+            warnings.warn(
+                f"{model_name}: invalid structure type {structure_type!r} "
+                f"for reaction {reaction_id}.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
+
+        reaction_id = str(reaction_id)
+
+        if reaction_id not in reactions:
+            reactions[reaction_id] = {}
+
+        if structure_type in reactions[reaction_id]:
+            warnings.warn(
+                f"{model_name}: duplicate {structure_type} structure "
+                f"for reaction {reaction_id}. Keeping the first one.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
+
+        reactions[reaction_id][structure_type] = atoms
+
+    # Keep only complete pairs.
+    complete_reactions = {}
+
     for reaction_id, pair in reactions.items():
         if set(pair) != {"reactant", "ts"}:
-            raise ValueError(f"Incomplete reaction pair: {reaction_id} in {model_name}")
+            warnings.warn(
+                f"{model_name}: incomplete reaction {reaction_id}. "
+                "Its predicted barrier will be NaN.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+            continue
 
-    return reactions
+        complete_reactions[reaction_id] = pair
+
+    return complete_reactions
 
 
-# ---------------------------------------------------------------------
-# Barrier calculations
-# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Reaction barriers and parity plot
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
 @plot_parity(
-    filename=OUT_PATH / "glucose_barriers.json",
+    filename=OUT_PATH / "figure_glucose_barriers.json",
     title="Glucose reaction barriers",
     x_label="Predicted barrier / kcal/mol",
     y_label="Reference barrier / kcal/mol",
-    hoverdata={
-        "Labels": [],
-    },
+    hoverdata={"Reaction ID": REACTION_LABELS},
 )
 def barrier_heights() -> dict[str, list]:
     """
-    Calculate reference and predicted activation barriers.
-
-    Reactions are paired using reaction_id rather than frame order.
+    Calculate reference and predicted reaction barriers.
 
     Returns
     -------
-    dict
-        A reaction index with barrier hieght in kcal/mol.
+    dict[str, list]
+        A dictionary with keys of model name and a list to store barriers.
     """
-    models = [
-        model_name
-        for model_name in MODELS
-        if os.path.exists(f"{CALC_PATH}/{model_name}")
-    ]
+    reference_reactions = load_reference_reactions()
+    reaction_ids = list(reference_reactions)
 
-    all_reactions = {model_name: load_reactions(model_name) for model_name in models}
+    # Populate labels before plot_parity constructs the hover data.
+    REACTION_LABELS[:] = reaction_ids
 
-    # Use the first model as the reference source.
-    reference_model = models[0]
-    reference_reactions = all_reactions[reference_model]
-    info = get_glucose_info(reference_model)
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    with open(OUT_PATH / "info.json", "w") as f:
-        json.dump(info, f, indent=1)
-    reaction_ids = sorted(reference_reactions)
+    # Generate all application data from the reference dataset.
+    write_glucose_structures(reference_reactions)
+    write_glucose_info(reference_reactions)
+
+    # Load outputs for all models selected in this analysis run.
+    model_reactions = {model_name: load_reactions(model_name) for model_name in MODELS}
 
     results = {
         "ref": [],
-        **{model_name: [] for model_name in models},
+        **{model_name: [] for model_name in MODELS},
     }
 
-    # Save reaction labels for parity plot.
-    barrier_heights.labels = reaction_ids
-
     for reaction_id in reaction_ids:
-        ref_pair = reference_reactions[reaction_id]
+        reference_pair = reference_reactions[reaction_id]
 
-        ref_r = ref_pair["reactant"].info["ref_energy"]
-        ref_ts = ref_pair["ts"].info["ref_energy"]
+        reference_reactant_energy = float(reference_pair["reactant"].info["ref_energy"])
+        reference_ts_energy = float(reference_pair["ts"].info["ref_energy"])
 
-        reference_barrier = (ref_ts - ref_r) * EV_TO_KCAL
+        reference_barrier = (
+            reference_ts_energy - reference_reactant_energy
+        ) * EV_TO_KCAL
 
         results["ref"].append(reference_barrier)
 
-        for model_name in models:
-            reactions = all_reactions[model_name]
+        for model_name in MODELS:
+            pair = model_reactions[model_name].get(reaction_id)
 
-            if reaction_id not in reactions:
-                raise ValueError(f"Reaction {reaction_id} missing from {model_name}")
+            # Missing reaction: preserve its position and assign NaN.
+            if pair is None:
+                results[model_name].append(float("nan"))
+                continue
 
-            pair = reactions[reaction_id]
+            reactant_energy = pair["reactant"].info.get("model_energy")
+            ts_energy = pair["ts"].info.get("model_energy")
 
-            reactant = pair["reactant"]
-            ts = pair["ts"]
+            # Missing or failed energy calculation.
+            if reactant_energy is None or ts_energy is None:
+                results[model_name].append(float("nan"))
+                continue
 
-            # Check reference energy consistency.
-            model_ref_r = reactant.info["ref_energy"]
-            model_ref_ts = ts.info["ref_energy"]
+            try:
+                reactant_energy = float(reactant_energy)
+                ts_energy = float(ts_energy)
+            except (TypeError, ValueError):
+                results[model_name].append(float("nan"))
+                continue
 
-            if abs(model_ref_r - ref_r) > 1e-6:
-                raise ValueError(
-                    f"Reference reactant energy mismatch: {reaction_id}, {model_name}"
-                )
+            if not (np.isfinite(reactant_energy) and np.isfinite(ts_energy)):
+                results[model_name].append(float("nan"))
+                continue
 
-            if abs(model_ref_ts - ref_ts) > 1e-6:
-                raise ValueError(
-                    f"Reference TS energy mismatch: {reaction_id}, {model_name}"
-                )
-
-            # Calculate MLIP activation barrier.
-            model_r = reactant.info["model_energy"]
-            model_ts = ts.info["model_energy"]
-
-            predicted_barrier = (model_ts - model_r) * EV_TO_KCAL
+            predicted_barrier = (ts_energy - reactant_energy) * EV_TO_KCAL
 
             results[model_name].append(predicted_barrier)
-
-            # Write individual reaction structures for the app.
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-
-            write(
-                structs_dir / f"{reaction_id}.xyz",
-                [reactant, ts],
-            )
 
     return results
 
 
-# ---------------------------------------------------------------------
-# MAE
-# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Metrics
+# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def get_mae(barrier_heights) -> dict[str, float]:
+def glucose_mae(
+    barrier_heights: dict[str, list],
+) -> dict[str, float]:
     """
-    Calculate mean absolute error for reaction barriers.
-
-    Will add more statistic in the future.
+    Calculate MAE for each model.
 
     Parameters
     ----------
-    barrier_heights : dict
-        Reference and predicted reaction barrier heights for each model.
+    barrier_heights
+        A dictionary with model names and the barrier heights.
 
     Returns
     -------
     dict[str, float]
-        Mean absolute error for each model.
+        A dictionary with keys of MLIP name and a float of MAE.
     """
-    results = {}
-    models = [
-        model_name
-        for model_name in MODELS
-        if os.path.exists(f"{CALC_PATH}/{model_name}")
-    ]
-    for model_name in models:
-        results[model_name] = mae(
-            barrier_heights["ref"],
-            barrier_heights[model_name],
-        )
+    reference = barrier_heights["ref"]
 
-    return results
-
-
-# ---------------------------------------------------------------------
-# Metrics table
-# ---------------------------------------------------------------------
+    return {
+        model_name: mae(reference, barrier_heights[model_name]) for model_name in MODELS
+    }
 
 
 @pytest.fixture
 @build_table(
+    thresholds=DEFAULT_THRESHOLDS,
     filename=OUT_PATH / "glucose_barriers_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
-    thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    glucose_mae: dict[str, float],
+) -> dict[str, dict[str, float]]:
     """
-    Calculate benchmark metrics.
+    Build the benchmark metrics table.
 
     Parameters
     ----------
-    get_mae : callable
-        Function used to calculate mean absolute error.
+    glucose_mae
+        A dictionary of calculated MAE.
 
     Returns
     -------
-    dict
-        Calculated benchmark metrics.
+    dict[str, dict[str, float]]
+        A dictioanry as a key of model name and a dict of MAE.
     """
     return {
-        "MAE": get_mae,
+        "MAE": glucose_mae,
     }
 
 
-# ---------------------------------------------------------------------
-# Test
-# ---------------------------------------------------------------------
-
-
-@pytest.mark.framework("mace-polar-1")
-def test_glucose_barriers(metrics: dict[str, dict]) -> None:
+def test_glucose(metrics: dict) -> None:
     """
-    Test glucose reaction barrier metrics.
+    Run glucose benchmark analysis.
 
     Parameters
     ----------
-    metrics : dict
-        Calculated glucose benchmark metrics.
+    metrics
+        A dictionary of available metrics.
     """
-    return

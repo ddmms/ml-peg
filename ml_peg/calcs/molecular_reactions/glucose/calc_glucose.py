@@ -8,8 +8,10 @@ Proceedings of the National Academy of Sciences
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
+import warnings
 
 from ase.io import read, write
 import pytest
@@ -33,14 +35,16 @@ def test_glucose(mlip: tuple[str, Any]) -> None:
     Parameters
     ----------
     mlip
-        Name of model use and model to get calculator.
+        Name of model and model used to obtain the calculator.
     """
     model_name, model = mlip
+
     try:
         calc = model.get_calculator(precision="high")
-    except Exception:
-        print(f"{model_name} is not available in your results.")
+    except Exception as err:
+        print(f"{model_name} is not available: {err}")
         return
+
     if hasattr(model, "add_d3_calculator"):
         calc = model.add_d3_calculator(calc)
 
@@ -60,11 +64,32 @@ def test_glucose(mlip: tuple[str, Any]) -> None:
         atoms.info["spin"] = 1
         atoms.calc = calc
 
-        atoms.info["model_energy"] = float(atoms.get_potential_energy())
+        try:
+            energy = float(atoms.get_potential_energy())
 
-        atoms.calc = None
+            if not math.isfinite(energy):
+                raise ValueError(f"Non-finite energy returned: {energy}")
+
+            atoms.info["model_energy"] = energy
+
+        except Exception as err:
+            reaction_id = atoms.info.get("reaction_id", "unknown")
+            structure_type = atoms.info.get("type", "unknown")
+
+            warnings.warn(
+                f"{model_name}: energy calculation failed for "
+                f"reaction {reaction_id} ({structure_type}). "
+                f"Setting model_energy to NaN. Error: {err}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+            atoms.info["model_energy"] = float("nan")
+
+        finally:
+            atoms.calc = None
 
     output_xyz = out_path / "glucose_calculated.xyz"
     write(output_xyz, atom_list, format="extxyz")
 
-    return
+    print(f"Saved calculation results to {output_xyz}")
