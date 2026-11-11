@@ -11,15 +11,15 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-# Get all models
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Surface Alloy Reorganisation"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#surface-alloy-reorganisation"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "surface_alloy_reorganisation"
 INFO_PATH = DATA_PATH / "info.json"
+
+# Input geometries are shared by all models, so trajectories (initial, transition,
+# final) are written once from the mock outputs, named by reaction identifier.
+STRUCT_TEMPLATE = "/assets/surfaces/surface_alloy_reorganisation/mock/{id}.xyz"
 
 
 class SurfaceAlloyReorganisationApp(BaseApp):
@@ -27,30 +27,34 @@ class SurfaceAlloyReorganisationApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        scatter = read_plot(
-            DATA_PATH / "figure_surface_alloy_energies.json",
-            id=f"{BENCHMARK_NAME}-figure",
-        )
+        energies_id = f"{BENCHMARK_NAME}-energies-figure"
+        barriers_id = f"{BENCHMARK_NAME}-barriers-figure"
 
-        # Assets dir will be parent directory - individual files for each system
-        structs_dir = DATA_PATH / MODELS[0]
-        structs = [
-            f"/assets/surfaces/surface_alloy_reorganisation/{MODELS[0]}/{struct_file.stem}.xyz"
-            for struct_file in sorted(structs_dir.glob("*.xyz"))
-        ]
+        energies_scatter = read_plot(
+            DATA_PATH / "figure_surface_alloy_energies.json", id=energies_id
+        )
+        barriers_scatter = read_plot(
+            DATA_PATH / "figure_surface_alloy_barriers.json", id=barriers_id
+        )
 
         plot_from_table_column(
             table_id=self.table_id,
-            plot_id=f"{BENCHMARK_NAME}-energies-figure-placeholder",
-            column_to_plot={"MAE": scatter},
+            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
+            column_to_plot={
+                "MAE_energies": energies_scatter,
+                "MAE_barriers": barriers_scatter,
+            },
         )
 
-        struct_from_scatter(
-            scatter_id=f"{BENCHMARK_NAME}-figure",
-            struct_id=f"{BENCHMARK_NAME}-energies-struct-placeholder",
-            structs=structs,
-            mode="traj",
-        )
+        # Match structures by the reaction identifier in each point's customdata,
+        # as the energy plot excludes reactions with zero reference energy
+        for scatter_id in (energies_id, barriers_id):
+            struct_from_scatter(
+                scatter_id=scatter_id,
+                struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
+                mode="traj",
+                struct_template=STRUCT_TEMPLATE,
+            )
 
 
 def get_app() -> SurfaceAlloyReorganisationApp:
@@ -59,17 +63,20 @@ def get_app() -> SurfaceAlloyReorganisationApp:
 
     Returns
     -------
-    Surface_Alloy_Reorganisation_App
+    SurfaceAlloyReorganisationApp
         Benchmark layout and callback registration.
     """
     return SurfaceAlloyReorganisationApp(
         name=BENCHMARK_NAME,
-        description="Reaction energies for reactions of surface alloys",
+        description=(
+            "Reaction energies and barriers for reorganisation reactions of "
+            "surface alloys"
+        ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "surface_alloy_reorganisation_metrics_table.json",
         extra_components=[
-            Div(id=f"{BENCHMARK_NAME}-energies-figure-placeholder"),
-            Div(id=f"{BENCHMARK_NAME}-energies-struct-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
+            Div(id=f"{BENCHMARK_NAME}-struct-placeholder"),
         ],
         info_path=INFO_PATH,
     )

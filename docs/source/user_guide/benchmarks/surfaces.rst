@@ -393,8 +393,6 @@ Reference data:
 
 * PBE conjugate gradient geomerty optimizations are performed via VASP, with a cutoff energy of 500 eV.
 
-<<<<<<< HEAD
-=======
 
 Surface Alloy Reorganisation
 =============================
@@ -420,7 +418,7 @@ Metrics
 Benchmark speed
 ------------------
 
-Fast: tests are likely to take less than a minute.
+Fast: tests are likely to take less than a minute (about 20 seconds on a NVIDIA GeForce RTX 5080 for mace-mh-1-omat).
 
 Data availability
 -----------------
@@ -434,4 +432,3 @@ Input data:
 Reference data:
 
 * PBE single-point DFT calculations are performed using VASP, with a plane-wave energy cutoff of 400 eV.
->>>>>>> aa56217 (Added outline of test to docs/user_guide/benchmarks/surfaces.rst)
