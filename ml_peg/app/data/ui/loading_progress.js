@@ -148,6 +148,7 @@
     return new Promise(function (resolve) {
       var started;
       var settled = false;
+      var fallbackStarted = false;
       var frame;
       var hold;
       var fallback;
@@ -166,7 +167,7 @@
       }
 
       function finish(now) {
-        if (settled) {
+        if (settled || fallbackStarted) {
           return;
         }
         if (document.hidden) {
@@ -192,7 +193,25 @@
       }
       // Background tabs can pause frames. Dismiss independently of the animation,
       // even if the tab becomes hidden after completion starts. Timers may throttle.
-      fallback = window.setTimeout(complete, 1000);
+      fallback = window.setTimeout(function () {
+        if (document.hidden) {
+          complete();
+          return;
+        }
+        fallbackStarted = true;
+        window.cancelAnimationFrame(frame);
+        window.clearTimeout(hold);
+        entry.pct = 100;
+        paint(ring, 100);
+        // Give a visible tab a rendering opportunity and a short completed hold.
+        // A separate deadline still dismisses if animation frames never resume.
+        fallback = window.setTimeout(complete, 250);
+        frame = window.requestAnimationFrame(function () {
+          if (settled) return;
+          if (document.hidden) complete();
+          else hold = window.setTimeout(complete, 100);
+        });
+      }, 1000);
       frame = window.requestAnimationFrame(finish);
     });
   }
