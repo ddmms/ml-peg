@@ -13,3 +13,9 @@ citations:
     role: reference_data
   - bibtex_key: zhang2021water
     role: reference_data
+  - bibtex_key: fransson2021dynasor
+    role: benchmark_method
+    detail: S(q) calculation
+  - bibtex_key: berger2025dynasor
+    role: benchmark_method
+    detail: S(q) calculation

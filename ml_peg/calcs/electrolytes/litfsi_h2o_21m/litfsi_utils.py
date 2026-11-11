@@ -238,6 +238,11 @@ def _rewind_to(
     # anyway: a frame missing before the step would leave a silent gap.
     if not frames or step - int(frames[-1].info["step"]) >= traj_every:
         return None
+    frame_steps = [int(frame.info["step"]) for frame in frames]
+    if any(
+        b - a != traj_every for a, b in zip(frame_steps, frame_steps[1:], strict=False)
+    ):
+        return None
 
     # Rewrite through temporaries: a job killed halfway through this must not
     # be able to leave a half-written history behind.
@@ -281,15 +286,20 @@ def run_stage(
     """
     final_file = Path(f"{file_prefix}-final.extxyz")
     if final_file.exists():
-        done = ase_read(final_file)
-        # The extxyz parser hands back info scalars as numpy types; orb's
-        # adapter asserts charge/spin are Python float/int, so a resumed run
-        # crashes on its first evaluation. Coerce on every re-read.
-        for key in ("charge", "spin"):
-            if key in done.info:
-                done.info[key] = int(done.info[key])
-        done.calc = struct.calc
-        return done
+        try:
+            done = ase_read(final_file)
+        except Exception:
+            # Final file left incomplete by a kill: resume from the restarts.
+            done = None
+        if done is not None:
+            # The extxyz parser hands back info scalars as numpy types; orb's
+            # adapter asserts charge/spin are Python float/int, so a resumed
+            # run crashes on its first evaluation. Coerce on every re-read.
+            for key in ("charge", "spin"):
+                if key in done.info:
+                    done.info[key] = int(done.info[key])
+            done.calc = struct.calc
+            return done
 
     resume = resume_state(
         Path(file_prefix), steps, traj_every=kwargs.get("traj_every", 100)

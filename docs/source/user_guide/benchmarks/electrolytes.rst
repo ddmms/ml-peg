@@ -72,16 +72,18 @@ Metrics
    is measured at a different composition (~18.5 m) and disagrees
    systematically with all MD-based partitionings (classical, AIMD, and
    MLIP), so it is not used for the per-species references. "Good": 0.20,
-   wide enough to contain the AIMD value and both converged potentials;
-   "bad": 0.5. Over the 50 ps NVT the total coordination number is stable,
-   but the water/TFSI split partly keeps memory of the starting cell; the
-   wider "good" range and the low weight account for this.
+   wide enough to contain the AIMD value and both converged potentials.
+   "Bad": 0.5, half an oxygen: beyond it the predicted first shell is closer
+   to one with an oxygen more or less than to the reference. Over the 50 ps
+   NVT the total coordination number is stable, but the water/TFSI split
+   partly keeps memory of the starting cell; the wider "good" range and the
+   low weight account for this.
 
 3. Li-O_TFSI coordination number error (weight 0.25)
 
    Same definition, restricted to TFSI oxygens (those bonded to a sulfur,
    d_OS < 1.75 A). Reference value: 1.9 (r2SCAN AIMD: 2.02; converged
-   r2SCAN-trained MACE: 1.87-1.94). "Good": 0.20, as for water; "bad": 0.5.
+   r2SCAN-trained MACE: 1.87-1.94). "Good": 0.20 and "bad": 0.5, as for water.
 
 4. Li-O_total coordination number error (weight 0)
 
@@ -89,7 +91,7 @@ Metrics
    Reference value: 4.3 (r2SCAN AIMD: 4.31; converged r2SCAN-trained MACE:
    4.25-4.26), consistent with the experimental total of 4.21 +/- 0.03 at
    ~18.5 m (Watanabe et al. 2021). Reported and colour-coded ("good" 0.10,
-   the theory-experiment spread; "bad" 0.5) but not scored: it is the sum of
+   the theory-experiment spread; "bad" 0.5, half an oxygen) but not scored: it is the sum of
    the two partial coordination numbers, and would reward models that miss
    water and TFSI in opposite directions.
 

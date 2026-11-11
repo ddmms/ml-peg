@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 from io import StringIO
+import json
 from pathlib import Path
 
 from ase.build import bulk
 from ase.io import read, write
 import pytest
 
-from ml_peg.calcs.electrolytes.litfsi_h2o_21m.litfsi_utils import resume_state
+from ml_peg.calcs.electrolytes.litfsi_h2o_21m import calc_litfsi_h2o_21m as calc_module
+from ml_peg.calcs.electrolytes.litfsi_h2o_21m.litfsi_utils import (
+    resume_state,
+    run_stage,
+)
 
 STATS_EVERY = 10
 TRAJ_EVERY = 20
@@ -219,3 +224,101 @@ def test_resume_after_kill(tmp_path, damage):
     assert [int(line.split()[0]) for line in stats[1:]] == list(
         range(0, expected + 1, STATS_EVERY)
     )
+
+
+def test_no_resume_across_missing_interior_frame(tmp_path):
+    """Test a trajectory with a gap before the restart step is not resumed."""
+    prefix = tmp_path / "stage"
+    write_stage(prefix, 100)
+    frames = read(f"{prefix}-traj.extxyz", index=":")
+    del frames[2]
+    write(f"{prefix}-traj.extxyz", frames, format="extxyz")
+
+    assert resume_state(prefix, STEPS, traj_every=TRAJ_EVERY) is None
+
+
+def test_incomplete_final_file_resumes(tmp_path):
+    """Test an unreadable final file falls back to the restart files."""
+    prefix = tmp_path / "stage"
+    write_stage(prefix, 300)
+    Path(f"{prefix}-final.extxyz").write_text("2\n")
+    seen = {}
+
+    class Ensemble:
+        """Stand-in for a janus-core ensemble that records its arguments."""
+
+        def __init__(self, **kwargs):
+            seen.update(kwargs)
+            self.struct = kwargs["struct"]
+
+        def run(self):
+            """Do nothing."""
+
+    start = frame_at(0)
+    start.calc = None
+    run_stage(Ensemble, start, steps=STEPS, file_prefix=prefix, traj_every=TRAJ_EVERY)
+
+    assert seen["restart"] is True
+    assert seen["struct"].info["step"] == 300
+
+
+class BrokenModel:
+    """Model whose calculator cannot be built."""
+
+    def get_calculator(self, **kwargs):
+        """
+        Fail as a model with a missing dependency would.
+
+        Parameters
+        ----------
+        **kwargs
+            Ignored.
+        """
+        raise ImportError("no backend")
+
+
+def test_calculator_failure_is_recorded(tmp_path: Path, monkeypatch) -> None:
+    """
+    Check a model whose calculator cannot be built is marked as failed.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory provided by pytest.
+    monkeypatch
+        Pytest fixture, used to redirect the output directory.
+    """
+    monkeypatch.setattr(calc_module, "OUT_PATH", tmp_path)
+
+    with pytest.warns(UserWarning, match="Could not build the calculator"):
+        failed = calc_module.run_reference_md("broken", BrokenModel())
+
+    assert failed == [calc_module.CELL_P64, calc_module.CELL_P16]
+    for cell in failed:
+        marker = json.loads((tmp_path / "broken" / f"failed_{cell}.json").read_text())
+        assert marker["cell"] == cell
+        assert "no backend" in marker["error"]
+
+
+def test_calculator_failure_keeps_complete_data(tmp_path: Path, monkeypatch) -> None:
+    """
+    Check a calculator failure does not invalidate data already complete.
+
+    Parameters
+    ----------
+    tmp_path
+        Temporary directory provided by pytest.
+    monkeypatch
+        Pytest fixture, used to redirect the output directory.
+    """
+    monkeypatch.setattr(calc_module, "OUT_PATH", tmp_path)
+    data_dir = tmp_path / "broken"
+    data_dir.mkdir()
+    (data_dir / "nvt_trajectory.extxyz").touch()
+
+    with pytest.warns(UserWarning, match="Could not build the calculator"):
+        failed = calc_module.run_reference_md("broken", BrokenModel())
+
+    assert failed == [calc_module.CELL_P16]
+    assert not (data_dir / f"failed_{calc_module.CELL_P64}.json").exists()
+    assert (data_dir / f"failed_{calc_module.CELL_P16}.json").exists()
