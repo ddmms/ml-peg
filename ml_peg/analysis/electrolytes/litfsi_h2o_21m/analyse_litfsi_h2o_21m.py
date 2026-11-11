@@ -59,13 +59,13 @@ RHO_EXP = 1.7126  # g/cm³ — Gilbert et al., JCED 62, 2056 (2017)
 # Coordination number references.
 # The total CN is anchored to theory at 21 m: r2SCAN AIMD (Li128, 20 ps) gives
 # 4.31, and two independent MACE potentials trained on the same r2SCAN dataset
-# (fine-tuned and from-scratch) converge to 4.27-4.29 over >2 ns; the neutron
+# (fine-tuned and from-scratch) converge to 4.25-4.26 over >2 ns; the neutron
 # diffraction experiment (Watanabe et al., JPCB 125, 7477, 2021) gives 4.21 at
 # the nearby composition x_LiTFSA=0.25 (~18.5 m). The water/TFSI partitioning
 # is anchored to theory only: the experimental split (1.93/2.28) is at a
 # different concentration and shows a systematic inversion vs all MD methods,
 # so it is not used. AIMD (20 ps): 2.23/2.02; converged r2SCAN-trained MACE
-# (>2 ns): 2.35-2.39 (water) and 1.89-1.91 (TFSI).
+# (>2 ns): 2.31-2.38 (water) and 1.87-1.94 (TFSI).
 CN_REF_WATER = 2.4  # r2SCAN AIMD + converged r2SCAN-trained MACE potentials
 CN_REF_TFSI = 1.9  # r2SCAN AIMD + converged r2SCAN-trained MACE potentials
 CN_REF_TOTAL = 4.3  # theory at 21 m; exp. 4.21 at ~18.5 m (Watanabe 2021)

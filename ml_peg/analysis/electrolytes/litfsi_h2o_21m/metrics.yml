@@ -14,24 +14,24 @@ metrics:
     level_of_theory: Experimental
     weight: 0
   CN Li-O_water Error:
-    good: 0.15
+    good: 0.20
     bad: 0.5
     unit: "-"
-    tooltip: "Absolute error in the Li-O_water coordination number (Li-O g(r) integrated to its first minimum, 2.83 A, on the p64_w170 NVT trajectory) vs the theoretical reference at 21 m (CN=2.4: r2SCAN AIMD 2.23 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 2.35-2.39 over >2 ns). Good: 0.15, the reference uncertainty (AIMD vs converged spread). Bad: 0.5. The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and is not used for the partitioning."
+    tooltip: "Absolute error in the Li-O_water coordination number (Li-O g(r) integrated to its first minimum, 2.83 A, on the p64_w170 NVT trajectory) vs the theoretical reference at 21 m (CN=2.4: r2SCAN AIMD 2.23 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 2.31-2.38 over >2 ns). Good: 0.20, wide enough to contain the AIMD value and both converged potentials; over the 50 ps NVT the water/TFSI split partly keeps memory of the starting cell. Bad: 0.5. The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and is not used for the partitioning."
     level_of_theory: r2SCAN
     weight: 0.25
   CN Li-O_TFSI Error:
-    good: 0.05
+    good: 0.20
     bad: 0.5
     unit: "-"
-    tooltip: "Absolute error in the Li-O_TFSI coordination number vs the theoretical reference at 21 m (CN=1.9: r2SCAN AIMD 2.02 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 1.89-1.91 over >2 ns). Good: 0.05, the reference uncertainty (agreement between the two r2SCAN-trained potentials). Bad: 0.5. The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and is not used for the partitioning."
+    tooltip: "Absolute error in the Li-O_TFSI coordination number vs the theoretical reference at 21 m (CN=1.9: r2SCAN AIMD 2.02 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 1.87-1.94 over >2 ns). Good: 0.20, as for water. Bad: 0.5. The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and is not used for the partitioning."
     level_of_theory: r2SCAN
     weight: 0.25
   CN Li-O_total Error:
     good: 0.10
     bad: 0.5
     unit: "-"
-    tooltip: "Absolute error in the total Li-O coordination number vs the reference CN=4.3 (r2SCAN AIMD 4.31; converged r2SCAN-trained MACE 4.27-4.29; consistent with the experimental 4.21 at ~18.5 m, Watanabe et al. JPCB 2021, neutron diffraction with isotopic substitution). Good: 0.10, the theory-experiment spread. Bad: 0.5. Reported and colour-coded but not scored (weight 0): it is the sum of the two partial coordination numbers, and would reward models that miss water and TFSI in opposite directions."
+    tooltip: "Absolute error in the total Li-O coordination number vs the reference CN=4.3 (r2SCAN AIMD 4.31; converged r2SCAN-trained MACE 4.25-4.26; consistent with the experimental 4.21 at ~18.5 m, Watanabe et al. JPCB 2021, neutron diffraction with isotopic substitution). Good: 0.10, the theory-experiment spread. Bad: 0.5. Reported and colour-coded but not scored (weight 0): it is the sum of the two partial coordination numbers, and would reward models that miss water and TFSI in opposite directions."
     level_of_theory: r2SCAN
     weight: 0
   S(q) R-factor:

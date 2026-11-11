@@ -66,26 +66,28 @@ Metrics
    Water oxygens are identified from the first frame as those bonded to a
    hydrogen (d_OH < 1.25 A). Reference value: 2.4, anchored to theory at 21 m
    (r2SCAN AIMD, Li128, 20 ps: 2.23; MACE potentials trained on the same
-   r2SCAN dataset, converged over >2 ns: 2.35-2.39). The experimental
+   r2SCAN dataset, converged over >2 ns: 2.31-2.38). The experimental
    partitioning of Watanabe et al., *J. Phys. Chem. B* 125, 7477 (2021)
    (1.93 water / 2.28 TFSI, neutron diffraction with isotopic substitution)
    is measured at a different composition (~18.5 m) and disagrees
    systematically with all MD-based partitionings (classical, AIMD, and
-   MLIP), so it is not used for the per-species references. "Good": 0.15,
-   the uncertainty of the reference (AIMD vs converged-MLIP spread); "bad": 0.5.
+   MLIP), so it is not used for the per-species references. "Good": 0.20,
+   wide enough to contain the AIMD value and both converged potentials;
+   "bad": 0.5. Over the 50 ps NVT the total coordination number is stable,
+   but the water/TFSI split partly keeps memory of the starting cell; the
+   wider "good" range and the low weight account for this.
 
 3. Li-O_TFSI coordination number error (weight 0.25)
 
    Same definition, restricted to TFSI oxygens (those bonded to a sulfur,
    d_OS < 1.75 A). Reference value: 1.9 (r2SCAN AIMD: 2.02; converged
-   r2SCAN-trained MACE: 1.89-1.91). "Good": 0.05, the agreement between the
-   two r2SCAN-trained potentials; "bad": 0.5.
+   r2SCAN-trained MACE: 1.87-1.94). "Good": 0.20, as for water; "bad": 0.5.
 
 4. Li-O_total coordination number error (weight 0)
 
    Absolute error in the total Li-O coordination number (water + TFSI).
    Reference value: 4.3 (r2SCAN AIMD: 4.31; converged r2SCAN-trained MACE:
-   4.27-4.29), consistent with the experimental total of 4.21 +/- 0.03 at
+   4.25-4.26), consistent with the experimental total of 4.21 +/- 0.03 at
    ~18.5 m (Watanabe et al. 2021). Reported and colour-coded ("good" 0.10,
    the theory-experiment spread; "bad" 0.5) but not scored: it is the sum of
    the two partial coordination numbers, and would reward models that miss

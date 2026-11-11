@@ -50,8 +50,8 @@ Reference values:
   62, 2056, 2017).
 * Li-O CN: 2.4 (water), 1.9 (TFSI), 4.3 (total). Theoretical references at
   21 m: r2SCAN AIMD (Li128, 20 ps) gives 2.23/2.02/4.31; MACE potentials
-  trained on the same r2SCAN dataset converge to 2.35-2.39/1.89-1.91/
-  4.27-4.29 over >2 ns. The total is consistent with the experimental 4.21
+  trained on the same r2SCAN dataset converge to 2.31-2.38/1.87-1.94/
+  4.25-4.26 over >2 ns. The total is consistent with the experimental 4.21
   at ~18.5 m (Watanabe et al., JPCB 125, 7477, 2021, neutron diffraction
   with isotopic substitution); the experimental water/TFSI split at that
   concentration is not used, as it disagrees systematically with all MD

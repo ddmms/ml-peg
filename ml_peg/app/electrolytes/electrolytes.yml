@@ -5,3 +5,4 @@ description: >-
 weight: 1
 benchmark_weights:
   SSEMD: 0
+  litfsi_h2o_21m: 0
