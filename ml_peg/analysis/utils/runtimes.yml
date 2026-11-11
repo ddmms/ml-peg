@@ -58,6 +58,7 @@ benchmarks:
     X23: 1
 
   molecular_dynamics:
+    binary_mixtures:  # to measure
     ethanol_water_density: 17000
     liquid_densities: 170000
     water_density: 12000

@@ -483,6 +483,7 @@ def plot_from_scatter_files(
     plot_id: str,
     plot_dir: Path,
     clear_plot_ids: Sequence[str] = (),
+    graph_id: str | None = None,
 ) -> str:
     """
     Attach callback to show a plot read from disk when a scatter point is clicked.
@@ -503,6 +504,9 @@ def plot_from_scatter_files(
     clear_plot_ids
         IDs of placeholder Divs to empty when a new plot is shown, so content
         derived from the previous plot does not linger on screen.
+    graph_id
+        ID of the rendered `Graph`. Default is ``f"{scatter_id}-plot"``; set it
+        when one scatter fills more than one placeholder, so the IDs differ.
 
     Returns
     -------
@@ -514,7 +518,7 @@ def plot_from_scatter_files(
     register_plot_settings_callbacks()
     _register_point_highlight(scatter_id)
 
-    graph_id = f"{scatter_id}-plot"
+    graph_id = graph_id or f"{scatter_id}-plot"
 
     @callback(
         Output(plot_id, "children", allow_duplicate=True),

@@ -16,6 +16,12 @@ import pytest
 from ml_peg import app, calcs
 from ml_peg.analysis.utils import decorators
 from ml_peg.analysis.utils import utils as analysis_utils
+from ml_peg.analysis.utils.timeseries import (
+    MetricEstimate,
+    TimeSeriesEstimate,
+    bootstrap_metric,
+    estimate_mean,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -168,7 +174,9 @@ def _open_trajectory(traj_path: pathlib.Path) -> ase_traj.TrajectoryReader | Non
         return None
 
 
-def _mean_density_g_cm3(traj: ase_traj.TrajectoryReader) -> float:
+def _density_estimate(
+    traj: ase_traj.TrajectoryReader, label: str | None = None
+) -> TimeSeriesEstimate:
     """
     Average the density (g/cm³) over every frame of an ASE trajectory.
 
@@ -176,49 +184,38 @@ def _mean_density_g_cm3(traj: ase_traj.TrajectoryReader) -> float:
     ----------
     traj
         Open ASE trajectory reader (already known to be non-empty).
+    label
+        Label to identify the trajectory in warnings.
 
     Returns
     -------
-    float
-        Frame-averaged density in g/cm³.
+    TimeSeriesEstimate
+        Frame-averaged density in g/cm³, with its uncertainty.
     """
     densities = [
         AU_TO_G_CM3 * float(frame.get_masses().sum()) / float(frame.get_volume())
         for frame in traj
     ]
-    return float(np.mean(densities))
+    return estimate_mean(densities, label=label)
 
 
 @pytest.fixture
-@decorators.plot_parity(
-    filename=str(OUT_PATH / "figure_polymers.json"),
-    title="Polymer densities",
-    x_label="Predicted density / g/cm^3",
-    y_label="Reference density / g/cm^3",
-    hoverdata={"Labels": labels()},
-)
-def polymer_densities() -> dict[str, list[float]]:
+def density_estimates() -> dict[str, list[TimeSeriesEstimate | float]]:
     """
-    Collect reference and predicted densities for all polymers and models.
+    Get density estimates for all polymers and models, and write final structures.
 
     Returns
     -------
-    dict[str, list[float]]
-        ``{"ref": [...], "<model>": [...], ...}`` aligned to ``labels()``.
-        Missing, unreadable, or empty trajectories contribute ``NaN``.
+    dict[str, list[TimeSeriesEstimate | float]]
+        Density estimates for each model, aligned to ``labels()``. Precomputed
+        densities are floats, without uncertainties. Missing, unreadable, or empty
+        trajectories contribute ``NaN``.
     """
     poly_ids = labels()
-    polymer_table = load_polymer_table()
-
-    results: dict[str, list[float]] = {"ref": []}
-    for name in DENSITY_MODEL_NAMES:
-        results[name] = []
-
-    for poly_id in poly_ids:
-        ref_density = float(polymer_table.loc[poly_id, "density"])
-        results["ref"].append(ref_density)
+    results: dict[str, list[TimeSeriesEstimate | float]] = {}
 
     for model_name in DENSITY_MODEL_NAMES:
+        results[model_name] = []
         # Per project convention, the dashboard/app must not read from the
         # calc outputs directory: anything the app needs (here, the final
         # production-stage frame for visualisation) is copied here, into the
@@ -247,40 +244,102 @@ def polymer_densities() -> dict[str, list[float]]:
             if traj is None or len(traj) == 0:
                 results[model_name].append(float("nan"))
                 continue
-            results[model_name].append(_mean_density_g_cm3(traj))
+            results[model_name].append(
+                _density_estimate(traj, label=f"{model_name}/{poly_id}")
+            )
 
+    return results
+
+
+@pytest.fixture
+@decorators.plot_parity(
+    filename=str(OUT_PATH / "figure_polymers.json"),
+    title="Polymer densities",
+    x_label="Predicted density / g/cm^3",
+    y_label="Reference density / g/cm^3",
+    hoverdata={"Labels": labels()},
+)
+def polymer_densities(
+    density_estimates: dict[str, list[TimeSeriesEstimate | float]],
+) -> dict[str, list[float]]:
+    """
+    Collect reference and predicted densities for all polymers and models.
+
+    Parameters
+    ----------
+    density_estimates
+        Density estimates for each model.
+
+    Returns
+    -------
+    dict[str, list[float]]
+        ``{"ref": [...], "<model>": [...], ...}`` aligned to ``labels()``, with
+        95 % confidence interval half-widths of predictions under ``"pred_err"``.
+        Missing, unreadable, or empty trajectories contribute ``NaN``.
+    """
+    polymer_table = load_polymer_table()
+    results: dict[str, list[float]] = {
+        "ref": [float(polymer_table.loc[poly_id, "density"]) for poly_id in labels()],
+        "pred_err": {},
+    }
+    for model_name, estimates in density_estimates.items():
+        results[model_name] = [
+            est.mean if isinstance(est, TimeSeriesEstimate) else est
+            for est in estimates
+        ]
+        results["pred_err"][model_name] = [
+            est.ci_95 if isinstance(est, TimeSeriesEstimate) else float("nan")
+            for est in estimates
+        ]
     return results
 
 
 @pytest.fixture
 def get_mae_by_subset(
     polymer_densities: dict[str, list[float]],
-) -> dict[str, dict[str, float]]:
+    density_estimates: dict[str, list[TimeSeriesEstimate | float]],
+) -> dict[str, dict[str, MetricEstimate | None]]:
     """
-    Compute per-subset MAE for each model, ignoring NaN entries.
+    Compute per-subset MAE for each model, with confidence intervals.
+
+    Confidence intervals only include sampling noise within each trajectory, not
+    variation between independent simulations (e.g. from chain packing).
 
     Parameters
     ----------
     polymer_densities
         Output of :func:`polymer_densities`.
+    density_estimates
+        Density estimates for each model, aligned to ``labels()``.
 
     Returns
     -------
-    dict[str, dict[str, float]]
+    dict[str, dict[str, MetricEstimate | None]]
         ``{"MAE (small)": {model: mae, ...}, "MAE (medium)": ..., ...}``.
         A subset MAE is reported only when all polymers in that subset are available.
     """
     poly_ids = labels()
     ref = np.asarray(polymer_densities["ref"], dtype=float)
-    result: dict[str, dict[str, float]] = {}
+    result: dict[str, dict[str, MetricEstimate | None]] = {}
     for set_name, poly_set in POLYMER_SETS.items():
         subset_mask = np.array([pid in poly_set for pid in poly_ids])
-        model_maes: dict[str, float] = {}
+        model_maes: dict[str, MetricEstimate | None] = {}
         for model_name in DENSITY_MODEL_NAMES:
             pred = np.asarray(polymer_densities[model_name], dtype=float)
             mask = subset_mask & np.isfinite(ref) & np.isfinite(pred)
             model_maes[model_name] = (
-                float(analysis_utils.mae(ref[mask].tolist(), pred[mask].tolist()))
+                bootstrap_metric(
+                    analysis_utils.mae,
+                    ref[mask],
+                    [
+                        est
+                        for est, keep in zip(
+                            density_estimates[model_name], mask, strict=True
+                        )
+                        if keep
+                    ],
+                    note="within-trajectory sampling only",
+                )
                 if mask.sum() == subset_mask.sum()
                 else None
             )
@@ -297,8 +356,8 @@ def get_mae_by_subset(
     weights=DEFAULT_WEIGHTS,
 )
 def metrics(
-    get_mae_by_subset: dict[str, dict[str, float]],
-) -> dict[str, dict[str, float]]:
+    get_mae_by_subset: dict[str, dict[str, MetricEstimate | None]],
+) -> dict[str, dict[str, MetricEstimate | None]]:
     """
     Assemble the metric table consumed by the dashboard.
 
