@@ -25,8 +25,8 @@ CALC_PATH = CALCS_ROOT / "mad_2_bench" / "errors" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "mad_2_bench"
 METADATA_PATH = Path(__file__).with_name("model_metadata.yml")
 
-S3_KEY = "inputs/mad_2_bench/errors/mad-2-bench.zip"
-S3_FILENAME = "mad-2-bench.zip"
+S3_KEY = "inputs/mad_2_bench/errors/errors.zip"
+S3_FILENAME = "errors.zip"
 
 REFERENCES = {
     "mad/r2scan": {"name": "MAD-2 r2SCAN", "file": "mad2_r2scan"},
@@ -172,20 +172,14 @@ def load_predictions(calc_path: Path, model: str) -> dict[tuple[str, str], dict]
 
 def load_metadata() -> dict[str, dict]:
     """
-    Read the model metadata, with every alias pointing at its record.
+    Read the model metadata.
 
     Returns
     -------
     dict[str, dict]
-        Model metadata by model name and alias.
+        Model metadata by model name.
     """
-    metadata = yaml.safe_load(METADATA_PATH.read_text()) or {}
-
-    for record in list(metadata.values()):
-        for alias in record.get("aliases", []):
-            metadata[alias] = record
-
-    return metadata
+    return yaml.safe_load(METADATA_PATH.read_text()) or {}
 
 
 def model_record(metadata: dict[str, dict], model: str) -> dict[str, Any]:
@@ -209,7 +203,6 @@ def model_record(metadata: dict[str, dict], model: str) -> dict[str, Any]:
 
     return {
         "name": model,
-        "identifier": model,
         "checkpoint": "not documented",
         "training_data": "not documented",
         "molecular_only": False,
@@ -1033,7 +1026,7 @@ def write_app_data(
     entries = {
         model: {
             "name": record["name"],
-            "identifier": record["identifier"],
+            "identifier": model,
             "checkpoint": record["checkpoint"],
             "training_data": record["training_data"],
             "molecular": record["molecular_only"],

@@ -43,10 +43,7 @@ MOLECULAR_DOMAIN = ("molecule", "cluster")
 
 FRAMEWORK_ID = "mad-2-bench"
 
-DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/mad-2-bench.html"
-    "#dft-settings-of-the-references"
-)
+DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/mad-2-bench.html"
 
 ENERGY_NOTE = (
     "Energies only where POTCAR, Hubbard U and energy definition match the model's "
@@ -471,6 +468,7 @@ class Mad2ErrorsApp(BaseApp):
             Input(f"{self.name}-class", "value"),
             Input(f"{self.name}-mode", "value"),
             Input(f"{self.name}-domain", "value"),
+            Input("selected-models-store", "data"),
         )
         def update_table(
             reference: str,
@@ -478,6 +476,7 @@ class Mad2ErrorsApp(BaseApp):
             class_name: str,
             mode: str,
             domain: list[str],
+            selected_models: list[str] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict], list]:
             """
             Show one property of every model for the selected reference and frames.
@@ -494,6 +493,8 @@ class Mad2ErrorsApp(BaseApp):
                 All labelled frames or common frames.
             domain
                 Whether out-of-domain models are included.
+            selected_models
+                Models selected in the global model filter, None before it loads.
 
             Returns
             -------
@@ -528,13 +529,17 @@ class Mad2ErrorsApp(BaseApp):
                     if in_domain(self.models[row["model"]]["molecular"], class_name)
                 ]
 
+            if selected_models is not None:
+                rows = [row for row in rows if row["model"] in selected_models]
+
             summary_children = []
 
             if mode == "common":
                 common = summary["common"][prop]
+                compared = sum(1 for row in rows if row[f"{prop}_mae"] is not None)
                 summary_children.append(
                     Div(
-                        f"{common['models']} models compared on the same "
+                        f"{compared} models compared on the same "
                         f"{common['frames']} structures.",
                         style=LINE_STYLE,
                     )
@@ -736,12 +741,14 @@ class Mad2ComparisonApp(BaseApp):
             Input(f"{self.name}-statistic", "value"),
             Input(f"{self.name}-class", "value"),
             Input(f"{self.name}-domain", "value"),
+            Input("selected-models-store", "data"),
         )
         def update_table(
             prop: str,
             statistic: str,
             class_name: str,
             domain: list[str],
+            selected_models: list[str] | None,
         ) -> tuple[list[dict], list[dict], list[dict], list[dict], list]:
             """
             Show the selected property of every model for the six references.
@@ -756,6 +763,8 @@ class Mad2ComparisonApp(BaseApp):
                 Selected structure class.
             domain
                 Whether out-of-domain models are included.
+            selected_models
+                Models selected in the global model filter, None before it loads.
 
             Returns
             -------
@@ -782,6 +791,9 @@ class Mad2ComparisonApp(BaseApp):
                 entry["models"].items(), key=lambda item: self.models[item[0]]["name"]
             ):
                 if prop not in cells["properties"]:
+                    continue
+
+                if selected_models is not None and model not in selected_models:
                     continue
 
                 if "include" not in domain and not in_domain(

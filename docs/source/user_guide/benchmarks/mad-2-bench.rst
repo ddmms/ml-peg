@@ -21,8 +21,9 @@ Metrics
 The tables report MAE, RMSE, the 95th percentile of absolute error and the largest
 absolute error. Forces are in meV/Å, energies in meV/atom and stress in meV/Å³. Stress
 is evaluated only for bulk structures. Energy errors are shown only where the model's
-training energies are comparable to the reference. In "Available frames", each model is
-evaluated on the frames it predicted. In "Common frames", models must cover at least 90%
+training energies are comparable to the reference, as recorded per model in
+``ml_peg/analysis/mad_2_bench/errors/model_metadata.yml``. In "All labelled frames", each
+model is evaluated on the frames it predicted. In "Common frames", models must cover at least 90%
 of the selection to qualify. All qualifying models are then evaluated on exactly the
 same frames.
 
@@ -34,7 +35,7 @@ Most models take a few minutes on a GPU, the slowest take up to an hour.
 Data availability
 -----------------
 
-The input archive, ``mad-2-bench.zip``, contains the structures and reference labels. We
+The input archive, ``errors.zip``, contains the structures and reference labels. We
 selected up to 100 structures per subset by farthest-point sampling. Each VASP file
 contains only the structures that converged with that reference.
 

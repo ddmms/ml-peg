@@ -19,8 +19,8 @@ from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
 
-S3_KEY = "inputs/mad_2_bench/errors/mad-2-bench.zip"
-S3_FILENAME = "mad-2-bench.zip"
+S3_KEY = "inputs/mad_2_bench/errors/errors.zip"
+S3_FILENAME = "errors.zip"
 
 LABEL_FILES = (
     "mad2_r2scan",
@@ -136,6 +136,7 @@ def predict(atoms: Atoms, calc: Calculator, with_stress: bool) -> dict[str, Any]
     return result
 
 
+@pytest.mark.framework("mad-2-bench")
 @pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_mad_2_bench_predictions(mlip: tuple[str, Any]) -> None:
