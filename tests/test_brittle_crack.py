@@ -607,6 +607,26 @@ def test_a_state_that_leaves_its_basin_is_not_scored_at_that_load():
     assert an.ordering_curve(model, ref, ORDER)["coverage"] == pytest.approx(4 / 7)
 
 
+def test_a_state_lost_mid_window_leaves_the_gap_uncovered():
+    """
+    Count the loads either side of a lost frame as uncovered, not interpolated.
+
+    The 5-7 frame at K 1.6 collapses but those at 1.5, 1.7 and 1.8 are fine: the open
+    interval (1.5, 1.7) is uncovered, and the rest is scored as before.
+    """
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    ks = (1.5, 1.6, 1.7, 1.8)
+    ref = _ramp_frames(_linear, "REF_energy", ks=ks)
+    model = _ramp_frames(lambda k: _linear(k) + 0.04, "model_energy", ks=ks)
+    model[1].info["model_q"] = -1.2  # the 5-7 frame at K 1.6
+    c = an.ordering_curve(model, ref, ORDER)
+    grid = np.linspace(1.5, 1.8, ORDER["n_grid"])
+    gap = (grid > 1.5 + 1e-9) & (grid < 1.7 - 1e-9)
+    assert gap.any() and c["coverage"] == pytest.approx(1 - gap.mean())
+    assert c["error"] == pytest.approx(10.0)
+
+
 def test_loads_above_k_max_are_not_scored():
     """
     Score only the loads up to ``k_max``.
@@ -862,6 +882,35 @@ def test_an_unconverged_lattice_relaxation_raises(monkeypatch):
     from ase.optimize import LBFGS
 
     monkeypatch.setattr(LBFGS, "run", lambda self, **kwargs: False)
+    with pytest.raises(RuntimeError, match="did not converge"):
+        ct.material_constants(_sw())
+
+
+def test_an_unconverged_elastic_constant_relaxation_raises(monkeypatch):
+    """A strained-cell relaxation that hits its step limit raises (failed constants)."""
+    from ase.optimize import LBFGS
+
+    run = LBFGS.run
+    calls = []
+
+    def fail_after_lattice(self, **kwargs):
+        """
+        Run the lattice relaxation; report every later run as unconverged.
+
+        Parameters
+        ----------
+        **kwargs
+            Optimiser run arguments.
+
+        Returns
+        -------
+        bool
+            Whether the run converged.
+        """
+        calls.append(kwargs)
+        return run(self, **kwargs) if len(calls) == 1 else False
+
+    monkeypatch.setattr(LBFGS, "run", fail_after_lattice)
     with pytest.raises(RuntimeError, match="did not converge"):
         ct.material_constants(_sw())
 

@@ -356,8 +356,9 @@ def ordering_curve(model_frames: list, ref_frames: list, ordering: dict) -> dict
     set) are not scored: they would put the window's edge at a state's own fold, where a
     model that folds a little early loses the load. A model frame counts only if its
     fixed-K relaxation converged and stayed in its state's basin (q within ``q_tol`` of
-    the DFT frame's); a load is covered where both states have counted frames on either
-    side of it.
+    the DFT frame's); a load is covered where, for both states, the nearest frames on
+    either side of it are counted (a frame lost mid-window uncovers the loads around it,
+    rather than being interpolated across).
 
     Parameters
     ----------
@@ -425,7 +426,10 @@ def ordering_curve(model_frames: list, ref_frames: list, ordering: dict) -> dict
         if ok.sum() < 2:
             covered[:] = False
             continue
-        covered &= (grid >= k[ok].min() - 1e-12) & (grid <= k[ok].max() + 1e-12)
+        # a load is covered only between two adjacent counted frames: the indicator,
+        # interpolated linearly, is 1 there and below 1 next to a lost frame
+        order = np.argsort(k)
+        covered &= np.interp(grid, k[order], ok[order].astype(float)) > 1 - 1e-9
         d_model += sign * np.interp(grid, k[ok], e[ok])
     err = 1000 * np.abs(d_model - d_ref)[covered] / front
     return {

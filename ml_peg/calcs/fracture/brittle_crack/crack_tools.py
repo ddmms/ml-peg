@@ -167,6 +167,52 @@ def neutral_lowest_spin(atoms: Atoms) -> Atoms:
     return atoms
 
 
+def _checked_lbfgs():
+    """
+    Return an LBFGS that raises when a run does not converge.
+
+    matscipy's ``fit_elastic_constants`` discards the optimiser's return value, so a
+    strained cell that hits the step limit would otherwise be fitted silently.
+
+    Returns
+    -------
+    type
+        LBFGS subclass whose ``run`` raises ``RuntimeError`` on non-convergence.
+    """
+    from ase.optimize import LBFGS
+
+    class CheckedLBFGS(LBFGS):
+        """LBFGS whose ``run`` raises if it does not converge."""
+
+        def run(self, **kwargs):
+            """
+            Run, raising if the step limit is hit first.
+
+            Parameters
+            ----------
+            **kwargs
+                Optimiser run arguments.
+
+            Returns
+            -------
+            bool
+                True (the run converged).
+
+            Raises
+            ------
+            RuntimeError
+                If the run did not converge.
+            """
+            if not super().run(**kwargs):
+                raise RuntimeError(
+                    "elastic-constant relaxation did not converge in "
+                    f"{kwargs.get('steps')} steps"
+                )
+            return True
+
+    return CheckedLBFGS
+
+
 def material_constants(calc, symbol: str = "Si") -> dict:
     """
     Compute the lattice constant and relaxed-ion cubic elastic constants of a model.
@@ -198,7 +244,7 @@ def material_constants(calc, symbol: str = "Si") -> dict:
         symmetry="cubic",
         delta=1e-3,
         N_steps=5,
-        optimizer=LBFGS,
+        optimizer=_checked_lbfgs(),
         fmax=1e-6,
         steps=MAX_STEPS,
         verbose=False,

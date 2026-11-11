@@ -20,7 +20,7 @@ Hessian with Broyden updates, falling back to Newton-Krylov. The continuation ru
 clamped K-field clusters with the topology of the DFT reference
 (``clusters.cluster_like``): every model sees the same atoms, H caps and tip bond, with
 its own lattice constant, cubic elastic constants and surface energy (computed in the
-benchmark), so K is measured in units of the model's own Griffith value K_G. Three crack
+benchmark; a model whose strained-cell relaxations do not converge is not scored), so K is measured in units of the model's own Griffith value K_G. Three crack
 systems are included: (110)[1-10], (110)[001] and (111)[1-10].
 
 Metrics
@@ -69,7 +69,8 @@ Two more metrics check which crack-tip state the model prefers, and at which loa
    thousandths early. A relaxation that does not converge,
    or that leaves its state (the coordinate q = d(52, 53) - d(51, 53), about -1.35 Å
    sharp and +1.5 Å 5-7, moves by more than 0.5 Å), is not scored, and the loads it
-   leaves uncovered count at the bad threshold. Its thresholds are physical rather than
+   leaves uncovered (all those between its neighbouring loads, even mid-window) count
+   at the bad threshold. Its thresholds are physical rather than
    SW-anchored: bad is the DFT gap at K/K_G = 1.50 (an error that large can reverse the
    order) and good is a third of it.
 
