@@ -26,3 +26,8 @@ This file should be placed in ``ml_peg/app/[category]``, and named ``[category].
 
 If this file is missing, or is not read successfully, the category name will default to
 the direcory name, and the description will be left empty.
+
+This file also sets the category's default ``weight`` in the overall score, and the
+default ``benchmark_weights`` of the benchmarks within it. Note that benchmarks marked
+slow or slower must be weighted 0 here. See
+:doc:`Benchmark scoring </developer_guide/scoring_and_normalisation>`.

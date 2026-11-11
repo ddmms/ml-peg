@@ -53,6 +53,9 @@ INFO = get_struct_info(
     include_filenames=True,
 )
 
+# Reference values are experimental, so are known for every system
+REF_DENSITIES = [EXPERIMENTAL_DATA[label] for label in INFO["filenames"]]
+
 
 def compute_density(fname, density_col=13):
     """
@@ -100,24 +103,24 @@ def water_density() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted densities.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_DENSITIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        for label in INFO["filenames"]:
-            atoms = Trajectory(CALC_PATH / model_name / f"{label}.traj")[-1]
+        structs_dir = OUT_PATH / model_name
+        structs_dir.mkdir(parents=True, exist_ok=True)
 
-            results[model_name].append(
-                compute_density(CALC_PATH / model_name / f"{label}.log")
-            )
-            if not ref_stored:
-                results["ref"].append(EXPERIMENTAL_DATA[label])
+        for label in INFO["filenames"]:
+            traj_path = CALC_PATH / model_name / f"{label}.traj"
+            log_path = CALC_PATH / model_name / f"{label}.log"
+            if not traj_path.exists() or not log_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            results[model_name].append(compute_density(log_path))
 
             # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms)
-        ref_stored = True
+            write(structs_dir / f"{label}.xyz", Trajectory(traj_path)[-1])
+
     return results
 
 

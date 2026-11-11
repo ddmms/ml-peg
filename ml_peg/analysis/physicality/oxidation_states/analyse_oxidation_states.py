@@ -58,6 +58,9 @@ def get_rdf_results(
 
     for salt in IRON_SALTS:
         rdf_file = model_calc_path / f"O-Fe_{salt}_{model}.rdf"
+        if not rdf_file.exists():
+            results[salt] = None, None
+            continue
 
         fe_o_rdf = np.loadtxt(rdf_file)
         r = fe_o_rdf[:, 0]
@@ -122,6 +125,9 @@ def get_oxidation_states_passfail() -> dict[str, dict]:
     for model in MODELS:
         results = get_rdf_results(model)
         plot_rdfs(model, results)
+
+        if results[IRON_SALTS[0]][0] is None or results[IRON_SALTS[1]][0] is None:
+            continue
 
         fe2_r = results[IRON_SALTS[0]][0]
         fe2_g_r = results[IRON_SALTS[0]][1]

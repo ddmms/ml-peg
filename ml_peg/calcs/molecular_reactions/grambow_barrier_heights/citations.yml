@@ -10,4 +10,6 @@ contributors:
   - name: "Lucien Walewski"
     github: "lwalew"
 
-citations: []
+citations:
+  - bibtex_key: grambow2020reactions
+    role: reference_data

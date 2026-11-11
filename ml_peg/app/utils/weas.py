@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -10,6 +11,7 @@ def generate_weas_html(
     filename: str | Path,
     mode: Literal["struct", "traj"] = "struct",
     index: int = 0,
+    frame_indices: list[int] | None = None,
 ) -> str:
     """
     Generate HTML for WEAS.
@@ -25,6 +27,9 @@ def generate_weas_html(
         Frame of structure file to load, or of trajectory to view. In "struct" mode,
         all structures will be loaded by default. In "traj" mode, the first frame will
         be loaded by default.
+    frame_indices
+        Optional zero-based XYZ frames to display. Selects raw frame blocks before
+        parsing, so unselected frames do not create viewer objects.
 
     Returns
     -------
@@ -119,6 +124,25 @@ def generate_weas_html(
 
         if (filename.endsWith(".xyz") || filename.endsWith(".extxyz")) {{
 
+            const selectedFrames = {json.dumps(frame_indices)};
+            if (selectedFrames !== null) {{
+                // Fetch one cacheable trajectory, but parse only unique selected frames.
+                const wanted = new Set(selectedFrames);
+                const lines = structureData.trimEnd().split(/\\r?\\n/);
+                const blocks = [];
+                let frame = 0;
+                for (let start = 0; start < lines.length; frame++) {{
+                    const count = Number(lines[start].trim());
+                    if (!Number.isInteger(count) || count < 0) {{
+                        throw new Error("Invalid XYZ atom count");
+                    }}
+                    const end = start + count + 2;
+                    if (wanted.has(frame)) blocks.push(lines.slice(start, end).join("\\n"));
+                    start = end;
+                }}
+                structureData = blocks.join("\\n") + "\\n";
+                title.textContent = `Viewing: ${{wanted.size}} unique structures in density bin`;
+            }}
             const atoms = parseXYZ(structureData);
             editor.avr.atoms = {atoms_txt};
             editor.avr.modelStyle = 1;

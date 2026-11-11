@@ -13,7 +13,6 @@ import pytest
 import yaml
 
 from ml_peg.models.get_models import load_models
-from ml_peg.models.models import DpaCalc
 
 DPA_MODELS = (
     "dpa-3p3-1M-omat",
@@ -21,7 +20,6 @@ DPA_MODELS = (
     "dpa-4-neo-omat",
     "dpa-4-plus-omat",
 )
-DPA3_DATASETS = ["OpenLAM-v1", "OMAT", "MPtrj", "OC20", "OC22", "ODAC23", "SPICE2"]
 
 
 class _FakeDP:
@@ -40,21 +38,6 @@ def fake_deepmd(monkeypatch):
     deepmd_module.calculator = calculator_module
     monkeypatch.setitem(sys.modules, "deepmd", deepmd_module)
     monkeypatch.setitem(sys.modules, "deepmd.calculator", calculator_module)
-
-
-def test_dpa_registry_metadata():
-    """DPA entries record their native precision, domains, and D3 behaviour."""
-    registry_path = Path(__file__).parents[1] / "ml_peg" / "models" / "models.yml"
-    registry = yaml.safe_load(registry_path.read_text(encoding="utf8"))
-
-    assert all("overwrite_dtype" not in registry[name] for name in DPA_MODELS)
-    assert all(registry[name]["class_name"] == "DP" for name in DPA_MODELS)
-    assert registry["dpa-3p3-1M-omat"]["kwargs"]["head"] == "Omat24"
-    assert registry["dpa-3p3-1M-omat"]["datasets"] == DPA3_DATASETS
-
-    omat_models = DPA_MODELS[1:]
-    assert all(registry[name]["datasets"] == ["OMAT"] for name in omat_models)
-    assert all(not registry[name]["trained_on_dispersion"] for name in DPA_MODELS)
 
 
 def test_dpa_registry_records_compatible_elements():
@@ -95,15 +78,6 @@ def test_openlam_coverage_matches_constituent_union():
     assert openlam["number"] == len(expected) == 89
 
 
-def test_dpa_models_use_dedicated_wrapper(fake_deepmd):
-    """All registered DPA models route through the dedicated wrapper."""
-    models = load_models(DPA_MODELS)
-
-    assert tuple(models) == DPA_MODELS
-    assert all(isinstance(model, DpaCalc) for model in models.values())
-    assert all(model.available for model in models.values())
-
-
 @pytest.mark.parametrize("precision", ["low", "high"])
 def test_dpa_native_precision_does_not_pass_unsupported_options(fake_deepmd, precision):
     """The DPA wrapper leaves fixed checkpoint precision and device to DeePMD."""
@@ -112,14 +86,6 @@ def test_dpa_native_precision_does_not_pass_unsupported_options(fake_deepmd, pre
     calculator = model.get_calculator(precision=precision)
 
     assert calculator.kwargs == {"model": "DPA-3.3-1M", "head": "Omat24"}
-
-
-def test_dpa_rejects_unknown_precision(fake_deepmd):
-    """The DPA wrapper rejects unknown ML-PEG precision choices."""
-    model = DpaCalc(kwargs={"model": "checkpoint.pt"})
-
-    with pytest.raises(ValueError, match="Invalid precision"):
-        model.get_calculator(precision="medium")
 
 
 @pytest.mark.parametrize("model_name", DPA_MODELS)

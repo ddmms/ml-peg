@@ -23,6 +23,7 @@ EV_TO_KCAL = units.mol / units.kcal
 def get_relative_energy(
     dataset: str,
     system_names: list[str],
+    ref_energies: list[float],
     calc_path: Path,
     out_path: Path,
 ) -> dict[str, list]:
@@ -35,6 +36,8 @@ def get_relative_energy(
         Dataset to get relative energies for.
     system_names
         List of system names to get relative energies for.
+    ref_energies
+        Reference relative energies, matching `system_names`.
     calc_path
         Path to calculation outputs.
     out_path
@@ -62,14 +65,12 @@ def get_relative_energy(
         dict[str, list]
             Dictionary of all reference and predicted relative energies.
         """
-        results = {"ref": []} | {mlip: [] for mlip in MODELS}
-        ref_stored = False
+        results = {"ref": list(ref_energies)} | {mlip: [] for mlip in MODELS}
 
         for model_name in MODELS:
             model_dir = calc_path / model_name
             for system_name in system_names:
-                xyz_name = f"{dataset}_{system_name}.xyz"
-                xyz_path = model_dir / xyz_name
+                xyz_path = model_dir / f"{dataset}_{system_name}.xyz"
                 if not xyz_path.is_file():
                     results[model_name].append(np.nan)
                     continue
@@ -79,20 +80,17 @@ def get_relative_energy(
                     atoms_list[0].info["model_rel_energy"] * EV_TO_KCAL
                 )
 
-                # Only store ref and dataset info once (from first model)
-                if not ref_stored:
-                    results["ref"].append(
-                        atoms_list[0].info["ref_rel_energy"] * EV_TO_KCAL
-                    )
-
-            ref_stored = True
         return results
 
     return relative_energies()
 
 
 def get_mae(
-    dataset: str, system_names: list[str], calc_path: Path, out_path: Path
+    dataset: str,
+    system_names: list[str],
+    ref_energies: list[float],
+    calc_path: Path,
+    out_path: Path,
 ) -> dict[str, float]:
     """
     Get mean absolute error for relative energies for a specific dataset.
@@ -103,6 +101,8 @@ def get_mae(
         Dataset name to filter by.
     system_names
         List of system names to get relative energies for.
+    ref_energies
+        Reference relative energies, matching `system_names`.
     calc_path
         Path to calculation outputs.
     out_path
@@ -117,6 +117,7 @@ def get_mae(
     relative_energies = get_relative_energy(
         dataset=dataset,
         system_names=system_names,
+        ref_energies=ref_energies,
         calc_path=calc_path,
         out_path=out_path,
     )
@@ -157,6 +158,9 @@ def get_gscdb138_metrics(
         calc_path=calc_path,
         glob_pattern="*.xyz",
         include_filenames=True,
+        per_file_info={
+            "ref_rel_energy": lambda structs: structs[0].info["ref_rel_energy"],
+        },
         write_info=True,
         write_structs=True,
         out_path=out_path,
@@ -167,6 +171,18 @@ def get_gscdb138_metrics(
             name[len(dataset) + 1 :]
             for name in info["filenames"]
             if name.startswith(f"{dataset}_")
+        ]
+        for dataset in datasets
+    }
+
+    # Reference values are taken from the mock calculation, which is always complete
+    mock_ref_energies = dict(
+        zip(info["filenames"], info["ref_rel_energy"], strict=True)
+    )
+    ref_energies = {
+        dataset: [
+            mock_ref_energies[f"{dataset}_{name}"] * EV_TO_KCAL
+            for name in system_names[dataset]
         ]
         for dataset in datasets
     }
@@ -191,6 +207,7 @@ def get_gscdb138_metrics(
             f"{dataset} MAE": get_mae(
                 dataset,
                 system_names[dataset],
+                ref_energies[dataset],
                 calc_path,
                 out_path,
             )

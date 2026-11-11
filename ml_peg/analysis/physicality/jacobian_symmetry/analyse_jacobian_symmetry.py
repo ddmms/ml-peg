@@ -28,14 +28,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 EPS = 1e-3  # must match calc_jacobian_symmetry.EPS
 N_STRUCTURES = 10  # must match len(calc_jacobian_symmetry.STRUCTURES)
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    write_info=True,
-    write_structs=True,
-    out_path=OUT_PATH,
-)
-
 
 def build_jacobian(model_name: str, struct_name: str) -> np.ndarray | None:
     """
@@ -338,4 +330,10 @@ def test_jacobian_symmetry(metrics: dict[str, dict]) -> None:
     metrics
         All Jacobian symmetry metrics.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        write_info=True,
+        write_structs=True,
+        out_path=OUT_PATH,
+    )

@@ -18,6 +18,7 @@ import warnings
 import zipfile
 
 from botocore.exceptions import BotoCoreError, ClientError
+from playwright.sync_api import expect
 import pytest
 from werkzeug.serving import make_server
 
@@ -28,16 +29,16 @@ from ml_peg.data.data import download
 # Quieten the per-request werkzeug access log so test output stays readable.
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
-# Stand-in for the published data tarball (~800 KB against ~9 GB): a handful of
+# Stand-in for the published data tarball (~750 KB against ~9 GB): a handful of
 # benchmarks, published once to the ml-peg-data bucket and never overwritten. A
-# changed fixture is a new -v2 object plus a bump here. The bucket has no
+# changed fixture is a new -v3 object plus a bump here. The bucket has no
 # versioning, so the digest is what actually enforces that: a swapped object
-# fails loudly instead of quietly changing what the suite tests. (The object as
-# uploaded also carries macOS "__MACOSX/" resource-fork entries, which
-# extraction skips.)
-FIXTURE_VERSION = "v1"
+# fails loudly instead of quietly changing what the suite tests. (Extraction
+# only takes members under the version prefix, so any stray archive entries,
+# such as macOS "__MACOSX/" resource forks, are skipped.)
+FIXTURE_VERSION = "v2"
 FIXTURE_KEY = f"tests/ui-fixture-{FIXTURE_VERSION}.zip"
-FIXTURE_SHA256 = "b0fab46961813f329702b6d464171efc02edf73503c7c4c5069db7f91935564f"
+FIXTURE_SHA256 = "16571227683f2a73120e22b41c2f2f0821bc1ad969d65da71cad312ccc9b5c98"
 FIXTURE_ARCHIVE = BENCHMARK_DATA_DIR / f"ui-fixture-{FIXTURE_VERSION}.zip"
 
 # Benchmarks the fixture supplies, chosen for coverage per KB rather than size:
@@ -91,6 +92,58 @@ def wait_for_app_ready(page, timeout: int = READY_TIMEOUT) -> None:  # noqa: ANN
         }""",
         timeout=timeout,
     )
+
+
+def set_model_visible(page, model: str, visible: bool) -> None:  # noqa: ANN001
+    """
+    Show or hide one model through the "Visible models" dropdown.
+
+    Searching avoids scrolling to the option, and the checkbox is toggled by key
+    rather than clicked, as the opening dropdown can move a click onto a
+    neighbour. Returns once the backing store holds the new selection.
+
+    Parameters
+    ----------
+    page
+        Playwright page with the app loaded.
+    model
+        Model name, as the model filter spells it.
+    visible
+        Whether the model should be selected once this returns.
+    """
+    # Written when the app hydrates, so it is briefly absent on a fresh page.
+    page.wait_for_function(
+        "() => sessionStorage.getItem('selected-models-store') !== null"
+    )
+    before = page.evaluate(
+        "JSON.parse(sessionStorage.getItem('selected-models-store'))"
+    )
+    assert (model in before) != visible, (
+        f"'{model}' is already {'visible' if visible else 'hidden'}, so toggling it "
+        "would not test anything"
+    )
+    expected = sorted(set(before) | {model} if visible else set(before) - {model})
+
+    page.locator("#model-filter-checklist").click()
+    search = page.locator("input.dash-dropdown-search")
+    # Wait for the dropdown's opening autofocus before moving focus ourselves.
+    expect(search).to_be_focused()
+    search.fill(model)
+    # Wait for the list to narrow: the wanted option renders before it does.
+    expect(page.get_by_role("option").filter(has_not_text=model)).to_have_count(0)
+    # Search matches substrings, so name the wanted option exactly.
+    option = page.get_by_role("option", name=model, exact=True)
+    expect(option).to_have_count(1)
+    expect(option).to_have_attribute("aria-selected", str(not visible).lower())
+
+    option.get_by_role("checkbox").press("Space")
+    expect(option).to_have_attribute("aria-selected", str(visible).lower())
+    page.wait_for_function(
+        """expected => JSON.stringify(JSON.parse(sessionStorage.getItem(
+            'selected-models-store')).sort()) === JSON.stringify(expected)""",
+        arg=expected,
+    )
+    page.keyboard.press("Escape")
 
 
 def _sha256(path: Path) -> str:

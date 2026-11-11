@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import (
@@ -71,10 +71,20 @@ LABELS = list(range(1, 29))
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
+    info_keys=["ref_ionization_energy"],
+    include_filenames=True,
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_IONIZATION_ENERGIES = dict(
+    zip(INFO["filenames"], INFO["ref_ionization_energy"], strict=True)
+)
+REF_ENERGIES = [
+    REF_IONIZATION_ENERGIES[str(complex_id)] * EV_TO_KCAL for complex_id in LABELS
+]
 
 
 @pytest.fixture
@@ -96,22 +106,20 @@ def ionization_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         for complex_id in LABELS:
-            atoms = read(CALC_PATH / model_name / f"{complex_id}.xyz")
-            model_ion_energy = atoms.info["model_ionization_energy"]
-            ref_ion_energy = atoms.info["ref_ionization_energy"]
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{complex_id}.xyz", atoms)
-            results[model_name].append(model_ion_energy * EV_TO_KCAL)
-            if not ref_stored:
-                results["ref"].append(ref_ion_energy * EV_TO_KCAL)
-        ref_stored = True
+            struct_path = CALC_PATH / model_name / f"{complex_id}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            atoms = read(struct_path)
+            results[model_name].append(
+                atoms.info["model_ionization_energy"] * EV_TO_KCAL
+            )
+
     return results
 
 

@@ -11,10 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "3dTMV"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/tm_complexes.html#dtmv"
 DATA_PATH = APP_ROOT / "data" / "tm_complexes" / "3dTMV"
@@ -31,16 +28,12 @@ class Benchmark3dTMVApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            # Note: sorting different to rxn_count order in calc
-            ts_files = sorted(model_dir.glob("*.xyz"), key=lambda path: int(path.stem))
-            structs = [
-                f"/assets/tm_complexes/3dTMV/{MODELS[0]}/{ts_file.name}"
-                for ts_file in ts_files
-            ]
-        else:
-            structs = []
+        # Note: sorting different to rxn_count order in calc
+        structs_dir = DATA_PATH / "mock"
+        ts_files = sorted(structs_dir.glob("*.xyz"), key=lambda path: int(path.stem))
+        structs = [
+            f"/assets/tm_complexes/3dTMV/mock/{ts_file.name}" for ts_file in ts_files
+        ]
 
         plot_from_table_column(
             table_id=self.table_id,
