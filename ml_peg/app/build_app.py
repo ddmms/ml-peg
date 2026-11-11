@@ -48,6 +48,10 @@ from ml_peg.app.utils.build_frameworks import (
     build_framework_summary_tables,
     build_framework_views,
 )
+from ml_peg.app.utils.model_order import (
+    build_model_order_controls,
+    register_model_order_callbacks,
+)
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     register_onboarding_callbacks,
@@ -915,6 +919,7 @@ def build_nav(
                                         get_model_filter(MODELS),
                                         weight_preset_selector,
                                         get_element_filter(),
+                                        build_model_order_controls(),
                                     ],
                                     className="mlpeg-controls-toolbar",
                                 ),
@@ -991,6 +996,7 @@ def build_nav(
     register_shell_callbacks()
     register_storage_callbacks()
     register_settings_callbacks()
+    register_model_order_callbacks()
     register_bug_report_callbacks(global_state_stores)
     register_search_callbacks(
         build_search_entries(

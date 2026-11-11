@@ -12,8 +12,9 @@ after the paint (the store write-back must not chain a stale re-render).
 
 from __future__ import annotations
 
-from conftest import set_model_visible
+from conftest import set_ionpi19_order, set_model_visible
 from playwright.sync_api import Page, expect
+import pytest
 
 TIMEOUT = 60_000
 
@@ -169,31 +170,36 @@ def test_injected_table_uses_current_model_filter(ready_page: Page) -> None:
     )
 
 
-def test_reexpanded_card_keeps_session_edits(ready_page: Page) -> None:
+@pytest.mark.parametrize("order", ["alphabetical", "random"])
+def test_reexpanded_card_keeps_session_edits(ready_page: Page, order: str) -> None:
     """A collapsed-then-expanded card must show the session's edited scores."""
     _goto_ionpi19(ready_page)
     _expand_scoring(ready_page)
-    score = ready_page.locator('#IONPI19-table td[data-dash-column="Score"]').first
+    expected_order = set_ionpi19_order(ready_page, order)
+    # This fixture model has MAE 10.341384, so good=15 raises its score to 1.
+    # The alphabetically first model is clipped at zero before and after the edit.
+    score = (
+        ready_page.locator("#IONPI19-table tbody tr")
+        .filter(has=ready_page.get_by_text("mace-mp-0a-D3", exact=True))
+        .locator('td[data-dash-column="Score"]')
+    )
     expect(score).to_be_visible(timeout=TIMEOUT)
-    default_score = score.inner_text()
+    expect(score).to_have_text("0.483", timeout=TIMEOUT)
 
     good = ready_page.locator("#IONPI19-table-MAE-good-threshold")
     good.fill("15")
     good.press("Enter")
-    expect(score).not_to_have_text(default_score, timeout=TIMEOUT)
-    edited_score = score.inner_text()
+    expect(score).to_have_text("1.000", timeout=TIMEOUT)
+    expect(
+        ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    ).to_have_text(expected_order, timeout=TIMEOUT)
 
     header = ready_page.locator(".mlpeg-bench-header").first
     header.click()  # collapse -> body unmounts
     expect(ready_page.locator("#IONPI19-table")).to_have_count(0, timeout=TIMEOUT)
     header.click()  # expand -> lazy remount fires the sync on insertion
     expect(ready_page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
-    ready_page.wait_for_timeout(1000)
-
-    final_score = ready_page.locator(
-        '#IONPI19-table td[data-dash-column="Score"]'
-    ).first.inner_text()
-    assert final_score == edited_score, (
-        f"re-injected table lost the session edit: default={default_score!r} "
-        f"edited={edited_score!r} after-reexpand={final_score!r}"
-    )
+    expect(score).to_have_text("1.000", timeout=TIMEOUT)
+    expect(
+        ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    ).to_have_text(expected_order, timeout=TIMEOUT)

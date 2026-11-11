@@ -1,0 +1,34 @@
+.mlpeg-model-order {
+    margin-left: auto;
+    color: var(--mlpeg-muted);
+    font-size: 12px;
+}
+.mlpeg-model-order-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+}
+.mlpeg-model-order-label {
+    font-weight: 600;
+}
+#model-order-mode label {
+    margin-right: 10px;
+    cursor: pointer;
+}
+#model-order-mode input {
+    margin-right: 4px;
+    accent-color: var(--mlpeg-accent);
+}
+#model-order-reshuffle {
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--mlpeg-border);
+    border-radius: 5px;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+.mlpeg-model-order small {
+    display: block;
+    margin-top: 4px;
+}

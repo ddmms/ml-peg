@@ -7,7 +7,9 @@ frontend overhaul cannot quietly break them.
 
 from __future__ import annotations
 
+from conftest import set_ionpi19_order
 from playwright.sync_api import Locator, Page, expect
+import pytest
 
 TIMEOUT = 60_000
 
@@ -71,19 +73,30 @@ def test_normalized_toggle_changes_values(ready_page: Page) -> None:
     expect(mae).not_to_have_text(before, timeout=TIMEOUT)
 
 
-def test_threshold_edit_updates_score(ready_page: Page) -> None:
+@pytest.mark.parametrize("order", ["alphabetical", "random"])
+def test_threshold_edit_updates_score(ready_page: Page, order: str) -> None:
     """Editing a metric threshold rescores the benchmark table."""
     _goto_ionpi19(ready_page)
     _expand_scoring(ready_page)
-    score = ready_page.locator('#IONPI19-table td[data-dash-column="Score"]').first
+    expected_order = set_ionpi19_order(ready_page, order)
+    # This fixture model has MAE 10.341384, so good=15 raises its score to 1.
+    # The alphabetically first model is clipped at zero before and after the edit.
+    score = (
+        ready_page.locator("#IONPI19-table tbody tr")
+        .filter(has=ready_page.get_by_text("mace-mp-0a-D3", exact=True))
+        .locator('td[data-dash-column="Score"]')
+    )
     expect(score).to_be_visible(timeout=TIMEOUT)
-    before = score.inner_text()
+    expect(score).to_have_text("0.483", timeout=TIMEOUT)
 
     good = ready_page.locator("#IONPI19-table-MAE-good-threshold")
     good.fill("15")
     good.press("Enter")
 
-    expect(score).not_to_have_text(before, timeout=TIMEOUT)
+    expect(score).to_have_text("1.000", timeout=TIMEOUT)
+    expect(
+        ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    ).to_have_text(expected_order, timeout=TIMEOUT)
 
 
 def test_csv_download(ready_page: Page) -> None:
@@ -459,13 +472,8 @@ def test_click_pins_info_card(ready_page: Page) -> None:
 
     # Pin, retrying the hover/click pair rather than sleeping between them.
     #
-    # tooltip_portal.js `pin()` reads its content from Dash's own single
-    # `.dash-tooltip .dash-table-tooltip` node and returns silently when that node
-    # is missing or empty. Dash renders it in response to the hover and tears it
-    # down again on re-render, so on a loaded runner it can vanish in the gap
-    # between "the card is showing" and the click — `pin()` then no-ops and the
-    # card is never pinned. No fixed wait closes that window; re-doing the pair
-    # does, and it is what a user does when a click appears to do nothing.
+    # Dash can re-render between hover and click. Retry the pair if neither
+    # its native tooltip nor the portal's same-cell content is available yet.
     #
     # The click itself is dispatched directly rather than via a real pointer
     # click: once the card is on screen it can land over its own anchor (a tall
@@ -479,15 +487,8 @@ def test_click_pins_info_card(ready_page: Page) -> None:
         ready_page.wait_for_selector(
             ".mlpeg-tooltip-portal.is-visible", timeout=TIMEOUT
         )
-        # The node `pin()` actually reads — wait for it, not just for our portal.
-        # It must be present with content, NOT visible: Dash keeps the node
-        # attached but hidden, so a visibility wait here never resolves.
-        ready_page.wait_for_function(
-            "() => { const n = document.querySelector("
-            "'.dash-tooltip .dash-table-tooltip'); "
-            "return !!n && !!n.innerHTML.trim(); }",
-            timeout=TIMEOUT,
-        )
+        # A visible portal can cover its anchor and make Dash clear the native
+        # tooltip. Pin the displayed content without waiting on that hidden node.
         cell.evaluate("cell => cell.click()")
         if pinned.count() and pinned.is_visible():
             break
