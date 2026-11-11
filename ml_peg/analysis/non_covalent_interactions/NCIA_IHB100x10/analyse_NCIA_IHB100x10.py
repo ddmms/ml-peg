@@ -14,6 +14,7 @@ from ml_peg.analysis.utils.decorators import (
 )
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    count_valid,
     get_struct_info,
     load_metrics_config,
     mae,
@@ -39,11 +40,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
+    info_keys=["ref_int_energy"],
     include_filenames=True,
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = [energy * EV_TO_KCAL for energy in INFO["ref_int_energy"]]
 
 
 @pytest.fixture
@@ -56,24 +61,24 @@ def interaction_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted interaction energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        for label in INFO["filenames"]:
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz")
-            if not ref_stored:
-                results["ref"].append(atoms.info["ref_int_energy"] * EV_TO_KCAL)
+        structs_dir = OUT_PATH / model_name
+        structs_dir.mkdir(parents=True, exist_ok=True)
 
+        for label in INFO["filenames"]:
+            struct_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+
+            atoms = read(struct_path)
             results[model_name].append(atoms.info["model_int_energy"] * EV_TO_KCAL)
 
             # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{label}.xyz", atoms)
 
-        ref_stored = True
     return results
 
 
@@ -107,7 +112,7 @@ def interaction_density(interaction_energies: dict[str, list]) -> dict[str, dict
         density_inputs[model_name] = {
             "ref": ref_vals,
             "pred": preds,
-            "meta": {"system_count": len([val for val in preds if val is not None])},
+            "meta": {"system_count": count_valid(preds)},
         }
         write_density_trajectories(
             labels_list=label_list,

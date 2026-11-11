@@ -11,10 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Criegee22"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#Criegee22"
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / "Criegee22"
@@ -31,17 +28,11 @@ class Criegee22App(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
-        model_dir = DATA_PATH / MODELS[0]
-        if model_dir.exists():
-            base_labels = sorted(
-                [f.stem.rsplit("_", 1)[0] for f in model_dir.glob("*_rct.xyz")]
-            )
-            structs = [
-                f"/assets/molecular_reactions/Criegee22/{MODELS[0]}/{label}_rct.xyz"
-                for label in base_labels
-            ]
-        else:
-            structs = []
+        structs_dir = DATA_PATH / "mock"
+        structs = [
+            f"/assets/molecular_reactions/Criegee22/mock/{struct_file.name}"
+            for struct_file in sorted(structs_dir.glob("*.xyz"))
+        ]
 
         plot_from_table_column(
             table_id=self.table_id,

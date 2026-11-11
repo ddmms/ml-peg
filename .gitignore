@@ -46,3 +46,10 @@ data.tar.gz
 scratchpad/
 *.bz2
 *.pkl
+
+# Local app profiling output
+profiles/
+*.prof
+
+# Local element-coverage probe logs
+dev/element_coverage/model_supported_elements_errors.jsonl

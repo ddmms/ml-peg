@@ -104,7 +104,8 @@ def test_structure_lookup_preserves_mapping_and_template_modes(
 
     rendered = []
 
-    def render(filename, selected_mode, index):
+    def render(filename, selected_mode, index, *, frame_indices=None):
+        assert frame_indices is None
         rendered.append((filename, selected_mode, index))
         return "structure viewer"
 

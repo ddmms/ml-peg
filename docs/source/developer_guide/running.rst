@@ -287,3 +287,6 @@ To run the app on a different port (e.g. 8060), and for only the NEBs category, 
 .. code-block:: bash
 
     ml_peg app --category nebs --port 8060
+
+
+For app performance investigations, see :doc:`profiling`.

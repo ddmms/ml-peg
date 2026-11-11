@@ -42,14 +42,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 ENERGY_OUTLIER_MIN = -25
 ENERGY_OUTLIER_MAX = 25
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*/*.xyz",
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
-
 
 def get_converged_data_for_pressure(
     model_name: str, pressure_label: str
@@ -428,4 +420,10 @@ def test_high_pressure_relaxation(
     energy_density
         Triggers per-pressure energy density plot generation.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*/*.xyz",
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+    )

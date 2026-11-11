@@ -11,23 +11,17 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 # Install Python before the project for caching
 RUN uv python install 3.12
 
-# Install git, gcc etc.
-RUN apt-get update && apt-get upgrade -y && apt-get install -y build-essential
-
 WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=uv.lock,target=uv.lock \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --locked --no-install-project --no-dev
+    uv sync --locked --no-install-project --no-default-groups
 COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev
+    uv sync --locked --no-default-groups
 
 # Then, use a final image without uv
 FROM debian:bookworm-slim
-
-# Install git, gcc etc.
-RUN apt-get update && apt-get upgrade -y && apt-get install -y git build-essential
 
 # Setup a non-root user
 RUN groupadd --system --gid 999 nonroot \

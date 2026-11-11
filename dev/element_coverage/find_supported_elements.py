@@ -10,10 +10,10 @@ results accumulate.
 Run once per environment, for example::
 
     uv sync --extra mace
-    python ml_peg/models/element_coverage/find_supported_elements.py \
+    python dev/element_coverage/find_supported_elements.py \
         --models mace-mp-0a,mace-mp-0b3
     # or, probe every model that imports in this env (omit --models):
-    python ml_peg/models/element_coverage/find_supported_elements.py
+    python dev/element_coverage/find_supported_elements.py
 
 Outputs (merged across runs) live next to this script:
 - ``model_supported_elements.json``        {model: [sorted supported symbols]}

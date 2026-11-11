@@ -12,6 +12,7 @@ from ml_peg import __version__
 from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.cli.profile import register_profile_command
 
 
 def get_categories(root: Path, script_prefix: str) -> tuple[str, ...]:
@@ -163,6 +164,8 @@ app = Typer(
     no_args_is_help=True,
     epilog="Try 'ml_peg COMMAND --help' for subcommand options",
 )
+
+register_profile_command(app)
 
 
 @app.command(name="app", help="Run application")

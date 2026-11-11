@@ -46,8 +46,59 @@ ASE-compatible calculator that needs no special setup, is just a YAML entry.
    ``docs/source/user_guide/model_notes.yml``. The model list in
    :doc:`Models </user_guide/models>` is generated from ``models.yml``, so the
    entry itself needs no copying — but a model family that is new to ML-PEG must
-   be added there, or the docs build fails.
+   be added there, or the docs build fails. Add links and citations as described
+   in `Model documentation and citations`_.
 6. **Check the entry loads and runs** — see `Checking a new entry`_.
+
+Model documentation and citations
+---------------------------------
+
+Add model-specific notes under ``models`` in
+``docs/source/user_guide/model_notes.yml``, keyed by the registry name.
+Use ``docs_url`` for usage instructions, ``source_url`` for the implementation,
+and ``download_url`` for each model's file preview or release page. The
+``model_registry`` directive defines the link labels and icons centrally.
+Match the version in the registry and name the file in ``download_notes`` when
+a page offers several. For gated downloads, link to the model card.
+Use a direct download link if upstream provides no download page.
+External links on the model guide open in a new tab.
+
+.. code-block:: yaml
+
+   model-name:
+     docs_url: https://example.org/docs
+     source_url: https://github.com/example/model
+     download_url: https://github.com/example/model/releases/tag/v1
+     download_notes: "``model-v1.pt``"
+     notes: |
+       Model description and citations in reStructuredText.
+
+All fields are optional. ``download_notes`` supports inline reStructuredText
+and appears in parentheses after the download link. Keep descriptions and
+citations in the free-form ``notes`` text block.
+
+Cite the model paper and any architecture or dataset papers requested by its
+authors. Add or reuse entries in ``model_references.bib`` in the same directory.
+Use unique lowercase, hyphen-separated keys such as ``mace-mp``, with matching
+``% begin mace-mp %`` and ``% end mace-mp %`` markers around each entry.
+Reuse the same entry for models sharing a paper.
+
+Follow this pattern inside a model's ``notes`` text block, leaving a blank line
+before ``.. details::``:
+
+.. code-block:: rst
+
+   - **Citation:** Author et al. (year). `Paper title <https://doi.org/...>`__.
+
+   .. details:: BibTeX
+
+      .. literalinclude:: model_references.bib
+         :language: bibtex
+         :start-after: % begin model-key %
+         :end-before: % end model-key %
+
+Build the docs with ``cd docs && uv run make html`` and check the model's links,
+citation text, and expanded BibTeX.
 
 Model entry format
 ------------------
@@ -128,9 +179,9 @@ The common fields are:
    coverage. Symbols are checked against the periodic table when the model is
    loaded, so a typo or an unquoted ``No`` is reported rather than silently
    changing the model's coverage. To determine coverage empirically, run
-   ``ml_peg/models/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
+   ``dev/element_coverage/find_supported_elements.py`` (once per ``uv sync --extra <backend>``,
    since model backends conflict), then
-   ``ml_peg/models/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
+   ``dev/element_coverage/compare_supported_elements.py`` to see which ``datasets`` tags fit
    and which elements to record here as extras.
 
 ``kwargs``
@@ -180,8 +231,9 @@ The common fields are:
    setting it. The field may be set for any model, so it can be applied across a
    whole models file, but wrappers whose backend has no dtype argument warn that
    it has no effect. Those wrappers ignore the requested ``precision`` too: DPA
-   checkpoints are fixed at float32, SevenNet exposes no precision argument, and
-   Vivace takes its dtype from the checkpoint metadata.
+   checkpoints are fixed at float32, SevenNet exposes no precision argument,
+   NequIP packages fix their model dtype, and Vivace takes its dtype from the
+   checkpoint metadata.
 
    Set the precision through this field rather than ``kwargs``: a dtype argument
    in ``kwargs`` is rejected, since it would override both ``precision`` and
@@ -287,6 +339,29 @@ FairChem/UMA entries use the dedicated ``FAIRChemCalculator`` branch:
        model_name: uma-s-1p1
        task_name: omat
 
+``model_name`` and ``task_name`` are passed to fairchem's
+``get_predict_unit`` and ``FAIRChemCalculator`` respectively. ``kwargs`` may
+also set ``inference_settings``, the name of a fairchem inference preset
+(``fairchem.core.units.mlip_unit.api.inference.NAME_TO_INFERENCE_SETTING``).
+It defaults to ``batch``, which matches fairchem's default before 2.25. Use
+``nitro`` to run with `UMA Nitro
+<https://facebookresearch.github.io/fairchem/ase-calculator#default-mode-nitro>`_.
+Nitro only supports float32, so ``precision="high"`` (or an ``overwrite_dtype``
+of ``float64``) falls back to ``batch`` rather than fairchem's TF32 preset:
+
+.. code-block:: yaml
+
+   uma-s-1p2p1-omat:
+     module: fairchem.core
+     class_name: FAIRChemCalculator
+     device: auto
+     trained_on_dispersion: false
+     level_of_theory: PBE
+     kwargs:
+       model_name: uma-s-1p2p1
+       task_name: omat
+       inference_settings: nitro
+
 PET-MAD entries use UPET's ``UPETCalculator``:
 
 .. code-block:: yaml
@@ -323,10 +398,28 @@ constituents are also listed individually so their known domains and element
 coverage remain visible. Its coverage entry is the verified union of its
 constituent datasets, not the checkpoint's broader executable type map.
 
-AIMNet2, GRACE, SevenNet, MatterSim and Vivace entries similarly select their
-wrappers through ``class_name`` (``AIMNet2ASE``, ``grace_fm``,
-``SevenNetCalculator``, ``MatterSimCalculator`` and ``MLFFCalculator``
-respectively).
+AceFF entries use TorchMD-Net's ``TMDNETCalculator`` and download checkpoints from
+Hugging Face:
+
+.. code-block:: yaml
+
+   aceff-2p0:
+     module: torchmdnet.calculators
+     class_name: TMDNETCalculator
+     datasets: null
+     additional_supported_elements: ["H", "B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "Br", "I"]
+     device: auto
+     trained_on_dispersion: true
+     level_of_theory: ωB97M-V/def2-TZVPPD
+     kwargs:
+       repo_id: Acellera/AceFF-2.0
+       filename: aceff_v2.0.ckpt
+       revision: 67ad6a3b06ee9b44cfbac3bc32117dd6276e9122
+
+AIMNet2, GRACE, SevenNet, MatterSim, Vivace and NequIP entries similarly select
+their wrappers through ``class_name`` (``AIMNet2ASE``, ``grace_fm``,
+``SevenNetCalculator``, ``MatterSimCalculator``, ``MLFFCalculator`` and
+``NequIPCalculator`` respectively).
 
 Other ASE-compatible MLIP calculators can usually be added by specifying their
 ``module``, ``class_name`` and constructor ``kwargs``. Any ``class_name`` that
@@ -385,7 +478,7 @@ argument, constructing a predictor before the calculator), add a wrapper in
   ``class_name(**kwargs)``, and you only need to adjust how precision is passed
   or run setup first (as ``UPETCalc`` and ``GraceCalc`` do).
 * Subclass ``SumCalc`` directly if construction is bespoke (as ``OrbCalc``,
-  ``FairChemCalc``, ``SevenNetCalc`` and ``VivaceCalc`` do). ``SumCalc``
+  ``FairChemCalc``, ``SevenNetCalc``, ``VivaceCalc`` and ``TorchMDNetCalc`` do). ``SumCalc``
   provides ``add_d3_calculator`` and the ``trained_on_dispersion`` /
   ``dispersion_kwargs`` fields that every model needs.
 
