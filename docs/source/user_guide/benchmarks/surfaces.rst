@@ -393,9 +393,6 @@ Reference data:
 
 * PBE conjugate gradient geomerty optimizations are performed via VASP, with a cutoff energy of 500 eV.
 
-<<<<<<< HEAD
-=======
-
 Surface Alloy Reorganisation
 =============================
 
@@ -434,4 +431,3 @@ Input data:
 Reference data:
 
 * PBE single-point DFT calculations are performed using VASP, with a plane-wave energy cutoff of 400 eV.
->>>>>>> aa56217 (Added outline of test to docs/user_guide/benchmarks/surfaces.rst)
