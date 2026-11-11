@@ -60,6 +60,7 @@ def test_brittle_crack(mlip: tuple[str, Any]) -> None:
         raise NotImplementedError("one material per benchmark run")
     gammas, status, by_plane = {}, {}, {}
     data = download_s3_data(key=ct.S3_KEY, filename=ct.S3_FILENAME) / "brittle_crack"
+    ct.copy_references(data, out, [*CASES, *ORDERINGS])
     for name in ORDERINGS:
         try:
             frames = ct.ordering_relaxations(

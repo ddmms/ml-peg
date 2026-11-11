@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 from ase import Atoms
 from ase.units import GPa, J, m
@@ -12,6 +13,7 @@ import yaml
 CASES_PATH = Path(__file__).with_name("cases.yml")
 S3_KEY = "inputs/fracture/brittle_crack/brittle_crack.zip"
 S3_FILENAME = "brittle_crack.zip"
+REFERENCE_DIR = "reference"  # DFT references copied into each model's outputs
 # step limit of the bulk and ordering relaxations (a model that cannot relax in this
 # many steps fails the constants, or leaves that ordering frame unscored)
 MAX_STEPS = 500
@@ -455,3 +457,22 @@ def trace_case(case: dict, calc, consts: dict, **settings) -> tuple[list[Atoms],
     for f in frames:
         f.info["REF_energy"] = f.info["energy"]
     return frames, status
+
+
+def copy_references(data_dir: Path, out_dir: Path, names) -> None:
+    """
+    Copy the DFT reference files into a model's outputs, so the analysis runs offline.
+
+    Parameters
+    ----------
+    data_dir
+        Directory of the downloaded reference data.
+    out_dir
+        Output directory of the model.
+    names
+        Case and ordering names; each file is ``<name>.extxyz``.
+    """
+    dest = Path(out_dir) / REFERENCE_DIR
+    dest.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        shutil.copyfile(Path(data_dir) / f"{name}.extxyz", dest / f"{name}.extxyz")

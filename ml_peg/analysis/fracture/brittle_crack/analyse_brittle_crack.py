@@ -18,7 +18,6 @@ from ml_peg.analysis.utils.utils import load_metrics_config, write_struct_info
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.fracture.brittle_crack import crack_tools as ct
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -26,8 +25,6 @@ MODELS = get_model_names(current_models)
 BENCHMARK_DIR = "brittle_crack"
 CALC_PATH = CALCS_ROOT / "fracture" / BENCHMARK_DIR / "outputs"
 OUT_PATH = APP_ROOT / "data" / "fracture" / BENCHMARK_DIR
-S3_KEY = ct.S3_KEY
-S3_FILENAME = ct.S3_FILENAME
 CASES = ct.load_cases()
 ORDERINGS = ct.load_orderings()
 TERMS = {"K": "E_K", "E": "E_E", "D": "E_D"}
@@ -44,27 +41,49 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def reference_frames(name: str) -> list:
+def reference_frames(name: str, model: str) -> list:
     """
-    Load the DFT reference path of a case from the S3 data (cached after download).
+    Load a DFT reference that the calculation copied into a model's outputs.
 
     Parameters
     ----------
     name
-        Case name.
+        Case or ordering name.
+    model
+        Model name.
 
     Returns
     -------
     list
         Reference frames with info ``K_over_KG`` and ``REF_energy``.
     """
+    return read(CALC_PATH / model / ct.REFERENCE_DIR / f"{name}.extxyz", ":")
+
+
+def model_references(model: str, names) -> dict[str, list] | None:
+    """
+    Load the DFT references in a model's outputs, or warn if they are missing.
+
+    Parameters
+    ----------
+    model
+        Model name.
+    names
+        Case or ordering names.
+
+    Returns
+    -------
+    dict[str, list] | None
+        Reference frames by name; None (with a warning) if any file is missing.
+    """
     try:
-        path = download_s3_data(key=S3_KEY, filename=S3_FILENAME) / BENCHMARK_DIR
-        return read(path / f"{name}.extxyz", ":")
-    except Exception as exc:
-        raise FileNotFoundError(
-            f"reference {name}: download of {S3_KEY} failed ({exc})"
-        ) from exc
+        return {name: reference_frames(name, model) for name in names}
+    except FileNotFoundError as exc:
+        warn(
+            f"{model}: no DFT reference in the outputs ({exc}); rerun the calculation",
+            stacklevel=2,
+        )
+        return None
 
 
 def _gamma_jm2(consts: dict) -> float:
@@ -355,7 +374,8 @@ def ordering_curve(model_frames: list, ref_frames: list, ordering: dict) -> dict
     dict
         ``error`` (RMS |dE_model - dE_DFT| per unit front length over the covered loads,
         meV/A), ``coverage`` (fraction of the loads covered), ``k_cross`` and
-        ``k_cross_ref`` (the loads where the straight-line fits of dE(K) cross zero).
+        ``k_cross_ref`` (the loads where the straight-line fits of the model's and
+        DFT's dE(K) on the covered loads cross zero; NaN if under two are covered).
 
     Raises
     ------
@@ -412,7 +432,7 @@ def ordering_curve(model_frames: list, ref_frames: list, ordering: dict) -> dict
         "error": float(np.sqrt(np.mean(err**2))) if covered.any() else np.nan,
         "coverage": float(covered.mean()),
         "k_cross": _crossover(grid[covered], d_model[covered]),
-        "k_cross_ref": _crossover(grid, d_ref),
+        "k_cross_ref": _crossover(grid[covered], d_ref[covered]),
     }
 
 
@@ -567,6 +587,7 @@ def s_curve_figure(
         x1=window_x[1],
         annotation_text="scored window",
         annotation_position="top",
+        fillcolor="grey",
         opacity=0.15,
         line_width=0,
     )
@@ -686,11 +707,13 @@ def case_results() -> dict[str, dict[str, dict]]:
         Errors by model and case name.
     """
     OUT_PATH.mkdir(parents=True, exist_ok=True)
-    refs = {name: reference_frames(name) for name in CASES}
     results = {}
     for model in MODELS:
         consts = _model_constants(model)
         if consts is None:
+            continue
+        refs = model_references(model, CASES)
+        if refs is None:
             continue
         frames = {}
         for name in CASES:
@@ -713,11 +736,13 @@ def ordering_results() -> dict[str, dict[str, float]]:
     dict[str, dict[str, float]]
         Metric values by model and metric name.
     """
-    refs = {name: reference_frames(name) for name in ORDERINGS}
     results = {}
     for model in MODELS:
         consts = _model_constants(model)
         if consts is None:
+            continue
+        refs = model_references(model, ORDERINGS)
+        if refs is None:
             continue
         frames = {}
         for name in ORDERINGS:

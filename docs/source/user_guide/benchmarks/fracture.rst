@@ -47,7 +47,10 @@ model).
 
    RMS energy-norm error of the crack-tip displacement field: the strain of the
    displacements relative to each model's own K-field, on second-neighbour bonds within
-   8 Å of the tip and not behind it, matched at equal coordinate.
+   8 Å of the tip and not behind it, matched at equal coordinate. The squared norm
+   sums over the bonds of one period of the crack front, so it is divided by the
+   period's length (Å): clusters of different periods are then comparable, and the
+   value is in Å^-1/2.
 
 Two more metrics check which crack-tip state the model prefers, and at which loads:
 
@@ -73,7 +76,10 @@ Two more metrics check which crack-tip state the model prefers, and at which loa
 5. 5-7 crossover error
 
    The error of the load at which the two states swap order (DFT: K/K_G = 1.56), from
-   straight-line fits of E(5-7) - E(sharp) against K. bad is the shift the ordering
+   straight-line fits of E(5-7) - E(sharp) against K. The model's and DFT's lines are
+   fitted on the same loads, the ones the model covers, so a model that matches DFT
+   there has no crossover error whatever its coverage; the uncovered loads cost only
+   the coverage padding. bad is the shift the ordering
    error's bad threshold makes at the DFT slope (2.42 eV per cell per unit K/K_G),
    0.060, and good is a third of it; padded by coverage like the ordering error.
 
@@ -98,7 +104,7 @@ a tolerance tau is chosen so that the median SW error against DFT over the three
 systems is 3 tau, and the thresholds are good = tau and bad = 3 tau. A model as poor
 as SW therefore scores about 0, and a model whose errors are within a third of SW's
 scores 1. The values are tau = 0.0803 (K, in K/K_G), 0.0952 (E, in 2 gamma L b_bulk)
-and 0.144 (D). They are not derived from an estimate of the DFT uncertainty.
+and 0.0733 (D, in Å^-1/2). They are not derived from an estimate of the DFT uncertainty.
 
 Benchmark speed
 ---------------
@@ -123,6 +129,8 @@ Reference data:
 * Models that take a charge and spin multiplicity are given a neutral structure in its
   lowest spin state, as the DFT references: a doublet for the odd-electron (110)[1-10]
   cluster (96 Si, 39 H), a singlet for the other clusters, bulk and slabs.
+* The calculation copies the reference files into each model's outputs
+  (``outputs/<model>/reference/``, about 2 MB), so the analysis runs offline.
 * Manuscript in preparation.
 
 Method:

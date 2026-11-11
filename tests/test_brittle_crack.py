@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
-
 import numpy as np
 import pytest
 
@@ -236,6 +234,27 @@ def test_evaluated_structures_are_neutral_singlets():
 
 
 HAVE_DATA = (BENCHMARK_DATA_DIR / "brittle_crack.zip").exists()
+
+
+def _cached_reference(name: str) -> list:
+    """
+    Read a packaged DFT reference from the ml_peg download cache.
+
+    Parameters
+    ----------
+    name
+        Case or ordering name.
+
+    Returns
+    -------
+    list
+        The reference frames.
+    """
+    from ase.io import read
+
+    return read(BENCHMARK_DATA_DIR / "brittle_crack" / f"{name}.extxyz", ":")
+
+
 HAVE_ORDERING_DATA = (
     BENCHMARK_DATA_DIR / "brittle_crack" / "Si_111_110_431_ordering.extxyz"
 ).exists()
@@ -289,7 +308,7 @@ def test_reference_against_itself_has_zero_errors():
     """The DFT reference path scored against itself has zero errors."""
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
-    ref = an.reference_frames("Si_111_110")
+    ref = _cached_reference("Si_111_110")
     case = ct.load_cases()["Si_111_110"]
     t = ct.topology_constants(case)
     e = an.case_errors(ref, ref, case, t, t)
@@ -298,40 +317,43 @@ def test_reference_against_itself_has_zero_errors():
     assert e["E_D"] == pytest.approx(0, abs=1e-12)
 
 
-def test_missing_reference_names_the_s3_key(monkeypatch):
-    """An offline download failure names the S3 key."""
-    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
-
-    def fail(**kwargs):
-        """
-        Fail like an offline download.
-
-        Parameters
-        ----------
-        **kwargs
-            Ignored.
-        """
-        raise OSError("offline")
-
-    monkeypatch.setattr(an, "download_s3_data", fail)
-    with pytest.raises(FileNotFoundError, match="inputs/fracture/brittle_crack"):
-        an.reference_frames("Si_111_110")
-
-
-def test_reference_loads_only_through_the_s3_helper(tmp_path, monkeypatch):
-    """Reference data comes from download_s3_data (cache or S3); no env override."""
+def test_reference_frames_come_from_the_calc_outputs(tmp_path, monkeypatch):
+    """The analysis reads the DFT references the calc copied: it runs offline."""
     from ase import Atoms
     from ase.io import write
 
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
-    for d, n in (("s3", 1), ("env", 2)):
-        (tmp_path / d / "brittle_crack").mkdir(parents=True)
-        write(tmp_path / d / "brittle_crack" / "Si_111_110.extxyz", [Atoms("H")] * n)
-    monkeypatch.setenv("BRITTLE_CRACK_DATA", str(tmp_path / "env" / "brittle_crack"))
-    an = importlib.reload(an)
-    monkeypatch.setattr(an, "download_s3_data", lambda **kwargs: tmp_path / "s3")
-    assert len(an.reference_frames("Si_111_110")) == 1
+    ref_dir = tmp_path / "m1" / ct.REFERENCE_DIR
+    ref_dir.mkdir(parents=True)
+    write(ref_dir / "Si_111_110.extxyz", [Atoms("H")] * 2)
+    monkeypatch.setattr(an, "CALC_PATH", tmp_path)
+    assert len(an.reference_frames("Si_111_110", "m1")) == 2
+    assert not hasattr(an, "download_s3_data")
+
+
+def test_a_model_without_copied_references_is_skipped_with_a_warning(
+    tmp_path, monkeypatch
+):
+    """Outputs from before the references were copied: warn to rerun the calc."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    (tmp_path / "m1").mkdir()
+    monkeypatch.setattr(an, "CALC_PATH", tmp_path)
+    with pytest.warns(UserWarning, match="m1: .*rerun the calculation"):
+        assert an.model_references("m1", ["Si_111_110"]) is None
+
+
+def test_copy_references_puts_the_dft_files_in_the_model_outputs(tmp_path):
+    """The calc copies every reference file it names into the model's outputs."""
+    src, out = tmp_path / "data", tmp_path / "out"
+    src.mkdir()
+    for name in ("a", "b", "c"):
+        (src / f"{name}.extxyz").write_text(name)
+    ct.copy_references(src, out, ["a", "b"])
+    copied = sorted(p.name for p in (out / ct.REFERENCE_DIR).iterdir())
+    assert copied == ["a.extxyz", "b.extxyz"]
+    assert (out / ct.REFERENCE_DIR / "b.extxyz").read_text() == "b"
 
 
 def test_structure_info_comes_from_the_reference_clusters(tmp_path, monkeypatch):
@@ -446,6 +468,7 @@ def test_s_curve_figure_lets_only_model_points_open_structures():
         "m1", "Si_111_110", [2.5, 3.0], [0.6, 1.0], [2.6, 3.1], [0.6, 1.1], (2.5, 3.0)
     )
     dft, model = fig.data
+    assert fig.layout.shapes[0].fillcolor not in (None, "rgba(0,0,0,0)")
     assert dft.customdata is None
     assert [c[-1] for c in model.customdata] == ["m1", "m1"]
 
@@ -741,7 +764,7 @@ def test_packaged_dft_ordering_crosses_over_near_k_1_56():
     from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
 
     name = "Si_111_110_431_ordering"
-    ref = an.reference_frames(name)
+    ref = _cached_reference(name)
     assert len(ref) == 22 and len(ref[0]) == 216 and "fixed" in ref[0].arrays
     c = an.ordering_curve(ref_as_model(ref), ref, an.ORDERINGS[name])
     assert c["k_cross_ref"] == pytest.approx(1.564, abs=0.001)
@@ -907,3 +930,67 @@ def test_case_outputs_are_skipped_for_unscored_cases_and_plot_errors(
     ok_errs = {**nan_errs, "coverage": 0.5}
     with pytest.warns(UserWarning, match="m Si_111_110: no plot"):
         assert not an.write_case_outputs("m", "Si_111_110", bad, bad, ok_errs)
+
+
+def test_e_d_is_per_unit_length_of_crack_front():
+    """
+    E_D does not grow with the number of pairs: per unit length of crack front.
+
+    Two periods of the front (twice the pairs, twice the length) give the same value.
+    """
+    diff = np.array([[0.1, 0.0, 0.0], [0.0, 0.2, 0.0], [0.0, 0.0, 0.3]])
+    one = sc.strain_norm(diff, front=4.0)
+    assert one == pytest.approx(np.sqrt(0.14 / 4.0))
+    assert sc.strain_norm(np.vstack([diff, diff]), front=8.0) == pytest.approx(one)
+
+
+def test_a_model_equal_to_dft_has_no_crossover_error_at_partial_coverage():
+    """
+    A curved DFT dE(K): the crossovers are fitted on the same covered loads.
+
+    Coverage padding is then the only penalty for the uncovered loads.
+    """
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    def curved(k):
+        """
+        Curved E(5-7) - E(sharp), zero at K 1.6.
+
+        Parameters
+        ----------
+        k
+            Load (K/K_G).
+
+        Returns
+        -------
+        float
+            Energy difference (eV).
+        """
+        return 2.0 * (k - 1.6) + 20.0 * (k - 1.6) ** 2
+
+    ks = (1.5, 1.6, 1.7, 1.8)
+    ref = _ramp_frames(curved, "REF_energy", ks=ks)
+    model = _ramp_frames(curved, "model_energy", ks=ks)
+    model[0].info["model_q"] = -1.2  # the 5-7 frame at K 1.5 leaves its basin
+    c = an.ordering_curve(model, ref, ORDER)
+    assert c["coverage"] < 1.0
+    assert c["k_cross"] == pytest.approx(c["k_cross_ref"])
+
+
+def test_ordering_tooltip_states_the_scored_window():
+    """The 5-7 ordering tooltip quotes the scored loads, up to k_max."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    for name, ordering in an.ORDERINGS.items():
+        tip = an.DEFAULT_TOOLTIPS[f"{ordering['label']} ordering error"]["value"]
+        assert f"-{ordering['k_max']}" in tip, name
+
+
+def test_d_threshold_is_per_unit_length_of_crack_front():
+    """tau_D: the median SW E_D over the three cases (per sqrt(A) of front) / 3."""
+    from ml_peg.analysis.fracture.brittle_crack import analyse_brittle_crack as an
+
+    for name, case in an.CASES.items():
+        th = an.DEFAULT_THRESHOLDS[f"{case['label']} D error"]
+        assert th["good"] == pytest.approx(0.0733, abs=5e-5), name
+        assert th["bad"] == pytest.approx(3 * th["good"], rel=1e-3), name

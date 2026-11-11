@@ -842,6 +842,29 @@ class Track:
         )
 
 
+def strain_norm(diff, front: float) -> float:
+    """
+    Return the energy norm of a bond-strain difference per unit length of crack front.
+
+    The squared norm sums over the pairs of one period of the front, so it grows with
+    the period; dividing it by the period's length makes clusters of different periods
+    comparable.
+
+    Parameters
+    ----------
+    diff
+        Strain differences on the pairs (n, 3).
+    front
+        Period along the front (A).
+
+    Returns
+    -------
+    float
+        The norm sqrt(sum |diff|^2 / front), in A^-1/2.
+    """
+    return float(np.sqrt(np.sum(np.square(diff)) / front))
+
+
 def ed_on_grid(
     model: Track, ref: Track, numbers, window_x, n_grid: int = N_GRID
 ) -> dict:
@@ -864,7 +887,8 @@ def ed_on_grid(
     Returns
     -------
     dict
-        ``E_D`` (RMS over the evaluated grid points, None if none) and ``coverage``.
+        ``E_D`` (RMS over the evaluated grid points of the strain norm per unit length
+        of crack front, A^-1/2; None if none) and ``coverage``.
     """
     bonds = ed_pairs(ref.reference, numbers, ref.tip, ref.a0, ref.front)
     sm, sr = np.sqrt(3.0) * model.a0 / 4.0, np.sqrt(3.0) * ref.a0 / 4.0
@@ -880,7 +904,7 @@ def ed_on_grid(
             dm, dr = model.strain(x * sm, bonds, rm), ref.strain(x * sr, bonds, rr)
         except ValueError:
             continue
-        vals.append(float(np.sqrt(np.sum(np.linalg.norm(dm - dr, axis=1) ** 2))))
+        vals.append(strain_norm(dm - dr, ref.front))
     if not vals:
         return {"E_D": None, "coverage": 0.0}
     return {
