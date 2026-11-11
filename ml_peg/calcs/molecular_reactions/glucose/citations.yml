@@ -1,0 +1,7 @@
+implementers:
+  - name: "Hsuan-Hao Hsu"
+    github: "hsuhsuanhao"
+
+citations:
+  - bibtex_key: zhao2023deep
+    role: reference_data
