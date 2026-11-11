@@ -12,7 +12,7 @@ after the paint (the store write-back must not chain a stale re-render).
 
 from __future__ import annotations
 
-from conftest import set_model_visible
+from conftest import set_ionpi19_order, set_model_visible
 from playwright.sync_api import Page, expect
 import pytest
 
@@ -175,7 +175,7 @@ def test_reexpanded_card_keeps_session_edits(ready_page: Page, order: str) -> No
     """A collapsed-then-expanded card must show the session's edited scores."""
     _goto_ionpi19(ready_page)
     _expand_scoring(ready_page)
-    ready_page.locator(f'#model-order-mode input[value="{order}"]').check()
+    expected_order = set_ionpi19_order(ready_page, order)
     # This fixture model has MAE 10.341384, so good=15 raises its score to 1.
     # The alphabetically first model is clipped at zero before and after the edit.
     score = (
@@ -190,6 +190,9 @@ def test_reexpanded_card_keeps_session_edits(ready_page: Page, order: str) -> No
     good.fill("15")
     good.press("Enter")
     expect(score).to_have_text("1.000", timeout=TIMEOUT)
+    expect(
+        ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    ).to_have_text(expected_order, timeout=TIMEOUT)
 
     header = ready_page.locator(".mlpeg-bench-header").first
     header.click()  # collapse -> body unmounts
@@ -197,3 +200,6 @@ def test_reexpanded_card_keeps_session_edits(ready_page: Page, order: str) -> No
     header.click()  # expand -> lazy remount fires the sync on insertion
     expect(ready_page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
     expect(score).to_have_text("1.000", timeout=TIMEOUT)
+    expect(
+        ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    ).to_have_text(expected_order, timeout=TIMEOUT)

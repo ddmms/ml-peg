@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 import hashlib
 from importlib import import_module
+import json
 import logging
 from pathlib import Path
 import shutil
@@ -92,6 +93,35 @@ def wait_for_app_ready(page, timeout: int = READY_TIMEOUT) -> None:  # noqa: ANN
         }""",
         timeout=timeout,
     )
+
+
+def set_ionpi19_order(page, order: str) -> list[str]:  # noqa: ANN001
+    """Select ordering and wait for the fixture's actual seeded row order."""
+    from ml_peg.app.utils.model_order import order_model_rows
+
+    with zipfile.ZipFile(FIXTURE_ARCHIVE) as archive:
+        rows = json.loads(
+            archive.read(
+                f"ui-fixture-{FIXTURE_VERSION}/non_covalent_interactions/"
+                "IONPI19/ionpi19_metrics_table.json"
+            )
+        )["data"]
+    cells = page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    expect(cells.first).to_be_visible(timeout=60_000)
+    visible = set(cells.all_text_contents())
+    rows = [row for row in rows if row["MLIP"] in visible]
+    page.locator(f'#model-order-mode input[value="{order}"]').check()
+    page.wait_for_function(
+        "mode => JSON.parse(sessionStorage.getItem('model-order-store'))"
+        "?.mode === mode",
+        arg=order,
+    )
+    state = page.evaluate("JSON.parse(sessionStorage.getItem('model-order-store'))")
+    expected = [row["MLIP"] for row in order_model_rows(rows, state)]
+    expect(page.locator('#IONPI19-table td[data-dash-column="MLIP"]')).to_have_text(
+        expected, timeout=60_000
+    )
+    return expected
 
 
 def set_model_visible(page, model: str, visible: bool) -> None:  # noqa: ANN001

@@ -7,6 +7,7 @@ frontend overhaul cannot quietly break them.
 
 from __future__ import annotations
 
+from conftest import set_ionpi19_order
 from playwright.sync_api import Locator, Page, expect
 import pytest
 
@@ -77,7 +78,7 @@ def test_threshold_edit_updates_score(ready_page: Page, order: str) -> None:
     """Editing a metric threshold rescores the benchmark table."""
     _goto_ionpi19(ready_page)
     _expand_scoring(ready_page)
-    ready_page.locator(f'#model-order-mode input[value="{order}"]').check()
+    expected_order = set_ionpi19_order(ready_page, order)
     # This fixture model has MAE 10.341384, so good=15 raises its score to 1.
     # The alphabetically first model is clipped at zero before and after the edit.
     score = (
@@ -93,6 +94,9 @@ def test_threshold_edit_updates_score(ready_page: Page, order: str) -> None:
     good.press("Enter")
 
     expect(score).to_have_text("1.000", timeout=TIMEOUT)
+    expect(
+        ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    ).to_have_text(expected_order, timeout=TIMEOUT)
 
 
 def test_csv_download(ready_page: Page) -> None:

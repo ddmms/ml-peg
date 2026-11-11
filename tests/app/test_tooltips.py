@@ -159,12 +159,12 @@ def test_close_over_another_cell_stays_closed_until_pointer_moves(page: Page):
         return x > r.left && x < r.right && y > r.top && y < r.bottom; }""",
         [x, y],
     )
+    page.locator(".dash-tooltip .dash-table-tooltip").evaluate(
+        "node => node.innerHTML = 'Second model information'"
+    )
     page.locator(".mlpeg-tooltip-close").click()
     # Allow browser boundary events and the portal's animation loop to run.
     page.wait_for_timeout(300)
     expect(page.locator(".mlpeg-tooltip-portal.is-visible")).to_have_count(0)
-    page.locator(".dash-tooltip .dash-table-tooltip").evaluate(
-        "node => node.innerHTML = 'Second model information'"
-    )
     page.mouse.move(x + 5, y + 5)
     expect(page.locator(".mlpeg-tooltip-portal.is-visible")).to_be_visible()
