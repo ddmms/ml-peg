@@ -547,6 +547,7 @@ uma-s-1p1-omc:
   class_name: FAIRChemCalculator
   # Full checkpoint training datasets; the selected OMC task uses OMC25.
   datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
   device: "auto"
   trained_on_dispersion: true
   level_of_theory: PBE+D3
@@ -623,6 +624,7 @@ uma-s-1p2p1-omc:
   class_name: FAIRChemCalculator
   # Full checkpoint training datasets; the selected OMC task uses OMC25.
   datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
   device: "auto"
   trained_on_dispersion: true
   level_of_theory: PBE+D3
