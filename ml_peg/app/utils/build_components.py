@@ -16,6 +16,7 @@ from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Span, Summary
 import yaml
 
+from ml_peg import __version__
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
 from ml_peg.app.utils.build_credits import build_benchmark_credit_components
 from ml_peg.app.utils.register_callbacks import (
@@ -1358,18 +1359,37 @@ def build_footer() -> html.Footer:
             ),
             Div(
                 [
-                    "Last updated: ",
-                    html.Time(
-                        updated_at.strftime("%d %b %Y, %H:%M UTC"),
-                        dateTime=updated_at.isoformat(),
-                    ),
+                    html.Span(f"ML-PEG v{__version__}", id="site-version"),
+                    html.Span("·", **{"aria-hidden": "true"})
+                    if updated_at is not None
+                    else None,
+                    html.Span(
+                        [
+                            "Last updated: ",
+                            html.Time(
+                                updated_at.strftime("%d %b %Y, %H:%M UTC"),
+                                dateTime=updated_at.isoformat(),
+                            ),
+                        ],
+                        id="site-last-updated",
+                        title=(
+                            "Latest application build or benchmark results update "
+                            "(UTC)."
+                        ),
+                    )
+                    if updated_at is not None
+                    else None,
                 ],
-                id="site-last-updated",
-                title="Latest application build or benchmark results update (UTC).",
-                style={"marginTop": "8px", "color": "var(--mlpeg-muted)"},
-            )
-            if updated_at is not None
-            else None,
+                id="site-build-info",
+                style={
+                    "marginTop": "8px",
+                    "color": "var(--mlpeg-muted)",
+                    "display": "flex",
+                    "justifyContent": "center",
+                    "flexWrap": "wrap",
+                    "gap": "6px",
+                },
+            ),
         ],
         style={
             "marginTop": "24px",

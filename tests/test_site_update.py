@@ -39,15 +39,23 @@ def test_footer_shows_utc_and_machine_readable_time(monkeypatch):
     """The footer has a clear UTC label and an accessible semantic timestamp."""
     updated = datetime(2026, 11, 12, 10, 30, tzinfo=timezone.utc)
     monkeypatch.setattr(build_components, "site_updated_at", lambda: updated)
+    monkeypatch.setattr(build_components, "__version__", "1.2.3")
     footer = build_components.build_footer()
+    info = next(
+        c for c in footer.children if getattr(c, "id", None) == "site-build-info"
+    )
+    assert info.children[0].children == "ML-PEG v1.2.3"
     label = next(
-        c for c in footer.children if getattr(c, "id", None) == "site-last-updated"
+        c for c in info.children if getattr(c, "id", None) == "site-last-updated"
     )
     assert label.children[0] == "Last updated: "
     assert label.children[1].children == "12 Nov 2026, 10:30 UTC"
     assert label.children[1].dateTime == updated.isoformat()
     monkeypatch.setattr(build_components, "site_updated_at", lambda: None)
-    assert not any(
-        getattr(c, "id", None) == "site-last-updated"
+    info = next(
+        c
         for c in build_components.build_footer().children
+        if getattr(c, "id", None) == "site-build-info"
     )
+    assert info.children[0].children == "ML-PEG v1.2.3"
+    assert not any(getattr(c, "id", None) == "site-last-updated" for c in info.children)
