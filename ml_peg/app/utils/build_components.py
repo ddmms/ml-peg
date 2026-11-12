@@ -25,6 +25,7 @@ from ml_peg.app.utils.register_callbacks import (
     register_summary_table_callbacks,
     register_weight_callbacks,
 )
+from ml_peg.app.utils.site_update import site_updated_at
 from ml_peg.app.utils.speed import (
     SPEED_LEVELS,
     SPEED_ORDER,
@@ -1289,6 +1290,7 @@ def build_footer() -> html.Footer:
     html.Footer
         Styled footer component rendered at the bottom of each tab.
     """
+    updated_at = site_updated_at()
     copyright_first_year = "2025"
     current_year = str(time.localtime().tm_year)
     copyright_owners = metadata.metadata("ml-peg")["author"]
@@ -1354,6 +1356,20 @@ def build_footer() -> html.Footer:
                 ),
                 style={"marginTop": "6px"},
             ),
+            Div(
+                [
+                    "Last updated: ",
+                    html.Time(
+                        updated_at.strftime("%d %b %Y, %H:%M UTC"),
+                        dateTime=updated_at.isoformat(),
+                    ),
+                ],
+                id="site-last-updated",
+                title="Latest application build or benchmark results update (UTC).",
+                style={"marginTop": "8px", "color": "var(--mlpeg-muted)"},
+            )
+            if updated_at is not None
+            else None,
         ],
         style={
             "marginTop": "24px",

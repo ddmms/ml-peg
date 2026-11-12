@@ -20,6 +20,9 @@ COPY . /app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --locked --no-default-groups --group prod
 
+# Record the application build once, independent of worker/container restarts.
+RUN date -u +%Y-%m-%dT%H:%M:%SZ > /app/ml_peg/app/_build_time.txt
+
 # Then, use a final image without uv
 FROM debian:bookworm-slim
 
