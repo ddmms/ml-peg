@@ -93,6 +93,7 @@ PRECISION_OVERRIDES = {
     "mace-polar-1-s": "low",
     "mace-polar-1-m": "low",
     "mattersim-5M": "low",
+    "uma-s-1p1-omat": "low",
 }
 
 
