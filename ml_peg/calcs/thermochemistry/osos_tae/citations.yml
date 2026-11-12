@@ -1,0 +1,16 @@
+implementers:
+  - name: "Dacong Wei"
+    github: "Wei-Dacong"
+    email: "weid@mpip-mainz.mpg.de"
+
+contributors: []
+
+citations:             # what a user of this benchmark must cite
+  - key: "karton-2026-osos_tae"
+    role: reference_data
+    title: "The Open-Shell Organic Systems Database: Diverse CCSD(T)/CBS Reaction Energies for Assessing Density Functional Theory and Machine Learning Methods"
+    authors:
+      - "A. Karton"
+    year: 2026
+    doi: 10.1021/acs.jpca.6c03915
+    url:  https://doi.org/10.1021/acs.jpca.6c03915
