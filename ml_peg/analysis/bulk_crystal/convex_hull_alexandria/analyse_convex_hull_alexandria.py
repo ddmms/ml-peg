@@ -10,6 +10,7 @@ from ase import Atoms
 from ase.io import read
 import numpy as np
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from pymatgen.analysis.phase_diagram import PDEntry, PhaseDiagram
 from pymatgen.core import Composition
 import pytest
@@ -22,7 +23,7 @@ from ml_peg.analysis.utils.decorators import (
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.bulk_crystal.convex_hull_alexandria.prepare_inputs import STABLE_TOL
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -35,14 +36,12 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# Entries within this energy of the hull (eV/atom) are classified as stable
-STABLE_TOL = 1e-6
-
 # Signed errors shown as violins: quantity, file stem and initial range (meV/atom),
-# as in Figure 5 of Yu et al., Mater. Genome Eng. Adv. 2, e58 (2024)
+# as in Figure 5 of Yu et al., Mater. Genome Eng. Adv. 2, e58 (2024). The range
+# shows the tails: it holds 99% of the errors of each of the first models run
 VIOLINS = {
-    "e_form": ("Formation energy", "figure_e_form_violin", 200),
-    "e_hull": ("Energy above hull", "figure_e_hull_violin", 200),
+    "e_form": ("Formation energy", "figure_e_form_violin", 500),
+    "e_hull": ("Energy above hull", "figure_e_hull_violin", 500),
 }
 
 PERIODIC_TABLES = {
@@ -53,29 +52,13 @@ PERIODIC_TABLES = {
 # that the worst elements stay distinguishable (Figure 4 of Yu et al. uses 0-400)
 PERIODIC_TABLE_RANGE = (0, 100)
 
+# Colour scale limit for the energy above the hull of unstable phases (meV/atom)
+E_HULL_COLOUR_MAX = 200
 
-def load_reference() -> list[Atoms]:
+
+def load_outputs(model_name: str) -> list[Atoms] | None:
     """
-    Get the reference structures and PBE energies.
-
-    Returns
-    -------
-    list[Atoms]
-        Structures, with ``mat_id``, ``dft_energy`` and ``e_above_hull`` in ``info``.
-    """
-    data_path = (
-        download_s3_data(
-            key="inputs/bulk_crystal/convex_hull_alexandria/convex_hull_alexandria.zip",
-            filename="convex_hull_alexandria.zip",
-        )
-        / "convex_hull_alexandria"
-    )
-    return read(data_path / "structures.extxyz", index=":")
-
-
-def load_energies(model_name: str) -> dict[str, float] | None:
-    """
-    Get the energies computed by a model.
+    Get the structures and energies computed by a model.
 
     Parameters
     ----------
@@ -84,17 +67,15 @@ def load_energies(model_name: str) -> dict[str, float] | None:
 
     Returns
     -------
-    dict[str, float] | None
-        Total energy (eV) for each ``mat_id``, ``nan`` where the calculation
-        failed, or ``None`` if the model was not run.
+    list[Atoms] | None
+        Structures, with ``mat_id``, the reference ``dft_energy`` and
+        ``e_above_hull``, and ``mlip_energy`` (``nan`` where the calculation
+        failed) in ``info``, or ``None`` if the model was not run.
     """
     path = CALC_PATH / model_name / "structures.extxyz"
     if not path.exists():
         return None
-    return {
-        atoms.info["mat_id"]: float(atoms.info["mlip_energy"])
-        for atoms in read(path, index=":")
-    }
+    return read(path, index=":")
 
 
 def hull_energies(
@@ -152,8 +133,30 @@ def hull_energies(
     return results
 
 
+def reference_hull(structures: list[Atoms]) -> dict[str, dict[str, float | str]]:
+    """
+    Get the formation energy and energy above the PBE hull of each binary.
+
+    Parameters
+    ----------
+    structures
+        Unary ground states and binaries, with the reference ``dft_energy``.
+
+    Returns
+    -------
+    dict[str, dict[str, float | str]]
+        For each binary ``mat_id``: its ``system``, ``e_form`` and ``e_hull``
+        (eV/atom).
+    """
+    return hull_energies(
+        structures, {a.info["mat_id"]: a.info["dft_energy"] for a in structures}
+    )
+
+
 def compare_model(
-    structures: list[Atoms], energies: dict[str, float]
+    structures: list[Atoms],
+    reference: dict[str, dict[str, float | str]],
+    energies: dict[str, float],
 ) -> dict[str, dict[str, float | str | None]]:
     """
     Compare the hull of a model with the reference hull, for each binary.
@@ -161,9 +164,12 @@ def compare_model(
     Parameters
     ----------
     structures
-        Unary ground states and binaries, with the reference ``dft_energy``.
+        Unary ground states and binaries.
+    reference
+        Reference hull energies of each binary, from ``reference_hull``.
     energies
-        Total energy (eV) computed by the model for each ``mat_id``.
+        Total energy (eV) computed by the model for each ``mat_id``, missing or
+        ``nan`` where the calculation failed.
 
     Returns
     -------
@@ -172,9 +178,6 @@ def compare_model(
         ``e_form`` and ``e_hull`` (eV/atom), the model values ``None`` if a
         calculation in its system failed.
     """
-    reference = hull_energies(
-        structures, {a.info["mat_id"]: a.info["dft_energy"] for a in structures}
-    )
     predicted = hull_energies(structures, energies)
     return {
         mat_id: {
@@ -268,27 +271,63 @@ def model_metrics(comparison: dict[str, dict] | None) -> dict[str, float | None]
 
 
 @pytest.fixture(scope="module")
-def structures() -> list[Atoms]:
+def model_outputs() -> tuple[list[Atoms], dict[str, dict[str, float] | None]]:
+    """
+    Get the reference structures and the energies of all models from their outputs.
+
+    Returns
+    -------
+    tuple[list[Atoms], dict[str, dict[str, float] | None]]
+        Unary ground states and binaries, with the reference data in ``info``, and
+        the total energy (eV) for each ``mat_id`` of each model, or ``None`` for
+        models that were not run.
+    """
+    structures = {}
+    energies = {}
+    for model_name in MODELS:
+        outputs = load_outputs(model_name)
+        if outputs is None:
+            energies[model_name] = None
+            continue
+        energies[model_name] = {}
+        for atoms in outputs:
+            mat_id = atoms.info["mat_id"]
+            energies[model_name][mat_id] = float(atoms.info["mlip_energy"])
+            structures.setdefault(mat_id, atoms)
+    return list(structures.values()), energies
+
+
+@pytest.fixture(scope="module")
+def structures(
+    model_outputs: tuple[list[Atoms], dict[str, dict[str, float] | None]],
+) -> list[Atoms]:
     """
     Get the reference structures and PBE energies.
+
+    Parameters
+    ----------
+    model_outputs
+        Reference structures, and energies of all models.
 
     Returns
     -------
     list[Atoms]
         Unary ground states and binaries.
     """
-    return load_reference()
+    return model_outputs[0]
 
 
 @pytest.fixture(scope="module")
-def comparisons(structures: list[Atoms]) -> dict[str, dict[str, dict] | None]:
+def comparisons(
+    model_outputs: tuple[list[Atoms], dict[str, dict[str, float] | None]],
+) -> dict[str, dict[str, dict] | None]:
     """
     Compare the hulls of all models with the reference.
 
     Parameters
     ----------
-    structures
-        Unary ground states and binaries.
+    model_outputs
+        Reference structures, and energies of all models.
 
     Returns
     -------
@@ -296,13 +335,16 @@ def comparisons(structures: list[Atoms]) -> dict[str, dict[str, dict] | None]:
         Comparison for each binary and model, or ``None`` for models that were not
         run.
     """
-    comparisons = {}
-    for model_name in MODELS:
-        energies = load_energies(model_name)
-        comparisons[model_name] = (
-            None if energies is None else compare_model(structures, energies)
+    structures, energies = model_outputs
+    reference = reference_hull(structures)
+    return {
+        model_name: (
+            None
+            if model_energies is None
+            else compare_model(structures, reference, model_energies)
         )
-    return comparisons
+        for model_name, model_energies in energies.items()
+    }
 
 
 @pytest.fixture
@@ -587,12 +629,145 @@ def hull_rows(
     return dict(rows)
 
 
+def system_maes(comparison: dict[str, dict]) -> dict[str, float]:
+    """
+    Get the energy above hull MAE of each system, over its binaries.
+
+    Parameters
+    ----------
+    comparison
+        Comparison for each binary of one model.
+
+    Returns
+    -------
+    dict[str, float]
+        MAE (meV/atom) of each system that did not fail, from the largest to the
+        smallest.
+    """
+    errors = defaultdict(list)
+    for result in comparison.values():
+        if result["e_hull_pred"] is not None:
+            errors[result["system"]].append(
+                abs(result["e_hull_pred"] - result["e_hull_ref"])
+            )
+    maes = {system: 1000 * float(np.mean(e)) for system, e in errors.items()}
+    return dict(sorted(maes.items(), key=lambda item: -item[1]))
+
+
+def hull_figure(data: dict[str, list], system: str, model: str) -> go.Figure:
+    """
+    Draw the reference and model hulls of a system side by side.
+
+    Parameters
+    ----------
+    data
+        Data of the system, one list per field.
+    system
+        System, such as ``Cu-Zn``.
+    model
+        Name of the model.
+
+    Returns
+    -------
+    go.Figure
+        Formation energy against composition, with the hull, for PBE and the model.
+    """
+    first, second = system.split("-")
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        shared_yaxes=True,
+        horizontal_spacing=0.05,
+        subplot_titles=("PBE (Alexandria)", model),
+    )
+    x = np.array(data["x"])
+    hover = [
+        f"{formula} ({mat_id})"
+        for formula, mat_id in zip(data["formula"], data["mat_id"], strict=True)
+    ]
+    for col, source in ((1, "ref"), (2, "pred")):
+        e_form = np.array(data[f"e_form_{source}"])
+        e_hull = np.array(data[f"e_hull_{source}"])
+        stable = np.array(data[f"stable_{source}"])
+        order = np.argsort(x[stable])
+        fig.add_scatter(
+            x=x[stable][order],
+            y=e_form[stable][order],
+            mode="lines",
+            line={"color": "black"},
+            hoverinfo="skip",
+            showlegend=False,
+            row=1,
+            col=col,
+        )
+        texts = [
+            f"{text}<br>E_form = {ef:.0f} meV/atom<br>E_hull = {eh:.0f} meV/atom"
+            for text, ef, eh in zip(hover, e_form, e_hull, strict=True)
+        ]
+        fig.add_scatter(
+            x=x[~stable],
+            y=e_form[~stable],
+            mode="markers",
+            marker={
+                "color": e_hull[~stable],
+                "colorscale": "Viridis",
+                "cmin": 0,
+                "cmax": E_HULL_COLOUR_MAX,
+                "size": 8,
+                "colorbar": {"title": "E_hull (meV/atom)"} if col == 1 else None,
+                "showscale": col == 1,
+            },
+            text=np.array(texts)[~stable],
+            hoverinfo="text",
+            name="Unstable",
+            showlegend=col == 1,
+            row=1,
+            col=col,
+        )
+        fig.add_scatter(
+            x=x[stable],
+            y=e_form[stable],
+            mode="markers",
+            marker={"color": "black", "size": 10},
+            text=np.array(texts)[stable],
+            hoverinfo="text",
+            name="Stable",
+            showlegend=col == 1,
+            row=1,
+            col=col,
+        )
+    # Show the phases that are stable in PBE on the model hull too
+    stable_ref = np.array(data["stable_ref"])
+    fig.add_scatter(
+        x=x[stable_ref],
+        y=np.array(data["e_form_pred"])[stable_ref],
+        mode="markers",
+        marker={
+            "color": "rgba(0,0,0,0)",
+            "size": 16,
+            "line": {"color": "#d62728", "width": 2},
+        },
+        hoverinfo="skip",
+        name="Stable in PBE",
+        row=1,
+        col=2,
+    )
+    fig.update_xaxes(title_text=f"x in {first}(1-x){second}x", range=[-0.03, 1.03])
+    fig.update_yaxes(title_text="Formation energy (meV/atom)", col=1)
+    fig.update_layout(
+        title=f"{system}: PBE and {model} convex hulls",
+        height=500,
+        legend={"orientation": "h", "y": -0.2},
+    )
+    return fig
+
+
 @pytest.fixture
-def hull_data(
+def hull_figures(
     structures: list[Atoms], comparisons: dict[str, dict[str, dict] | None]
 ) -> None:
     """
-    Write the data needed to draw the reference and model hulls, for each model.
+    Write the PBE and model hulls of each system, and the MAE of each system.
 
     Parameters
     ----------
@@ -604,15 +779,19 @@ def hull_data(
     for model_name, comparison in comparisons.items():
         if comparison is None:
             continue
-        out_dir = OUT_PATH / model_name
+        out_dir = OUT_PATH / model_name / "hulls"
         out_dir.mkdir(parents=True, exist_ok=True)
-        # One list per field for each system, to keep the file small
-        columns = {
-            system: {key: [row[key] for row in rows] for key in rows[0]}
-            for system, rows in hull_rows(structures, comparison).items()
-        }
-        with open(out_dir / "hull_data.json", "w", encoding="utf8") as file:
-            json.dump(columns, file, separators=(",", ":"))
+        for system, rows in hull_rows(structures, comparison).items():
+            data = {key: [row[key] for row in rows] for key in rows[0]}
+            fig = hull_figure(data, system, model_name)
+            # Leave out the default template, restored when the app loads the figure,
+            # to keep the files small
+            fig.layout.template = None
+            fig.write_json(out_dir / f"{system}.json")
+        with open(
+            OUT_PATH / model_name / "hull_systems.json", "w", encoding="utf8"
+        ) as f:
+            json.dump(system_maes(comparison), f, separators=(",", ":"))
 
 
 def test_convex_hull_alexandria(
@@ -621,7 +800,7 @@ def test_convex_hull_alexandria(
     e_hull_density: dict[str, dict],
     e_form_density: dict[str, dict],
     violins: None,
-    hull_data: None,
+    hull_figures: None,
 ) -> None:
     """
     Run the Alexandria convex-hull analysis.
@@ -638,8 +817,8 @@ def test_convex_hull_alexandria(
         Density scatter of the formation energy (side effect only).
     violins
         Violin plots of the signed errors (side effect only).
-    hull_data
-        Data to draw the reference and model hulls (side effect only).
+    hull_figures
+        PBE and model hulls of each system (side effect only).
     """
     get_struct_info(
         calc_path=CALC_PATH,

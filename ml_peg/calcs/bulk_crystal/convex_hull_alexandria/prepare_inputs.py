@@ -10,7 +10,9 @@ The archive collects the unary and binary PBE entries of the Alexandria database
   MP2020-style corrections stored in Alexandria;
 * every binary on the hull is kept, with the ground state of each element and up
   to ``N_UNSTABLE`` unstable binaries per system, drawn with a fixed seed from
-  the energy-above-hull bins in ``E_HULL_BINS``.
+  the energy-above-hull bins in ``E_HULL_BINS``;
+* up to ``N_NEAR_HULL`` more unstable binaries per system are drawn close to the
+  hull, where a model is most likely to place a phase on its hull wrongly.
 
 The archive is hosted on the ML-PEG S3 bucket as
 ``inputs/bulk_crystal/convex_hull_alexandria/convex_hull_alexandria.zip``. This
@@ -54,6 +56,10 @@ U_ANIONS = {"O", "F"}
 # (eV/atom) where possible; remaining slots are filled from the other entries
 N_UNSTABLE = 5
 E_HULL_BINS = ((0, 0.025), (0.025, 0.05), (0.05, 0.1), (0.1, 0.2), (0.2, np.inf))
+# Additional unstable binaries drawn per system close to the hull, by bin (eV/atom).
+# They are drawn after the selection above, with their own seed, so that it is
+# unchanged
+N_NEAR_HULL = {(0, 0.025): 7, (0.025, 0.05): 3}
 STABLE_TOL = 1e-6  # eV/atom
 SEED = 0
 
@@ -70,8 +76,10 @@ structures.extxyz
 
     Systems containing a PBE+U calculation ({", ".join(sorted(U_ANIONS))} with
     {", ".join(sorted(U_ELEMENTS))}) are excluded. All binaries on the hull are
-    included, with the ground state of each element and up to {N_UNSTABLE}
-    unstable binaries per system (seed {SEED}).
+    included, with the ground state of each element, up to {N_UNSTABLE}
+    unstable binaries per system (seed {SEED}), and up to
+    {sum(N_NEAR_HULL.values())} more close to the hull (bins and counts in eV/atom:
+    {N_NEAR_HULL}, seed {SEED + 1}).
 
 References: T. Cavignac et al., J. Phys. Mater. 9, 025014 (2026),
 https://doi.org/10.1088/2515-7639/ae6620; J. Schmidt et al., Adv. Mater. 35,
@@ -170,6 +178,10 @@ def select_entries(
     """
     Select the elemental ground states, stable binaries and sampled unstable ones.
 
+    The unstable binaries are first drawn across the bins of ``E_HULL_BINS``, then
+    the ``N_NEAR_HULL`` ones close to the hull are drawn from those left, with a
+    second generator.
+
     Parameters
     ----------
     entries
@@ -185,8 +197,10 @@ def select_entries(
         Selected entries, with ``e_above_hull`` set to the raw-energy value.
     """
     rng = np.random.default_rng(seed)
+    near_hull_rng = np.random.default_rng(seed + 1)
     ground_states = {}
     systems = defaultdict(list)
+    remaining = {}
     for entry in entries:
         data = entry["data"]
         elements = sorted(entry["composition"])
@@ -221,6 +235,17 @@ def select_entries(
         while len(picked) < N_UNSTABLE and rest:
             picked.append(rest.pop(rng.integers(len(rest))))
         selected += picked
+        remaining[system] = rest
+
+    for system in sorted(remaining):
+        for (low, high), n_entries in N_NEAR_HULL.items():
+            in_bin = [
+                e for e in remaining[system] if low < e["data"]["e_above_hull"] <= high
+            ]
+            drawn = near_hull_rng.choice(
+                len(in_bin), size=min(n_entries, len(in_bin)), replace=False
+            )
+            selected += [in_bin[i] for i in sorted(drawn)]
 
     used = {el for entry in selected for el in entry["composition"]}
     for element in sorted(used):

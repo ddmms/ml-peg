@@ -11,13 +11,14 @@ from ml_peg.analysis.bulk_crystal.convex_hull_alexandria.analyse_convex_hull_ale
     compare_model,
     element_values,
     hull_energies,
+    hull_figure,
     hull_rows,
     model_metrics,
+    reference_hull,
     signed_errors,
+    system_maes,
 )
-from ml_peg.app.bulk_crystal.convex_hull_alexandria.app_convex_hull_alexandria import (  # noqa: E501
-    system_mae,
-)
+from ml_peg.calcs.bulk_crystal.convex_hull_alexandria import prepare_inputs
 from ml_peg.calcs.bulk_crystal.convex_hull_alexandria.prepare_inputs import (
     is_plus_u,
     select_entries,
@@ -58,6 +59,7 @@ STRUCTURES = [
     make_structure("Cu3Zn", "cu3zn", -5.8),
 ]
 REFERENCE = {atoms.info["mat_id"]: atoms.info["dft_energy"] for atoms in STRUCTURES}
+REFERENCE_HULL = reference_hull(STRUCTURES)
 
 
 def test_hull_energies():
@@ -95,7 +97,7 @@ def test_compare_model_shifted_elements():
         + sum(shift[symbol] for symbol in atoms.get_chemical_symbols())
         for atoms in STRUCTURES
     }
-    metrics = model_metrics(compare_model(STRUCTURES, energies))
+    metrics = model_metrics(compare_model(STRUCTURES, REFERENCE_HULL, energies))
     assert metrics["Energy above hull MAE"] == pytest.approx(0.0, abs=1e-9)
     assert metrics["Formation energy MAE"] == pytest.approx(0.0, abs=1e-9)
     assert metrics["Stability F1"] == 1.0
@@ -105,7 +107,7 @@ def test_compare_model_shifted_elements():
 def test_compare_model_errors():
     """Test the metrics when the model destabilises CuZn by 0.15 eV/atom."""
     energies = REFERENCE | {"cuzn": -4.0 + 2 * 0.15}
-    comparison = compare_model(STRUCTURES, energies)
+    comparison = compare_model(STRUCTURES, REFERENCE_HULL, energies)
     # The model hull runs from Cu to the CuZn polymorph (-0.4 eV/atom)
     assert comparison["cuzn"]["e_hull_pred"] == pytest.approx(0.05)
     assert comparison["cuzn-2"]["e_hull_pred"] == pytest.approx(0.0, abs=1e-12)
@@ -127,7 +129,9 @@ def test_compare_model_errors():
 
 def test_signed_errors_and_hull_rows():
     """Test the signed errors and the hull data when CuZn is destabilised."""
-    comparison = compare_model(STRUCTURES, REFERENCE | {"cuzn": -4.0 + 2 * 0.15})
+    comparison = compare_model(
+        STRUCTURES, REFERENCE_HULL, REFERENCE | {"cuzn": -4.0 + 2 * 0.15}
+    )
     assert signed_errors(comparison, "e_form") == pytest.approx([150.0, 0.0, 0.0])
     assert signed_errors(comparison, "e_hull") == pytest.approx([50.0, -100.0, -50.0])
 
@@ -140,22 +144,33 @@ def test_signed_errors_and_hull_rows():
     assert (rows["cuzn"]["stable_ref"], rows["cuzn"]["stable_pred"]) == (True, False)
     assert (rows["cu3zn"]["stable_ref"], rows["cu3zn"]["stable_pred"]) == (False, True)
 
-    # The dropdown MAE leaves out the elements added to draw the hull
+    # The dropdown MAE is over the binaries only, not the elements added to draw
+    # the hull
+    assert system_maes(comparison) == {"Cu-Zn": pytest.approx(200 / 3)}
+
     data = {
         key: [row[key] for row in rows.values()] for key in next(iter(rows.values()))
     }
-    assert system_mae(data, "Cu-Zn") == pytest.approx(200 / 3)
+    fig = hull_figure(data, "Cu-Zn", "model")
+    assert fig.layout.title.text == "Cu-Zn: PBE and model convex hulls"
+    # Hull line through Cu, CuZn and Zn in PBE, and Cu, Cu3Zn, CuZn-2 and Zn for the
+    # model
+    assert list(fig.data[0].x) == [0, 0.5, 1]
+    assert list(fig.data[3].x) == [0, 0.25, 0.5, 1]
 
-    failed = compare_model(STRUCTURES, REFERENCE | {"zn": np.nan})
+    failed = compare_model(STRUCTURES, REFERENCE_HULL, REFERENCE | {"zn": np.nan})
     assert signed_errors(failed, "e_hull") == []
     assert hull_rows(STRUCTURES, failed) == {}
+    assert system_maes(failed) == {}
 
 
 def test_model_metrics_failed():
     """Test the metrics when a model was not run or all its systems failed."""
     assert set(model_metrics(None).values()) == {None}
 
-    metrics = model_metrics(compare_model(STRUCTURES, REFERENCE | {"zn": np.nan}))
+    metrics = model_metrics(
+        compare_model(STRUCTURES, REFERENCE_HULL, REFERENCE | {"zn": np.nan})
+    )
     assert metrics["Failed systems"] == 100.0
     assert metrics["Energy above hull MAE"] is None
 
@@ -204,7 +219,7 @@ def make_entry(composition: dict[str, int], mat_id: str, energy: float) -> dict:
     }
 
 
-def test_select_entries():
+def test_select_entries(monkeypatch):
     """Test the selection of ground states, stable and sampled unstable binaries."""
     entries = [
         make_entry({"Cu": 1}, "cu-1", -1.0),
@@ -224,10 +239,17 @@ def test_select_entries():
     assert {"stable", "cu-2", "zn-1"} <= set(selected)
     assert not {"cu-1", "ag-1"} & set(selected)
     unstable = [mat_id for mat_id in selected if mat_id.startswith("unstable")]
-    assert len(unstable) == 5
-    # One entry from each energy-above-hull bin
+    # One entry from each energy-above-hull bin, and the one left within 25 meV/atom
+    # of the hull (none is left between 25 and 50 meV/atom)
+    assert len(unstable) == 6
     bins = [(0, 0.025), (0.025, 0.05), (0.05, 0.1), (0.1, 0.2), (0.2, np.inf)]
     values = [selected[mat_id]["data"]["e_above_hull"] for mat_id in unstable]
-    for low, high in bins:
-        assert sum(low < value <= high for value in values) == 1
+    for (low, high), count in zip(bins, (2, 1, 1, 1, 1), strict=True):
+        assert sum(low < value <= high for value in values) == count
     assert select_entries(entries, e_hull) == select_entries(entries, e_hull)
+
+    # The near-hull entries are drawn after the others, which are unchanged
+    monkeypatch.setattr(prepare_inputs, "N_NEAR_HULL", {})
+    without = [entry["data"]["mat_id"] for entry in select_entries(entries, e_hull)]
+    assert set(without) < set(selected)
+    assert len(set(selected) - set(without)) == 1

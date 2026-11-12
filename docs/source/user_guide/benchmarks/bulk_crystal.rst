@@ -915,7 +915,7 @@ Convex hull (Alexandria)
 Summary
 -------
 
-Energy above the convex hull and formation energy of 24,726 binary crystals from the
+Energy above the convex hull and formation energy of 41,048 binary crystals from the
 Alexandria PBE database, using single-point energies on the PBE structures. For each
 binary chemical system, the hull is built from the model energies of its binaries and
 of the ground states of its two elements, and compared with the hull built from the
@@ -930,9 +930,12 @@ energies, no corrections are applied to any model.
 The structures are all 7,419 binaries on the PBE hull of the 3,482 remaining systems,
 the ground states of the 89 elements, and up to five unstable binaries per system,
 drawn with a fixed seed so that each falls in a different range of energy above the
-hull (0-25, 25-50, 50-100, 100-200 and above 200 meV/atom) where possible. As every
-binary on the reference hull is included, the reference energies above the hull are
-the same as for the full database.
+hull (0-25, 25-50, 50-100, 100-200 and above 200 meV/atom) where possible. Up to ten
+more unstable binaries per system are drawn close to the hull, seven within
+25 meV/atom and three between 25 and 50 meV/atom, as this is where a model is most
+likely to place a phase on its hull wrongly. As every binary on the reference hull is
+included, the reference energies above the hull are the same as for the full
+database.
 
 Metrics
 -------
@@ -947,7 +950,11 @@ counted in metric 3.
 2. Stability F1
 
    F1 score for classifying binaries as stable, that is, on the hull (within
-   10\ :sup:`-6` eV/atom).
+   10\ :sup:`-6` eV/atom). Stable binaries make up 18% of this set, far more than
+   among all Alexandria binaries, because every stable binary is kept while unstable
+   ones are sampled. The F1 score is therefore higher than it would be on the full
+   database, and is meant for comparing models rather than as an estimate of
+   screening performance.
 
 3. Failed systems
 
@@ -983,8 +990,8 @@ the 90th percentile 67 meV/atom (Sun *et al.*). The good energy above hull MAE,
 10 meV/atom, is below this median, so that typical metastable phases are placed
 correctly. The bad threshold, 50 meV/atom, approaches the 90th percentile, beyond which
 known metastable phases cannot be told apart from unstable ones. For the stability F1
-score, 30% of the binaries are stable, so classifying every binary as stable already
-gives 0.46; the bad threshold, 0.6, is set clearly above this trivial classifier. The
+score, 18% of the binaries are stable, so classifying every binary as stable already
+gives 0.31; the bad threshold, 0.6, is set clearly above this trivial classifier. The
 bad threshold for failed systems, 10%, reflects that a model that fails on one system
 in ten cannot be used to screen across the periodic table. The formation-energy metrics are not scored; their
 thresholds only set the colours.
@@ -992,9 +999,10 @@ thresholds only set the colours.
 Benchmark speed
 ---------------
 
-Medium: 24,815 single-point calculations on cells of 1 to 168 atoms (262,203 atoms in
-total), taking around 10 minutes per model on GPU. On an Apple M2 Max CPU,
-``mace-mp-0a`` takes about 30 minutes and ``uma-s-1p1-omat`` about 2.5 hours.
+Medium: 41,137 single-point calculations on cells of 1 to 184 atoms (451,303 atoms in
+total), taking around 15 minutes per model on GPU (about 10 minutes for the first
+24,815 structures). On an Apple M2 Max CPU, ``mace-mp-0a`` takes about 45 minutes and
+``uma-s-1p1-omat`` about 2.5 hours for the first 24,815.
 
 Data availability
 -----------------
