@@ -398,3 +398,32 @@ def test_empty_weight_restores_stored_value(ready_page, page_errors, central, co
         == 3
     )
     score(page, "summary-table", 0.525)
+
+
+@pytest.mark.parametrize("panel_width", [320, 480])
+def test_global_reset_remains_accessible_when_scrolled(ready_page, panel_width):
+    """The category reset stays inside a scrolled panel and resets its weights."""
+    page = ready_page
+    page.locator("#global-weights > summary").click()
+    edit(page, "global-summary-table-Alpha Score-input", 3)
+    score(page, "summary-table", 0.525)
+    panel = page.locator(".mlpeg-global-weights-body")
+    # Constrain the fixture's short list to exercise overflow at both widths.
+    panel.evaluate(
+        """(el, width) => {
+            el.style.width = width + 'px';
+            el.style.maxHeight = '150px';
+            el.scrollTop = el.scrollHeight;
+        }""",
+        panel_width,
+    )
+    assert panel.evaluate("el => el.scrollTop") > 0
+    reset = page.locator("#global-category-weights-reset")
+    bounds = panel.bounding_box()
+    button = reset.bounding_box()
+    assert bounds["y"] <= button["y"]
+    assert button["y"] + button["height"] <= bounds["y"] + bounds["height"]
+    assert bounds["x"] <= button["x"]
+    assert button["x"] + button["width"] <= bounds["x"] + bounds["width"]
+    reset.click()
+    score(page, "summary-table", 0.65)

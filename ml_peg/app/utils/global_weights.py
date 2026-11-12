@@ -7,6 +7,7 @@ from dash.html import Button, Details, Div, Label, Summary
 
 from ml_peg.app.utils.build_components import build_weight_input
 from ml_peg.app.utils.register_callbacks import register_weight_callbacks
+from ml_peg.app.utils.utils import RESERVED_TABLE_COLUMNS
 
 
 def _weight_row(table: DataTable, column: str, reset_id: str) -> Div:
@@ -69,7 +70,7 @@ def build_global_weights(summary_table: DataTable, category_views: dict) -> Deta
         benchmarks = [
             _weight_row(table, col["id"], benchmark_reset)
             for col in table.columns
-            if col["id"] not in {"MLIP", "Score", "id", "link"}
+            if col["id"] not in RESERVED_TABLE_COLUMNS
         ]
         categories.append(
             Details(
@@ -97,16 +98,21 @@ def build_global_weights(summary_table: DataTable, category_views: dict) -> Deta
             Div(
                 [
                     Div(
-                        "Change weights, then press Enter or click away.",
-                        className="mlpeg-global-weights-hint",
+                        [
+                            Div(
+                                "Change weights, then press Enter or click away.",
+                                className="mlpeg-global-weights-hint",
+                            ),
+                            Button(
+                                "Reset category weights",
+                                id=reset_id,
+                                n_clicks=0,
+                                className="mlpeg-scoring-reset",
+                            ),
+                        ],
+                        className="mlpeg-global-weights-header",
                     ),
-                    *categories,
-                    Button(
-                        "Reset category weights",
-                        id=reset_id,
-                        n_clicks=0,
-                        className="mlpeg-scoring-reset",
-                    ),
+                    Div(categories, className="mlpeg-global-weights-categories"),
                 ],
                 className="mlpeg-global-weights-body",
             ),
