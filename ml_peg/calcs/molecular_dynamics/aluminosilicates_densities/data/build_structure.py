@@ -78,9 +78,9 @@ TARGET_DENSITY = {
 }
 
 COMPOSITIONS = {
-    "albite": {"Na": 25, "Al": 37, "Si": 74, "O": 216},
-    "anorthite": {"Ca": 21, "Al": 70, "Si": 46, "O": 218},
-    "sanidine": {"K": 33, "Al": 41, "Si": 68, "O": 214},
+    "albite": {"Na": 27, "Al": 25, "Si": 83, "O": 217},
+    "anorthite": {"Ca": 27, "Al": 50, "Si": 57, "O": 216},
+    "sanidine": {"K": 25, "Al": 29, "Si": 81, "O": 218},
 }
 
 N_SEEDS = 3

@@ -207,6 +207,7 @@ def render_rich_3d_structure(filepath: Path) -> Iframe | Div:
     """
     return Iframe(
         srcDoc=html_content,
+        sandbox="allow-scripts",
         style={
             "width": "100%",
             "height": "520px",

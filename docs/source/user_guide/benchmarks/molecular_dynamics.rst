@@ -408,11 +408,14 @@ Methodology
 
 For each system, a randomly generated structure first undergoes a 5 ps simulation
 in the NVT ensemble at 2500 K, followed by 20 ps at 2500 K in the NPT ensemble,
-using Berendsen thermostat and barostat. The structure is then quenched from
-2500 K down to 300 K at 5 K/ps. Finally, it is equilibrated at 300 K for 20 ps.
+using Berendsen thermostat and barostat. All NPT stages use a target pressure of
+0 bar. The structure is then quenched from 2500 K down to 300 K at 5 K/ps. Finally,
+it is equilibrated at 300 K for 20 ps.
 The reported density is the average over 21 snapshots, one every 1000 steps (1 ps),
-saved during the final equilibration stage. Three replicas (different starting
-structures) are run for each composition.
+of the final equilibration stage (including its first frame). It is computed in the
+analysis from the saved trajectory, so the ``*_03_hold_cold.extxyz`` files must be
+kept for the analysis to work. Three replicas (different starting structures) are
+run for each composition.
 
 A similar melt-quench protocol was established on larger simulation boxes in the
 literature (https://doi.org/10.1111/jace.70962). The choice of a ~350-atom system

@@ -23,14 +23,14 @@ that fail specifically for anorthite (Ca-rich, high Al/Si ratio) vs alkali
 feldspars (Na/K, low Al/Si ratio).
 
 MAE and MAPE are computed as the mean of per-replica errors (not the error
-on the mean density), which is the statistically correct estimator.
+on the mean density).
 
-Density extraction: from SLURM log files (slurm_*.out) -- the 'Final density' line
-contains the mean density averaged over the 20 ps production run.
-Only completed runs contribute a value.
-FALLBACK:  from replica{N}_quenched.xyz atoms.info['density_final_gcm3'],
-which also stores the mean over the production run (same value,
-but requires the full run to have completed and the file written).
+Density extraction: for each replica, the density is computed here from the
+production-run trajectory ('replica{N}_03_hold_cold.extxyz', 21 snapshots,
+one every 1 ps, including the first frame of the stage) as mass / cell volume
+of each frame, then averaged. A replica that is missing, marked as failed,
+unreadable or with an incomplete trajectory gives NaN, and so does every metric
+that depends on it.
 """
 
 from __future__ import annotations
@@ -82,6 +82,9 @@ EXP_DENSITY = {
     "anorthite": 2.691,
     "sanidine": 2.366,
 }
+AMU_G = 1.66054e-24  # grams per atomic mass unit
+# Production-run snapshots: one every 1 ps for 20 ps, plus the first frame
+N_FRAMES = 21
 
 
 def write_element_info() -> None:
@@ -110,7 +113,7 @@ def write_element_info() -> None:
 
 def get_replica_densities(model_name: str, composition: str) -> list[float]:
     """
-    Read the density of each replica from the final structures.
+    Mean density of each replica over the production run, from its trajectory.
 
     Parameters
     ----------
@@ -122,18 +125,32 @@ def get_replica_densities(model_name: str, composition: str) -> list[float]:
     Returns
     -------
     list[float]
-        One density per replica (g/cm3), in replica order, averaged over the
-        production run. NaN for a replica that is missing, unreadable or has no
-        finite density.
+        One mean density per replica (g/cm3), in replica order. NaN for a
+        replica that is missing, failed, unreadable or has an incomplete
+        production trajectory.
     """
+    run_dir = CALC_PATH / model_name / composition
     densities = []
     for replica in range(N_REPLICAS):
-        path = CALC_PATH / model_name / composition / f"replica{replica}_quenched.xyz"
         density = float("nan")
-        if path.exists():
+        final = run_dir / f"replica{replica}_quenched.xyz"
+        traj = run_dir / f"replica{replica}_03_hold_cold.extxyz"
+        if final.exists() and traj.exists():
             try:
-                density = float(read(path).info["density_final_gcm3"])
-            except (KeyError, TypeError, ValueError, OSError):
+                if not read(final).info.get("failed", False):
+                    frames = read(traj, index=":")
+                    if len(frames) == N_FRAMES:
+                        density = float(
+                            np.mean(
+                                [
+                                    sum(a.get_masses())
+                                    * AMU_G
+                                    / (a.get_volume() * 1e-24)
+                                    for a in frames
+                                ]
+                            )
+                        )
+            except Exception:  # noqa: BLE001
                 density = float("nan")
         densities.append(density if np.isfinite(density) else float("nan"))
     return densities
@@ -231,6 +248,8 @@ def copy_all_structures() -> None:
                 src = CALC_PATH / model_name / comp / f"replica{replica}_quenched.xyz"
                 if src.exists():
                     atoms = read(str(src))
+                    if atoms.info.get("failed", False):
+                        continue  # a failed run has no result to display
                     atoms.wrap()
                     filename = f"{model_name}_{comp}_replica{replica}_quenched.xyz"
                     dst = OUT_PATH / model_name / comp / filename

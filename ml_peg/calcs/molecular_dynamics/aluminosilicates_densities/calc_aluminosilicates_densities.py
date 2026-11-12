@@ -200,8 +200,9 @@ def run_melt_quench(atoms, model_name, model, log_prefix: Path, seed: int = 0):
     Returns
     -------
     Atoms
-        The relaxed structure with density metadata (`density_final_gcm3`,
-        `density_std_gcm3`, `precision`) stored in `atoms.info`.
+        The final structure, with the precision used stored in `atoms.info`. The
+        production-run trajectory (``_03_hold_cold.extxyz``) is the output from
+        which the density is computed in the analysis.
     """
     # stages_done counts the finished stages:
     # 1 = NVT, 2 = NPT hold at 2500 K, 3-46 = the 44 cooling steps
@@ -328,23 +329,21 @@ def run_melt_quench(atoms, model_name, model, log_prefix: Path, seed: int = 0):
     # --- NPT at 300 K for 20 ps (production run) ---
     traj_cold_path = str(log_prefix) + "_03_hold_cold.extxyz"
     Path(traj_cold_path).unlink(missing_ok=True)
-    densities = []
 
     def write_and_record() -> None:
         """
-        Write current frame to trajectory and calculate density.
+        Write current frame to the production trajectory.
 
         Returns
         -------
         None
-            Appends trajectory and density values in-place.
+            Appends the frame to the trajectory in-place.
         """
         ase_write(traj_cold_path, atoms, append=True)
-        vol_a3 = atoms.get_volume()
-        mass_g = sum(atoms.get_masses()) * 1.66054e-24
-        rho = mass_g / (vol_a3 * 1e-24)
-        densities.append(rho)
-        print(f"  density: {rho:.4f} g/cm3 | vol: {vol_a3:.2f} A3", flush=True)
+        rho = sum(atoms.get_masses()) * 1.66054e-24 / (atoms.get_volume() * 1e-24)
+        print(
+            f"  density: {rho:.4f} g/cm3 | vol: {atoms.get_volume():.2f} A3", flush=True
+        )
 
     dyn = NPTBerendsen(
         atoms,
@@ -360,21 +359,34 @@ def run_melt_quench(atoms, model_name, model, log_prefix: Path, seed: int = 0):
     dyn.attach(write_and_record, interval=1000)
     dyn.run(HOLD_COLD_STEPS)
 
-    # --- Final density: mean and std over production run ---
-    density_mean = np.mean(densities)
-    density_std = np.std(densities)
-    if not np.isfinite(density_mean):
-        raise RuntimeError("Non-finite density at the end of the production run")
+    # --- Final checks ---
+    if not np.isfinite(atoms.get_volume()):
+        raise RuntimeError("Non-finite volume at the end of the production run")
     atoms.info.pop("stages_done", None)
-    atoms.info["density_final_gcm3"] = density_mean
-    atoms.info["density_std_gcm3"] = density_std
     atoms.info["precision"] = PRECISION_OVERRIDES.get(model_name, "high")
-    print(
-        f"Final density ({model_name}, {log_prefix.parent.name}): "
-        f"{density_mean:.4f} +/- {density_std:.4f} g/cm3",
-        flush=True,
-    )
     return atoms
+
+
+def _is_complete(path: Path) -> bool:
+    """
+    Check that a final structure exists, is readable and is not marked as failed.
+
+    Parameters
+    ----------
+    path
+        Final structure file of a replica.
+
+    Returns
+    -------
+    bool
+        True if the replica is complete and can be skipped.
+    """
+    if not path.exists():
+        return False
+    try:
+        return not read(path).info.get("failed", False)
+    except Exception:  # noqa: BLE001
+        return False  # unreadable (e.g. truncated): treat as incomplete
 
 
 @pytest.mark.multi_day
@@ -386,7 +398,7 @@ def test_aluminosilicates_densities(mlip, composition, replica) -> None:
     Run melt-quench for one model/composition/replica combination.
 
     Skipped if a valid output file already exists. A failed run is written as a
-    structure with a NaN density, and is retried at the next launch.
+    structure marked as failed, and is retried at the next launch.
 
     Parameters
     ----------
@@ -408,7 +420,7 @@ def test_aluminosilicates_densities(mlip, composition, replica) -> None:
 
     struct_path = write_dir / f"replica{replica}_quenched.xyz"
     start_path = DATA_PATH / f"{composition}_start_seed{replica}.xyz"
-    if struct_path.exists() and not read(struct_path).info.get("failed", False):
+    if _is_complete(struct_path):
         return  # already completed, skip
 
     try:
@@ -426,7 +438,6 @@ def test_aluminosilicates_densities(mlip, composition, replica) -> None:
             stacklevel=2,
         )
         atoms = read(start_path)  # clean structure as failure marker
-        atoms.info["density_final_gcm3"] = float("nan")
         atoms.info["failed"] = True
         atoms.info["failure"] = str(exc).replace("\n", " ")[:200]
         write(struct_path, atoms)
