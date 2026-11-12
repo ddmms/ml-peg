@@ -27,7 +27,7 @@ STRUCTURE_NAMES = ("Al_fcc", "Ti_hcp", "D022", "D023", "L12")
 
 MAX_STEPS = 1000
 MAX_STEP_ANGSTROM = 0.1
-FORCE_TOLERANCE_EV_A = 1.0e-6
+FORCE_TOLERANCE_EV_A = 1.0e-3
 
 _S3_KEY = "inputs/alloy_metallurgy/al3ti_polymorphs/al3ti_polymorphs.zip"
 _S3_FILENAME = "al3ti_polymorphs.zip"
