@@ -127,6 +127,7 @@ def _write_trajectory(
     write(path, [reference, relaxed])
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_mc500_relaxation(mlip: tuple[str, Any]) -> None:
     """
@@ -158,11 +159,15 @@ def test_mc500_relaxation(mlip: tuple[str, Any]) -> None:
     model_out = OUT_PATH / model_name
     traj_out = model_out / "structures"
     model_out.mkdir(parents=True, exist_ok=True)
+    # An interrupted rerun must not leave a previous summary looking current.
+    (model_out / "results.csv").unlink(missing_ok=True)
     rows: list[dict[str, Any]] = []
 
     for cif_file in tqdm(cif_files, desc=f"MC500: {model_name}"):
         structure_id = cif_file.stem
         refcode = structure_id.split("_", maxsplit=1)[-1]
+        # Failed reruns must not reuse a previous successful trajectory.
+        (traj_out / f"{structure_id}.xyz").unlink(missing_ok=True)
         failure = None
         converged = False
         steps = 0

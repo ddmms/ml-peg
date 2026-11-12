@@ -36,16 +36,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="structures/*.xyz",
-    index=0,
-    include_filenames=True,
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
-
 
 def rms_cartesian_displacement(
     reference: Atoms, relaxed: Atoms
@@ -129,6 +119,27 @@ def mc500_results() -> dict[str, dict[str, Any]]:
         Per-model RMSCD values, labels, convergence flags, and total calculation
         counts.
     """
+    # Delay filesystem access until analysis runs, so importing the RMSCD helper
+    # does not require benchmark outputs or write app data during test collection.
+    info = get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="structures/*.xyz",
+        index=0,
+        include_filenames=True,
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+    )
+    structure_ids = info["filenames"]
+    mock_csv = CALC_PATH / "mock" / "results.csv"
+    if mock_csv.exists():
+        with mock_csv.open(encoding="utf-8") as f:
+            expected_ids = [row["structure_id"] for row in csv.DictReader(f)]
+        if len(expected_ids) != len(structure_ids) or set(expected_ids) != set(
+            structure_ids
+        ):
+            raise ValueError("Incomplete MC500 reference structures. Rerun mock.")
+
     results: dict[str, dict[str, Any]] = {}
 
     for model_name in MODELS:
@@ -140,6 +151,10 @@ def mc500_results() -> dict[str, dict[str, Any]]:
         with csv_path.open(encoding="utf-8") as f:
             rows = list(csv.DictReader(f))
 
+        rows_by_id = {row["structure_id"]: row for row in rows}
+        if len(rows_by_id) != len(rows) or set(rows_by_id) - set(structure_ids):
+            raise ValueError(f"Duplicate or unknown MC500 structure IDs: {csv_path}")
+
         model_results: dict[str, Any] = {
             "structure_ids": [],
             "refcodes": [],
@@ -148,8 +163,8 @@ def mc500_results() -> dict[str, dict[str, Any]]:
             "converged": [],
             "steps": [],
             "max_force": [],
-            "total": len(rows),
-            "n_converged": sum(_as_bool(row["converged"]) for row in rows),
+            "total": len(structure_ids),
+            "n_converged": 0,
         }
 
         app_struct_dir = OUT_PATH / model_name / "structures"
@@ -157,17 +172,26 @@ def mc500_results() -> dict[str, dict[str, Any]]:
         app_reference_dir = OUT_PATH / "reference"
         app_reference_dir.mkdir(parents=True, exist_ok=True)
 
-        for row in rows:
-            structure_id = row["structure_id"]
+        for structure_id in structure_ids:
+            row = rows_by_id.get(structure_id, {})
             trajectory_path = model_dir / "structures" / f"{structure_id}.xyz"
+            app_trajectory = app_struct_dir / f"{structure_id}.xyz"
+            app_trajectory.unlink(missing_ok=True)
+            refcode = row.get("refcode", structure_id.split("_", maxsplit=1)[-1])
+            valid = (
+                _as_bool(row.get("converged", "false"))
+                and not row.get("failure", "").strip()
+                and trajectory_path.is_file()
+            )
 
             model_results["structure_ids"].append(structure_id)
-            model_results["refcodes"].append(row["refcode"])
-            model_results["converged"].append(_as_bool(row["converged"]))
-            model_results["steps"].append(int(row["steps"]))
-            model_results["max_force"].append(float(row["max_force"]))
+            model_results["refcodes"].append(refcode)
+            model_results["converged"].append(valid)
+            model_results["steps"].append(int(row.get("steps", 0)))
+            model_results["max_force"].append(float(row.get("max_force", "nan")))
+            model_results["n_converged"] += int(valid)
 
-            if not trajectory_path.exists():
+            if not valid:
                 model_results["rmscd"].append(np.nan)
                 model_results["rmscd_no_h"].append(np.nan)
                 continue
@@ -179,7 +203,7 @@ def mc500_results() -> dict[str, dict[str, Any]]:
 
             # The reference is shared by every model, so it is written once to a
             # common directory, with only the metadata that identifies it.
-            reference.info = {"structure_id": structure_id, "refcode": row["refcode"]}
+            reference.info = {"structure_id": structure_id, "refcode": refcode}
             write(app_reference_dir / f"{structure_id}.xyz", reference)
             write(app_struct_dir / f"{structure_id}.xyz", relaxed)
 

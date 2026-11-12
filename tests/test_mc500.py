@@ -133,3 +133,113 @@ def test_read_mc500_cif_rejects_partial_occupancy(monkeypatch) -> None:
 
     with pytest.raises(ValueError, match="partial occupancies"):
         cif_utils.read_mc500_cif("structure.cif")
+
+
+@pytest.mark.parametrize(
+    "failure_mode", ["missing_row", "unconverged", "failed", "missing_xyz"]
+)
+def test_analysis_preserves_reference_order_and_failed_results(
+    tmp_path, monkeypatch, failure_mode
+) -> None:
+    """Failures keep their slot and cannot contribute a passing RMSCD score."""
+    import csv
+    import inspect
+    import json
+
+    from ase.io import write
+
+    from ml_peg.analysis.molecular_crystal.MC500 import analyse_MC500 as analysis
+
+    calc_path = tmp_path / "calc"
+    app_path = tmp_path / "app"
+    atoms = Atoms("C", positions=[[0, 0, 0]], cell=[5, 5, 5], pbc=True)
+    for model in ("mock", "example"):
+        (calc_path / model / "structures").mkdir(parents=True)
+        for structure_id in ("A", "B"):
+            write(
+                calc_path / model / "structures" / f"{structure_id}.xyz", [atoms, atoms]
+            )
+
+    rows = [
+        {
+            "structure_id": structure_id,
+            "refcode": structure_id,
+            "converged": "True",
+            "steps": "1",
+            "max_force": "0",
+            "failure": "",
+        }
+        for structure_id in ("B", "A")
+    ]
+    if failure_mode == "missing_row":
+        rows.pop()
+    elif failure_mode == "unconverged":
+        rows[1]["converged"] = "False"
+    elif failure_mode == "failed":
+        rows[1]["failure"] = "RuntimeError: failed after optimization"
+    else:
+        (calc_path / "example" / "structures" / "A.xyz").unlink()
+    with (calc_path / "example" / "results.csv").open("w") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+    stale_app = app_path / "example" / "structures" / "A.xyz"
+    stale_app.parent.mkdir(parents=True)
+    write(stale_app, atoms)
+    monkeypatch.setattr(analysis, "CALC_PATH", calc_path)
+    monkeypatch.setattr(analysis, "OUT_PATH", app_path)
+    monkeypatch.setattr(analysis, "MODELS", ["example"])
+    results = analysis.mc500_results.__wrapped__()
+    result = results["example"]
+    assert result["structure_ids"] == ["A", "B"]
+    assert np.isnan(result["rmscd"][0])
+    assert result["rmscd"][1] == pytest.approx(0)
+    assert result["converged"] == [False, True]
+    assert result["total"] == 2
+    assert not stale_app.exists()
+    analysis.rmscd_figures.__wrapped__(results)
+    figure = json.loads((app_path / "figure_rmscd_example.json").read_text())
+    info = json.loads((app_path / "info.json").read_text())
+    assert info["filenames"] == ["A", "B"]
+    for trace in figure["data"]:
+        assert trace["y"] == [None, 0.0]
+        assert [row[0] for row in trace["customdata"]] == info["filenames"]
+    scores = inspect.unwrap(analysis.metrics)(results, None)
+    assert np.isnan(scores["Mean RMSCD excluding H"]["example"])
+    assert scores["Structures within threshold"]["example"] == 50
+    assert scores["Convergence"]["example"] == 50
+
+
+def test_failed_rerun_removes_old_trajectory(tmp_path, monkeypatch) -> None:
+    """A failed rerun cannot retain an earlier successful geometry."""
+    from types import SimpleNamespace
+
+    from ml_peg.calcs.molecular_crystal.MC500 import calc_MC500 as calc
+
+    (tmp_path / "MC500").mkdir()
+    (tmp_path / "MC500" / "A.cif").touch()
+    output = tmp_path / "outputs"
+    trajectory = output / "example" / "structures" / "A.xyz"
+    trajectory.parent.mkdir(parents=True)
+    trajectory.write_text("stale geometry")
+    summary = output / "example" / "results.csv"
+    summary.write_text("stale summary")
+    monkeypatch.setattr(calc, "OUT_PATH", output)
+    monkeypatch.setattr(calc, "download_s3_data", lambda **kwargs: tmp_path)
+    monkeypatch.setattr(calc, "read_mc500_cif", lambda path: Atoms("C"))
+    monkeypatch.setattr(calc, "get_spacegroup_number", lambda atoms: 1)
+
+    def fail(*args):
+        assert not summary.exists()
+        raise RuntimeError("optimization failed")
+
+    monkeypatch.setattr(calc, "relax_crystal", fail)
+    model = SimpleNamespace(
+        get_calculator=lambda **kwargs: None,
+        add_d3_calculator=lambda calculator: calculator,
+    )
+    with pytest.warns(UserWarning, match="optimization failed"):
+        calc.test_mc500_relaxation(("example", model))
+    assert not trajectory.exists()
+    assert "RuntimeError: optimization failed" in summary.read_text()

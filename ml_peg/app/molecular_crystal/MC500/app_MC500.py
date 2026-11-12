@@ -40,6 +40,8 @@ class MC500App(BaseApp):
         plots: dict[str, dict[str, Graph]] = {}
         for model_name in MODELS:
             figure_path = DATA_PATH / f"figure_rmscd_{model_name}.json"
+            # read_plot returns an empty Graph for missing files. Omit these
+            # models from both the plot and structure callback maps instead.
             if not figure_path.exists():
                 continue
             graph = read_plot(figure_path, id=f"{BENCHMARK_NAME}-{model_name}-figure")
