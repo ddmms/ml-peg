@@ -9,6 +9,15 @@ are grouped into, are defined in ``docs/source/user_guide/model_notes.yml``.
 
 .. model-registry::
 
+UMA molecular crystals
+----------------------
+
+``uma-s-1p1-omc`` and ``uma-s-1p2p1-omc`` select the OMC task of
+UMA-S-1.1 and UMA-S-1.2.1 respectively (PBE+D3), listing the full
+checkpoint training datasets.
+Their registry entries above
+link the checkpoint, licence, citation and precision details.
+
 MACE cuEq acceleration
 ----------------------
 

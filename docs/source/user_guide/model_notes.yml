@@ -632,6 +632,56 @@ models:
             :start-after: % begin pet-oam %
             :end-before: % end pet-oam %
 
+  uma-s-1p1-omc:
+    docs_url: https://huggingface.co/facebook/UMA
+    source_url: https://github.com/facebookresearch/fairchem
+    download_url: https://huggingface.co/facebook/UMA
+    download_notes: >-
+      Hugging Face access required, ``checkpoints/uma-s-1p1.pt``
+    notes: |
+      - **Citation:** Wood et al. (2025).
+        `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
+      - **Dataset:** Gharakhanyan et al. (2026).
+        `Open Molecular Crystals 2025 (OMC25) dataset and models <https://arxiv.org/abs/2508.02651>`__,
+        Scientific Data 13, 354.
+
+      .. details:: BibTeX
+
+         .. literalinclude:: model_references.bib
+            :language: bibtex
+            :start-after: % begin uma %
+            :end-before: % end uma %
+
+         .. literalinclude:: model_references.bib
+            :language: bibtex
+            :start-after: % begin omc25 %
+            :end-before: % end omc25 %
+
+  uma-s-1p2p1-omc:
+    docs_url: https://huggingface.co/facebook/UMA
+    source_url: https://github.com/facebookresearch/fairchem
+    download_url: https://huggingface.co/facebook/UMA
+    download_notes: >-
+      Hugging Face access required, ``checkpoints/uma-s-1p2p1.pt``
+    notes: |
+      - **Citation:** Wood et al. (2025).
+        `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
+      - **Dataset:** Gharakhanyan et al. (2026).
+        `Open Molecular Crystals 2025 (OMC25) dataset and models <https://arxiv.org/abs/2508.02651>`__,
+        Scientific Data 13, 354.
+
+      .. details:: BibTeX
+
+         .. literalinclude:: model_references.bib
+            :language: bibtex
+            :start-after: % begin uma %
+            :end-before: % end uma %
+
+         .. literalinclude:: model_references.bib
+            :language: bibtex
+            :start-after: % begin omc25 %
+            :end-before: % end omc25 %
+
   uma-s-1p1-omat:
     docs_url: https://huggingface.co/facebook/UMA
     source_url: https://github.com/facebookresearch/fairchem
