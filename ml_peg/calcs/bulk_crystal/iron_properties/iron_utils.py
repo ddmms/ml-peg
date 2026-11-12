@@ -99,7 +99,7 @@ def relax_volume_isotropic(
     calc: Calculator,
     scale_bounds: tuple[float, float] = (0.9, 1.1),
     xtol: float = 1e-8,
-) -> Atoms:
+) -> tuple[Atoms, dict[str, float | bool | None]]:
     """
     Relax cell volume isotropically (uniform scaling) to minimize energy.
 
@@ -124,8 +124,8 @@ def relax_volume_isotropic(
 
     Returns
     -------
-    Atoms
-        New Atoms object at optimal volume with same cell shape.
+    tuple[Atoms, dict[str, float | bool | None]]
+        Relaxed atoms and minimizer diagnostics.
 
     Notes
     -----
@@ -170,14 +170,31 @@ def relax_volume_isotropic(
         method="bounded",
         options={"xatol": xtol},
     )
-    optimal_scale = result.x
+    optimal_scale = float(result.x) if result.success and np.isfinite(result.x) else 1.0
 
     # Create relaxed structure at optimal volume
     relaxed_atoms = atoms.copy()
     relaxed_atoms.set_cell(original_cell * optimal_scale, scale_atoms=True)
     relaxed_atoms.calc = calc
 
-    return relaxed_atoms
+    lower, upper = scale_bounds
+    tolerance = max(xtol * 10, 1e-7)
+    diagnostics: dict[str, float | bool | None] = {
+        "converged": bool(result.success and np.isfinite(result.fun)),
+        "scale": optimal_scale,
+        "boundary_hit": bool(
+            abs(optimal_scale - lower) <= tolerance
+            or abs(optimal_scale - upper) <= tolerance
+        ),
+        "pressure_GPa": None,
+    }
+    try:
+        stress = relaxed_atoms.get_stress(voigt=False)
+        diagnostics["pressure_GPa"] = float(-np.trace(stress) / 3 * EV_PER_A3_TO_GPA)
+    except Exception:
+        pass
+
+    return relaxed_atoms, diagnostics
 
 
 # =============================================================================
@@ -323,7 +340,8 @@ def create_surface_100(
     lattice_parameter
         Lattice parameter in Angstroms.
     layers
-        Number of atomic layers (default: 10).
+        Number of conventional-cell repeats normal to the surface. Each repeat
+        contains two atomic planes (default: 10 repeats, 20 planes).
     vacuum
         Vacuum thickness in Angstroms (default: 0.0).
     symbol
@@ -361,7 +379,8 @@ def create_surface_110(
     lattice_parameter
         Lattice parameter in Angstroms.
     layers
-        Number of atomic layers (default: 10).
+        Number of conventional-cell repeats normal to the surface. Each repeat
+        contains two atomic planes (default: 10 repeats, 20 planes).
     vacuum
         Vacuum thickness in Angstroms (default: 0.0).
     symbol
@@ -556,9 +575,9 @@ def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
     """
     Apply Voigt strain with off-diagonal cell adjustment.
 
-    For normal strains (directions 1-3), this scales the entire cell vector
-    rather than just the diagonal component. This maintains cell vector ratios
-    and is important for triclinic cells or pre-strained configurations.
+    For normal strains (directions 1-3), this scales the corresponding LAMMPS
+    restricted-triclinic box components. ASE stores its lattice vectors by row,
+    so the LAMMPS tilt components map to columns of the ASE cell matrix.
 
     LAMMPS equivalent for direction 1 (xx):
         change_box all x delta 0 ${delta} xy delta ${deltaxy} xz delta ${deltaxz}
@@ -585,31 +604,31 @@ def apply_voigt_strain(atoms: Atoms, direction: int, magnitude: float) -> Atoms:
     cell = atoms_strained.cell.array.copy()
 
     if direction == 1:
-        # Scale entire x cell vector (a1): maintains xy/lx and xz/lx ratios
+        # Scale lx, xy, and xz, which occupy the first ASE cell column
         # LAMMPS: x -> x + delta, xy -> xy + up*xy, xz -> xz + up*xz
-        cell[0, :] *= 1 + magnitude
+        cell[:, 0] *= 1 + magnitude
     elif direction == 2:
-        # Scale entire y cell vector (a2): maintains yz/ly ratio
+        # Scale ly and yz, which occupy the second ASE cell column
         # LAMMPS: y -> y + delta, yz -> yz + up*yz
-        cell[1, :] *= 1 + magnitude
+        cell[1:, 1] *= 1 + magnitude
     elif direction == 3:
-        # Scale entire z cell vector (a3)
+        # Scale the z cell component
         # LAMMPS: z -> z + delta
-        cell[2, :] *= 1 + magnitude
+        cell[2, 2] *= 1 + magnitude
     elif direction == 4:
         # yz shear: LAMMPS changes yz tilt only
         # For LAMMPS compatibility: simple shear (not symmetric)
-        # cell[1, 2] is the yz tilt component
+        # cell[2, 1] is the yz tilt component in ASE row-vector storage
         lz = cell[2, 2]
-        cell[1, 2] += magnitude * lz
+        cell[2, 1] += magnitude * lz
     elif direction == 5:
         # xz shear: LAMMPS changes xz tilt only
         lz = cell[2, 2]
-        cell[0, 2] += magnitude * lz
+        cell[2, 0] += magnitude * lz
     elif direction == 6:
         # xy shear: LAMMPS changes xy tilt only
         ly = cell[1, 1]
-        cell[0, 1] += magnitude * ly
+        cell[1, 0] += magnitude * ly
 
     atoms_strained.set_cell(cell, scale_atoms=True)
     return atoms_strained

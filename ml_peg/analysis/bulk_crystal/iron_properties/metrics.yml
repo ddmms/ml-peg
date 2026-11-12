@@ -1,77 +1,29 @@
 metrics:
-  # EOS properties
-  a0 error:
-    good: 0.0
-    bad: 2.0
-    unit: "%"
-    tooltip: "Lattice parameter error relative to DFT"
+  Bulk response:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1.0
+    tooltip: "RMS score for a0, B0, C11, C12, and C44"
     level_of_theory: PBE
-  B0 error:
-    good: 0.0
-    bad: 20.0
-    unit: "%"
-    tooltip: "Bulk modulus error relative to DFT"
+  Defect & phase energetics:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1.0
+    tooltip: "RMS score for vacancy formation and the Bain path"
     level_of_theory: PBE
-  BCC-FCC ΔE error:
-    good: 0.0
-    bad: 50.0
-    unit: "meV"
-    tooltip: "Error in BCC-FCC energy difference along Bain path"
+  Slip:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1.0
+    tooltip: "RMS score for the {110}<111> and {112}<111> GSFE curves"
     level_of_theory: PBE
-  # Elastic constants
-  C11 error:
-    good: 0.0
-    bad: 20.0
-    unit: "%"
-    tooltip: "Elastic constant C11 error relative to DFT (ref: 243 GPa)"
-    level_of_theory: PBE
-  C12 error:
-    good: 0.0
-    bad: 20.0
-    unit: "%"
-    tooltip: "Elastic constant C12 error relative to DFT (ref: 145 GPa)"
-    level_of_theory: PBE
-  C44 error:
-    good: 0.0
-    bad: 20.0
-    unit: "%"
-    tooltip: "Elastic constant C44 error relative to DFT (ref: 116 GPa)"
-    level_of_theory: PBE
-  # Defect properties
-  E_vac error:
-    good: 0.0
-    bad: 20.0
-    unit: "%"
-    tooltip: "Vacancy formation energy error relative to DFT"
-    level_of_theory: PBE
-  Surface MAE:
-    good: 0.0
-    bad: 0.5
-    unit: "J/m²"
-    tooltip: "Mean absolute error for surface energies (100, 110, 111, 112)"
-    level_of_theory: PBE
-  Max SFE 110 error:
-    good: 0.0
-    bad: 30.0
-    unit: "%"
-    tooltip: "Error in maximum stacking fault energy for {110}<111> slip system"
-    level_of_theory: PBE
-  Max SFE 112 error:
-    good: 0.0
-    bad: 30.0
-    unit: "%"
-    tooltip: "Error in maximum stacking fault energy for {112}<111> slip system"
-    level_of_theory: PBE
-  # Traction-separation properties
-  Max traction (100) error:
-    good: 0.0
-    bad: 30.0
-    unit: "%"
-    tooltip: "Maximum traction error relative to DFT (ref: 35 GPa)"
-    level_of_theory: PBE
-  Max traction (110) error:
-    good: 0.0
-    bad: 30.0
-    unit: "%"
-    tooltip: "Maximum traction error relative to DFT (ref: 30 GPa)"
+  Cleavage:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1.0
+    tooltip: "RMS score for surface energies and (100)/(110) traction-separation curves"
     level_of_theory: PBE

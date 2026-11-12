@@ -2,9 +2,28 @@
 
 from __future__ import annotations
 
-from pytest import Config, Item, Parser, mark
+from collections.abc import Iterator
+import sys
+
+from pytest import Config, Item, Parser, fixture, mark
 
 from ml_peg import models
+
+
+@fixture(autouse=True)
+def release_gpu_memory() -> Iterator[None]:
+    """
+    Release the GPU memory cached by PyTorch during a test, after completion.
+
+    Yields
+    ------
+    None
+        Control to the test.
+    """
+    yield
+    torch = sys.modules.get("torch")
+    if torch is not None:  # only call if torch is imported
+        torch.cuda.empty_cache()  # does nothing unless CUDA is initialised
 
 
 def pytest_addoption(parser: Parser) -> None:

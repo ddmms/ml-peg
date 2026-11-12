@@ -474,7 +474,10 @@ def test_phonons(
         for mp_id, success, log_text in results:
             _append_model_log(log_path, mp_id, success, log_text)
             if not success:
-                if "cuda out of memory" in log_text.lower():
+                # Compiled (AOTInductor) models print errors such as running out of
+                # memory from C++, so Python only sees that the API call failed
+                text = log_text.lower()
+                if "cuda out of memory" in text or "api call failed" in text:
                     oom_mp_ids.append(mp_id)
                 else:
                     failed_mp_ids.append(mp_id)

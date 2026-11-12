@@ -321,9 +321,11 @@ def load_models(
         GraceCalc,
         MatterSimCalc,
         MockCalc,
+        NequIPCalc,
         OrbCalc,
         SevenNetCalc,
         TaceCalc,
+        TorchMDNetCalc,
         UPETCalc,
         VivaceCalc,
     )
@@ -471,6 +473,30 @@ def load_models(
                     trained_on_dispersion=cfg.get("trained_on_dispersion", False),
                     dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                     default_dtype=cfg.get("overwrite_dtype", None),
+                )
+            case "TMDNETCalculator":
+                kwargs = cfg.get("kwargs", {})
+                loaded_models[name] = TorchMDNetCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    repo_id=pop_required_kwarg(name, kwargs, "repo_id"),
+                    filename=pop_required_kwarg(name, kwargs, "filename"),
+                    revision=kwargs.pop("revision", None),
+                    device=cfg.get("device", "auto"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
+                    kwargs=kwargs,
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "NequIPCalculator":
+                kwargs = cfg.get("kwargs", {})
+                loaded_models[name] = NequIPCalc(
+                    device=cfg.get("device", "auto"),
+                    compile=kwargs.pop("compile", True),
+                    default_dtype=cfg.get("overwrite_dtype", None),
+                    kwargs=kwargs,
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
                 )
             case _:
                 loaded_models[name] = GenericASECalc(
