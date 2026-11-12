@@ -37,7 +37,8 @@ metrics:
       Mean absolute error of simulated vs experimental glass density,
       averaged over all three compositions (albite, anorthite, sanidine).
       Computed as the mean of per-replica absolute errors.
-      NaN values (failed/incomplete simulations) are excluded from the average.
+      The mean is NaN if the model has no complete result (all three replicas) for any
+      of the three compositions.
     level_of_theory: Experimental
     weight: 1.0
   Density MAPE (albite):
@@ -78,6 +79,7 @@ metrics:
       Mean absolute percentage error of simulated vs experimental glass density,
       averaged over all three compositions (albite, anorthite, sanidine).
       Computed as the mean of per-replica percentage errors.
-      NaN values (failed/incomplete simulations) are excluded from the average.
+      The mean is NaN if the model has no complete result (all three replicas) for any
+      of the three compositions.
     level_of_theory: Experimental
     weight: 1.0

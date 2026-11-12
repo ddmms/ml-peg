@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-import re
 
 from ase.io import read, write
 import numpy as np
@@ -61,7 +60,6 @@ CALC_PATH = Path(
         ),
     )
 )
-LOG_PATH = CALC_PATH / "logs"
 
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "aluminosilicates_densities"
 
@@ -85,150 +83,113 @@ EXP_DENSITY = {
     "sanidine": 2.366,
 }
 
-# Element filtering info for the app
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*/replica0_quenched.xyz",
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
 
-
-def get_densities_from_logs(model_name: str, composition: str) -> list[float]:
+def write_element_info() -> None:
     """
-    Read per-replica densities from log files.
+    Write the element information used by the app filters.
 
-    Each 'Final density' line corresponds to one completed replica.
-    Values are means over the 20 ps NPT production run at 300 K.
+    The starting structures are used, as they are part of the repository and
+    contain all the elements of the benchmark. This does not depend on any
+    calculation output.
+
+    Returns
+    -------
+    None
+        This function does not return a value.
+    """
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    get_struct_info(
+        calc_path=CALCS_ROOT / "molecular_dynamics" / "aluminosilicates_densities",
+        model_name="data",
+        glob_pattern="*_start_seed0.xyz",
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+    )
+
+
+def get_replica_densities(model_name: str, composition: str) -> list[float]:
+    """
+    Read the density of each replica from the final structures.
 
     Parameters
     ----------
-    model_name : str
+    model_name
         Name of the MLIP model.
-    composition : str
+    composition
         Mineral composition ('albite', 'anorthite', 'sanidine').
 
     Returns
     -------
     list[float]
-        Per-replica mean densities (g/cm3).
+        One density per replica (g/cm3), in replica order, averaged over the
+        production run. NaN for a replica that is missing, unreadable or has no
+        finite density.
     """
-    pattern = re.compile(
-        rf"Final density \({re.escape(model_name)},\s*{re.escape(composition)}\):\s*"
-        rf"([\d.]+)\s*\+/-"
-    )
     densities = []
-    if not LOG_PATH.exists():
-        return densities
-    for log_file in LOG_PATH.glob("slurm_*.out"):
-        for line in log_file.read_text(errors="replace").splitlines():
-            m = pattern.search(line)
-            if m:
-                densities.append(float(m.group(1)))
+    for replica in range(N_REPLICAS):
+        path = CALC_PATH / model_name / composition / f"replica{replica}_quenched.xyz"
+        density = float("nan")
+        if path.exists():
+            try:
+                density = float(read(path).info["density_final_gcm3"])
+            except (KeyError, TypeError, ValueError, OSError):
+                density = float("nan")
+        densities.append(density if np.isfinite(density) else float("nan"))
     return densities
-
-
-def get_density_from_xyz(
-    model_name: str, composition: str, replica: int
-) -> float | None:
-    """
-    Read mean density from quenched structure file (fallback).
-
-    Parameters
-    ----------
-    model_name : str
-        Name of the MLIP model.
-    composition : str
-        Mineral composition.
-    replica : int
-        Replica index (0, 1, 2).
-
-    Returns
-    -------
-    float or None
-        Mean density in g/cm3, or None if file does not exist.
-    """
-    struct_path = (
-        CALC_PATH / model_name / composition / f"replica{replica}_quenched.xyz"
-    )
-    if not struct_path.exists():
-        return None
-    atoms = read(str(struct_path))
-    return atoms.info.get("density_final_gcm3", None)
-
-
-def get_replica_densities(model_name: str, composition: str) -> list[float]:
-    """
-    Get per-replica densities for a model/composition pair.
-
-    Tries logs first, falls back to xyz files.
-
-    Parameters
-    ----------
-    model_name : str
-        Name of the MLIP model.
-    composition : str
-        Mineral composition.
-
-    Returns
-    -------
-    list[float]
-        Per-replica densities (g/cm3). Empty if no data available.
-    """
-    values = get_densities_from_logs(model_name, composition)
-    if not values:
-        values = [
-            get_density_from_xyz(model_name, composition, r) for r in range(N_REPLICAS)
-        ]
-        values = [v for v in values if v is not None]
-    return values
 
 
 def compute_mae(model_name: str, composition: str) -> float:
     """
     MAE between simulated and experimental density for one model/composition.
 
+    Computed as the mean of the absolute errors of the individual replicas.
+    Returns NaN if any replica is missing, so incomplete models are not scored
+    on the replicas that survived.
+
     Parameters
     ----------
-    model_name : str
+    model_name
         Name of the MLIP model.
-    composition : str
-        Mineral composition.
+    composition
+        Mineral composition ('albite', 'anorthite', 'sanidine').
 
     Returns
     -------
     float
-        MAE in g/cm3, or NaN if no data available.
+        MAE in g/cm3, or NaN if any replica is missing.
     """
-    values = get_replica_densities(model_name, composition)
-    if not values:
+    values = np.array(get_replica_densities(model_name, composition))
+    if np.isnan(values).any():
         return float("nan")
     ref = EXP_DENSITY[composition]
-    return float(np.mean([abs(v - ref) for v in values]))
+    return float(np.mean(np.abs(values - ref)))
 
 
 def compute_mape(model_name: str, composition: str) -> float:
     """
     MAPE between simulated and experimental density for one model/composition.
 
+    Computed as the mean of the absolute percentage errors of the individual
+    replicas. Returns NaN if any replica is missing.
+
     Parameters
     ----------
-    model_name : str
+    model_name
         Name of the MLIP model.
-    composition : str
-        Mineral composition.
+    composition
+        Mineral composition ('albite', 'anorthite', 'sanidine').
 
     Returns
     -------
     float
-        MAPE in %, or NaN if no data available.
+        MAPE in %, or NaN if any replica is missing.
     """
-    values = get_replica_densities(model_name, composition)
-    if not values:
+    values = np.array(get_replica_densities(model_name, composition))
+    if np.isnan(values).any():
         return float("nan")
     ref = EXP_DENSITY[composition]
-    return float(np.mean([abs(v - ref) / ref * 100 for v in values]))
+    return float(np.mean(np.abs(values - ref) / ref * 100))
 
 
 def _mean_over_compositions(
@@ -236,7 +197,7 @@ def _mean_over_compositions(
     model_name: str,
 ) -> float:
     """
-    Mean of a metric over all compositions, ignoring NaN.
+    Mean of a metric over all compositions.
 
     Parameters
     ----------
@@ -248,11 +209,11 @@ def _mean_over_compositions(
     Returns
     -------
     float
-        Mean metric value across valid numeric entries, or NaN if none exist.
+        Mean metric value across all compositions, or NaN if the metric is NaN
+        for any composition.
     """
     vals = [per_comp[comp][model_name] for comp in COMPOSITIONS]
-    finite = [v for v in vals if not np.isnan(v)]
-    return float(np.mean(finite)) if finite else float("nan")
+    return float("nan") if any(np.isnan(vals)) else float(np.mean(vals))
 
 
 def copy_all_structures() -> None:
@@ -457,13 +418,6 @@ def density_mape_mean(
     metric_tooltips=DEFAULT_TOOLTIPS,
     weights=DEFAULT_WEIGHTS,
 )
-@pytest.fixture
-@build_table(
-    filename=OUT_PATH / "aluminosilicates_densities_metrics_table.json",
-    thresholds=DEFAULT_THRESHOLDS,
-    metric_tooltips=DEFAULT_TOOLTIPS,
-    weights=DEFAULT_WEIGHTS,
-)
 def metrics(
     density_mae_albite: dict[str, float],
     density_mae_anorthite: dict[str, float],
@@ -533,4 +487,5 @@ def test_aluminosilicates_densities_analysis(
     None
         This test function does not return a value.
     """
+    write_element_info()
     return

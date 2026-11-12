@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import re
 
-from dash import Dash, Input, Output, callback, dcc
+from dash import Dash, Input, Output, State, callback, dcc
 from dash.html import Div, Iframe
 
 from ml_peg.analysis.molecular_dynamics.aluminosilicates_densities import (
@@ -77,12 +77,11 @@ def render_rich_3d_structure(filepath: Path) -> Iframe | Div:
 
     xyz_text = filepath.read_text()
     cell_dims = parse_xyz_cell(xyz_text)
-    a, b, c = cell_dims
-    cell_str = (
-        f"a = {a} \u00c5 | b = {b} \u00c5 | c = {c} \u00c5"
-        if cell_dims
-        else "Cell dimensions N/A"
-    )
+    if cell_dims:
+        a, b, c = cell_dims
+        cell_str = f"a = {a} \u00c5 | b = {b} \u00c5 | c = {c} \u00c5"
+    else:
+        cell_str = "Cell dimensions N/A"
     file_name = filepath.name
     xyz_json = (
         xyz_text.replace("\\", "\\\\")
@@ -242,6 +241,10 @@ class AluminosilicatesDensitiesApp(BaseApp):
                 "Density MAE (anorthite)": scatter,
                 "Density MAE (sanidine)": scatter,
                 "Density MAE (mean)": scatter,
+                "Density MAPE (albite)": scatter,
+                "Density MAPE (anorthite)": scatter,
+                "Density MAPE (sanidine)": scatter,
+                "Density MAPE (mean)": scatter,
             },
         )
 
@@ -249,8 +252,9 @@ class AluminosilicatesDensitiesApp(BaseApp):
             Output(f"{BENCHMARK_NAME}-struct-placeholder", "children"),
             Input(f"{BENCHMARK_NAME}-figure", "clickData"),
             Input(f"{BENCHMARK_NAME}-replica-select", "value"),
+            State(f"{BENCHMARK_NAME}-figure", "figure"),
         )
-        def update_displayed_structure(click_data, replica_idx):
+        def update_displayed_structure(click_data, replica_idx, figure):
             """
             Update the displayed 3D atomic structure based on user click.
 
@@ -260,31 +264,48 @@ class AluminosilicatesDensitiesApp(BaseApp):
                 Interaction data from clicking points on the density parity plot.
             replica_idx : int
                 Index of the structure replica to display.
+            figure : dict or None
+                Current figure, used to read the model name of the clicked trace.
 
             Returns
             -------
             Iframe or Div
-                The 3D viewer component for the selected structure.
+                The 3D viewer component for the selected structure, or a hint if
+                no valid point is selected.
             """
-            model = MODELS[0]
-            comp = COMPOSITIONS[0]
+            hint = Div(
+                "Click a point in the plot to display its structure.",
+                style={"color": "#64748b", "padding": "15px"},
+            )
 
-            if click_data and "points" in click_data and len(click_data["points"]) > 0:
-                pt = click_data["points"][0]
-                curve_idx = pt.get("curveNumber", 0)
-                point_idx = pt.get("pointIndex", pt.get("pointNumber", 0))
+            if not (click_data and click_data.get("points") and figure):
+                return hint
 
-                if 0 <= curve_idx < len(MODELS):
-                    model = MODELS[curve_idx]
-                if 0 <= point_idx < len(COMPOSITIONS):
-                    comp = COMPOSITIONS[point_idx]
+            point = click_data["points"][0]
+            curve_idx = point.get("curveNumber")
+            point_idx = point.get("pointIndex", point.get("pointNumber"))
+            traces = figure.get("data", [])
+            if curve_idx is None or point_idx is None:
+                return hint
+            if not 0 <= curve_idx < len(traces):
+                return hint
+
+            trace = traces[curve_idx]
+            model = trace.get("name")  # the parity line has no name
+
+            customdata = point.get("customdata")
+            if customdata is None:
+                trace_custom = trace.get("customdata") or []
+                if point_idx < len(trace_custom):
+                    customdata = trace_custom[point_idx]
+            comp = customdata[0] if customdata else None
+
+            if model not in MODELS or comp not in COMPOSITIONS:
+                return hint
 
             replica_idx = replica_idx if replica_idx is not None else 0
-
             filename = f"{model}_{comp}_replica{replica_idx}_quenched.xyz"
-            filepath = DATA_PATH / model / comp / filename
-
-            return render_rich_3d_structure(filepath)
+            return render_rich_3d_structure(DATA_PATH / model / comp / filename)
 
 
 def get_app() -> AluminosilicatesDensitiesApp:

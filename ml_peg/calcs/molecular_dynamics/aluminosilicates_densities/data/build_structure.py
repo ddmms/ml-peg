@@ -1,11 +1,10 @@
 """
 Generate starting structures for melt-quench benchmark using PACKMOL.
 
-PACKMOL guarantees minimum interatomic distances, avoiding the energy
-explosions that occur with pure random packing.
-
-Pair-specific minimum distances are used (realistic for oxides).
-A border margin is added to avoid PBC clashes at box edges.
+Atoms are packed at random in a cubic box. PACKMOL enforces a single minimum
+distance (TOLERANCE, 2.0 A) between any pair of atoms, which avoids the energy
+explosions of pure random packing. A border margin keeps atoms away from the box
+faces, so that periodic images are also at least TOLERANCE apart.
 
 Usage:
     python3 build_structure.py
@@ -15,6 +14,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
 from ase import Atoms
@@ -212,6 +212,7 @@ def run_packmol(
 def main():
     """Generate starting structures for all compositions and seeds."""
     here = Path(__file__).parent
+    failures = []
 
     for comp_name, composition in COMPOSITIONS.items():
         density = TARGET_DENSITY[comp_name]
@@ -236,13 +237,19 @@ def main():
                 print(f"  seed {seed}...", end=" ", flush=True)
                 try:
                     atoms = run_packmol(composition, box, seed, pack_out, tmp)
-                    assert len(atoms) == n_atoms, (
-                        f"Expected {n_atoms} atoms, got {len(atoms)}"
-                    )
+                    if len(atoms) != n_atoms:
+                        raise ValueError(f"Expected {n_atoms} atoms, got {len(atoms)}")
                     write(str(out_xyz), atoms)
                     print(f"OK -> {out_xyz.name} ({len(atoms)} atoms)")
-                except Exception as e:
-                    print(f"FAILED: {e}")
+                except Exception as exc:  # noqa: BLE001
+                    failures.append(f"{comp_name} seed {seed}: {exc}")
+                    print(f"FAILED: {exc}")
+
+    if failures:
+        print(f"\n{len(failures)} structure(s) could not be generated:")
+        for failure in failures:
+            print(f"  - {failure}")
+        sys.exit(1)
 
     print("\nDone.")
 
