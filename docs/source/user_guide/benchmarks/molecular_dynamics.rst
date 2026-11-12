@@ -370,3 +370,80 @@ Reference data:
 
 * Not applicable: this is a wall-clock hardware measurement, not a comparison to a
   reference level of theory.
+
+
+Aluminosilicates Densities
+==========================
+
+Summary
+-------
+
+Benchmark evaluating the density prediction of three aluminosilicate glasses
+(albite, anorthite, and sanidine) against experimental data. A melt-quench
+procedure is applied starting from randomly generated structures at 2500 K and
+quenching to 300 K in the NPT ensemble.
+
+Metrics
+-------
+
+For each composition (albite, anorthite, sanidine) and for the mean over the three:
+
+1. Density MAE (g/cm^3): mean of the absolute errors of the individual
+   replicas with respect to the experimental density.
+2. Density MAPE (%): mean of the absolute percentage errors of the individual
+   replicas.
+
+Errors are computed for each replica and then averaged, not on the mean density.
+
+Thresholds: a model is considered to reproduce the density correctly when the
+MAE is 0.05 g/cm^3 (MAPE 2 %) or lower which is of the order of the spread
+between replicas of the same model. A model is considered completely inaccurate
+when the MAE is 0.30 g/cm^3 (MAPE 15 %) or higher, which is well above
+the 5-10 % systematic underestimation typical of MD melt-quench simulations.
+This underestimation is expected, because the quench rate (5 K/ps) is many orders
+of magnitude faster than in experiment.
+
+Methodology
+-----------
+
+For each system, a randomly generated structure first undergoes a 5 ps simulation
+in the NVT ensemble at 2500 K, followed by 20 ps at 2500 K in the NPT ensemble,
+using Berendsen thermostat and barostat. The structure is then quenched from
+2500 K down to 300 K at 5 K/ps. Finally, it is equilibrated at 300 K for 20 ps.
+The reported density is the average over 21 snapshots, one every 1000 steps (1 ps),
+saved during the final equilibration stage. Three replicas (different starting
+structures) are run for each composition.
+
+A similar melt-quench protocol was established on larger simulation boxes in the
+literature (https://doi.org/10.1111/jace.70962). The choice of a ~350-atom system
+represents a pragmatic compromise to significantly reduce computational cost
+while retaining physically meaningful glass density predictions.
+
+The MD uses float32 for the MACE models and MatterSim. The other models use the
+default ML-PEG precision. `mace-omol` and `mace-polar-1-l` did not complete the
+protocol: they performed only a few tens of MD steps in several hours, while the
+full protocol requires 485,000 steps. They are therefore reported without results.
+
+Benchmark speed
+---------------
+
+Very low. For a single run (485 ps, ~350 atoms) with `mace-matpes-r2scan` on
+one NVIDIA A100 64 GB GPU (Leonardo booster, CINECA), the runtime is about
+29 h. Per model, 9 runs are needed (3 compositions x 3 replicas).
+
+Data availability
+-----------------
+
+Input structures:
+
+Generated with Packmol using `data/build_structure.py`, which is included in the
+benchmark folder. Three random structures (seeds 0, 1 and 2) are generated for each
+composition.
+
+Reference data:
+
+* Experimental glass densities of albite, anorthite and sanidine from
+  M. Taylor and G. E. Brown, Structure of mineral glasses - I. The feldspar glasses
+  NaAlSi3O8, KAlSi3O8, CaAl2Si2O8.
+  Geochim. Cosmochim. Acta 43, 61-75 (1979),
+  https://doi.org/10.1016/0016-7037(79)90047-4
