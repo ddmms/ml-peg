@@ -16,6 +16,7 @@ from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Span, Summary
 import yaml
 
+from ml_peg import __version__
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
 from ml_peg.app.utils.build_credits import build_benchmark_credit_components
 from ml_peg.app.utils.register_callbacks import (
@@ -25,6 +26,7 @@ from ml_peg.app.utils.register_callbacks import (
     register_summary_table_callbacks,
     register_weight_callbacks,
 )
+from ml_peg.app.utils.site_update import site_updated_at
 from ml_peg.app.utils.speed import (
     SPEED_LEVELS,
     SPEED_ORDER,
@@ -1290,6 +1292,7 @@ def build_footer() -> html.Footer:
     html.Footer
         Styled footer component rendered at the bottom of each tab.
     """
+    updated_at = site_updated_at()
     copyright_first_year = "2025"
     current_year = str(time.localtime().tm_year)
     copyright_owners = metadata.metadata("ml-peg")["author"]
@@ -1354,6 +1357,39 @@ def build_footer() -> html.Footer:
                     },
                 ),
                 style={"marginTop": "6px"},
+            ),
+            Div(
+                [
+                    html.Span(f"ML-PEG v{__version__}", id="site-version"),
+                    html.Span("·", **{"aria-hidden": "true"})
+                    if updated_at is not None
+                    else None,
+                    html.Span(
+                        [
+                            "Last updated: ",
+                            html.Time(
+                                updated_at.strftime("%d %b %Y, %H:%M UTC"),
+                                dateTime=updated_at.isoformat(),
+                            ),
+                        ],
+                        id="site-last-updated",
+                        title=(
+                            "Latest application build or benchmark results update "
+                            "(UTC)."
+                        ),
+                    )
+                    if updated_at is not None
+                    else None,
+                ],
+                id="site-build-info",
+                style={
+                    "marginTop": "8px",
+                    "color": "var(--mlpeg-muted)",
+                    "display": "flex",
+                    "justifyContent": "center",
+                    "flexWrap": "wrap",
+                    "gap": "6px",
+                },
             ),
         ],
         style={
