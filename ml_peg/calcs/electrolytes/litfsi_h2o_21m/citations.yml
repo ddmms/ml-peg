@@ -1,0 +1,21 @@
+implementers:
+  - name: "Luca Brugnoli"
+    github: "LucaBrugnoli"
+
+contributors: []
+
+citations:
+  - bibtex_key: brugnoli2026overcoming
+    role: benchmark_method
+  - bibtex_key: gilbert2017density
+    role: reference_data
+  - bibtex_key: watanabe2021local
+    role: reference_data
+  - bibtex_key: zhang2021water
+    role: reference_data
+  - bibtex_key: fransson2021dynasor
+    role: benchmark_method
+    detail: S(q) calculation
+  - bibtex_key: berger2025dynasor
+    role: benchmark_method
+    detail: S(q) calculation
