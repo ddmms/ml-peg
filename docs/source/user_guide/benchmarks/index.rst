@@ -13,6 +13,7 @@ Benchmarks
     defects
     electrolytes
     f_block
+    fracture
     molecular
     molecular_crystal
     molecular_dynamics
