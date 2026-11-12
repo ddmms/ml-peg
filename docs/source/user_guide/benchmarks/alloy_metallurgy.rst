@@ -192,10 +192,14 @@ Bulk properties
 ^^^^^^^^^^^^^^^
 
 Calculated for 3 Al3Ti polymorph structures (L1_2, D0_22, D0_23).
-Each structure is relaxed with the LBFGS optimiser with FrechetCellFilter applied, until the maximum atomic force is
-below 1×10⁻⁶ eV/Å or 1000 steps are reached. Elemental reference energies are
-derived from the relaxed pure-element structures and used to compute formation
-energies.
+Each structure is relaxed with the LBFGS optimiser and FrechetCellFilter using
+a force tolerance of 1e-3 eV/Å and a limit of 1000 steps. This tolerance
+constrains residual forces in the five relaxations used to assess meV/atom
+formation-energy errors and lattice-parameter errors below 1%, while keeping
+the calculations tractable. The 1×10⁻⁶ eV/Å tolerance above applies to the
+Al-Zn-Cu-Mg benchmark.
+Elemental reference energies are derived from the relaxed pure-element
+structures and used to compute formation energies.
 
 1. Formation Energy MAE (eV/atom)
 

@@ -78,7 +78,9 @@ def load_structure(structure: str, data_path: Path) -> Atoms | None:
         return None
 
 
-def relax_structure(structure: str, atoms: Atoms, calc: Calculator) -> Atoms | None:
+def relax_structure(
+    structure: str, atoms: Atoms, calc: Calculator, model_name: str
+) -> Atoms | None:
     """
     Relax a structure.
 
@@ -90,6 +92,8 @@ def relax_structure(structure: str, atoms: Atoms, calc: Calculator) -> Atoms | N
         Structure to be relaxed.
     calc
         ASE calculator used to relax the structure.
+    model_name
+        Name of the model used for progress reporting.
 
     Returns
     -------
@@ -103,9 +107,22 @@ def relax_structure(structure: str, atoms: Atoms, calc: Calculator) -> Atoms | N
         optimizer = LBFGS(
             FrechetCellFilter(atoms), logfile=None, maxstep=MAX_STEP_ANGSTROM
         )
+        progress_prefix = f"{model_name} / {structure}: relaxation step"
+        print(f"{progress_prefix} 0/{MAX_STEPS}", flush=True)
+
+        def report_progress() -> None:
+            if optimizer.nsteps:
+                print(f"{progress_prefix} {optimizer.nsteps}/{MAX_STEPS}", flush=True)
+
+        optimizer.attach(report_progress, interval=50)
         converged = optimizer.run(
             fmax=FORCE_TOLERANCE_EV_A,
             steps=MAX_STEPS,
+        )
+        status = "converged" if converged else "not converged"
+        print(
+            f"{progress_prefix} {optimizer.nsteps}/{MAX_STEPS} ({status})",
+            flush=True,
         )
         if not converged:
             warn(f"Relaxation did not converge for structure {structure}", stacklevel=2)
@@ -175,7 +192,7 @@ def test_al3ti_polymorphs(mlip: tuple[str, Any], data_path: Path) -> None:
         if atoms is None:
             failures.append(f"{structure}: load")
             continue
-        atoms = relax_structure(structure, atoms, calc)
+        atoms = relax_structure(structure, atoms, calc, model_name)
         if atoms is None:
             failures.append(f"{structure}: relax")
             continue
