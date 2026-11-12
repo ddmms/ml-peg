@@ -1101,9 +1101,9 @@ Benchmark speed
 ---------------
 
 Medium: 41,137 single-point calculations on cells of 1 to 184 atoms (451,303 atoms in
-total), taking around 15 minutes per model on GPU (about 10 minutes for the first
-24,815 structures). On an Apple M2 Max CPU, ``mace-mp-0a`` takes about 45 minutes and
-``uma-s-1p1-omat`` about 2.5 hours for the first 24,815.
+total), taking an estimated 15-20 minutes per model on GPU (about 10 minutes for the
+first 24,815 structures). On an Apple M2 Max CPU, ``mace-mp-0a`` takes about
+45 minutes and ``uma-s-1p1-omat`` about 4 hours.
 
 Data availability
 -----------------
