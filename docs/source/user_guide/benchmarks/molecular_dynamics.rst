@@ -22,7 +22,7 @@ dynamics run. The initial part of the simulation, here 500 ps, is omitted from t
 calculation. This is compared to the reference density, obtained from experiment.
 
 Benchmark speed
-------------------
+---------------
 
 Multi-day: tests take several days to run on GPU.
 
@@ -63,7 +63,7 @@ polymer at the default time prefactor. The predicted density is compared to the
 experimental reference density.
 
 Benchmark speed
-------------------
+---------------
 
 Multi-day: tests are likely to take several days to run on GPU.
 
@@ -101,7 +101,7 @@ dynamics run. The initial part of the simulation, here 500 ps, is omitted from t
 calculation. This is compared to the reference density, obtained from experiment.
 
 Benchmark speed
-------------------
+---------------
 
 Multi-day: tests take several days to run on GPU.
 
@@ -143,7 +143,7 @@ The excess volume is computed as the difference between the actual molar volume 
 The concentration of the minimal excess volume is estimated by fitting a quadratic to the three grid points surrounding the minimum and taking the vertex of the parabola.
 
 Benchmark speed
-------------------
+---------------
 
 Multi-day: tests take several days to run on GPU.
 
@@ -183,7 +183,7 @@ deviation is better.
 A histogram shows the distribution of the sampled bond length deviations for each model.
 
 Benchmark speed
-------------------
+---------------
 
 Slow: 8 molecules of 4-13 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
 1 fs timestep. The molecules are small, so the cost per step is dominated by per-call
@@ -239,7 +239,7 @@ A histogram shows the distribution of the sampled planarity deviations for each 
 using only stable simulations.
 
 Benchmark speed
-------------------
+---------------
 
 Slow: 6 molecules of 12-16 atoms, one MD simulation each, of 1,000,000 steps, i.e. 1 ns at a
 1 fs timestep. The molecules are small, so the cost per step is dominated by per-call
@@ -301,7 +301,7 @@ A scatter plot below the table shows the stability score for each system and
 model. Individual models can be toggled via the legend.
 
 Benchmark speed
-------------------
+---------------
 
 Very slow: tests are likely to take many hours on GPU. Faster simulation times can be
 achieved using the jax accelerated simulations in MLIP Audit directly.
@@ -313,3 +313,60 @@ Input structures:
 
 * MLIP Audit benchmark suite, InstaDeep.
   Structures derived from PDB entries 2LNF, 7OFG, and 1A7M.
+
+
+Inference speed
+===============
+
+Summary
+-------
+
+Measure of model inference speed and how it scales with system size. A
+size-stratified dataset of 13 biomolecular structures (71-6714 atoms) is used.
+For each system the model forward pass (energy + forces) through the model's
+ASE calculator is timed.
+
+Metrics
+-------
+
+1. Forward time / atom
+
+For each structure, the mean wall-clock time of a single model forward pass
+(energy + forces) is measured, excluding warm-up passes, and divided by the number of
+atoms. The reported metric is the mean of this per-atom forward time across
+structures, omitting the slowest 20% of passes, in microseconds per atom. Lower is faster.
+If the forward pass fails for any structure, the metric is reported as NaN.
+
+Models are timed through their ASE calculators in low (float32) precision, as used for
+the molecular dynamics benchmarks. Each timed pass forces a full ``calculate()`` call,
+so the timing can include the calculator's own neighbour-list construction and per-call
+overhead. By contrast, MLIP Audit times its native force fields on the pure network
+forward pass over a pre-built graph. The two paths measure different work, so these
+timings should not be compared directly with MLIP Audit's own inference-speed results.
+
+The accompanying scaling plot shows the model throughput (number of atoms divided by the
+forward-pass time, in atoms per second) against the number of atoms on log-log axes,
+with a power-law fit per model.
+
+This is a wall-clock, hardware-dependent measurement rather than a level of theory:
+results are only comparable across models run on the same hardware. The reference
+hardware is an NVIDIA H100 GPU.
+
+Benchmark speed
+---------------
+
+Low: tests are likely to take minutes to run on GPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* MLIP Audit benchmark suite, InstaDeep. A size-stratified set of 13 structures
+  taken from the PDB (elements C, N, H, O, S, P): mostly protein chains, plus a
+  peptide and an RNA fragment.
+
+Reference data:
+
+* Not applicable: this is a wall-clock hardware measurement, not a comparison to a
+  reference level of theory.

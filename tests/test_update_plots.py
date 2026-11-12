@@ -11,7 +11,7 @@ import plotly.io as pio
 from plotly.subplots import make_subplots
 import pytest
 
-from ml_peg import models
+from ml_peg import analysis, models
 from ml_peg.analysis.utils.decorators import (
     cell_to_scatter,
     get_model_colour,
@@ -233,6 +233,33 @@ def test_update_density_non_finite(tmp_path, update_model_2):
         if trace.name == PARITY_LINE_NAME
     )
     assert np.isfinite(parity_line.x).all()
+
+
+@pytest.mark.parametrize("update", [False, True])
+def test_log_parity_limits_include_preserved_traces(tmp_path, monkeypatch, update):
+    """Log parity limits include saved model coordinates only in update mode."""
+    filename = tmp_path / "log_parity.json"
+    go.Figure(
+        data=[
+            go.Scatter(name="model_1", x=[1e4, None, np.inf], y=[1e-4, 0.0, -1.0]),
+            go.Scatter(name=PARITY_LINE_NAME, x=[1e-6, 1e6], y=[1e-6, 1e6]),
+        ]
+    ).write_json(filename)
+    monkeypatch.setattr(models, "current_models", "model_2")
+    monkeypatch.setattr(analysis, "update_results", update)
+
+    plot_parity(filename=filename, log=True)(
+        lambda: {"ref": [1.0, 2.0], "model_2": [1.0, 2.0]}
+    )()
+
+    figure = pio.read_json(filename)
+    line = next(trace for trace in figure.data if trace.name == PARITY_LINE_NAME)
+    expected = [1e-4, 1e4] if update else [1.0, 2.0]
+    assert list(line.x) == pytest.approx(expected)
+    assert list(line.y) == pytest.approx(expected)
+    assert get_trace_names(filename) == (
+        ["model_1", "model_2"] if update else ["model_2"]
+    )
 
 
 def cell_scatter_bundle(models_data):
@@ -543,3 +570,46 @@ def test_model_colours():
     assert get_model_colour("model_2", colours) == "green"
     # Models that are not defined follow all defined models
     assert get_model_colour("model_3", colours) == "blue"
+
+
+def test_density_point_metadata(tmp_path):
+    """Keep point identity aligned after density sampling reorders points."""
+    filename = tmp_path / "points.json"
+    refs = [0.0, 2.0, 0.0, 2.0]
+    identities = [10, 11, 12, 13]
+
+    @plot_density_scatter(
+        filename=filename,
+        point_metadata={"structure": "Structure", "component": "Component"},
+    )
+    def results():
+        return {
+            "model1": {
+                "ref": refs,
+                "pred": refs,
+                "point_meta": {
+                    "structure": identities,
+                    "component": ["x", "y", "z", "x"],
+                },
+            }
+        }
+
+    results()
+    trace = pio.read_json(filename).data[0]
+    assert list(trace.x) == [0.0, 0.0, 2.0, 2.0]
+    assert [row[1] for row in trace.customdata] == [10, 12, 11, 13]
+    assert [row[2] for row in trace.customdata] == ["x", "z", "y", "x"]
+    assert "%{customdata[1]}" in trace.hovertemplate
+
+
+def test_density_point_metadata_length(tmp_path):
+    """Reject metadata that cannot identify every input point."""
+
+    @plot_density_scatter(
+        filename=tmp_path / "points.json", point_metadata={"atom": "Atom"}
+    )
+    def results():
+        return {"model1": {"ref": [1, 2], "pred": [1, 2], "point_meta": {"atom": [0]}}}
+
+    with pytest.raises(ValueError, match="must match data"):
+        results()

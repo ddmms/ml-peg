@@ -494,3 +494,70 @@ def test_analyse_cli_no_calc_options(pytest_args):
 
     for option in ("--run-slow", "--run-very-slow", "--run-mock", "--mock-only"):
         assert option not in pytest_args
+
+
+@pytest.mark.parametrize(
+    "body, expected_hint",
+    [
+        ("import mlpeg_missing_test_dependency\n", True),
+        (
+            "def test_d3():\n"
+            "    raise ModuleNotFoundError(\"No module named 'torch_dftd'\")\n",
+            True,
+        ),
+        (
+            "import pytest\n"
+            "@pytest.fixture\n"
+            "def dependency():\n"
+            "    import mlpeg_missing_test_dependency\n"
+            "def test_setup(dependency):\n"
+            "    pass\n",
+            True,
+        ),
+        (
+            "def test_import():\n    import mlpeg_missing_test_dependency\n",
+            True,
+        ),
+        (
+            "def test_version():\n"
+            "    raise ImportError('cannot import name incompatible_api')\n",
+            True,
+        ),
+        (
+            "def test_assertion():\n"
+            "    assert False, 'ModuleNotFoundError: is just assertion text'\n",
+            False,
+        ),
+        (
+            "import pytest\n"
+            "def test_optional():\n"
+            "    pytest.importorskip('mlpeg_missing_test_dependency')\n",
+            False,
+        ),
+        ("def test_pass():\n    pass\n", False),
+    ],
+)
+def test_import_failure_environment_hint(tmp_path, body, expected_hint):
+    """
+    Show environment hints for real import failures, including collection errors.
+
+    Parameters
+    ----------
+    tmp_path
+        Pytest temporary directory fixture.
+    body
+        Source of the temporary tests.
+    expected_hint
+        Whether the failure should trigger environment diagnostics.
+    """
+    result = run_pytest(tmp_path, body)
+
+    assert ("ML-PEG environment hint" in result.stdout) == expected_hint
+    if expected_hint:
+        assert result.returncode != 0
+        assert result.stdout.count("ML-PEG environment hint") == 1
+        assert f"Python: {sys.executable}" in result.stdout
+        assert "Import failed. Install dependencies for your model:" in result.stdout
+        assert "uv sync --extra <model-extra>" in result.stdout
+        assert "uv sync --extra <model-extra> --extra d3" in result.stdout
+        assert "ImportError" in result.stdout or "ModuleNotFoundError" in result.stdout

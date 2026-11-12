@@ -94,10 +94,10 @@ Browser test fixture
 --------------------
 
 The browser-driven tests in ``tests/app`` do not use the full application data. They
-run against a small, fixed subset (a handful of benchmarks, ~800 KB) stored in the same
-bucket as ``tests/ui-fixture-v1.zip``, which ``tests/app/conftest.py`` downloads,
+run against a small, fixed subset (a handful of benchmarks, ~750 KB) stored in the same
+bucket as ``tests/ui-fixture-v2.zip``, which ``tests/app/conftest.py`` downloads,
 verifies against a pinned SHA-256 digest, caches under ``~/.cache/ml_peg`` and copies
-into ``ml_peg/app/data`` for the duration of the session.
+into an isolated assets tree for the duration of the session.
 
 This object is never overwritten. Replacing it would silently change what every open
 pull request is tested against, so a changed fixture is published as a new version and
@@ -107,10 +107,11 @@ the constants in ``tests/app/conftest.py`` are bumped to match:
 
     # Unpack the current fixture, add or update <category>/<benchmark> directories
     # under it, then repackage under a new versioned top-level directory.
-    zip -X -r ui-fixture-v2.zip ui-fixture-v2 -x '*.DS_Store'
-    shasum -a 256 ui-fixture-v2.zip
-    ml_peg upload --key tests/ui-fixture-v2.zip --filename ui-fixture-v2.zip --credentials credentials.json
+    zip -X -r ui-fixture-v3.zip ui-fixture-v3 -x '*.DS_Store'
+    shasum -a 256 ui-fixture-v3.zip
+    ml_peg upload --key tests/ui-fixture-v3.zip --filename ui-fixture-v3.zip --credentials credentials.json
 
-Then set ``FIXTURE_VERSION = "v2"`` and ``FIXTURE_SHA256`` to the new digest. The
-archive must contain a single top-level directory named ``ui-fixture-<version>``;
-``conftest`` only extracts members under it.
+Then set ``FIXTURE_VERSION = "v3"`` and ``FIXTURE_SHA256`` to the new digest, and point
+the fixture cache step in ``.github/workflows/ui-tests.yml`` at the new filename and
+digest. The archive must contain a single top-level directory named
+``ui-fixture-<version>``; ``conftest`` only extracts members under it.

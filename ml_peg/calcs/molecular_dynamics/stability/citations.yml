@@ -13,4 +13,6 @@ contributors:
   - name: "Lucien Walewski"
     github: "lwalew"
 
-citations: []
+citations:
+  - bibtex_key: berman2000pdb
+    role: reference_data

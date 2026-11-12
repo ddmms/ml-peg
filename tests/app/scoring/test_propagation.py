@@ -6,6 +6,7 @@ overall=.65. All expected values below are independent of production scoring.
 
 from __future__ import annotations
 
+from conftest import set_model_visible
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 import pytest
@@ -25,33 +26,6 @@ def edit(page, field, value):
     control = page.locator(f'[id="{field}"]')
     control.fill(str(value))
     control.press("Enter")
-
-
-def set_model_visible(page, model, visible):
-    """Select by keyboard and await the exact backing-store selection."""
-    before = page.evaluate(
-        "JSON.parse(sessionStorage.getItem('selected-models-store'))"
-    )
-    assert (model in before) != visible
-    expected = sorted(set(before) | {model} if visible else set(before) - {model})
-    page.locator("#model-filter-checklist").click()
-    search = page.get_by_role("searchbox")
-    # Wait for the dropdown's opening autofocus before moving focus ourselves.
-    expect(search).to_be_focused()
-    search.fill(model)
-    expect(page.get_by_role("option")).to_have_count(1)
-    option = page.get_by_role("option", name=model, exact=True)
-    expect(option).to_have_attribute("aria-selected", str(not visible).lower())
-    # The dropdown can move while opening. Focus the named checkbox rather
-    # than clicking coordinates that can land on a neighbouring option.
-    option.get_by_role("checkbox").press("Space")
-    expect(option).to_have_attribute("aria-selected", str(visible).lower())
-    page.wait_for_function(
-        """expected => JSON.stringify(JSON.parse(sessionStorage.getItem(
-            'selected-models-store')).sort()) === JSON.stringify(expected)""",
-        arg=expected,
-    )
-    page.keyboard.press("Escape")
 
 
 def score(page, table, expected, model=A):
@@ -273,3 +247,59 @@ def test_element_filter_round_trip(ready_page, page_errors):
     page.locator("#element-filter-clear").click()
     page.locator("#element-filter-apply").click()
     chain(page, 0.65, 0.475, 0.6875)
+
+
+def test_edits_while_element_filter_active(ready_page, page_errors):
+    """Filtered scores propagate new settings and clearing retains those edits."""
+    page = ready_page
+    score(page, "summary-table", 0.65)
+    page.locator("#element-filter-details summary").click()
+    page.get_by_role("button", name="O", exact=True).click()
+    page.locator("#element-filter-apply").click()
+    score(page, "summary-table", 0.7)
+    visit(page, "/category/alpha")
+    score(page, "Alpha-summary-table", 0.5)
+    edit(page, "B1-table-M1-input", 3)
+    score(page, "B1-table", 0.65)
+    edit(page, "B1-table-M1-bad-threshold", 20)
+    score(page, "B1-table", 0.725)
+    stored_score(page, "Alpha-summary-table", 0.725)
+    stored_score(page, "mace-multihead-framework-summary-table", 0.725)
+    stored_score(page, "mace-polar-1-framework-summary-table", 0.725)
+    visit(page, "/")
+    score(page, "summary-table", 0.8125)
+    page.locator("#element-filter-clear").click()
+    page.locator("#element-filter-apply").click()
+    chain(page, 0.725, 0.5125, 0.70625)
+
+
+def test_repeated_default_resets_preserve_scores(ready_page, page_errors):
+    """Resetting defaults repeatedly leaves controls and downstream scores intact."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    score(page, "B1-table", 0.5)
+    for _ in range(2):
+        page.locator("#B1-table-reset-button").click()
+        page.locator("#B1-table-reset-thresholds-button").click()
+        chain(page, 0.5, 0.4, 0.65)
+        expect(page.locator('[id="B1-table-M1-input"]')).to_have_value("1")
+        expect(page.locator('[id="B1-table-M1-bad-threshold"]')).to_have_value("10")
+
+
+@pytest.mark.parametrize(
+    "field,button,default",
+    [
+        ("B1-table-M1-input", "B1-table-reset-button", "1"),
+        ("B1-table-M1-bad-threshold", "B1-table-reset-thresholds-button", "10"),
+    ],
+)
+def test_reset_pending_edit(ready_page, page_errors, field, button, default):
+    """Reset restores an edited control before its debounced value is stored."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    control = page.locator(f'[id="{field}"]')
+    expect(control).to_have_value(default)
+    control.fill("7")
+    page.locator(f"#{button}").click()
+    expect(control).to_have_value(default)
+    score(page, "B1-table", 0.5)

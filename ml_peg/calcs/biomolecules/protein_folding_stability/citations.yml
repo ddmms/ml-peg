@@ -10,4 +10,6 @@ contributors:
   - name: "Leon Wehrhan"
     github: "lwehrhan"
 
-citations: []
+citations:
+  - bibtex_key: berman2000pdb
+    role: reference_data

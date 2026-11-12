@@ -1,6 +1,6 @@
 [project]
 name = "ml-peg"
-version = "0.6.1"
+version = "0.7.0"
 description = "ML Performance and Extrapolation Guide"
 authors = [
     { name = "Elliott Kasoar" },
@@ -9,10 +9,9 @@ authors = [
     { name = "Alin M. Elena" },
     { name = "Gábor Csányi" },
 ]
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11,<3.14"
 classifiers = [
     "Programming Language :: Python",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -26,11 +25,13 @@ readme = "README.md"
 dependencies = [
     "ase>=3.28.0",
     "boto3<2,>=1.40.49",
-    "dash<5,>=4.0.0",
+    "dash<5,>=4.5",
+    "flask-compress<2,>=1.17",
     "janus-core<1.0.0,>=0.9.2",
     "kaleido<2,>=1.0.0",
-    "matcalc<0.5,>=0.4.7; python_version >= '3.11'",
+    "matcalc<0.5,>=0.4.7",
     "matminer<0.10,>=0.9.3",
+    "matscipy<2,>=1.3.1",
     "mdanalysis<3,>=2.9.0",
     "mlipx<0.2,>=0.1.5",
     "molify<0.3,>=0.2.2",
@@ -38,8 +39,10 @@ dependencies = [
     "numpy<3,>=2.1.0; python_version >= '3.13'",
     "openpyxl<4,>=3.1.5",
     "orjson<4,>=3.9",
-    "plotly>=6,<7",
+    "plotly>=7,<8",
     "pytest>=9.0,<10.0",
+    "pybtex>=0.26,<0.27",
+    "pylatexenc>=2.10,<3",
     "pyxtal<2,>=1.1.3",
     "scipy<1.17,>=1",
     "scikit-learn<2,>=1.7.2",
@@ -48,6 +51,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+aceff = [
+    "torchmd-net == 3.0.3",
+    "huggingface-hub >= 0.20.0",
+]
 asemolec = [
     "asemolec"
 ]
@@ -64,27 +71,49 @@ grace = [
     "tensorpotential == 0.6.0",
 ]
 mace = [
-    "mace-torch == 0.3.16",
-    "graph-longrange == 0.4.0",
+    "mace-torch == 0.3.17",
+    "graph-longrange == 0.4.4",
+]
+
+# MACE 0.3.17 exposes its compiled cuEq kernels through the CUDA 12 extra.
+mace-cueq = [
+    "ml-peg[mace]",
+    "mace-torch[cueq,cueq-cuda-12] == 0.3.17; sys_platform == 'linux'",
+    # Keep the cuEq frontend and compiled kernels on the same tested release.
+    "cuequivariance-torch == 0.8.1; sys_platform == 'linux'",
+    "cuequivariance-ops-torch-cu12 == 0.8.1; sys_platform == 'linux'",
+    "torch == 2.14.1; sys_platform == 'linux'",
 ]
 
 mattersim = [
     "mattersim==1.2.4; python_version >= '3.12'",
 ]
 mlipaudit = [
-    "mlipaudit == 0.1.8; python_version >= '3.11' and python_version < '3.14'",
+    "mlipaudit == 0.1.8; python_version < '3.14'",
+]
+nequip = [
+    "nequip == 0.19.1",
+    # GPU kernels, used automatically on CUDA:
+    "openequivariance == 0.7.0; sys_platform == 'linux'",
+    "cuequivariance-torch == 0.8.1; sys_platform == 'linux'",
+    # This must match torch's CUDA build, which is CUDA 13 for the torch locked on Linux:
+    "cuequivariance-ops-torch-cu13 == 0.8.1; sys_platform == 'linux'",
 ]
 orb = [
     "orb-models == 0.6.2; sys_platform != 'win32' and python_version >= '3.12'",
 ]
 uma = [
-    "fairchem-core == 2.19.0; python_version >= '3.11'",
+    "fairchem-core == 2.25.0",
 ]
 upet = [
-    "upet==0.2.4; python_version >= '3.11'",
+    "upet==0.2.4",
 ]
 sevenn = [
     "sevenn==0.12.1",
+]
+tace = [
+    "tace[eqx]==0.2.4",
+    "torch>=2.13",
 ]
 vivace = [
     "simpoly[vivace,cuda13]; sys_platform == 'linux'",
@@ -101,6 +130,28 @@ Repository = "https://github.com/ddmms/ml-peg/"
 Documentation = "https://ddmms.github.io/ml-peg/"
 
 [dependency-groups]
+# The WTE plugin is only available from GitHub, so use a uv group rather than
+# a pip extra whose source override would be ignored.
+thermal-conductivity = [
+    "phono3py>=4.8.2,<5",
+    "phono3py-wte",
+]
+
+# uv-only until an aimnet release includes the neighbour-list fix
+# (https://github.com/isayevlab/aimnetcentral/pull/127) which 0.2.0 doesn't.
+# pip ignores [tool.uv.sources], so publishing this as an extra would
+# install the unfixed release.
+# When a fixed release becomes available:
+#   1. Move this to [project.optional-dependencies] as
+#      "aimnet[ase]>=<fixed version>".
+#   2. Remove the aimnet entry from [tool.uv.sources].
+#   3. Change { group = "aimnet" } back to { extra = "aimnet" } in [tool.uv] conflicts.
+#   4. Change "uv sync --group aimnet" back to "--extra aimnet" in the AIMNet2
+#      notes in docs/source/user_guide/model_notes.yml and drop the pip caveat.
+aimnet = [
+    "aimnet[ase]",
+]
+
 dev = [
     "coverage[toml]<8.0.0,>=7.4.1",
     "ipykernel>=6.29.5",
@@ -207,6 +258,7 @@ default-groups = [
     "dev",
     "docs",
     "pre-commit",
+    "thermal-conductivity",
 ]
 
 override-dependencies = [
@@ -215,7 +267,43 @@ override-dependencies = [
     "mpich; sys_platform != 'win32'",
 ]
 
+# aimnet is a group, not an extra, until a fixed release becomes available (see [dependency-groups]).
 conflicts = [
+    # deepmd-kit 3.2.0 pins torch==2.11.0.
+    [
+        { extra = "tace" },
+        { extra = "dpa" },
+    ],
+    # UPET's pinned metatrain dependencies require torch<2.13.
+    [
+        { extra = "tace" },
+        { extra = "upet" },
+    ],
+    # UMA requires torch~=2.13.0, but UPET requires torch<2.13.
+    [
+        { extra = "uma" },
+        { extra = "upet" },
+    ],
+    [
+        { group = "aimnet" },
+        { extra = "upet" },
+    ],
+    [
+        { group = "aimnet" },
+        { extra = "uma" },
+    ],
+    [
+        { extra = "aceff" },
+        { extra = "dpa" },
+    ],
+    [
+        { extra = "aceff" },
+        { extra = "mlipaudit" },
+    ],
+    [
+        { extra = "aceff" },
+        { extra = "uma" },
+    ],
     [
         { extra = "dpa" },
         { extra = "mace" },
@@ -244,6 +332,40 @@ conflicts = [
       { extra = "vivace" },
       { extra = "mace" },
     ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "dpa" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "uma" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "mattersim" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "sevenn" },
+    ],
+    [
+        { extra = "mace-cueq" },
+        { extra = "vivace" },
+    ],
+    # The tested cuEq torch pin exceeds UPET's torch upper bound.
+    [
+        { extra = "mace-cueq" },
+        { extra = "upet" },
+    ],
+    # nequip needs e3nn>=0.6, but MACE's graph-longrange pins e3nn==0.4.4.
+    [
+        { extra = "nequip" },
+        { extra = "mace" },
+    ],
+    [
+        { extra = "nequip" },
+        { extra = "mace-cueq" },
+    ],
 ]
 
 constraint-dependencies = [
@@ -255,5 +377,10 @@ constraint-dependencies = [
 module-root = ""
 
 [tool.uv.sources]
+phono3py-wte = { git = "https://github.com/MSimoncelli/phono3py-wte.git", rev = "6463b233a350a842c5238a2efeade80428c99ecf" }
+# Pinned to main for the neighbour-list truncation fix (https://github.com/isayevlab/aimnetcentral/pull/127),
+# which is not in the 0.2.0 release. Remove once an aimnet release includes it (see the
+# aimnet entry in [dependency-groups]).
+aimnet = { git = "https://github.com/isayevlab/aimnetcentral.git", rev = "ffcd6366d822b565a0fd65d53048750c0abad6bc" }
 asemolec = { git = "https://github.com/imagdau/aseMolec.git" }
 simpoly = { git = "https://github.com/microsoft/simpoly.git", rev = "da100ad32d971214cf9343d9d853e8ce61604dc0" }

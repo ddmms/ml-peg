@@ -1,3 +1,8 @@
 title: Physicality
 description: Extensitivty, additivity, and smoothness of interactions
 weight: 1
+benchmark_weights:
+  compression: 0
+  diatomics: 0
+  oxidation_states: 0
+  water_slab_dipoles: 0

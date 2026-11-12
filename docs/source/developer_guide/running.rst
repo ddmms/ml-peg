@@ -56,6 +56,16 @@ This is effectively equivalent to:
     pytest -vvv ml_peg/calcs/surfaces/S24/calc_S24.py --models mace-mp-0b3
 
 
+Import failures and environments
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Import failures show the Python executable in use and a reminder to run
+``uv sync --extra <model-extra>``. They can indicate missing dependencies or
+incompatible package versions.
+For tests using D3, install both extras together:
+``uv sync --extra <model-extra> --extra d3``.
+
+
 Speed markers
 ~~~~~~~~~~~~~
 
@@ -277,3 +287,6 @@ To run the app on a different port (e.g. 8060), and for only the NEBs category, 
 .. code-block:: bash
 
     ml_peg app --category nebs --port 8060
+
+
+For app performance investigations, see :doc:`profiling`.

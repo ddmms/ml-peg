@@ -52,6 +52,10 @@ from ml_peg.app.utils.utils import (
 THRESHOLD_INPUT_STEP = 0.0001
 THRESHOLD_ROUND_DIGITS = 10
 
+# Callbacks taking whole table stores re-upload 6-104 kB per interaction. Gzip in
+# the browser (~5x on this JSON); Dash's 5,000 byte threshold skips small payloads.
+COMPRESS_STORES = {"compress_payload": True}
+
 
 def enforce_threshold_direction(
     *,
@@ -175,6 +179,7 @@ def register_summary_table_callbacks(
         Input(f"{prefix}-weight-store", "data"),
         State(f"{prefix}-computed-store", "data"),
         prevent_initial_call=True,
+        **COMPRESS_STORES,
     )
     def update_summary_computed_store(
         stored_scores: dict[str, dict[str, float]] | None,
@@ -223,6 +228,7 @@ def register_summary_table_callbacks(
         State(f"{prefix}-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
         optional=True,
+        **COMPRESS_STORES,
     )
     def sync_summary_table(
         selected_models: list[str] | None,
@@ -332,6 +338,7 @@ def register_category_table_callbacks(
         State(table_id, "columns"),
         prevent_initial_call=True,
         optional=True,
+        **COMPRESS_STORES,
     )
     def update_table_from_store(
         stored_raw_data: list[dict] | None,
@@ -426,6 +433,7 @@ def register_category_table_callbacks(
             # per off-screen benchmark — accepted as the original, correct value.
             prevent_initial_call="initial_duplicate",
             optional=True,
+            **COMPRESS_STORES,
         )
         def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
@@ -585,6 +593,7 @@ def register_category_table_callbacks(
             # weights persist (see update_benchmark_table_scores).
             prevent_initial_call="initial_duplicate",
             optional=True,
+            **COMPRESS_STORES,
         )
         def update_table_scores(
             stored_weights: dict[str, float] | None,
@@ -712,53 +721,53 @@ def register_category_table_callbacks(
             )
             return filtered_rows, style, tooltip_data
 
-    @callback(
-        Output(scores_store_id, "data", allow_duplicate=True),
-        Input(f"{table_id}-computed-store", "data"),
-        State(scores_store_id, "data"),
-        prevent_initial_call="initial_duplicate",
-    )
-    def update_scores_store(
-        computed_rows: list[dict] | None,
-        scores_data: dict[str, dict[str, float]],
-    ) -> dict[str, dict[str, float]]:
-        """
-        Update stored scores values when weights update.
+    # Only summary tables write to the global scores store
+    if table_id.endswith(summary_suffix):
 
-        Parameters
-        ----------
-        computed_rows
-            Cached full rows for the category summary table.
-        scores_data
-            Stored overall-summary inputs, keyed by category score column.
+        @callback(
+            Output(scores_store_id, "data", allow_duplicate=True),
+            Input(f"{table_id}-computed-store", "data"),
+            State(scores_store_id, "data"),
+            prevent_initial_call="initial_duplicate",
+            **COMPRESS_STORES,
+        )
+        def update_scores_store(
+            computed_rows: list[dict] | None,
+            scores_data: dict[str, dict[str, float]],
+        ) -> dict[str, dict[str, float]]:
+            """
+            Update stored scores values when weights update.
 
-        Returns
-        -------
-        dict[str, dict[str, float]]
-            Updated summary-score mapping.
-        """
-        # Only summary tables should write to the global store
-        if not table_id.endswith(summary_suffix):
-            raise PreventUpdate
+            Parameters
+            ----------
+            computed_rows
+                Cached full rows for the category summary table.
+            scores_data
+                Stored overall-summary inputs, keyed by category score column.
 
-        if not computed_rows:
-            raise PreventUpdate
+            Returns
+            -------
+            dict[str, dict[str, float]]
+                Updated summary-score mapping.
+            """
+            if not computed_rows:
+                raise PreventUpdate
 
-        # Summary table IDs are of form "[key]{summary_suffix}"
-        category_key = table_id.removesuffix(summary_suffix) + " Score"
+            # Summary table IDs are of form "[key]{summary_suffix}"
+            category_key = table_id.removesuffix(summary_suffix) + " Score"
 
-        new_scores = {
-            row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
-        }
-        current_scores = (scores_data or {}).get(category_key)
+            new_scores = {
+                row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
+            }
+            current_scores = (scores_data or {}).get(category_key)
 
-        if current_scores == new_scores:
-            return no_update
+            if current_scores == new_scores:
+                return no_update
 
-        patch = Patch()
-        patch[category_key] = new_scores
+            patch = Patch()
+            patch[category_key] = new_scores
 
-        return patch
+            return patch
 
 
 def register_benchmark_to_group_callback(
@@ -813,7 +822,12 @@ def register_benchmark_to_group_callback(
 
     benchmark_inputs = [Input(f"{bid}-computed-store", "data") for bid in benchmark_ids]
 
-    @callback(outputs, state_inputs + benchmark_inputs, prevent_initial_call=True)
+    @callback(
+        outputs,
+        state_inputs + benchmark_inputs,
+        prevent_initial_call=True,
+        **COMPRESS_STORES,
+    )
     def update_group_from_benchmark(*args) -> list:
         """
         Update cached group summary rows from all benchmarks' cached scores.
@@ -963,11 +977,14 @@ def register_weight_callbacks(
         if trigger_id == f"{input_id}-input":
             if input_weight is None:
                 raise PreventUpdate
+            if stored_weights.get(column) == input_weight:
+                raise PreventUpdate
             stored_weights[column] = input_weight
         elif trigger_id == f"{table_id}-reset-button" and n_clicks > 0:
-            stored_weights.update(
-                (key, default_weights.get(key, 1.0)) for key in stored_weights
-            )
+            reset_weights = {
+                key: default_weights.get(key, 1.0) for key in stored_weights
+            }
+            stored_weights = reset_weights
         else:
             raise PreventUpdate
 
@@ -1044,7 +1061,7 @@ def register_normalization_callbacks(
                     raise PreventUpdate
                 if cleaned_defaults:
                     return deepcopy(cleaned_defaults)
-                return cleaned_store
+                raise PreventUpdate
 
             # Ensure key exists
             if metric not in cleaned_store:
@@ -1099,6 +1116,13 @@ def register_normalization_callbacks(
             else:
                 raise PreventUpdate
 
+            # Still publish corrections when rounding changed the input value.
+            if (
+                cleaned_store == clean_thresholds(stored_thresholds)
+                and good_val == entry["good"]
+                and bad_val == entry["bad"]
+            ):
+                raise PreventUpdate
             return cleaned_store
 
     if metrics:
@@ -1159,6 +1183,7 @@ def register_normalization_callbacks(
             State("cmap-store", "data"),
             prevent_initial_call=True,
             optional=True,
+            **COMPRESS_STORES,
         )
         def toggle_normalized_display(
             show_normalized: list[str] | None,
@@ -1270,6 +1295,7 @@ def register_download_callbacks(table_id: str) -> None:
         State(table_id, "columns"),
         prevent_initial_call=True,
         optional=True,
+        **COMPRESS_STORES,
     )
     def download_table(
         n_clicks: int,
@@ -1396,6 +1422,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         Input("element-filter", "data"),
         states,
         prevent_initial_call=True,
+        # Four stores per table across every app: the largest payload in the app.
+        **COMPRESS_STORES,
     )
     def recompute_tables(elements, *args):
         """

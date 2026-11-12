@@ -1,3 +1,6 @@
 title: NEBs
 description: Nudged Elastic Band comparisons
 weight: 1
+benchmark_weights:
+  OC20NEB: 0
+  grambow_organics: 0
