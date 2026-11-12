@@ -158,17 +158,22 @@ Metrics
 
 The root-mean-square Cartesian displacement (RMSCD) compares the fractional-coordinate
 displacements using both the reference and relaxed cells. Hydrogen atoms are excluded
-from the primary metric because their experimental positions are generally less reliable.
+from the primary metric to follow the heavy-atom comparison used for crystal validation.
+The references here are DFT-optimized geometries, not experimental hydrogen positions.
+Zero RMSCD represents exact reproduction of those references for both reported means.
 
 2. Structures within 0.25 Å
 
 The percentage of the complete dataset with a non-hydrogen RMSCD no greater than the
-published 0.25 Å threshold. Failed calculations therefore do not count as passing.
+0.25 Å threshold adopted from experimental crystal validation. Its use here for
+comparison against DFT-optimized structures is a benchmark convention. Failed, missing
+and unconverged calculations do not count as passing. Missing RMSCD values are retained
+as NaNs, so an incomplete model does not receive a mean over an easier subset.
 
 3. Convergence
 
 The percentage of structures that reach a maximum force below 0.01 eV/Å within 1000
-BFGS optimization steps.
+BFGS optimization steps. The scoring endpoints are 0% and 100% convergence.
 
 The all-atom RMSCD is also reported for context but is excluded from the overall score.
 
