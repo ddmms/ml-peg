@@ -512,3 +512,134 @@ Data availability
 -----------------
 
 None required; all structures are generated in ASE.
+
+
+Permutation Symmetry
+====================
+
+Summary
+-------
+
+Performance in respecting permutational invariance. Atoms of the same element are
+indistinguishable, so reordering them in the input must leave the energy unchanged and
+simply reorder the forces; any deviation reflects the model's implementation rather
+than physics. Many models are invariant by design.
+
+The same ten structures as the rotational and translational symmetry tests are
+evaluated. Each structure is evaluated in its original atom order and again after
+permuting identical atoms (same atomic number). Every non-identity permutation is used
+if there are at most 10; otherwise 10 distinct permutations are drawn at random with a
+fixed seed, so that every model sees the same permutations.
+
+Metrics
+-------
+
+Each permutation is compared with the original structure. Means are taken over the
+permutations of each structure first, and then over structures with equal weight, so
+that structures with many permutations do not dominate; maxima are taken over all
+permutations of all structures. A model only receives scores if it evaluated all ten
+structures successfully; any failed evaluation leaves the metrics blank.
+
+1. Mean ΔE
+
+Mean absolute change in energy per atom.
+
+2. Max ΔE
+
+Worst-case absolute change in energy per atom.
+
+3. Mean ΔF
+
+Each permutation's force change is the largest absolute change in any force
+component, over every atom and Cartesian direction, as in the translational symmetry
+test. The mean is reported.
+
+4. Max ΔF
+
+Same as (3), but the maximum (worst-case) is reported.
+
+Benchmark speed
+------------------
+
+Fast: tests are likely to take about a minute to run on CPU, and a few seconds on GPU.
+
+Data availability
+-----------------
+
+None required; all structures are generated in ASE.
+
+
+Parity Symmetry
+===============
+
+Summary
+-------
+
+Performance in respecting parity (inversion) symmetry. Under the inversion of all
+atomic positions through the origin (r → -r), the energy must be unchanged and, since
+forces are polar vectors, every force must change sign. A model that is only
+rotationally equivariant, and not equivariant under improper rotations, can
+distinguish a structure from its inverted (mirror-image) counterpart.
+
+14 structures are evaluated, each in its original form and after inversion:
+
+- the eight molecules of the rotational and translational symmetry tests (H2O, CH4,
+  NH3, C2H4, C2H2, SO2, CH3OH and C6H6)
+- the lowest-energy glucose conformer of the Glucose205 benchmark, which is chiral
+- rattled copies of CH3OH, C6H6 and glucose, with every atom displaced at random
+  (standard deviation 0.05 Å, fixed seed)
+- rattled supercells of diamond (8-atom cubic cell) and graphene (8-atom 2×2 cell,
+  including out-of-plane displacements)
+
+The unrattled molecules are all achiral, so their inverted copies are rotated and
+relabelled versions of the originals. Their energies are therefore unchanged by
+inversion for any model that is invariant to rotation and permutation, and any parity
+breaking shows up only in the forces. Even then it is limited to deformations that
+change sign under mirror reflection, such as the twist of planar C2H4 about its C=C
+bond. Rattling removes all symmetry, making each structure chiral, so its inverted
+copy is a true mirror image and parity breaking also shows up directly in the energy.
+The periodic structures are supercells because any two-atom cell is symmetric under
+inversion about the midpoint of its atoms, so inverting it would only translate and
+relabel the original.
+
+.. note::
+
+    For periodic structures only the positions are inverted and the cell is left
+    unchanged: the lattice is itself inversion symmetric, so this inverts the whole
+    crystal.
+
+Metrics
+-------
+
+Each inverted structure is compared with the original. A model only receives scores if
+it evaluated all 14 structures successfully; any failed evaluation leaves the metrics
+blank.
+
+1. Mean ΔE
+
+Mean absolute change in energy per atom, across the 14 structures.
+
+2. Max ΔE
+
+Worst-case absolute change in energy per atom, across the 14 structures.
+
+3. Mean ΔF
+
+Each structure's force change is the largest absolute component of F_inv + F_orig,
+over every atom and Cartesian direction, which vanishes for an exactly
+parity-equivariant model. The mean across the 14 structures is reported.
+
+4. Max ΔF
+
+Same as (3), but the maximum (worst-case) across all structures is reported.
+
+Benchmark speed
+------------------
+
+Fast: tests are likely to take less than a minute to run on CPU, and a few seconds on GPU.
+
+Data availability
+-----------------
+
+None required; all structures are generated in ASE, and the glucose coordinates are
+included in the test (taken from the Glucose205 benchmark).

@@ -1,0 +1,25 @@
+metrics:
+  Mean ΔE (parity transformation):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Mean absolute energy change per atom after parity transformation averaged over 14 diverse structures with equal weight"
+    level_of_theory: null
+  Max ΔE (parity transformation):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Worst-case (max) absolute energy change per atom after parity transformation in all 14 diverse structures"
+    level_of_theory: null
+  Mean ΔF (parity transformation):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Largest absolute force component change after parity transformation (compared to the negated original forces), averaged over 14 diverse structures with equal weight"
+    level_of_theory: null
+  Max ΔF (parity transformation):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Worst-case (max) of the largest absolute force component change after parity transformation in all 14 diverse structures"
+    level_of_theory: null
