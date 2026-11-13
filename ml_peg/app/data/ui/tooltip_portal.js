@@ -48,6 +48,7 @@
   var looping = false; // transient hover loop active?
   var hideTimer = null;
   var pinned = false; // click-pinned (persistent + interactive)?
+  var hoverDismissed = false; // wait for pointer movement after explicit dismissal
   var staleHtml = null; // content belonging to the cell we just left
   var staleFrames = 0;
 
@@ -200,10 +201,14 @@
   function pin(cell) {
     ensurePortal();
     var html = readTooltip(cell);
+    // The portal can overlap its own anchor, causing Dash to clear the native
+    // tooltip. Preserve content already displayed for this same cell only.
+    if (isBlank(html) && cell === anchorCell) html = currentHtml;
     if (isBlank(html)) return; // nothing to pin for this cell
     cancelHide();
     looping = false; // switch from the hover loop to event-based positioning
     pinned = true;
+    hoverDismissed = false;
     anchorCell = cell;
     lastRect = cell.getBoundingClientRect();
     setContent(html);
@@ -217,6 +222,9 @@
   function unpin() {
     if (!pinned) return;
     pinned = false;
+    // Hiding the card can expose another cell under a stationary pointer. The
+    // browser emits mouseover for it, which must not undo the explicit close.
+    hoverDismissed = true;
     portal.classList.remove("is-pinned");
     window.removeEventListener("scroll", reposition, true);
     window.removeEventListener("resize", reposition, true);
@@ -235,7 +243,7 @@
   }
 
   function onOver(e) {
-    if (pinned) return; // a pinned card owns the display
+    if (pinned || hoverDismissed) return; // explicit dismissal owns the display
     var cell = cellFrom(e.target, false);
     if (!cell) return;
     ensurePortal();
@@ -289,6 +297,11 @@
     // Capture phase: the DataTable can stop propagation on its cells. We never
     // stop propagation ourselves, so Dash still receives clicks (detail plots).
     document.addEventListener("mouseover", onOver, true);
+    document.addEventListener("mousemove", function (e) {
+      if (!hoverDismissed) return;
+      hoverDismissed = false;
+      onOver(e); // movement inside the newly exposed cell needs no mouseover
+    }, true);
     document.addEventListener("mouseout", onOut, true);
     document.addEventListener("click", onClick, true);
     document.addEventListener("keydown", onKey, true);

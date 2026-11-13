@@ -948,6 +948,7 @@ def build_table_loading_spinner() -> Div:
     """
     return Div(
         _progress_ring("mlpeg-progress-ring--sm"),
+        className="mlpeg-table-spinner",
         style={
             "position": "absolute",
             "top": "0",
@@ -996,6 +997,7 @@ def build_filter_overlay(table_id: str, child, delay_hide: int = 250) -> Loading
         id={"type": "filter-overlay", "index": table_id},
         fullscreen=False,
         custom_spinner=build_table_loading_spinner(),
+        parent_className="mlpeg-table-loading",
         target_components={table_id: ["data", "style_data_conditional"]},
         show_initially=False,
         # Hold off ~150ms before showing the spinner: fast re-styles (weights,
