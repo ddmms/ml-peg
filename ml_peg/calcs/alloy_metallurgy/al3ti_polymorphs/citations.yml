@@ -1,0 +1,17 @@
+implementers:
+  - name: "Ian Stoermer"
+    github: "ian-stoermer"
+
+contributors: []
+
+citations:
+  - key: "ghosh-2007-al3ti"
+    role: reference_data
+    title: "First-Principles Phase Stability Calculations of Pseudobinary Alloys of (Al,Zn)3Ti with L12, D022, and D023 Structures"
+    authors:
+      - "G. Ghosh"
+      - "A. van de Walle"
+      - "M. Asta"
+    year: 2007
+    doi: "10.1007/s11669-006-9007-4"
+    url: "https://doi.org/10.1007/s11669-006-9007-4"
