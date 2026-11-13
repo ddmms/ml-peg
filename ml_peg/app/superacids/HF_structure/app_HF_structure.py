@@ -29,6 +29,10 @@ class HFStructureApp(BaseApp):
             id=f"{BENCHMARK_NAME}-figure",
         )
 
+        for trace in (scatter.figure or {}).get("data", []):
+            if trace.get("name") == "Reference":
+                trace.setdefault("line", {}).update(color="black", dash="dot", width=3)
+
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
