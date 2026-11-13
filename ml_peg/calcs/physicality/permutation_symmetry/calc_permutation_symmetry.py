@@ -119,7 +119,12 @@ def generate_permutations(
 
 
 def evaluate(
-    calc, struct: Atoms, permutation_index: int, permutation: np.ndarray
+    calc,
+    struct: Atoms,
+    permutation_index: int,
+    permutation: np.ndarray,
+    model_name: str = "unknown",
+    struct_name: str = "unknown",
 ) -> Atoms:
     """
     Evaluate energy and forces for `struct`, storing them as info/arrays.
@@ -136,6 +141,10 @@ def evaluate(
     permutation
         Permutation already applied to `struct`: atom `i` of `struct` is atom
         `permutation[i]` of the original structure.
+    model_name
+        Name of the model, used to identify a failed evaluation.
+    struct_name
+        Name of the structure, used to identify a failed evaluation.
 
     Returns
     -------
@@ -149,7 +158,13 @@ def evaluate(
         energy = struct.get_potential_energy()
         forces = struct.get_forces()
     except Exception as exc:
-        warn(f"Error calculating energy/forces: {exc}  (In permutation symmetry calculation)", category=RuntimeWarning, stacklevel=2)
+        warn(
+            f"Error calculating energy/forces for model {model_name}, structure "
+            f"{struct_name} (permutation_index={permutation_index}) in "
+            f"permutation symmetry calculation: {exc}",
+            category=RuntimeWarning,
+            stacklevel=2,
+        )
         energy = np.nan
         forces = np.full((len(struct), 3), np.nan)
 
@@ -184,21 +199,37 @@ def test_permutation_symmetry(mlip: tuple[str, Any]) -> None:
     write_dir.mkdir(parents=True, exist_ok=True)
 
     for struct_name, struct in tqdm(STRUCTURES.items(), desc=model_name):
+        perms = generate_permutations(struct)
+
         original = struct.copy()
         original.info["charge"] = 0
         original.info["spin"] = 1
+        # Provenance: how many permutations this file was written with
+        original.info["n_permutations"] = len(perms)
         original = evaluate(
-            calc, original, permutation_index=0, permutation=np.arange(len(struct))
+            calc,
+            original,
+            permutation_index=0,
+            permutation=np.arange(len(struct)),
+            model_name=model_name,
+            struct_name=struct_name,
         )
 
         frames = [original]
 
-        for i, perm in enumerate(generate_permutations(struct), start=1):
+        for i, perm in enumerate(perms, start=1):
             permuted = struct[perm]
             permuted.info["charge"] = 0
             permuted.info["spin"] = 1
             frames.append(
-                evaluate(calc, permuted, permutation_index=i, permutation=perm)
+                evaluate(
+                    calc,
+                    permuted,
+                    permutation_index=i,
+                    permutation=perm,
+                    model_name=model_name,
+                    struct_name=struct_name,
+                )
             )
 
         write(write_dir / f"{struct_name}.xyz", frames)

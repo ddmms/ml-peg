@@ -15,7 +15,6 @@ from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.physicality.permutation_symmetry.calc_permutation_symmetry import (  # noqa: E501
     STRUCTURES,
-    generate_permutations,
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -89,28 +88,26 @@ def list_deltas(model_name: str, struct_name: str) -> list[float] | None:
     list[float] | None
         Mean and max absolute energy change (meV/atom), then mean and max of the
         largest absolute force component change (meV/Å), or None if outputs are
-        missing. Mean and max are taken over all permutations of the structure,
-        relative to the original. NaN if any evaluation failed, or if the
-        outputs are unreadable or incomplete.
+        missing. Mean and max are taken over every permuted frame in the output
+        file, relative to the original. NaN if any evaluation failed, or if the
+        outputs are unreadable or have no unpermuted/permuted frame.
     """
     xyz_path = CALC_PATH / model_name / f"{struct_name}.xyz"
     if not xyz_path.exists():
         return None
 
-    # Unreadable, truncated or incomplete outputs are a failed datum (NaN), so
-    # _mean_max blanks the model rather than the whole analysis aborting, or
-    # the model being scored on only the surviving permutations
+    # Unreadable outputs are a failed datum (NaN), so _mean_max blanks the
+    # model rather than the whole analysis aborting
     try:
         frames = read(xyz_path, index=":")
-        indices = sorted(f.info["permutation_index"] for f in frames)
-        if struct_name in STRUCTURES:
-            n_expected = len(generate_permutations(STRUCTURES[struct_name])) + 1
-            if indices != list(range(n_expected)):
-                raise ValueError(
-                    f"expected permutation indices 0-{n_expected - 1}, "
-                    f"found {indices}"
-                )
-        original = next(f for f in frames if f.info["permutation_index"] == 0)
+
+        originals = [f for f in frames if f.info["permutation_index"] == 0]
+        if len(originals) != 1:
+            raise ValueError(
+                f"expected exactly one unpermuted frame, found {len(originals)}"
+            )
+        original = originals[0]
+
         n_atoms = len(original)
         e0 = original.get_potential_energy()
         f0 = original.get_forces()

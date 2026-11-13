@@ -2,10 +2,78 @@
 
 from __future__ import annotations
 
+from itertools import combinations
+
+from ase import Atoms
+from ase.calculators.calculator import Calculator, all_changes
+import numpy as np
 import pytest
 
 from ml_peg import analysis, models
 from ml_peg.analysis.utils import decorators
+
+
+class PairSpringCalculator(Calculator):
+    """
+    Toy calculator that is permutation invariant and parity equivariant.
+
+    The energy is a sum of harmonic springs over all atom pairs,
+    E = sum_{i<j} 0.5 * (r_ij - 1)^2, so it depends only on the set of
+    interatomic distances. Relabelling identical atoms therefore leaves the
+    energy unchanged and permutes the forces with the atoms, and inverting the
+    structure leaves the energy unchanged and inverts the forces. Periodic
+    images are ignored.
+    """
+
+    implemented_properties = ["energy", "forces"]
+
+    def calculate(
+        self,
+        atoms: Atoms | None = None,
+        properties: list[str] | None = None,
+        system_changes: list[str] = all_changes,
+        **kwargs,
+    ) -> None:
+        """
+        Calculate pair-spring energy and analytic forces.
+
+        Parameters
+        ----------
+        atoms
+            Atoms object to calculate properties for.
+        properties
+            List of properties to calculate.
+        system_changes
+            List of system changes to consider for calculation.
+        **kwargs
+            Any additional keyword arguments.
+        """
+        super().calculate(atoms, properties, system_changes, **kwargs)
+        positions = self.atoms.positions
+        energy = 0.0
+        forces = np.zeros((len(positions), 3))
+        for i, j in combinations(range(len(positions)), 2):
+            r_ij = positions[j] - positions[i]
+            r = np.linalg.norm(r_ij)
+            force_vector = (r - 1.0) * r_ij / r
+            energy += 0.5 * (r - 1.0) ** 2
+            forces[i] += force_vector
+            forces[j] -= force_vector
+        self.results["energy"] = energy
+        self.results["forces"] = forces
+
+
+@pytest.fixture
+def pair_spring_calc() -> PairSpringCalculator:
+    """
+    Get a toy calculator that respects permutation and parity symmetry.
+
+    Returns
+    -------
+    PairSpringCalculator
+        Pair-spring calculator, shared by the symmetry benchmark tests.
+    """
+    return PairSpringCalculator()
 
 
 @pytest.fixture

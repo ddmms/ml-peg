@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import importlib
+from itertools import permutations, product
 from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
@@ -11,17 +12,13 @@ from types import ModuleType, SimpleNamespace
 from ase import Atoms
 from ase.build import molecule
 from ase.calculators.calculator import Calculator, all_changes
-from ase.io import write
 import numpy as np
 import pytest
-from test_permutation_symmetry import PairSpringCalculator
 
 from ml_peg.calcs.physicality.parity_symmetry import (
     calc_parity_symmetry as calc_module,
 )
 from ml_peg.calcs.physicality.parity_symmetry.calc_parity_symmetry import (
-    RATTLE_SEED,
-    RATTLE_STDEV,
     STRUCTURES,
     evaluate,
     rattled,
@@ -117,8 +114,79 @@ def run_calc(
         (model_name, SimpleNamespace(get_calculator=lambda precision: calc))
     )
 
+
+def best_rmsd(reference: Atoms, other: Atoms) -> float:
+    """
+    Get the RMSD of `other` onto `reference`, minimised over rigid motions.
+
+    Translations, proper rotations and permutations of identical atoms are all
+    allowed, so a non-zero result means the two structures are genuinely
+    distinct shapes. Applied to a structure and its inverted copy, this is zero
+    for an achiral structure and non-zero for a chiral one.
+
+    Parameters
+    ----------
+    reference
+        Structure to align onto.
+    other
+        Structure to align. Must have the same atomic numbers, in the same
+        order, as `reference`.
+
+    Returns
+    -------
+    float
+        Smallest achievable RMSD, in Å.
+    """
+    ref = reference.positions - reference.positions.mean(axis=0)
+    pos = other.positions - other.positions.mean(axis=0)
+
+    numbers = reference.get_atomic_numbers()
+    groups = [np.flatnonzero(numbers == z) for z in np.unique(numbers)]
+
+    best = np.inf
+    for group_perms in product(*(permutations(group) for group in groups)):
+        perm = np.arange(len(ref))
+        for group, group_perm in zip(groups, group_perms, strict=True):
+            perm[group] = group_perm
+        candidate = pos[perm]
+
+        # Kabsch alignment. The determinant correction excludes reflections,
+        # which would map any structure onto its mirror image
+        u, _, vt = np.linalg.svd(candidate.T @ ref)
+        determinant = np.sign(np.linalg.det(u @ vt))
+        rotation = u @ np.diag([1.0, 1.0, determinant]) @ vt
+
+        rmsd = np.sqrt(np.mean(np.sum((candidate @ rotation - ref) ** 2, axis=1)))
+        best = min(best, rmsd)
+
+    return float(best)
+
+
+def inverted(struct: Atoms) -> Atoms:
+    """
+    Get a parity-transformed (r -> -r) copy of `struct`.
+
+    Parameters
+    ----------
+    struct
+        Structure to invert. Not modified.
+
+    Returns
+    -------
+    Atoms
+        Inverted copy of `struct`.
+    """
+    struct = struct.copy()
+    struct.positions *= -1.0
+    return struct
+
+
 @pytest.fixture
-def analysis_module(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[ModuleType]:
+def analysis_module(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pair_spring_calc: Calculator,
+) -> Iterator[ModuleType]:
     """
     Import the analysis module with its input and output paths in `tmp_path`.
 
@@ -131,9 +199,11 @@ def analysis_module(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator
         Temporary directory provided by pytest.
     monkeypatch
         Pytest monkeypatch fixture.
+    pair_spring_calc
+        Toy parity equivariant calculator.
 
-    Returns
-    -------
+    Yields
+    ------
     ModuleType
         Freshly imported analysis module, reading from and writing to
         `tmp_path`.
@@ -143,14 +213,20 @@ def analysis_module(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator
 
     # get_struct_info reads outputs/mock at import, so the equivariant toy model
     # must be written under the name "mock"
-    run_calc(monkeypatch, calc_outputs_path(tmp_path), "mock", PairSpringCalculator())
-    run_calc(monkeypatch, calc_outputs_path(tmp_path), "cubic_field", CubicFieldCalculator())
+    run_calc(monkeypatch, calc_outputs_path(tmp_path), "mock", pair_spring_calc)
+    run_calc(
+        monkeypatch,
+        calc_outputs_path(tmp_path),
+        "cubic_field",
+        CubicFieldCalculator(),
+    )
     monkeypatch.delitem(sys.modules, ANALYSIS_MODULE, raising=False)
     module = importlib.import_module(ANALYSIS_MODULE)
     monkeypatch.setattr(module, "MODELS", ["mock", "cubic_field"])
     yield module
     # Clean up after the test
     sys.modules.pop(ANALYSIS_MODULE, None)
+
 
 def test_rattled_does_not_modify_input():
     """Test rattled returns a displaced copy and leaves the input unchanged."""
@@ -169,21 +245,27 @@ def test_rattled_is_deterministic():
     assert np.allclose(rattled_water_1.positions, rattled_water_2.positions)
 
 
+def test_unrattled_structures_are_achiral():
+    """Test the guard against a no-op rattle: plain methane is achiral."""
+    # Inverted methane is a rotated, relabelled copy of the original
+    methane = molecule("CH4")
+    assert best_rmsd(methane, inverted(methane)) == pytest.approx(0.0, abs=1e-6)
+
+
 def test_rattled_structures_are_chiral():
     """Test rattled structures are not mapped onto themselves by inversion."""
-    methane = molecule("CH4")
-    rattled_methane = rattled(methane)
-    inverted_rattled_methane = rattled_methane.copy()
-    inverted_rattled_methane.positions *= -1.0
-    results = evaluate(CubicFieldCalculator(), rattled_methane, inverted=False)
-    results_inverted = evaluate(CubicFieldCalculator(), inverted_rattled_methane, inverted=True)
-    assert np.isclose(results.info["energy"], -results_inverted.info["energy"])
+    # Three or fewer atoms are always coplanar, hence achiral however rattled
+    for struct in (molecule("CH4"), molecule("NH3")):
+        rattled_struct = rattled(struct)
+        # Well above the ~1e-16 of an achiral structure, well below the ~1e-2
+        # a rattle of RATTLE_STDEV gives
+        assert best_rmsd(rattled_struct, inverted(rattled_struct)) > 1e-3
 
-def test_evaluate_stores_results():
+
+def test_evaluate_stores_results(pair_spring_calc):
     """Test evaluate stores energy, forces and the inverted flag, and detaches calc."""
-    # Use PairSpringCalculator on a small molecule
     water = molecule("H2O")
-    results = evaluate(PairSpringCalculator(), water, inverted=False)
+    results = evaluate(pair_spring_calc, water, inverted=False)
     assert results is not None
     assert np.isfinite(results.info["energy"])
     assert results.arrays["forces"].shape == (3, 3)
@@ -242,9 +324,12 @@ def test_get_deltas_unreadable_file_returns_nan(analysis_module, tmp_path):
     assert deltas is not None
     assert all(np.isnan(d) for d in deltas)
 
+
 def test_missing_model_gives_no_scores(analysis_module, monkeypatch):
     """Test a model with no outputs is given None for every metric."""
-    monkeypatch.setattr(analysis_module, "MODELS", ["mock", "cubic_field", "missing_model"])
+    monkeypatch.setattr(
+        analysis_module, "MODELS", ["mock", "cubic_field", "missing_model"]
+    )
     deltas = analysis_module.deltas_by_structure.__wrapped__()
     scores = analysis_module.parity_metrics.__wrapped__(deltas)
     for metric in scores.values():

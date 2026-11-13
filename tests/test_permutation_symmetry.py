@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 import importlib
-from itertools import combinations
 from pathlib import Path
 import sys
 from types import ModuleType, SimpleNamespace
@@ -30,55 +29,6 @@ from ml_peg.models.mock import MockErrorCalculator
 ANALYSIS_MODULE = (
     "ml_peg.analysis.physicality.permutation_symmetry.analyse_permutation_symmetry"
 )
-
-
-class PairSpringCalculator(Calculator):
-    """
-    Toy calculator that is permutation invariant by construction.
-
-    The energy is a sum of harmonic springs over all atom pairs,
-    E = sum_{i<j} 0.5 * (r_ij - 1)^2, so it depends only on the set of
-    interatomic distances. Relabelling identical atoms therefore leaves the
-    energy unchanged and permutes the forces with the atoms. Periodic images
-    are ignored.
-    """
-
-    implemented_properties = ["energy", "forces"]
-
-    def calculate(
-        self,
-        atoms: Atoms | None = None,
-        properties: list[str] | None = None,
-        system_changes: list[str] = all_changes,
-        **kwargs,
-    ) -> None:
-        """
-        Calculate pair-spring energy and analytic forces.
-
-        Parameters
-        ----------
-        atoms
-            Atoms object to calculate properties for.
-        properties
-            List of properties to calculate.
-        system_changes
-            List of system changes to consider for calculation.
-        **kwargs
-            Any additional keyword arguments.
-        """
-        super().calculate(atoms, properties, system_changes, **kwargs)
-        positions = self.atoms.positions
-        energy = 0.0
-        forces = np.zeros((len(positions), 3))
-        for i, j in combinations(range(len(positions)), 2):
-            r_ij = positions[j] - positions[i]
-            r = np.linalg.norm(r_ij)
-            force_vector = (r - 1.0) * r_ij / r
-            energy += 0.5 * (r - 1.0) ** 2
-            forces[i] += force_vector
-            forces[j] -= force_vector
-        self.results["energy"] = energy
-        self.results["forces"] = forces
 
 
 class IndexWeightedCalculator(Calculator):
@@ -114,7 +64,7 @@ class IndexWeightedCalculator(Calculator):
         **kwargs
             Any additional keyword arguments.
         """
-        super().calculate(atoms, properties, system_changes)
+        super().calculate(atoms, properties, system_changes, **kwargs)
         positions = self.atoms.positions
         weights = np.arange(1, len(positions) + 1)[:, None]
         self.results["energy"] = float(0.5 * np.sum(weights * positions**2))
@@ -166,7 +116,9 @@ def run_calc(
 
 @pytest.fixture
 def analysis_module(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    pair_spring_calc: Calculator,
 ) -> Iterator[ModuleType]:
     """
     Import the analysis module with its input and output paths in `tmp_path`.
@@ -180,6 +132,8 @@ def analysis_module(
         Temporary directory provided by pytest.
     monkeypatch
         Pytest monkeypatch fixture.
+    pair_spring_calc
+        Toy permutation invariant calculator.
 
     Yields
     ------
@@ -192,7 +146,7 @@ def analysis_module(
     monkeypatch.setattr("ml_peg.app.APP_ROOT", tmp_path / "app")
 
     # Outputs for the "mock" model are required by get_struct_info at import
-    run_calc(monkeypatch, calc_outputs_path(tmp_path), "mock", PairSpringCalculator())
+    run_calc(monkeypatch, calc_outputs_path(tmp_path), "mock", pair_spring_calc)
 
     # Force a fresh import so the patched paths are picked up
     monkeypatch.delitem(sys.modules, ANALYSIS_MODULE, raising=False)
@@ -237,13 +191,11 @@ def test_generate_permutations_is_deterministic():
         np.testing.assert_array_equal(p1, p2)
 
 
-def test_evaluate_stores_results():
+def test_evaluate_stores_results(pair_spring_calc):
     """Test evaluate stores energy, forces and permutation, and detaches calc."""
     water = molecule("H2O")
     perm = np.array([0, 2, 1])
-    result = evaluate(
-        PairSpringCalculator(), water, permutation_index=3, permutation=perm
-    )
+    result = evaluate(pair_spring_calc, water, permutation_index=3, permutation=perm)
 
     assert np.isfinite(result.info["energy"])
     assert result.info["permutation_index"] == 3
@@ -298,12 +250,12 @@ def test_list_deltas_missing_file_returns_none(analysis_module):
     assert analysis_module.list_deltas("not_a_model", "H2O") is None
 
 
-def test_list_deltas_missing_original_returns_nan(analysis_module):
+def test_list_deltas_missing_original_returns_nan(analysis_module, pair_spring_calc):
     """Test an output file without the unpermuted frame is a failed (NaN) datum."""
     water = molecule("H2O")
     perm = np.array([0, 2, 1])
     permuted = evaluate(
-        PairSpringCalculator(), water[perm], permutation_index=1, permutation=perm
+        pair_spring_calc, water[perm], permutation_index=1, permutation=perm
     )
     out_dir = analysis_module.CALC_PATH / "partial"
     out_dir.mkdir(parents=True)
@@ -314,23 +266,44 @@ def test_list_deltas_missing_original_returns_nan(analysis_module):
     assert all(np.isnan(d) for d in deltas)
 
 
-def test_list_deltas_missing_permutation_returns_nan(analysis_module):
-    """Test an output file missing a permuted frame is a failed (NaN) datum."""
+def test_list_deltas_averages_over_frames_present(analysis_module, pair_spring_calc):
+    """Test deltas are taken over the permuted frames the file actually has."""
+    # Two permutations, not the MAX_PERMUTATIONS the current code would give,
+    # so outputs stay valid if the structures or sampling later change
+    methane = molecule("CH4")
+    perms = generate_permutations(STRUCTURES["CH4"])[:2]
+    frames = [
+        evaluate(
+            pair_spring_calc,
+            methane.copy(),
+            permutation_index=0,
+            permutation=np.arange(len(methane)),
+        )
+    ]
+    frames += [
+        evaluate(pair_spring_calc, methane[perm], permutation_index=i, permutation=perm)
+        for i, perm in enumerate(perms, start=1)
+    ]
+    out_dir = analysis_module.CALC_PATH / "fewer_perms"
+    out_dir.mkdir(parents=True)
+    write(out_dir / "CH4.xyz", frames)
+
+    deltas = analysis_module.list_deltas("fewer_perms", "CH4")
+    np.testing.assert_allclose(deltas, 0, atol=1e-6)
+
+
+def test_list_deltas_no_permuted_frames_returns_nan(analysis_module, pair_spring_calc):
+    """Test an output file with only the unpermuted frame is a failed (NaN) datum."""
     methane = molecule("CH4")
     original = evaluate(
-        PairSpringCalculator(),
+        pair_spring_calc,
         methane.copy(),
         permutation_index=0,
         permutation=np.arange(len(methane)),
     )
-    # Only the first of the expected permutations is written
-    perm = generate_permutations(STRUCTURES["CH4"])[0]
-    permuted = evaluate(
-        PairSpringCalculator(), methane[perm], permutation_index=1, permutation=perm
-    )
     out_dir = analysis_module.CALC_PATH / "partial"
     out_dir.mkdir(parents=True)
-    write(out_dir / "CH4.xyz", [original, permuted])
+    write(out_dir / "CH4.xyz", [original])
 
     with pytest.warns(RuntimeWarning):
         deltas = analysis_module.list_deltas("partial", "CH4")

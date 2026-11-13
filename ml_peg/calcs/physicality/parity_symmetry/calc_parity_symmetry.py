@@ -28,11 +28,13 @@ def rattled(struct: Atoms) -> Atoms:
     """
     Get a copy of `struct` with its atoms randomly displaced.
 
-    A generic displacement removes every point-group symmetry, so the structure
-    becomes chiral and its inverted copy is a true mirror image, rather than a
-    rotated and/or permuted copy of the original. Only then can the energy
-    distinguish a model that is rotationally but not parity equivariant. A fixed
-    seed ensures every model sees the same structure.
+    A generic displacement removes every point-group symmetry, so a structure of
+    more than three atoms becomes chiral and its inverted copy is a true mirror
+    image, rather than a rotated and/or permuted copy of the original. Only then
+    can the energy distinguish a model that is rotationally but not parity
+    equivariant. (Three or fewer atoms are always coplanar, hence achiral, so
+    rattling them gains nothing.) A fixed seed ensures every model sees the same
+    structure.
 
     Parameters
     ----------
