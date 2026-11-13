@@ -1,0 +1,14 @@
+metrics:
+    MAPE:
+        good: 3.0
+        bad: 20.0
+        unit: "%"
+        tooltip: "Mean Absolute Percentage Error in liquid density vs experiment."
+        level_of_theory: Experimental
+    Failure:
+        good: 0.0
+        bad: 1.0
+        unit: null
+        tooltip: "Fraction of the three compositions without complete, finite density results. Missing compositions count as failures once model outputs exist. Includes interrupted runs and analysis failures, not only physical instability. Models without outputs remain unscored."
+        level_of_theory: null
+        weight: 1.0
