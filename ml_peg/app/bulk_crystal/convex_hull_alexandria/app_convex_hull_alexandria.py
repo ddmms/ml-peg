@@ -5,7 +5,7 @@ from __future__ import annotations
 from functools import lru_cache
 import json
 
-from dash import Input, Output, callback
+from dash import Input, Output, State, callback
 from dash.dcc import Dropdown, Graph
 from dash.exceptions import PreventUpdate
 from dash.html import H3, Div, P
@@ -39,6 +39,7 @@ PLOTS = {
         "e_hull_periodic_table",
     ),
     "Stability F1": (None, "figure_e_hull_violin", None),
+    "Failed systems": (None, None, "failed_systems_periodic_table"),
     "Formation energy MAE": (
         "figure_e_form_density",
         "figure_e_form_violin",
@@ -80,6 +81,31 @@ def system_options(model: str) -> list[dict[str, str]]:
     return options
 
 
+def hull_view(model: str, system: str | None) -> Graph | P:
+    """
+    Load the PBE and model hulls of a system, as written by the analysis.
+
+    Parameters
+    ----------
+    model
+        Name of the model.
+    system
+        System, such as ``Cu-Zn``, or ``None`` if the model has no successful system.
+
+    Returns
+    -------
+    Graph | P
+        Side-by-side hull figure, or a message naming the model, and the system if
+        its figure is missing.
+    """
+    if not system:
+        return P(f"No successful systems for {model}.")
+    path = DATA_PATH / model / "hulls" / f"{system}.json"
+    if not path.exists():
+        return P(f"No hull figure for {system} with {model}.")
+    return Graph(figure=read_json(path))
+
+
 class ConvexHullAlexandriaApp(BaseApp):
     """Alexandria convex-hull benchmark app layout and callbacks."""
 
@@ -89,8 +115,10 @@ class ConvexHullAlexandriaApp(BaseApp):
         # Each violin figure holds all the models, so load it once for all cells
         violins = {}
         for _, violin_stem, _ in PLOTS.values():
+            if violin_stem is None or violin_stem in violins:
+                continue
             violin_path = DATA_PATH / f"{violin_stem}.json"
-            if violin_stem not in violins and violin_path.exists():
+            if violin_path.exists():
                 violins[violin_stem] = Graph(figure=read_json(violin_path))
         for model in MODELS:
             plots = {}
@@ -147,37 +175,32 @@ class ConvexHullAlexandriaApp(BaseApp):
             options = system_options(model)
             return options, options[0]["value"] if options else None
 
+        # Triggered by the system only, which is set again whenever the model changes,
+        # so that the model and system always match
         @callback(
             Output(HULL_FIGURE_ID, "children"),
-            Input(HULL_MODEL_ID, "value"),
             Input(HULL_SYSTEM_ID, "value"),
+            State(HULL_MODEL_ID, "value"),
         )
-        def show_hulls(model, system):
+        def show_hulls(system, model):
             """
-            Draw the PBE and model hulls of the selected system.
+            Show the PBE and model hulls of the selected system.
 
             Parameters
             ----------
-            model : str | None
-                Selected model.
             system : str | None
                 Selected system.
+            model : str | None
+                Selected model.
 
             Returns
             -------
             Graph | P
-                Side-by-side hull figure, or a message if the model has no
-                successful system.
+                Side-by-side hull figure, or a message if there is none.
             """
             if not model:
                 raise PreventUpdate
-            if not system:
-                return P(f"No successful systems for {model}.")
-            path = DATA_PATH / model / "hulls" / f"{system}.json"
-            if not path.exists():
-                # System of the previous model, before the system list is updated
-                raise PreventUpdate
-            return Graph(figure=read_json(path))
+            return hull_view(model, system)
 
 
 def get_app() -> ConvexHullAlexandriaApp:

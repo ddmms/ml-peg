@@ -1079,9 +1079,10 @@ counted in metric 3.
 Clicking the MAE of a model shows the parity plot, violin plots of the signed errors of
 all models (as in Figure 5 of Yu *et al.*, Mater. Genome Eng. Adv. 2, e58 (2024)), and a
 periodic table of the MAE over the binaries containing each element (as in Figure 4
-of Yu *et al.*, on a 0-100 meV/atom colour scale). Below the table,
-the PBE and model hulls of any system can be compared side by side; the systems of each
-model are listed from the largest to the smallest energy above hull MAE.
+of Yu *et al.*, on a 0-100 meV/atom colour scale). Clicking the failed systems shows a
+periodic table of the percentage of failed systems containing each element. Below the
+table, the PBE and model hulls of any system can be compared side by side; the systems
+of each model are listed from the largest to the smallest energy above hull MAE.
 
 **Score thresholds**
 

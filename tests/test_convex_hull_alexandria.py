@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 from ase import Atoms
+from ase.io import write
+from dash.dcc import Graph
+from dash.html import P
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
+from ml_peg.analysis.bulk_crystal.convex_hull_alexandria import (
+    analyse_convex_hull_alexandria,
+)
 from ml_peg.analysis.bulk_crystal.convex_hull_alexandria.analyse_convex_hull_alexandria import (  # noqa: E501
     classification_f1,
     compare_model,
+    element_failures,
     element_values,
+    failed_systems,
     hull_energies,
     hull_figure,
     hull_rows,
@@ -18,6 +27,7 @@ from ml_peg.analysis.bulk_crystal.convex_hull_alexandria.analyse_convex_hull_ale
     signed_errors,
     system_maes,
 )
+from ml_peg.app.bulk_crystal.convex_hull_alexandria import app_convex_hull_alexandria
 from ml_peg.calcs.bulk_crystal.convex_hull_alexandria import prepare_inputs
 from ml_peg.calcs.bulk_crystal.convex_hull_alexandria.prepare_inputs import (
     is_plus_u,
@@ -173,6 +183,65 @@ def test_model_metrics_failed():
     )
     assert metrics["Failed systems"] == 100.0
     assert metrics["Energy above hull MAE"] is None
+
+
+def test_failed_systems():
+    """Test the per-element count of failed systems."""
+    comparison = compare_model(STRUCTURES, REFERENCE_HULL, REFERENCE)
+    assert element_failures(failed_systems(comparison)) == {"Cu": 0.0, "Zn": 0.0}
+
+    failed = compare_model(STRUCTURES, REFERENCE_HULL, REFERENCE | {"zn": np.nan})
+    counts = failed_systems(failed)
+    assert counts == {
+        "Cu": {"systems": 1, "failed": 1},
+        "Zn": {"systems": 1, "failed": 1},
+    }
+    assert element_failures(counts) == {"Cu": 100.0, "Zn": 100.0}
+
+
+def test_load_energies_truncated(tmp_path, monkeypatch):
+    """Test that a truncated output keeps the energies written before the cut."""
+    monkeypatch.setattr(analyse_convex_hull_alexandria, "CALC_PATH", tmp_path)
+    assert analyse_convex_hull_alexandria.load_energies("model") is None
+
+    outputs = []
+    for atoms in STRUCTURES[:3]:
+        atoms = atoms.copy()
+        atoms.info["mlip_energy"] = atoms.info["dft_energy"] + 0.1
+        outputs.append(atoms)
+    path = tmp_path / "model" / "structures.extxyz"
+    path.parent.mkdir()
+    write(path, outputs)
+    # Cut the file inside the last frame, as an interrupted write would
+    lines = path.read_text().splitlines(keepends=True)
+    path.write_text("".join(lines[:-1]))
+
+    with pytest.warns(UserWarning, match="after 2 structures"):
+        energies = analyse_convex_hull_alexandria.load_energies("model")
+    assert energies == {"cu": pytest.approx(-0.9), "zn": pytest.approx(-1.9)}
+    # The structures after the cut count as failed
+    comparison = compare_model(STRUCTURES, REFERENCE_HULL, energies)
+    assert model_metrics(comparison)["Failed systems"] == 100.0
+
+
+def test_hull_view(tmp_path, monkeypatch):
+    """Test the hull view for a missing system, a missing figure and a figure."""
+    monkeypatch.setattr(app_convex_hull_alexandria, "DATA_PATH", tmp_path)
+    hull_view = app_convex_hull_alexandria.hull_view
+
+    message = hull_view("model", None)
+    assert isinstance(message, P)
+    assert message.children == "No successful systems for model."
+
+    message = hull_view("model", "Cu-Zn")
+    assert isinstance(message, P)
+    assert message.children == "No hull figure for Cu-Zn with model."
+
+    (tmp_path / "model" / "hulls").mkdir(parents=True)
+    go.Figure(layout={"title": "Cu-Zn"}).write_json(
+        tmp_path / "model" / "hulls" / "Cu-Zn.json"
+    )
+    assert isinstance(hull_view("model", "Cu-Zn"), Graph)
 
 
 def test_classification_f1():

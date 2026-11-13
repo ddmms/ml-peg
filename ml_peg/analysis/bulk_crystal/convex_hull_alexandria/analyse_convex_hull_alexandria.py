@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections import defaultdict
 import json
 from pathlib import Path
+from warnings import warn
 
 from ase import Atoms
-from ase.io import read
+from ase.io import iread, read
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -48,6 +49,8 @@ PERIODIC_TABLES = {
     "Energy above hull MAE": "e_hull_periodic_table",
     "Formation energy MAE": "e_form_periodic_table",
 }
+# Percentage of failed systems containing each element
+FAILED_PERIODIC_TABLE = "failed_systems_periodic_table"
 # Colour range of the periodic tables (meV/atom), wider than the metric thresholds so
 # that the worst elements stay distinguishable (Figure 4 of Yu et al. uses 0-400)
 PERIODIC_TABLE_RANGE = (0, 100)
@@ -56,9 +59,28 @@ PERIODIC_TABLE_RANGE = (0, 100)
 E_HULL_COLOUR_MAX = 200
 
 
-def load_outputs(model_name: str) -> list[Atoms] | None:
+def load_reference() -> list[Atoms]:
     """
-    Get the structures and energies computed by a model.
+    Get the reference structures and PBE energies from the mock calculation outputs.
+
+    The mock model computes every structure, so its outputs hold the complete set,
+    independently of the outputs of the models.
+
+    Returns
+    -------
+    list[Atoms]
+        Structures, with ``mat_id``, ``dft_energy`` and ``e_above_hull`` in ``info``.
+    """
+    return read(CALC_PATH / "mock" / "structures.extxyz", index=":")
+
+
+def load_energies(model_name: str) -> dict[str, float] | None:
+    """
+    Get the energies computed by a model.
+
+    Frames are read until the end of the file or the first unreadable frame, so
+    that a truncated output keeps the energies written before it was cut; the
+    structures after it count as failed.
 
     Parameters
     ----------
@@ -67,15 +89,23 @@ def load_outputs(model_name: str) -> list[Atoms] | None:
 
     Returns
     -------
-    list[Atoms] | None
-        Structures, with ``mat_id``, the reference ``dft_energy`` and
-        ``e_above_hull``, and ``mlip_energy`` (``nan`` where the calculation
-        failed) in ``info``, or ``None`` if the model was not run.
+    dict[str, float] | None
+        Total energy (eV) for each ``mat_id``, ``nan`` where the calculation
+        failed, or ``None`` if the model was not run.
     """
     path = CALC_PATH / model_name / "structures.extxyz"
     if not path.exists():
         return None
-    return read(path, index=":")
+    energies = {}
+    try:
+        for atoms in iread(path, index=":"):
+            energies[atoms.info["mat_id"]] = float(atoms.info["mlip_energy"])
+    except Exception as exc:  # noqa: BLE001
+        warn(
+            f"Stopped reading {path} after {len(energies)} structures: {exc}",
+            stacklevel=2,
+        )
+    return energies
 
 
 def hull_energies(
@@ -271,63 +301,27 @@ def model_metrics(comparison: dict[str, dict] | None) -> dict[str, float | None]
 
 
 @pytest.fixture(scope="module")
-def model_outputs() -> tuple[list[Atoms], dict[str, dict[str, float] | None]]:
-    """
-    Get the reference structures and the energies of all models from their outputs.
-
-    Returns
-    -------
-    tuple[list[Atoms], dict[str, dict[str, float] | None]]
-        Unary ground states and binaries, with the reference data in ``info``, and
-        the total energy (eV) for each ``mat_id`` of each model, or ``None`` for
-        models that were not run.
-    """
-    structures = {}
-    energies = {}
-    for model_name in MODELS:
-        outputs = load_outputs(model_name)
-        if outputs is None:
-            energies[model_name] = None
-            continue
-        energies[model_name] = {}
-        for atoms in outputs:
-            mat_id = atoms.info["mat_id"]
-            energies[model_name][mat_id] = float(atoms.info["mlip_energy"])
-            structures.setdefault(mat_id, atoms)
-    return list(structures.values()), energies
-
-
-@pytest.fixture(scope="module")
-def structures(
-    model_outputs: tuple[list[Atoms], dict[str, dict[str, float] | None]],
-) -> list[Atoms]:
+def structures() -> list[Atoms]:
     """
     Get the reference structures and PBE energies.
-
-    Parameters
-    ----------
-    model_outputs
-        Reference structures, and energies of all models.
 
     Returns
     -------
     list[Atoms]
         Unary ground states and binaries.
     """
-    return model_outputs[0]
+    return load_reference()
 
 
 @pytest.fixture(scope="module")
-def comparisons(
-    model_outputs: tuple[list[Atoms], dict[str, dict[str, float] | None]],
-) -> dict[str, dict[str, dict] | None]:
+def comparisons(structures: list[Atoms]) -> dict[str, dict[str, dict] | None]:
     """
     Compare the hulls of all models with the reference.
 
     Parameters
     ----------
-    model_outputs
-        Reference structures, and energies of all models.
+    structures
+        Unary ground states and binaries.
 
     Returns
     -------
@@ -335,16 +329,14 @@ def comparisons(
         Comparison for each binary and model, or ``None`` for models that were not
         run.
     """
-    structures, energies = model_outputs
     reference = reference_hull(structures)
-    return {
-        model_name: (
-            None
-            if model_energies is None
-            else compare_model(structures, reference, model_energies)
+    comparisons = {}
+    for model_name in MODELS:
+        energies = load_energies(model_name)
+        comparisons[model_name] = (
+            None if energies is None else compare_model(structures, reference, energies)
         )
-        for model_name, model_energies in energies.items()
-    }
+    return comparisons
 
 
 @pytest.fixture
@@ -400,10 +392,56 @@ def element_values(comparison: dict[str, dict], key: str) -> dict[str, float]:
     return {element: 1000 * float(np.mean(e)) for element, e in errors.items()}
 
 
+def failed_systems(comparison: dict[str, dict]) -> dict[str, dict[str, int]]:
+    """
+    Count the systems containing each element, and those in which a calculation failed.
+
+    Parameters
+    ----------
+    comparison
+        Comparison for each binary of one model.
+
+    Returns
+    -------
+    dict[str, dict[str, int]]
+        Number of ``systems`` and of ``failed`` systems for each element.
+    """
+    systems = {
+        result["system"]: result["e_hull_pred"] is None
+        for result in comparison.values()
+    }
+    counts = defaultdict(lambda: {"systems": 0, "failed": 0})
+    for system, failed in systems.items():
+        for element in system.split("-"):
+            counts[element]["systems"] += 1
+            counts[element]["failed"] += failed
+    return dict(counts)
+
+
+def element_failures(counts: dict[str, dict[str, int]]) -> dict[str, float]:
+    """
+    Get the percentage of failed systems containing each element.
+
+    Parameters
+    ----------
+    counts
+        Number of systems and of failed systems for each element.
+
+    Returns
+    -------
+    dict[str, float]
+        Percentage of failed systems for each element.
+    """
+    return {
+        element: 100 * count["failed"] / count["systems"]
+        for element, count in counts.items()
+    }
+
+
 @pytest.fixture
 def periodic_tables(comparisons: dict[str, dict[str, dict] | None]) -> None:
     """
-    Write per-model periodic-table heatmaps of the MAEs, for each element.
+    Write per-model periodic-table heatmaps of the MAEs and failed systems.
 
     Parameters
     ----------
@@ -431,6 +469,23 @@ def periodic_tables(comparisons: dict[str, dict[str, dict] | None]) -> None:
                 colorscale="Viridis_r",
                 value_format=".0f",
             )(element_values)(comparison, key)
+
+        counts = failed_systems(comparison)
+        plot_periodic_table(
+            title=f"Failed systems (%) - {model_name}",
+            colorbar_title="Failed systems (%)",
+            hoverdata={
+                "Failed systems": {
+                    element: f"{count['failed']} of {count['systems']}"
+                    for element, count in counts.items()
+                }
+            },
+            filename=str(OUT_PATH / model_name / f"{FAILED_PERIODIC_TABLE}.json"),
+            zmin=0,
+            zmax=100,
+            colorscale="Viridis_r",
+            value_format=".0f",
+        )(element_failures)(counts)
 
 
 def density_inputs(
