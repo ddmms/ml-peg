@@ -71,6 +71,7 @@ from ml_peg.app.utils.storage import (
 )
 from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
+    default_weight_store_data,
     framework_sort_key,
     get_framework_config,
     get_mlip_column_width,
@@ -161,40 +162,6 @@ def _framework_to_path(framework_id: str) -> str:
     if not slug:
         raise ValueError(f"Unable to construct path for framework {framework_id}")
     return f"/framework/{slug}"
-
-
-def _default_weight_store_data(table: DataTable) -> dict[str, float]:
-    """
-    Build initial weight-store data for globally mounted summary tables.
-
-    Parameters
-    ----------
-    table
-        Category-summary or overall-summary table whose configurable columns need
-        explicit stored weights when the page controls are rendered elsewhere.
-
-    Returns
-    -------
-    dict[str, float]
-        Weight mapping containing one entry for every non-reserved table column
-        (i.e. not Score etc).
-        This is used when the category and overall summary weight stores are
-        kept at the top level of the app, rather than inside an individual
-        page, so updates made from framework pages can still propagate even if
-        the corresponding category page is not open. For example, if a user
-        changes benchmark weights from the MLIP Arena page, the category
-        summary still needs a complete set of weights available so it can be
-        recomputed immediately. Missing values are filled with ``1.0`` so reset
-        and input-sync callbacks always see a complete dictionary in the
-        backing ``dcc.Store``.
-    """
-    reserved = {"MLIP", "Score", "id", "link"}
-    weights = dict(getattr(table, "weights", None) or {})
-    for column in table.columns:
-        column_id = column.get("id")
-        if column_id not in reserved:
-            weights.setdefault(column_id, 1.0)
-    return weights
 
 
 def _framework_sidebar_label(framework_id: str, label: str) -> Div:
@@ -752,7 +719,7 @@ def build_nav(
                 Store(
                     id=f"{summary_table_component.id}-weight-store",
                     storage_type="session",
-                    data=_default_weight_store_data(summary_table_component),
+                    data=default_weight_store_data(summary_table_component),
                 ),
             ]
         )
@@ -773,7 +740,7 @@ def build_nav(
                 Store(
                     id=f"{fw_table.id}-weight-store",
                     storage_type="session",
-                    data=_default_weight_store_data(fw_table),
+                    data=default_weight_store_data(fw_table),
                 ),
             ]
         )
@@ -786,7 +753,7 @@ def build_nav(
         Store(
             id="summary-table-weight-store",
             storage_type="session",
-            data=_default_weight_store_data(summary_table),
+            data=default_weight_store_data(summary_table),
         ),
         Store(id="cmap-store", storage_type="local", data=DEFAULT_COLORMAP),
         # NOTE: the no-flash script in run_app.py reads this store's value
@@ -808,7 +775,7 @@ def build_nav(
             Store(
                 id="framework-summary-table-weight-store",
                 storage_type="session",
-                data=_default_weight_store_data(combined_framework_table),
+                data=default_weight_store_data(combined_framework_table),
             )
         )
 
@@ -1076,7 +1043,7 @@ def build_nav(
         raise PreventUpdate
 
     register_weight_preset_callbacks(
-        summary_table, _default_weight_store_data(summary_table)
+        summary_table, default_weight_store_data(summary_table)
     )
 
     @callback(
