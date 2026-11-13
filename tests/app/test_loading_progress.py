@@ -13,7 +13,10 @@ SCRIPT = Path(__file__).parents[2] / "ml_peg/app/data/ui/loading_progress.js"
 @pytest.fixture
 def progress_page(page: Page) -> Page:
     """Load the real asset with manually delivered animation frames."""
-    page.clock.install()
+    # install() keeps time running. Pause before loading the asset so browser
+    # round trips cannot consume the 100 ms hold or 250 ms fallback deadline.
+    page.clock.install(time="2026-01-01T00:00:00Z")
+    page.clock.pause_at("2026-01-02T00:00:00Z")
     page.set_content(
         '<div id="startup-mask"><div class="mlpeg-progress-ring"></div></div>'
     )
@@ -254,4 +257,17 @@ def test_visible_fallback_paints_before_settling(
         page.clock.run_for(249)
         assert not page.evaluate("window.settled")
         page.clock.run_for(1)
+    assert_complete(page)
+
+
+def test_completion_clock_ignores_wall_time(progress_page: Page):
+    """Slow browser round trips cannot consume the fallback's visible hold."""
+    page = progress_page
+    page.evaluate("beginCompletion()")
+    # Intentionally wait in real time to reproduce a slow CI browser round trip.
+    # Only clock.run_for should advance the timers under test.
+    page.wait_for_timeout(300)
+    page.clock.run_for(1000)
+    assert not page.evaluate("window.settled")
+    page.clock.run_for(250)
     assert_complete(page)
