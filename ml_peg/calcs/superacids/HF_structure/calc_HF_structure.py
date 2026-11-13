@@ -71,7 +71,7 @@ def read_restart(traj_path: Path) -> tuple[Atoms | None, int]:
     return atoms, nsteps
 
 
-@pytest.mark.very_slow
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=lambda x: x[0])
 def test_hf_structure(mlip: tuple[str, Any]) -> None:
     """
@@ -119,6 +119,9 @@ def test_hf_structure(mlip: tuple[str, Any]) -> None:
         references_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy(hf_structure_dir / "SQ_EXP.dat", references_dir / "SQ_EXP.dat")
 
+    # These periodic systems are neutral singlets, including on restart.
+    atoms.info["charge"] = 0
+    atoms.info["spin"] = 1
     atoms.calc = calc
 
     if not restarting:

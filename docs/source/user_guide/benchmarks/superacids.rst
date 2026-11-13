@@ -20,13 +20,22 @@ Metrics
 For each composition, the density is calculated from the average volume of an NPT
 molecular dynamics run of 100 ps. The first half of the simulation is discarded as
 equilibration. The mean absolute percentage error over the three compositions is
-compared to the reference densities, obtained from experiment.
+compared to the reference densities, obtained from experiment. Only complete
+100 ps runs are scored, while partial density time series remain available.
+
+2. Failure
+
+Fraction of the three compositions without complete, finite density results,
+from 0 (all successful) to 1 (all failed). Missing compositions count as failures
+once a model has outputs. Models with no outputs remain unscored. This includes
+interrupted runs and is not a measure of physical instability alone.
 
 Computational cost
 ------------------
 
-High: about 8 GPU hours per model for all three compositions, for a model that
-includes a dispersion correction.
+Slow: approximately 8 GPU hours per model for all three compositions, for a
+model that includes a dispersion correction. Runtime depends on the model and
+GPU hardware.
 
 Data availability
 -----------------
@@ -75,13 +84,21 @@ The absolute error in the position of the maximum of S(q), located over the same
 as the R-factor. The position is read directly off the grid of scattering vectors,
 whose spacing is 0.05 1/A.
 
+3. Failure
+
+For the single HF simulation, 0 means complete, usable structure-factor results
+and 1 means failed, incomplete or unusable results. Models with no outputs remain
+unscored. This includes interruptions and analysis failures, not just physical
+instability.
+
 The "good" threshold of the R-factor is the statistical noise of the protocol itself,
 measured by splitting the production window of one model into two halves.
 
 Computational cost
 ------------------
 
-High: about 6 GPU hours per model, for a model that includes a dispersion correction.
+Slow: approximately 6 GPU hours per model, for a model that includes a
+dispersion correction. Runtime depends on the model and GPU hardware.
 
 Data availability
 -----------------

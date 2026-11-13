@@ -1,3 +1,6 @@
 title: Superacids
 description: Structural and thermophysical properties of superacids and related liquids
 weight: 0
+benchmark_weights:
+  HF_SbF5_density: 0
+  HF_structure: 0

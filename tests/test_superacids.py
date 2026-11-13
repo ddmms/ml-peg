@@ -127,3 +127,193 @@ def test_compute_r_factor_without_overlap() -> None:
     q_calc = np.array([10.0, 11.0, 12.0])
 
     assert np.isnan(compute_r_factor(q_ref, np.ones(4), q_calc, np.ones(3)))
+
+
+@pytest.mark.parametrize("final_step, complete", [(600, False), (200000, True)])
+def test_density_scoring_requires_complete_run(
+    tmp_path, monkeypatch, final_step, complete
+):
+    """Partial density runs cannot receive an aggregate score."""
+    import inspect
+
+    from ml_peg.analysis.superacids.HF_SbF5_density import (
+        analyse_HF_SbF5_density as analysis,
+    )
+
+    monkeypatch.setattr(analysis, "CALC_PATH", tmp_path)
+    monkeypatch.setattr(analysis, "MODELS", ["test-model"])
+    for system in analysis.SYSTEMS:
+        folder = tmp_path / "test-model" / system
+        folder.mkdir(parents=True)
+        write_trajectory(folder / f"{system}.traj", (1.0,))
+        (folder / "volume.dat").write_text(
+            f"# step volume_A3\n0 1000\n200 1000\n400 200\n{final_step} 200\n"
+        )
+    densities = inspect.unwrap(analysis.densities)()
+    errors = inspect.unwrap(analysis.density_errors)(densities)
+    if complete:
+        assert np.isfinite(errors["test-model"])
+    else:
+        assert errors["test-model"] is None
+        # Partial data remain usable for diagnostic plots.
+        time, values = analysis.compute_density_series(
+            folder / f"{system}.traj", folder / "volume.dat"
+        )
+        assert len(values) == 4
+        assert time[-1] == pytest.approx(0.3)
+
+
+def test_structure_factor_rejects_incomplete_run(tmp_path):
+    """Reject short MD before invoking the expensive structure-factor analysis."""
+    from ml_peg.analysis.superacids.HF_structure.analyse_HF_structure import compute_sq
+
+    traj_path = tmp_path / "NPT.traj"
+    write_trajectory(traj_path, (1.0,) * 38)
+    with pytest.raises(ValueError, match="Only 38 of 1001 expected frames"):
+        compute_sq(traj_path, tmp_path / "sq")
+
+
+def test_scatter_single_highlight_and_reference_line(tmp_path):
+    """Shared shading is drawn once and existing reference lines remain visible."""
+    import json
+
+    from ml_peg.analysis.utils.decorators import plot_scatter
+
+    output = tmp_path / "plot.json"
+
+    @plot_scatter(
+        filename=output,
+        highlight_range={"Production": [50, 100]},
+        horizontal_lines=[{"y": 10, "name": "Target", "color": "black"}],
+    )
+    def curves():
+        return {"first": [[0, 100], [1, 2]], "second": [[0, 100], [2, 3]]}
+
+    curves()
+    figure = json.loads(output.read_text())
+    shapes = figure["layout"]["shapes"]
+    assert sum(shape["type"] == "rect" for shape in shapes) == 1
+    assert sum(shape["type"] == "line" for shape in shapes) == 1
+    assert figure["layout"]["yaxis"]["range"][1] > 10
+
+
+@pytest.mark.parametrize("benchmark", ["HF_SbF5_density", "HF_structure"])
+def test_charge_spin_on_fresh_and_restarted_md(tmp_path, monkeypatch, benchmark):
+    """Calculators receive Python integer charge and spin on both MD paths."""
+    import importlib
+
+    from ase.calculators.lj import LennardJones
+    from ase.io import write
+
+    calc_module = importlib.import_module(
+        f"ml_peg.calcs.superacids.{benchmark}.calc_{benchmark}"
+    )
+
+    class CheckedCalculator(LennardJones):
+        def calculate(self, atoms=None, *args, **kwargs):
+            assert type(atoms.info["charge"]) is int
+            assert type(atoms.info["spin"]) is int
+            assert (atoms.info["charge"], atoms.info["spin"]) == (0, 1)
+            return super().calculate(atoms, *args, **kwargs)
+
+    class Model:
+        def get_calculator(self, precision):
+            assert precision == "low"
+            return CheckedCalculator()
+
+        def add_d3_calculator(self, calc):
+            return calc
+
+    monkeypatch.setattr(calc_module, "OUT_PATH", tmp_path / "outputs")
+    monkeypatch.setattr(calc_module, "N_MIN_STEPS", 1)
+    monkeypatch.setattr(calc_module, "N_NPT_STEPS", 2)
+    monkeypatch.setattr(calc_module, "OUT_FREQ", 1)
+    monkeypatch.setattr(calc_module, "download_s3_data", lambda **kwargs: tmp_path)
+    input_dir = tmp_path / benchmark
+    if benchmark == "HF_SbF5_density":
+        input_dir /= "X_0"
+    input_dir.mkdir(parents=True)
+    atoms = Atoms("Ar2", positions=[[0, 0, 0], [1.2, 0, 0]], cell=[15] * 3, pbc=True)
+    write(input_dir / "start.xyz", atoms)
+    (input_dir / "SQ_EXP.dat").write_text("1 1\n2 1\n")
+    args = (("test-model", Model()),)
+    if benchmark == "HF_SbF5_density":
+        run = calc_module.test_hf_sbf5_density
+        args += ("X_0",)
+        traj = tmp_path / "outputs/test-model/X_0/X_0.traj"
+    else:
+        run = calc_module.test_hf_structure
+        traj = tmp_path / "outputs/test-model/NPT.traj"
+    run(*args)
+    monkeypatch.setattr(calc_module, "N_NPT_STEPS", 4)
+    run(*args)
+    with Trajectory(str(traj)) as frames:
+        assert len(frames) == 5
+
+
+@pytest.mark.parametrize(
+    "values, expected",
+    [([1.0, 2.0, 3.0], 0.0), ([1.0, np.nan, 3.0], 1 / 3), ([np.nan] * 3, 1.0)],
+)
+def test_density_failure_fraction(tmp_path, monkeypatch, values, expected):
+    """Failure counts all compositions and leaves unrun models unscored."""
+    import inspect
+
+    from ml_peg.analysis.superacids.HF_SbF5_density import (
+        analyse_HF_SbF5_density as analysis,
+    )
+
+    monkeypatch.setattr(analysis, "CALC_PATH", tmp_path)
+    monkeypatch.setattr(analysis, "MODELS", ["run", "absent"])
+    (tmp_path / "run").mkdir()
+    result = inspect.unwrap(analysis.failure)({"run": values, "absent": [np.nan] * 3})
+    assert result == {"run": pytest.approx(expected), "absent": None}
+    table = inspect.unwrap(analysis.metrics)({"run": None}, result)
+    assert table["Failure"] == result
+    assert table["MAPE"]["run"] is None
+
+
+@pytest.mark.parametrize("value, expected", [(0.1, 0.0), (None, 1.0), (np.nan, 1.0)])
+def test_structure_failure_fraction(tmp_path, monkeypatch, value, expected):
+    """Unusable S(q) results count as failures, while absent models do not."""
+    import inspect
+
+    from ml_peg.analysis.superacids.HF_structure import analyse_HF_structure as analysis
+
+    monkeypatch.setattr(analysis, "CALC_PATH", tmp_path)
+    monkeypatch.setattr(analysis, "MODELS", ["run", "absent"])
+    (tmp_path / "run").mkdir()
+    errors = {
+        "S(q) R-factor": {"run": value, "absent": None},
+        "First Peak Position Error": {"run": 0.1, "absent": None},
+    }
+    result = inspect.unwrap(analysis.failure)(errors)
+    assert result == {"run": expected, "absent": None}
+    table = inspect.unwrap(analysis.metrics)(errors, result)
+    assert table["Failure"] == result
+    assert "Failure" not in errors
+
+
+def test_scatter_hlines_compatibility(tmp_path):
+    """Keep the shared hlines argument usable alongside horizontal_lines."""
+    import json
+
+    from ml_peg.analysis.utils.decorators import plot_scatter
+
+    output = tmp_path / "hlines.json"
+
+    @plot_scatter(
+        filename=output,
+        hlines={"Target": 3.0},
+        horizontal_lines=[{"y": 4.0, "name": "Other target"}],
+    )
+    def curves():
+        return {"model": [[0, 1], [1, 2]]}
+
+    curves()
+    figure = json.loads(output.read_text())
+    lines = [shape for shape in figure["layout"]["shapes"] if shape["type"] == "line"]
+    assert {line["y0"] for line in lines} == {3.0, 4.0}
+    assert any(
+        annotation["text"] == "Target" for annotation in figure["layout"]["annotations"]
+    )

@@ -146,7 +146,9 @@ def plot_density_series(system: str) -> None:
         y_label="Density / g/cm³",
         show_line=True,
         show_markers=False,
-        hlines={"Target": REF_DENSITIES[system]},
+        horizontal_lines=[
+            {"y": REF_DENSITIES[system], "name": "Target", "color": "black"}
+        ],
         highlight_range={"Production": [total_time_ps / 2, total_time_ps]},
     )
     def density_series() -> dict[str, list]:
@@ -225,6 +227,11 @@ def densities() -> dict[str, list]:
                 continue
 
             try:
+                # Partial runs remain available in the time-series plots, but
+                # must not be scored against the full production protocol.
+                data = np.loadtxt(volume_path, comments="#", ndmin=2)
+                if not data.size or data[-1, 0] < N_NPT_STEPS:
+                    continue
                 results[model_name][index] = compute_density(traj_path, volume_path)
             except Exception as exc:
                 warn(
@@ -265,13 +272,39 @@ def density_errors(densities) -> dict[str, float]:
 
 
 @pytest.fixture
+def failure(densities: dict[str, list]) -> dict[str, float | None]:
+    """
+    Get the fraction of systems without complete, usable density results.
+
+    Parameters
+    ----------
+    densities
+        Predicted and reference densities, with NaN for incomplete or failed systems.
+
+    Returns
+    -------
+    dict[str, float | None]
+        Failure fractions over all three compositions, or None for absent models.
+    """
+    return {
+        model: float(np.mean(~np.isfinite(densities[model])))
+        if (CALC_PATH / model).exists()
+        else None
+        for model in MODELS
+    }
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "hf_sbf5_density_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=DISPERSION_MODEL_NAMES,
+    weights=DEFAULT_WEIGHTS,
 )
-def metrics(density_errors: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    density_errors: dict[str, float], failure: dict[str, float | None]
+) -> dict[str, dict]:
     """
     Get all HF/SbF5 density metrics.
 
@@ -279,6 +312,8 @@ def metrics(density_errors: dict[str, float]) -> dict[str, dict]:
     ----------
     density_errors
         Mean absolute errors for all systems.
+    failure
+        Fraction of compositions without complete, usable results.
 
     Returns
     -------
@@ -287,6 +322,7 @@ def metrics(density_errors: dict[str, float]) -> dict[str, dict]:
     """
     return {
         "MAPE": density_errors,
+        "Failure": failure,
     }
 
 

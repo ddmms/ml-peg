@@ -74,7 +74,7 @@ def read_restart(traj_path: Path) -> tuple[Atoms | None, int]:
     return atoms, nsteps
 
 
-@pytest.mark.very_slow
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=lambda x: x[0])
 @pytest.mark.parametrize("system", SYSTEMS)
 def test_hf_sbf5_density(mlip: tuple[str, Any], system: str) -> None:
@@ -121,6 +121,9 @@ def test_hf_sbf5_density(mlip: tuple[str, Any], system: str) -> None:
 
         atoms = read(hf_sbf5_density_dir / system / "start.xyz")
 
+    # These periodic systems are neutral singlets, including on restart.
+    atoms.info["charge"] = 0
+    atoms.info["spin"] = 1
     atoms.calc = calc
 
     if not restarting:

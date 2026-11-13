@@ -17,3 +17,10 @@ metrics:
         tooltip: "Absolute error in the position of the maximum of S(q), located over the same range as the R-factor."
         level_of_theory: Experimental
         weight: 1.0
+    Failure:
+        good: 0.0
+        bad: 1.0
+        unit: null
+        tooltip: "Failure fraction for the single HF simulation: 0 for complete, usable structure-factor results, 1 otherwise. Includes interrupted runs and analysis failures, not only physical instability. Models without outputs remain unscored."
+        level_of_theory: null
+        weight: 1.0

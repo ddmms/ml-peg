@@ -37,6 +37,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 # Time between trajectory frames, from the MD timestep and dump frequency
 FRAME_SPACING_FS = 50.0
+NPT_DURATION_FS = 50_000.0
+MIN_FULL_RUN_FRAMES = int(NPT_DURATION_FS / FRAME_SPACING_FS) + 1
 
 # Second half of the trajectory is production, sampled every STRIDE frames
 PRODUCTION_FRACTION = 0.5
@@ -110,6 +112,10 @@ def compute_sq(traj_path: Path, work_dir: Path) -> tuple[np.ndarray, np.ndarray]
         float(atoms.cell.lengths().min()) for atoms in iread(traj_path, index=":")
     ]
     n_frames = len(cell_lengths)
+    if n_frames < MIN_FULL_RUN_FRAMES:
+        raise ValueError(
+            f"Only {n_frames} of {MIN_FULL_RUN_FRAMES} expected frames in {traj_path}"
+        )
     first_frame = int(n_frames * PRODUCTION_FRACTION)
 
     n_production = len(range(first_frame, n_frames, STRIDE))
@@ -342,6 +348,35 @@ def sq_errors(sq_curves: dict[str, list]) -> dict[str, dict]:
 
 
 @pytest.fixture
+def failure(sq_errors: dict[str, dict]) -> dict[str, float | None]:
+    """
+    Get the failure fraction for the single HF simulation.
+
+    Parameters
+    ----------
+    sq_errors
+        Structure-factor metrics, with missing values for incomplete or failed runs.
+
+    Returns
+    -------
+    dict[str, float | None]
+        Zero for usable results, one for failures, or None for absent models.
+    """
+    results = {}
+    for model in MODELS:
+        if not (CALC_PATH / model).exists():
+            results[model] = None
+            continue
+        results[model] = float(
+            any(
+                values[model] is None or not np.isfinite(values[model])
+                for values in sq_errors.values()
+            )
+        )
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "hf_structure_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -349,7 +384,9 @@ def sq_errors(sq_curves: dict[str, list]) -> dict[str, dict]:
     mlip_name_map=DISPERSION_MODEL_NAMES,
     weights=DEFAULT_WEIGHTS,
 )
-def metrics(sq_errors: dict[str, dict]) -> dict[str, dict]:
+def metrics(
+    sq_errors: dict[str, dict], failure: dict[str, float | None]
+) -> dict[str, dict]:
     """
     Get all HF structure factor metrics.
 
@@ -357,13 +394,15 @@ def metrics(sq_errors: dict[str, dict]) -> dict[str, dict]:
     ----------
     sq_errors
         R-factors and first peak position errors for all models.
+    failure
+        Failure fraction for each model.
 
     Returns
     -------
     dict[str, dict]
         Metric names and values for all models.
     """
-    return sq_errors
+    return sq_errors | {"Failure": failure}
 
 
 def test_hf_structure(metrics: dict[str, dict]) -> None:
