@@ -392,3 +392,46 @@ Input data:
 Reference data:
 
 * PBE conjugate gradient geomerty optimizations are performed via VASP, with a cutoff energy of 500 eV.
+
+<<<<<<< HEAD
+=======
+
+Surface Alloy Reorganisation
+=============================
+
+Summary
+-------
+
+Performance in predicting reaction energies and barriers for mechanisms involving metal dopants at terraces and step edge defects.
+
+Metrics
+-------
+
+1. Reaction energy MAE
+
+   Mean Absolute Error (compared to PBE DFT reference data) for the reaction energy of all reactions not involving identical initial and final states (up to symmetry)
+   Reaction energies are calculated as the energy of the final state minus the energy of the initial state for each mechanism.
+
+2. Reaction barrier MAE
+
+   Mean Absolute Error (compared to PBE DFT reference data) for the reaction barrier of all reactions.
+   Reaction barriers are calculated as the energy of the transition state minus the energy of the initial state for each mechanism.
+
+Benchmark speed
+------------------
+
+Fast: tests are likely to take less than a minute.
+
+Data availability
+-----------------
+
+Input data:
+
+* Structures for local minima and transition states, optimised with optB86b-vdW as a reference method.
+
+  * Karageorgiou I., Michaelides A., Berger F. "Mechanisms for the formation of active sites in single-atom alloys." Nanoscale, 2026, 18(18), 9709-22. https://doi.org/10.1039/d5nr05517b
+
+Reference data:
+
+* PBE single-point DFT calculations are performed using VASP, with a plane-wave energy cutoff of 400 eV.
+>>>>>>> aa56217 (Added outline of test to docs/user_guide/benchmarks/surfaces.rst)
