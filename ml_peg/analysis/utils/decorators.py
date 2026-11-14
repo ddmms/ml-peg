@@ -1259,6 +1259,7 @@ def plot_periodic_table(
     zmin: float | None = None,
     zmax: float | None = None,
     symlog_scale: float | None = None,
+    value_format: str | None = None,
 ) -> Callable:
     """
     Plot a periodic-table heatmap for element-wise metrics.
@@ -1284,6 +1285,9 @@ def plot_periodic_table(
         while outliers remain distinguishable instead of saturating the scale.
         The colour bar is labelled in the original units. Default is `None`,
         corresponding to a linear scale.
+    value_format
+        Optional format specification, such as ``".0f"``, to print each element's
+        value below its symbol. Default is None, showing values only on hover.
 
     Returns
     -------
@@ -1349,6 +1353,14 @@ def plot_periodic_table(
 
                 hover_grid[row, col] = "<br>".join(hover_parts)
                 text_grid[row, col] = element
+                if (
+                    value_format is not None
+                    and value is not None
+                    and not np.isnan(value)
+                ):
+                    text_grid[row, col] += (
+                        f"<br><span style='font-size:9px'>{value:{value_format}}</span>"
+                    )
 
             colorbar = {"title": colorbar_title}
             plot_min, plot_max = zmin, zmax
