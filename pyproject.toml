@@ -31,6 +31,7 @@ dependencies = [
     "kaleido<2,>=1.0.0",
     "matcalc<0.5,>=0.4.7",
     "matminer<0.10,>=0.9.3",
+    "matscipy<2,>=1.3.1",
     "mdanalysis<3,>=2.9.0",
     "mlipx<0.2,>=0.1.5",
     "molify<0.3,>=0.2.2",
@@ -93,7 +94,7 @@ mlipaudit = [
 nequip = [
     "nequip == 0.19.1",
     # GPU kernels, used automatically on CUDA:
-    "openequivariance == 0.7.0; sys_platform == 'linux'",
+    "openequivariance == 0.8.1; sys_platform == 'linux'",
     "cuequivariance-torch == 0.8.1; sys_platform == 'linux'",
     # This must match torch's CUDA build, which is CUDA 13 for the torch locked on Linux:
     "cuequivariance-ops-torch-cu13 == 0.8.1; sys_platform == 'linux'",
