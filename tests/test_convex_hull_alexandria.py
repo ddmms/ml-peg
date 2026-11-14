@@ -199,29 +199,30 @@ def test_failed_systems():
     assert element_failures(counts) == {"Cu": 100.0, "Zn": 100.0}
 
 
-def test_load_energies_truncated(tmp_path, monkeypatch):
-    """Test that a truncated output keeps the energies written before the cut."""
+def test_load_outputs(tmp_path, monkeypatch):
+    """Test reading the reference and model outputs, and skipping without mock."""
     monkeypatch.setattr(analyse_convex_hull_alexandria, "CALC_PATH", tmp_path)
+    with pytest.raises(pytest.skip.Exception, match="Mock calculation outputs"):
+        analyse_convex_hull_alexandria.load_reference()
     assert analyse_convex_hull_alexandria.load_energies("model") is None
 
-    outputs = []
-    for atoms in STRUCTURES[:3]:
-        atoms = atoms.copy()
-        atoms.info["mlip_energy"] = atoms.info["dft_energy"] + 0.1
-        outputs.append(atoms)
-    path = tmp_path / "model" / "structures.extxyz"
-    path.parent.mkdir()
-    write(path, outputs)
-    # Cut the file inside the last frame, as an interrupted write would
-    lines = path.read_text().splitlines(keepends=True)
-    path.write_text("".join(lines[:-1]))
+    for model, shift in (("mock", 0.0), ("model", 0.1)):
+        outputs = []
+        for atoms in STRUCTURES[:3]:
+            atoms = atoms.copy()
+            atoms.info["mlip_energy"] = atoms.info["dft_energy"] + shift
+            outputs.append(atoms)
+        (tmp_path / model).mkdir()
+        write(tmp_path / model / "structures.extxyz", outputs)
 
-    with pytest.warns(UserWarning, match="after 2 structures"):
-        energies = analyse_convex_hull_alexandria.load_energies("model")
-    assert energies == {"cu": pytest.approx(-0.9), "zn": pytest.approx(-1.9)}
-    # The structures after the cut count as failed
-    comparison = compare_model(STRUCTURES, REFERENCE_HULL, energies)
-    assert model_metrics(comparison)["Failed systems"] == 100.0
+    reference = analyse_convex_hull_alexandria.load_reference()
+    assert [atoms.info["mat_id"] for atoms in reference] == ["cu", "zn", "cuzn"]
+    energies = analyse_convex_hull_alexandria.load_energies("model")
+    assert energies == {
+        "cu": pytest.approx(-0.9),
+        "zn": pytest.approx(-1.9),
+        "cuzn": pytest.approx(-3.9),
+    }
 
 
 def test_hull_view(tmp_path, monkeypatch):

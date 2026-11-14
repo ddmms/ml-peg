@@ -5,10 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 import json
 from pathlib import Path
-from warnings import warn
 
 from ase import Atoms
-from ase.io import iread, read
+from ase.io import read
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -71,16 +70,15 @@ def load_reference() -> list[Atoms]:
     list[Atoms]
         Structures, with ``mat_id``, ``dft_energy`` and ``e_above_hull`` in ``info``.
     """
-    return read(CALC_PATH / "mock" / "structures.extxyz", index=":")
+    path = CALC_PATH / "mock" / "structures.extxyz"
+    if not path.exists():
+        pytest.skip(f"Mock calculation outputs not found: {path}")
+    return read(path, index=":")
 
 
 def load_energies(model_name: str) -> dict[str, float] | None:
     """
     Get the energies computed by a model.
-
-    Frames are read until the end of the file or the first unreadable frame, so
-    that a truncated output keeps the energies written before it was cut; the
-    structures after it count as failed.
 
     Parameters
     ----------
@@ -96,16 +94,10 @@ def load_energies(model_name: str) -> dict[str, float] | None:
     path = CALC_PATH / model_name / "structures.extxyz"
     if not path.exists():
         return None
-    energies = {}
-    try:
-        for atoms in iread(path, index=":"):
-            energies[atoms.info["mat_id"]] = float(atoms.info["mlip_energy"])
-    except Exception as exc:  # noqa: BLE001
-        warn(
-            f"Stopped reading {path} after {len(energies)} structures: {exc}",
-            stacklevel=2,
-        )
-    return energies
+    return {
+        atoms.info["mat_id"]: float(atoms.info["mlip_energy"])
+        for atoms in read(path, index=":")
+    }
 
 
 def hull_energies(
