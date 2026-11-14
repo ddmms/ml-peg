@@ -1,14 +1,12 @@
 # ε and ν: good is the ACWF "good agreement" threshold between DFT codes (Bosoni et
-# al., Nat. Rev. Phys. 6, 45, 2024); bad corresponds to a 5% error in V0. ε saturates
-# for large errors, so only ν is scored.
+# al., Nat. Rev. Phys. 6, 45, 2024); bad corresponds to a 5% error in V0.
 metrics:
   ε:
     good: 0.20
     bad: 1.7
     unit: null
-    tooltip: "Median ε over all structures (no minimum counts as infinite): RMS energy difference between the model and reference E(V) curves, relative to the energy spread of the curves. Not scored, as ε saturates for large errors"
+    tooltip: "Median ε over all structures (no minimum counts as infinite): RMS energy difference between the model and reference E(V) curves, relative to the energy spread of the curves"
     level_of_theory: PBE
-    weight: 0
   ν:
     good: 0.33
     bad: 5.0

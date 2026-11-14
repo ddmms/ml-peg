@@ -489,10 +489,12 @@ element from H to Cm (Z = 1-96). The curves are compared with the all-electron P
 reference data published with the ACWF verification study, using its measures.
 
 For each structure, the model energy is computed at seven volumes, 0.94, 0.96, ...,
-1.06 times the central volume, scaling the cell isotropically. A third-order
-Birch-Murnaghan equation of state is fitted to these points as in the reference data,
-giving the equilibrium volume :math:`V_0`, the bulk modulus :math:`B_0` and its pressure
-derivative :math:`B_1`.
+1.06 times the central volume, scaling the cell isotropically. These are single-point
+calculations on the structures of the ACWF set, as for the DFT codes in the ACWF study:
+neither the central volume nor the atomic positions are relaxed with the model. A
+third-order Birch-Murnaghan equation of state is fitted to these points as in the
+reference data, giving the equilibrium volume :math:`V_0`, the bulk modulus
+:math:`B_0` and its pressure derivative :math:`B_1`.
 
 Metrics
 -------
@@ -522,7 +524,7 @@ minimum count as infinitely bad, and also towards the unphysical E(V) metric.
    The colour scale runs from 0.2, the ACWF threshold for good agreement between DFT
    codes, to 1.7, which corresponds to a 5% error in :math:`V_0`. The ACWF study uses
    0.06 for excellent agreement and 1 for outliers. ε saturates near 2 for large
-   errors, so it ranks inaccurate models poorly and is not included in the score.
+   errors, above the bad threshold, so this does not affect the score.
 
 2. ν
 
@@ -569,7 +571,8 @@ minimum count as infinitely bad, and also towards the unphysical E(V) metric.
    Not included in the score.
 
 Each metric can also be shown on a periodic table, as the median over the ten
-structures of each element. Clicking an element shows its ten E(V) curves.
+structures of each element. Clicking an element shows its ten E(V) curves; hovering
+over a fitted curve shows the residuals (1 - R²) of the fit.
 
 Clicking a V0, B0 or B1 error shows box plots of the signed relative differences in
 :math:`V_0`, :math:`B_0` and :math:`B_1` for all models, as in Figure 1 of Yu *et al.*

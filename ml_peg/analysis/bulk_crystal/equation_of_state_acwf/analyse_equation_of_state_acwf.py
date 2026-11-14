@@ -24,7 +24,9 @@ from ml_peg.analysis.utils.decorators import build_table, plot_periodic_table
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.bulk_crystal.equation_of_state_acwf.prepare_inputs import (
+    BASELINE_CODES,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -59,9 +61,6 @@ MAGNETIC_ELEMENTS = {"Cr", "Mn", "Fe", "Co", "Ni"} | {
     for element, number in atomic_numbers.items()
     if 57 <= number <= 71 or 89 <= number <= 103
 }
-
-# DFT codes shown as baselines in the box plots, and the suffix of their result files
-BASELINE_CODES = {"FLEUR": "fleur", "WIEN2k": "wien2k-dk_0.06", "VASP": "vasp"}
 
 # Box plots of the signed relative differences: parameter and initial axis range (%)
 BOX_PLOT_RANGES = {"V0": 20, "B0": 50, "B1": 100}
@@ -104,6 +103,9 @@ def load_reference(source: str = "AE-average") -> dict[str, dict[str, float]]:
     """
     Load the all-electron PBE reference Birch-Murnaghan parameters.
 
+    The parameters are copied with the mock calculation outputs, so that they do not
+    depend on the outputs of the models.
+
     Parameters
     ----------
     source
@@ -116,29 +118,11 @@ def load_reference(source: str = "AE-average") -> dict[str, dict[str, float]]:
         ``V0`` (Å³/atom), ``B0`` (eV/Å³) and ``B1`` for each structure, labelled as
         ``{element}-{configuration}``.
     """
-    data_path = (
-        download_s3_data(
-            key="inputs/bulk_crystal/equation_of_state_acwf/equation_of_state_acwf.zip",
-            filename="equation_of_state_acwf.zip",
-        )
-        / "equation_of_state_acwf"
-        / "reference"
-    )
-    reference = {}
-    for dataset in DATASETS:
-        with open(
-            data_path / f"results-{dataset}-verification-PBE-v1-{source}.json",
-            encoding="utf8",
-        ) as f:
-            data = json.load(f)
-        for key, fit in data["BM_fit_data"].items():
-            label = key.replace("-X/", "-")
-            reference[label] = {
-                "V0": fit["min_volume"] / data["num_atoms_in_sim_cell"][key],
-                "B0": fit["bulk_modulus_ev_ang3"],
-                "B1": fit["bulk_deriv"],
-            }
-    return reference
+    path = CALC_PATH / "mock" / "reference.json"
+    if not path.exists():
+        pytest.skip(f"Mock calculation outputs not found: {path}")
+    with open(path, encoding="utf8") as f:
+        return json.load(f)[source]
 
 
 def load_curves(model_name: str) -> dict[str, dict[str, np.ndarray]] | None:
@@ -192,13 +176,26 @@ def compare_curve(
     Returns
     -------
     dict[str, float | str | None]
-        ``status`` and the fitted parameters and comparison measures. ``status`` is
+        ``status``, the fitted parameters, the ``residuals`` (1 - R²) of the fit and
+        the comparison measures. ``status`` is
         ``"ok"``, ``"failed"`` (a calculation failed), ``"no_minimum"`` (the fit has no
         minimum), or ``"v0_outside"`` (the minimum lies outside the sampled
         volumes). The measures are ``None`` unless a minimum was found.
     """
     result = dict.fromkeys(
-        ("E0", "V0", "B0", "B1", "ε", "ν", "Δ", "V0 error", "B0 error", "B1 error")
+        (
+            "E0",
+            "V0",
+            "B0",
+            "B1",
+            "residuals",
+            "ε",
+            "ν",
+            "Δ",
+            "V0 error",
+            "B0 error",
+            "B1 error",
+        )
     )
     if not np.all(np.isfinite(energies)):
         return result | {"status": "failed"}
@@ -216,6 +213,7 @@ def compare_curve(
         "V0": fit["V0"],
         "B0": fit["B0"],
         "B1": fit["B1"],
+        "residuals": fit["residuals"],
         "ε": epsilon(*tested, *ref),
         "ν": nu(*tested, *ref),
         "Δ": delta(*tested, *ref),
@@ -714,6 +712,10 @@ def eos_figures(
                         mode="lines",
                         line={"color": "#d62728", "dash": "dash"},
                         name=f"{model_name} (fit)",
+                        hovertemplate=(
+                            f"Fit residuals (1 - R²): {result['residuals']:.1e}"
+                            "<extra></extra>"
+                        ),
                         legendgroup="fit",
                         showlegend=index == 0,
                         **position,

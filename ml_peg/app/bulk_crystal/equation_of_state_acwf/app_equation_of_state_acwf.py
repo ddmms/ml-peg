@@ -112,7 +112,9 @@ def get_app() -> EquationOfStateACWFApp:
         name=BENCHMARK_NAME,
         description=(
             "Energy-volume curves of 960 unary and oxide crystals (Z = 1-96), "
-            "compared with all-electron PBE reference data using the ε and ν "
+            "from single-point calculations on the ACWF structures (not relaxed "
+            "with the model), compared with all-electron PBE reference data using "
+            "the ε and ν "
             "measures of the ACWF verification study. Click a metric to show a "
             "periodic table, then an element to show its E(V) curves. Click a V0, "
             "B0 or B1 error to compare the models with DFT codes."

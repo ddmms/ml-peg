@@ -31,6 +31,9 @@ from ml_peg.analysis.bulk_crystal.equation_of_state_acwf.analyse_equation_of_sta
     signed_differences,
     unphysical_share,
 )
+from ml_peg.calcs.bulk_crystal.equation_of_state_acwf import (
+    calc_equation_of_state_acwf as eos_calc,
+)
 from ml_peg.calcs.bulk_crystal.equation_of_state_acwf.calc_equation_of_state_acwf import (  # noqa: E501
     scaled_structures,
 )
@@ -136,6 +139,7 @@ def test_compare_curve_status(energies: str, v0_shift: float, status: str):
     if status == "ok":
         assert result["ε"] < 2e-3
         assert result["ν"] == pytest.approx(0.0, abs=1e-6)
+        assert result["residuals"] == pytest.approx(0.0, abs=1e-12)
 
 
 def test_label_survives_extxyz(tmp_path):
@@ -196,17 +200,20 @@ def test_model_measure():
 
 def test_load_reference(tmp_path, monkeypatch):
     """
-    Reference volumes are per atom, and labels drop the ``-X/`` of unaries.
+    Read the reference from the ACWF results, then from the mock outputs.
+
+    Reference volumes are per atom, labels drop the ``-X/`` of unaries, and the
+    analysis skips without the mock outputs.
 
     Parameters
     ----------
     tmp_path
         Temporary directory.
     monkeypatch
-        Pytest fixture to replace the S3 download.
+        Pytest fixture to replace the reference sources and output path.
     """
-    reference_dir = tmp_path / "equation_of_state_acwf" / "reference"
-    reference_dir.mkdir(parents=True)
+    reference_dir = tmp_path / "reference"
+    reference_dir.mkdir()
     data = {
         "unaries": {"Cu-X/FCC": (11.95, 1)},
         # The pure-oxygen oxides use a cell twice as large as the other oxides.
@@ -230,11 +237,17 @@ def test_load_reference(tmp_path, monkeypatch):
             }
             filename = f"results-{dataset}-verification-PBE-v1-{source}.json"
             (reference_dir / filename).write_text(json.dumps(content))
-    monkeypatch.setattr(eos_analysis, "download_s3_data", lambda **_: tmp_path)
+    monkeypatch.setattr(eos_calc, "REFERENCE_SOURCES", ("AE-average", "vasp"))
+    monkeypatch.setattr(eos_analysis, "CALC_PATH", tmp_path / "outputs")
 
-    reference = load_reference()
+    with pytest.raises(pytest.skip.Exception, match="Mock calculation outputs"):
+        load_reference()
 
-    assert reference == {
+    (tmp_path / "outputs" / "mock").mkdir(parents=True)
+    with open(tmp_path / "outputs" / "mock" / "reference.json", "w") as f:
+        json.dump(eos_calc.load_reference(reference_dir), f)
+
+    assert load_reference() == {
         "Cu-FCC": {"V0": 11.95, "B0": 0.5, "B1": 4.5},
         "O-XO": {"V0": 10.0, "B0": 0.5, "B1": 4.5},
     }

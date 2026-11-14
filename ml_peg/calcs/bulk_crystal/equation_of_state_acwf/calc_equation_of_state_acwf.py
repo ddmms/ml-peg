@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 from warnings import warn
@@ -12,6 +13,9 @@ import numpy as np
 import pytest
 from tqdm import tqdm
 
+from ml_peg.calcs.bulk_crystal.equation_of_state_acwf.prepare_inputs import (
+    BASELINE_CODES,
+)
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -23,6 +27,9 @@ DATASETS = ("unaries", "oxides")
 
 # ACWF protocol: seven volumes, from 0.94 to 1.06 times the central volume.
 VOLUME_SCALE_FACTORS = tuple(np.round(np.linspace(0.94, 1.06, 7), 2))
+
+# Result files of the all-electron reference and of the DFT code baselines
+REFERENCE_SOURCES = ("AE-average", *BASELINE_CODES.values())
 
 
 def get_data_path() -> Path:
@@ -41,6 +48,39 @@ def get_data_path() -> Path:
         )
         / "equation_of_state_acwf"
     )
+
+
+def load_reference(reference_dir: Path) -> dict[str, dict[str, dict[str, float]]]:
+    """
+    Load the reference and baseline Birch-Murnaghan parameters.
+
+    Parameters
+    ----------
+    reference_dir
+        Directory of the ACWF result files.
+
+    Returns
+    -------
+    dict[str, dict[str, dict[str, float]]]
+        For each source in ``REFERENCE_SOURCES``: ``V0`` (Å³/atom), ``B0`` (eV/Å³)
+        and ``B1`` for each structure, labelled as ``{element}-{configuration}``.
+    """
+    reference = {}
+    for source in REFERENCE_SOURCES:
+        parameters = reference.setdefault(source, {})
+        for dataset in DATASETS:
+            with open(
+                reference_dir / f"results-{dataset}-verification-PBE-v1-{source}.json",
+                encoding="utf8",
+            ) as f:
+                data = json.load(f)
+            for key, fit in data["BM_fit_data"].items():
+                parameters[key.replace("-X/", "-")] = {
+                    "V0": fit["min_volume"] / data["num_atoms_in_sim_cell"][key],
+                    "B0": fit["bulk_modulus_ev_ang3"],
+                    "B1": fit["bulk_deriv"],
+                }
+    return reference
 
 
 def scaled_structures(atoms: Atoms, label: str) -> list[Atoms]:
@@ -114,3 +154,7 @@ def test_equation_of_state_acwf(mlip: tuple[str, Any]) -> None:
                 results.append(struct)
 
         write(write_dir / f"{dataset}.extxyz", results)
+
+    # Copy the reference with the outputs, so that the analysis runs offline
+    with open(write_dir / "reference.json", "w", encoding="utf8") as f:
+        json.dump(load_reference(data_path / "reference"), f)
