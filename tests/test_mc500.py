@@ -305,3 +305,38 @@ def test_invalid_mock_does_not_publish_info(tmp_path, monkeypatch, failure):
     with pytest.raises(ValueError, match="Rerun mock"):
         analysis.mc500_results.__wrapped__()
     assert info.read_text() == "previous valid metadata"
+
+
+def test_relaxation_serializes_cached_results(tmp_path):
+    """Raw energy, forces and stress survive both copies without reevaluation."""
+    from ase.calculators.calculator import Calculator, all_changes
+    from ase.io import read
+
+    from ml_peg.calcs.molecular_crystal.MC500 import calc_MC500 as calc
+
+    class ConstantCalculator(Calculator):
+        implemented_properties = ["energy", "forces", "stress"]
+        calls = 0
+
+        def calculate(self, atoms=None, properties=None, system_changes=all_changes):
+            super().calculate(atoms, properties, system_changes)
+            self.calls += 1
+            self.results = {
+                "energy": -2.5,
+                "forces": np.zeros((len(atoms), 3)),
+                "stress": np.zeros(6),
+            }
+
+    calculator = ConstantCalculator()
+    atoms = Atoms("C", scaled_positions=[[0.1, 0.2, 0.3]], cell=[5] * 3, pbc=True)
+    reference = atoms.copy()
+    relaxed, converged, _, _ = calc.relax_crystal(atoms, calculator, max_steps=1)
+    assert converged
+    calls = calculator.calls
+    path = tmp_path / "trajectory.xyz"
+    calc._write_trajectory(path, reference, relaxed, {"structure_id": "A"})
+    saved = read(path, index=-1)
+    assert saved.get_potential_energy() == pytest.approx(-2.5)
+    np.testing.assert_array_equal(saved.get_forces(), np.zeros((1, 3)))
+    np.testing.assert_array_equal(saved.get_stress(), np.zeros(6))
+    assert calculator.calls == calls

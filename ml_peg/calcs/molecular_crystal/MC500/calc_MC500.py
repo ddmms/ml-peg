@@ -8,6 +8,8 @@ from typing import Any
 from warnings import warn
 
 from ase import Atoms
+from ase.calculators.calculator import all_properties
+from ase.calculators.singlepoint import SinglePointCalculator
 from ase.constraints import FixSymmetry
 from ase.filters import FrechetCellFilter
 from ase.io import write
@@ -94,8 +96,15 @@ def relax_crystal(
     max_force = float(np.linalg.norm(filtered.get_forces(), axis=1).max())
 
     relaxed = atoms.copy()
-    relaxed.calc = None
     relaxed.set_constraint()
+    relaxed.calc = SinglePointCalculator(
+        relaxed,
+        **{
+            key: value
+            for key, value in atoms.calc.results.items()
+            if key in all_properties
+        },
+    )
     return relaxed, converged, optimizer.nsteps, max_force
 
 
@@ -120,7 +129,9 @@ def _write_trajectory(
         Metadata to store on both trajectory frames.
     """
     reference = reference.copy()
+    results = relaxed.calc.results if relaxed.calc is not None else {}
     relaxed = relaxed.copy()
+    relaxed.calc = SinglePointCalculator(relaxed, **results)
     reference.info = metadata | {"frame": "r2SCAN+MBD reference"}
     relaxed.info = metadata | {"frame": "MLIP relaxed"}
     path.parent.mkdir(parents=True, exist_ok=True)
