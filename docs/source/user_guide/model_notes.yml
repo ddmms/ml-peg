@@ -642,7 +642,7 @@ models:
       - **Citation:** Wood et al. (2025).
         `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
       - **Dataset:** Gharakhanyan et al. (2026).
-        `Open Molecular Crystals 2025 (OMC25) dataset and models <https://arxiv.org/abs/2508.02651>`__,
+        `Open Molecular Crystals 2025 (OMC25) dataset and models <https://doi.org/10.1038/s41597-026-06628-2>`__,
         Scientific Data 13, 354.
 
       .. details:: BibTeX
@@ -667,7 +667,7 @@ models:
       - **Citation:** Wood et al. (2025).
         `UMA: A Family of Universal Models for Atoms <https://papers.nips.cc/paper_files/paper/2025/hash/bbf23e81b0ad7637fe9a731d0b676ca6-Abstract-Conference.html>`__.
       - **Dataset:** Gharakhanyan et al. (2026).
-        `Open Molecular Crystals 2025 (OMC25) dataset and models <https://arxiv.org/abs/2508.02651>`__,
+        `Open Molecular Crystals 2025 (OMC25) dataset and models <https://doi.org/10.1038/s41597-026-06628-2>`__,
         Scientific Data 13, 354.
 
       .. details:: BibTeX
