@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.io import read, write
@@ -15,6 +17,7 @@ import pytest
 from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    clean_info,
     get_struct_info,
     load_metrics_config,
 )
@@ -121,24 +124,38 @@ def mc500_results() -> dict[str, dict[str, Any]]:
     """
     # Delay filesystem access until analysis runs, so importing the RMSCD helper
     # does not require benchmark outputs or write app data during test collection.
+    mock_csv = CALC_PATH / "mock" / "results.csv"
+    if not mock_csv.is_file():
+        raise ValueError("Missing MC500 reference manifest. Rerun mock.")
+    with mock_csv.open(encoding="utf-8") as f:
+        mock_rows = list(csv.DictReader(f))
+    expected_ids = [row["structure_id"] for row in mock_rows]
+    if (
+        not expected_ids
+        or len(set(expected_ids)) != len(expected_ids)
+        or any(
+            not row["structure_id"] or row.get("failure", "").strip()
+            for row in mock_rows
+        )
+    ):
+        raise ValueError("Invalid or failed MC500 reference manifest. Rerun mock.")
     info = get_struct_info(
         calc_path=CALC_PATH,
         glob_pattern="structures/*.xyz",
         index=0,
         include_filenames=True,
-        write_info=True,
+        write_info=False,
         write_structs=False,
         out_path=OUT_PATH,
     )
     structure_ids = info["filenames"]
-    mock_csv = CALC_PATH / "mock" / "results.csv"
-    if mock_csv.exists():
-        with mock_csv.open(encoding="utf-8") as f:
-            expected_ids = [row["structure_id"] for row in csv.DictReader(f)]
-        if len(expected_ids) != len(structure_ids) or set(expected_ids) != set(
-            structure_ids
-        ):
-            raise ValueError("Incomplete MC500 reference structures. Rerun mock.")
+    if len(expected_ids) != len(structure_ids) or set(expected_ids) != set(
+        structure_ids
+    ):
+        raise ValueError("Incomplete MC500 reference structures. Rerun mock.")
+    clean_info(info)
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    (OUT_PATH / "info.json").write_text(json.dumps(info, indent=1), encoding="utf-8")
 
     results: dict[str, dict[str, Any]] = {}
 
@@ -183,6 +200,23 @@ def mc500_results() -> dict[str, dict[str, Any]]:
                 and not row.get("failure", "").strip()
                 and trajectory_path.is_file()
             )
+            rmscd = rmscd_no_h = np.nan
+            if valid:
+                try:
+                    reference, relaxed = read(trajectory_path, index=":")
+                    rmscd, rmscd_no_h, _ = rms_cartesian_displacement(
+                        reference, relaxed
+                    )
+                    if not np.isfinite([rmscd, rmscd_no_h]).all():
+                        raise ValueError("Non-finite RMSCD")
+                except Exception as exc:
+                    warn(
+                        f"Invalid MC500 trajectory for {model_name}/{structure_id}: "
+                        f"{exc}",
+                        stacklevel=2,
+                    )
+                    valid = False
+                    rmscd = rmscd_no_h = np.nan
 
             model_results["structure_ids"].append(structure_id)
             model_results["refcodes"].append(refcode)
@@ -190,16 +224,11 @@ def mc500_results() -> dict[str, dict[str, Any]]:
             model_results["steps"].append(int(row.get("steps", 0)))
             model_results["max_force"].append(float(row.get("max_force", "nan")))
             model_results["n_converged"] += int(valid)
-
-            if not valid:
-                model_results["rmscd"].append(np.nan)
-                model_results["rmscd_no_h"].append(np.nan)
-                continue
-
-            reference, relaxed = read(trajectory_path, index=":")
-            rmscd, rmscd_no_h, _ = rms_cartesian_displacement(reference, relaxed)
             model_results["rmscd"].append(rmscd)
             model_results["rmscd_no_h"].append(rmscd_no_h)
+
+            if not valid:
+                continue
 
             # The reference is shared by every model, so it is written once to a
             # common directory, with only the metadata that identifies it.

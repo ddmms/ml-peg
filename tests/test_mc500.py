@@ -136,7 +136,16 @@ def test_read_mc500_cif_rejects_partial_occupancy(monkeypatch) -> None:
 
 
 @pytest.mark.parametrize(
-    "failure_mode", ["missing_row", "unconverged", "failed", "missing_xyz"]
+    "failure_mode",
+    [
+        "missing_row",
+        "unconverged",
+        "failed",
+        "missing_xyz",
+        "truncated",
+        "malformed",
+        "atom_mismatch",
+    ],
 )
 def test_analysis_preserves_reference_order_and_failed_results(
     tmp_path, monkeypatch, failure_mode
@@ -171,14 +180,27 @@ def test_analysis_preserves_reference_order_and_failed_results(
         }
         for structure_id in ("B", "A")
     ]
+    with (calc_path / "mock" / "results.csv").open("w") as stream:
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
     if failure_mode == "missing_row":
         rows.pop()
     elif failure_mode == "unconverged":
         rows[1]["converged"] = "False"
     elif failure_mode == "failed":
         rows[1]["failure"] = "RuntimeError: failed after optimization"
-    else:
+    elif failure_mode == "missing_xyz":
         (calc_path / "example" / "structures" / "A.xyz").unlink()
+    elif failure_mode == "truncated":
+        write(calc_path / "example" / "structures" / "A.xyz", atoms)
+    elif failure_mode == "malformed":
+        (calc_path / "example" / "structures" / "A.xyz").write_text("invalid xyz")
+    else:
+        write(
+            calc_path / "example" / "structures" / "A.xyz",
+            [atoms, Atoms("H", cell=[5] * 3, pbc=True)],
+        )
     with (calc_path / "example" / "results.csv").open("w") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
         writer.writeheader()
@@ -243,3 +265,43 @@ def test_failed_rerun_removes_old_trajectory(tmp_path, monkeypatch) -> None:
         calc.test_mc500_relaxation(("example", model))
     assert not trajectory.exists()
     assert "RuntimeError: optimization failed" in summary.read_text()
+
+
+@pytest.mark.parametrize(
+    "failure", ["missing_manifest", "missing_structure", "duplicate", "failed", "empty"]
+)
+def test_invalid_mock_does_not_publish_info(tmp_path, monkeypatch, failure):
+    """Incomplete references cannot shrink the dataset or replace app metadata."""
+    import csv
+
+    from ase.io import write
+
+    from ml_peg.analysis.molecular_crystal.MC500 import analyse_MC500 as analysis
+
+    mock = tmp_path / "calc" / "mock"
+    (mock / "structures").mkdir(parents=True)
+    atoms = Atoms("C", cell=[5] * 3, pbc=True)
+    write(mock / "structures" / "A.xyz", [atoms, atoms])
+    rows = [{"structure_id": "A", "failure": ""}]
+    if failure == "missing_structure":
+        rows.append({"structure_id": "B", "failure": ""})
+    elif failure == "duplicate":
+        rows.append(rows[0])
+    elif failure == "failed":
+        rows[0]["failure"] = "mock calculation failed"
+    elif failure == "empty":
+        rows = []
+    if failure != "missing_manifest":
+        with (mock / "results.csv").open("w") as stream:
+            writer = csv.DictWriter(stream, fieldnames=["structure_id", "failure"])
+            writer.writeheader()
+            writer.writerows(rows)
+    app = tmp_path / "app"
+    app.mkdir()
+    info = app / "info.json"
+    info.write_text("previous valid metadata")
+    monkeypatch.setattr(analysis, "CALC_PATH", tmp_path / "calc")
+    monkeypatch.setattr(analysis, "OUT_PATH", app)
+    with pytest.raises(ValueError, match="Rerun mock"):
+        analysis.mc500_results.__wrapped__()
+    assert info.read_text() == "previous valid metadata"
