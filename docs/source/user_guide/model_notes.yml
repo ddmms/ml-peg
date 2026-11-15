@@ -56,6 +56,29 @@ families:
     notes: |
       Model weights are licensed under CC BY 4.0.
 
+  SO3LR:
+    class_names: [So3lrCalculator]
+    notes: |
+      Install the original SO3LR backend with ``uv sync --extra so3lr`` using
+      Python 3.12 or 3.13. Its public source is pinned to an immutable revision.
+      Use the SO3LR and ``mlipaudit`` extras in separate environments because
+      their JAX/JAX-MD requirements differ.
+      This installs JAX for CPU; for NVIDIA GPUs install the matching JAX CUDA
+      plugin separately (for example ``uv pip install "jax[cuda12]==0.10.2"``
+      on a compatible CUDA 12 Linux system).
+      ``device: auto`` follows JAX's default backend; ``cpu`` and ``cuda`` select
+      an explicit backend and fail if it is unavailable. A ``:index`` suffix is
+      supported. Construction and subsequent ASE evaluations use that device.
+      Low/high precision requests map to float32/float64; ``overwrite_dtype``
+      overrides the mapping. A float64 request enables JAX x64 process-wide.
+      The entry explicitly selects ``model: so3lr``: the original eight-element
+      H/C/N/O/F/P/S/Cl model, not the current package's Tauri default.
+      Electrostatics and dispersion are already included; no D3 is added.
+      Periodic calculations use the configured 12 Angstrom real-space cutoff
+      and 2 Angstrom dispersion damping. Isolated systems use the backend's
+      nonperiodic long-range treatment. The original code and weights are MIT
+      licensed. SO3LR Tauri models are outside this entry's scope.
+
   Vivace:
     class_names: [MLFFCalculator]
 
@@ -800,3 +823,20 @@ models:
     docs_url: https://github.com/microsoft/simpoly#ase-quick-start
     source_url: https://github.com/microsoft/simpoly/tree/main/src/simpoly/vivace
     download_url: https://huggingface.co/microsoft/simpoly/tree/main/checkpoints
+
+  so3lr-v1:
+    docs_url: https://so3lr.github.io/usage/ase/
+    source_url: https://github.com/general-molecular-simulations/so3lr
+    download_url: https://github.com/general-molecular-simulations/so3lr/tree/900a0f04fcf09a3c5d56c6ea33f76f542333f487/so3lr/models/so3lr
+    notes: |
+      - **Citation:** Kabylda et al. (2025).
+        `Molecular Simulations with a Pretrained Neural Network and Universal Pairwise Force Fields <https://doi.org/10.1021/jacs.5c09558>`__.
+      - **Architecture:** Frank et al. (2024).
+        `A Euclidean transformer for fast and stable machine learned force fields <https://doi.org/10.1038/s41467-024-50620-6>`__.
+
+      .. details:: BibTeX
+
+         .. literalinclude:: model_references.bib
+            :language: bibtex
+            :start-after: % begin so3lr %
+            :end-before: % end so3lr %

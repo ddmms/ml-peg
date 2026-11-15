@@ -18,6 +18,7 @@ from ml_peg.models.models import (
     NequIPCalc,
     OrbCalc,
     SevenNetCalc,
+    SO3LRCalc,
     TaceCalc,
     TorchMDNetCalc,
     UPETCalc,
@@ -39,6 +40,7 @@ WRAPPERS = {
     "MatterSimCalculator": MatterSimCalc,
     "UPETCalculator": UPETCalc,
     "SevenNetCalculator": SevenNetCalc,
+    "So3lrCalculator": SO3LRCalc,
     "TACEAseCalc": TaceCalc,
     "TMDNETCalculator": TorchMDNetCalc,
     "MLFFCalculator": VivaceCalc,
@@ -149,7 +151,12 @@ def test_unknown_precision_rejected():
 
 #: Wrappers that apply the configured device themselves, rather than passing it to
 #: the calculator they build, so it need not be an argument of that calculator.
-DEVICE_HANDLED_BY_WRAPPER = ("ORBCalculator", "FAIRChemCalculator", "MLFFCalculator")
+DEVICE_HANDLED_BY_WRAPPER = (
+    "ORBCalculator",
+    "FAIRChemCalculator",
+    "MLFFCalculator",
+    "So3lrCalculator",
+)
 
 
 @pytest.mark.parametrize("name", REGISTRY)

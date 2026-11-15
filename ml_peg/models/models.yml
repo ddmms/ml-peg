@@ -628,3 +628,17 @@ Vivace:
   level_of_theory: r2SCAN+D3
   kwargs:
     model_path: null
+
+# Original SO3LR checkpoint; explicitly avoid the package's Tauri default.
+so3lr-v1:
+  module: so3lr
+  class_name: So3lrCalculator
+  device: auto
+  trained_on_dispersion: true
+  additional_supported_elements: [H, C, N, O, F, P, S, Cl]
+  level_of_theory: PBE0+MBD
+  kwargs:
+    model: so3lr
+    calculate_stress: true
+    lr_cutoff: 12.0
+    dispersion_energy_cutoff_lr_damping: 2.0

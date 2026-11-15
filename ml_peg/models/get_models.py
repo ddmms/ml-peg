@@ -324,6 +324,7 @@ def load_models(
         NequIPCalc,
         OrbCalc,
         SevenNetCalc,
+        SO3LRCalc,
         TaceCalc,
         TorchMDNetCalc,
         UPETCalc,
@@ -416,6 +417,16 @@ def load_models(
                 )
             case "MatterSimCalculator":
                 loaded_models[name] = MatterSimCalc(
+                    module=cfg["module"],
+                    class_name=cfg["class_name"],
+                    device=cfg.get("device", "auto"),
+                    default_dtype=cfg.get("overwrite_dtype", None),
+                    kwargs=cfg.get("kwargs", {}),
+                    trained_on_dispersion=cfg.get("trained_on_dispersion", False),
+                    dispersion_kwargs=cfg.get("dispersion_kwargs", {}),
+                )
+            case "So3lrCalculator":
+                loaded_models[name] = SO3LRCalc(
                     module=cfg["module"],
                     class_name=cfg["class_name"],
                     device=cfg.get("device", "auto"),

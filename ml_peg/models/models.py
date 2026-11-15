@@ -1274,6 +1274,104 @@ class MockCalc(SumCalc):
 
 
 @dataclasses.dataclass(kw_only=True)
+class SO3LRCalc(SumCalc):
+    """SO3LR ASE calculator with explicit JAX precision and device placement."""
+
+    module: str = "so3lr"
+    class_name: str = "So3lrCalculator"
+    device: str | None = "auto"
+    default_dtype: str | None = None
+    kwargs: dict = dataclasses.field(default_factory=dict)
+
+    def get_calculator(self, *, precision: Precision, **kwargs) -> Calculator:
+        """
+        Load SO3LR and keep its ASE evaluations on the selected JAX device.
+
+        Parameters
+        ----------
+        precision
+            Map low/high precision to float32/float64, unless overwrite_dtype is set.
+        **kwargs
+            Calculator options overriding the configured constructor arguments.
+
+        Returns
+        -------
+        Calculator
+            SO3LR ASE calculator with its original public API preserved.
+
+        Raises
+        ------
+        ValueError
+            If a dtype, device or configured constructor argument is unsupported.
+        RuntimeError
+            If the explicitly requested JAX device is unavailable.
+        """
+        check_precision(precision)
+        dtype = self.default_dtype or {"low": "float32", "high": "float64"}[precision]
+        if dtype not in ("float32", "float64"):
+            raise ValueError("SO3LR overwrite_dtype must be float32 or float64")
+
+        # Lazy imports let the registry and analysis work without this extra installed.
+        import jax
+
+        if dtype == "float64":
+            jax.config.update("jax_enable_x64", True)
+
+        requested = self.device or "auto"
+        if requested == "auto":
+            selected = jax.devices()[0]
+        else:
+            backend, _, index = requested.partition(":")
+            if backend not in ("cpu", "cuda", "gpu") or (index and not index.isdigit()):
+                raise ValueError("SO3LR device must be auto, cpu, cuda or gpu[:index]")
+            try:
+                devices = jax.devices("gpu" if backend in ("cuda", "gpu") else "cpu")
+                selected = devices[int(index or 0)]
+            except (RuntimeError, IndexError) as exc:
+                raise RuntimeError(
+                    f"SO3LR JAX device {requested!r} is unavailable"
+                ) from exc
+
+        target = import_calculator(self.module, self.class_name)
+        options = {**self.kwargs, **kwargs}
+        check_kwargs(
+            options,
+            target,
+            self.class_name,
+            reserved=("device", "default_dtype", "dtype", "precision"),
+        )
+        with jax.default_device(selected):
+            calculator = target(precision=dtype, **options)
+
+        # SO3LR has no device constructor argument. Creation alone is insufficient:
+        # later geometry/neighbour arrays must also use the selected default device.
+        calculate = calculator.calculate
+
+        @wraps(calculate)
+        def calculate_on_device(*args, **calc_kwargs):
+            """
+            Evaluate ASE properties under the calculator's JAX device context.
+
+            Parameters
+            ----------
+            *args
+                Positional arguments forwarded to the backend ASE calculation.
+            **calc_kwargs
+                Keyword arguments forwarded to the backend ASE calculation.
+
+            Returns
+            -------
+            None
+                Results are stored on the backend calculator.
+            """
+            with jax.default_device(selected):
+                return calculate(*args, **calc_kwargs)
+
+        calculator.calculate = calculate_on_device
+        return calculator
+
+
+@dataclasses.dataclass(kw_only=True)
 class UPETCalc(GenericASECalc):
     """Dataclass for upet (PET-MAD / PET-OAM) calculator."""
 
