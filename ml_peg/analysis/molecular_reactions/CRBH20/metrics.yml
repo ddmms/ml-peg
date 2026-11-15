@@ -2,7 +2,8 @@ metrics:
   MAE:
     tooltip: "Mean Absolute Error of reaction barrier heights"
     unit: kcal/mol
-    level_of_theory: PBE+D3
+    level_of_theory: PBE
+    dispersion_method: D3
     good: 1.0
     bad: 3.0
     weight: 1.0

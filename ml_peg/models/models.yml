@@ -5,7 +5,8 @@ aceff-2p0:
   additional_supported_elements: ["H", "B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "Br", "I"]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPPD
+  level_of_theory: ωB97M/def2-TZVPPD
+  dispersion_method: VV10
   kwargs:
     repo_id: "Acellera/AceFF-2.0"
     filename: "aceff_v2.0.ckpt"
@@ -18,6 +19,7 @@ aimnet2:
   device: "auto"
   trained_on_dispersion: true
   level_of_theory: ωB97M/def2-TZVPP
+  dispersion_method: D3
   kwargs:
     # Alias for ensemble member 0 (aimnet2-wb97m-d3_0), not the 4-member ensemble average.
     model: "aimnet2"
@@ -29,6 +31,7 @@ aimnet2-2025:
   device: "auto"
   trained_on_dispersion: true
   level_of_theory: B97-3c
+  dispersion_method: D3
   kwargs:
     # Alias for ensemble member 0 (aimnet2-b973c-2025-d3_0), not the 4-member ensemble average.
     model: "aimnet2-2025"
@@ -187,7 +190,8 @@ mace-mh-1-omol:
   datasets: [OMAT, OMol25, OC20, MatPES-PBE, MatPES-r2SCAN]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M/def2-TZVPD
+  dispersion_method: VV10
   kwargs:
     model: "mh-1"
     head: omol
@@ -228,7 +232,8 @@ mace-off-23-L:
   datasets: [SPICE]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: "ωB97M-D3(BJ)/def2-TZVPPD"
+  level_of_theory: ωB97M/def2-TZVPPD
+  dispersion_method: D3
   kwargs:
     model: large
 
@@ -237,7 +242,8 @@ mace-off-24-M:
   class_name: mace_off
   datasets: [SPICE2]
   device: "auto"
-  level_of_theory: "ωB97M-D3(BJ)/def2-TZVPPD"
+  level_of_theory: ωB97M/def2-TZVPPD
+  dispersion_method: D3
   trained_on_dispersion: true
   kwargs:
     model: "https://raw.githubusercontent.com/ACEsuit/mace-off/main/mace_off24/MACE-OFF24_medium.model"
@@ -258,7 +264,8 @@ mace-omol:
   datasets: [OMol25]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M/def2-TZVPD
+  dispersion_method: VV10
   kwargs:
     model: "extra_large"
 
@@ -268,7 +275,8 @@ mace-polar-1-l:
   datasets: [OMol25]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V
+  level_of_theory: ωB97M
+  dispersion_method: VV10
   kwargs:
     model: "polar-1-l"
 
@@ -278,7 +286,8 @@ mace-polar-1-m:
   datasets: [OMol25]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V
+  level_of_theory: ωB97M
+  dispersion_method: VV10
   kwargs:
     model: "polar-1-m"
 
@@ -288,7 +297,8 @@ mace-polar-1-s:
   datasets: [OMol25]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V
+  level_of_theory: ωB97M
+  dispersion_method: VV10
   kwargs:
     model: "polar-1-s"
 
@@ -412,7 +422,8 @@ orb-v3-consv-omol:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Rf", "Db", "Sg", "Bh", "Hs", "Mt", "Ds", "Rg", "Cn", "Nh", "Fl", "Mc", "Lv", "Ts", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm", "Md", "No", "Lr"]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M/def2-TZVPD
+  dispersion_method: VV10
   kwargs:
     name: "orb_v3_conservative_omol"
 
@@ -525,7 +536,8 @@ uma-m-1p1-omol:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M/def2-TZVPD
+  dispersion_method: VV10
   kwargs:
     model_name: "uma-m-1p1"
     task_name: "omol"
@@ -549,7 +561,8 @@ uma-s-1p1-omol:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M/def2-TZVPD
+  dispersion_method: VV10
   kwargs:
     model_name: "uma-s-1p1"
     task_name: "omol"
@@ -561,7 +574,8 @@ uma-s-1p2-omol:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M/def2-TZVPD
+  dispersion_method: VV10
   kwargs:
     model_name: "uma-s-1p2"
     task_name: "omol"
@@ -573,7 +587,8 @@ uma-s-1p2p1-ft-d4rev:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-D4rev/def2-TZVPD
+  level_of_theory: ωB97M/def2-TZVPD
+  dispersion_method: D4
   kwargs:
     model_name: "uma-s-1p2p1-ft-d4rev"
     task_name: "omol"
@@ -613,7 +628,8 @@ uma-s-1p2p1-omol:
   additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
   device: "auto"
   trained_on_dispersion: true
-  level_of_theory: ωB97M-V/def2-TZVPD
+  level_of_theory: ωB97M/def2-TZVPD
+  dispersion_method: VV10
   kwargs:
     model_name: "uma-s-1p2p1"
     task_name: "omol"
@@ -625,6 +641,7 @@ Vivace:
   datasets: [OMol25, PolyCrop, PolyPack, PolyDiss]
   device: "cuda"  # SimPoly only supports CUDA
   trained_on_dispersion: true
-  level_of_theory: r2SCAN+D3
+  level_of_theory: r2SCAN
+  dispersion_method: D3
   kwargs:
     model_path: null
