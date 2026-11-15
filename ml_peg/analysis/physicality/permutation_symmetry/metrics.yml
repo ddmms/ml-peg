@@ -1,0 +1,25 @@
+metrics:
+  Mean ΔE (all permutations):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Mean absolute energy change per atom after permuting identical atoms, averaged over permutations for each structure, then over 10 diverse structures with equal weight"
+    level_of_theory: null
+  Max ΔE (all permutations):
+    good: 0.0
+    bad: 1.0
+    unit: meV/atom
+    tooltip: "Worst-case (max) absolute energy change per atom over all permutations of identical atoms in all 10 diverse structures"
+    level_of_theory: null
+  Mean ΔF (all permutations):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Largest absolute force component change after permuting identical atoms, averaged over permutations for each structure, then over 10 diverse structures with equal weight"
+    level_of_theory: null
+  Max ΔF (all permutations):
+    good: 0.0
+    bad: 1.0
+    unit: meV/Å
+    tooltip: "Worst-case (max) of the largest absolute force component change over all permutations of identical atoms in all 10 diverse structures"
+    level_of_theory: null
