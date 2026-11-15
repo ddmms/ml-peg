@@ -11,6 +11,8 @@ from warnings import warn
 
 import yaml
 
+from ml_peg.models.methods import method_metadata
+
 #: Keys that may be set for a model in models.yml. Anything else would be ignored.
 MODEL_KEYS = frozenset(
     {
@@ -20,6 +22,7 @@ MODEL_KEYS = frozenset(
         "datasets",
         "additional_supported_elements",
         "level_of_theory",
+        "dispersion_method",
         "overwrite_dtype",
         "trained_on_dispersion",
         "dispersion_kwargs",
@@ -173,6 +176,17 @@ def validate_config(name: str, cfg: dict[str, Any]) -> None:
         )
 
     validate_elements(name, cfg)
+
+    method = method_metadata(
+        cfg.get("level_of_theory"),
+        cfg.get("dispersion_method"),
+        trained_on_dispersion=cfg.get("trained_on_dispersion"),
+    )
+    scheme = method["dispersion"]
+    if scheme is not None and (scheme != "none") != cfg["trained_on_dispersion"]:
+        raise ValueError(
+            f"'{name}' has inconsistent dispersion_method and trained_on_dispersion"
+        )
 
     dispersion_kwargs = cfg.get("dispersion_kwargs") or {}
     if unknown := sorted(set(dispersion_kwargs) - DISPERSION_KWARGS):
