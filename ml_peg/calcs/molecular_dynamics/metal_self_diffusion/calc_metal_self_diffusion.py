@@ -260,9 +260,12 @@ def test_metal_self_diffusion(mlip: tuple[str, Any], system) -> None:
     """
     model_name, model = mlip
 
-    data_path = download_s3_data(
-        filename="metal_self_diffusion.zip",
-        key="inputs/molecular_dynamics/metal_self_diffusion",
+    data_path = (
+        download_s3_data(
+            key="inputs/molecular_dynamics/metal_self_diffusion/metal_self_diffusion.zip",
+            filename="metal_self_diffusion.zip",
+        )
+        / "metal_self_diffusion"
     )
 
     input_path = sorted(data_path.glob("*.xyz"))[system]
