@@ -609,8 +609,9 @@ def _load_nequip_calculator(
     for kernel in kernels:
         try:
             importlib.import_module(_NEQUIP_KERNEL_PACKAGES[kernel])
-            # swapped-in modules may be built on the CPU:
-            eager.model = modify(eager.model, [{"modifier": kernel}]).to(device)
+            # swapped-in modules may be built on the CPU, and start in training mode,
+            # where e.g. Allegro's Triton contracter is not used (hence .eval()):
+            eager.model = modify(eager.model, [{"modifier": kernel}]).to(device).eval()
             break
         except Exception as error:
             warn(

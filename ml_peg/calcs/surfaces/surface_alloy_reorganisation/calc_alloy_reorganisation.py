@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from itertools import product
 from pathlib import Path
 from typing import Any
 from warnings import warn
 
-from ase import units
 from ase.io import read, write
 import numpy as np
 import pytest
+from tqdm import tqdm
 
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
@@ -20,8 +21,48 @@ MODELS = load_models(current_models)
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
 
-# Unit conversion
-EV_TO_KJ_PER_MOL = units.mol / units.kJ
+HOSTS = ["Ag", "Cu"]
+MECHANISMS = [
+    "diffusion_over_step",
+    "step_lift_in",
+    "terrace_pop_in",
+    "terrace_slide_in",
+    "vacancy_mediated_diffusion",
+]
+STATES = ["initial_state", "final_state", "transition_state"]
+ALL_ELEMENTS = ["Ag", "Cu", "Mo", "Nb", "Pd", "Rh", "Ru", "Tc", "Y", "Zr"]
+# Host/mechanism pairs for which only a subset of elements is available
+ELEMENTS_SUBSETS = {
+    ("Cu", "diffusion_over_step"): ["Ag", "Cu", "Nb", "Pd", "Rh", "Ru", "Tc", "Zr"],
+    ("Ag", "diffusion_over_step"): [
+        "Ag",
+        "Cu",
+        "Mo",
+        "Nb",
+        "Pd",
+        "Rh",
+        "Ru",
+        "Tc",
+        "Zr",
+    ],
+    ("Cu", "step_lift_in"): ["Cu", "Mo", "Nb", "Pd", "Rh", "Ru", "Tc", "Y", "Zr"],
+}
+
+
+def get_systems() -> list[tuple[str, str, str, str]]:
+    """
+    Get all (host, mechanism, state, element) combinations in the dataset.
+
+    Returns
+    -------
+    list[tuple[str, str, str, str]]
+        Host, mechanism, state and element for every structure to evaluate.
+    """
+    return [
+        (host, mechanism, state, element)
+        for host, mechanism, state in product(HOSTS, MECHANISMS, STATES)
+        for element in ELEMENTS_SUBSETS.get((host, mechanism), ALL_ELEMENTS)
+    ]
 
 
 @pytest.mark.fast
@@ -38,7 +79,7 @@ def test_surface_alloy_reorganisation(mlip: tuple[str, Any]) -> None:
     model_name, model = mlip
     calc = model.get_calculator(precision="high")
 
-    # Download X23 dataset
+    # Download surface alloy reorganisation dataset
     surface_alloy_reorganisation_dir = (
         download_s3_data(
             key="inputs/surface_alloy_reorganisation/surface_alloy_reorganisation.zip",
@@ -47,95 +88,49 @@ def test_surface_alloy_reorganisation(mlip: tuple[str, Any]) -> None:
         / "surface_alloy_reorganisation"
     )
 
-    hosts_list = ["Ag", "Cu"]
-    mechanisms_list = [
-        "diffusion_over_step",
-        "step_lift_in",
-        "terrace_pop_in",
-        "terrace_slide_in",
-        "vacancy_mediated_diffusion",
-    ]
-    states_list = ["initial_state", "final_state", "transition_state"]
+    write_dir = OUT_PATH / model_name
+    write_dir.mkdir(parents=True, exist_ok=True)
 
-    for host in hosts_list:
-        for mechanism in mechanisms_list:
-            # Ignore trivial calculations of reaction energy
+    progress = tqdm(get_systems(), desc=f"{model_name} surface alloy reorganisation")
+    for host, mechanism, state, element in progress:
+        filename = f"{host}_{mechanism}_{state}_{element}"
+        progress.set_postfix_str(filename)
 
-            for state in states_list:
-                if host == "Cu" and mechanism == "diffusion_over_step":
-                    elements_list = ["Ag", "Cu", "Nb", "Pd", "Rh", "Ru", "Tc", "Zr"]
-                elif host == "Ag" and mechanism == "diffusion_over_step":
-                    elements_list = [
-                        "Ag",
-                        "Cu",
-                        "Mo",
-                        "Nb",
-                        "Pd",
-                        "Rh",
-                        "Ru",
-                        "Tc",
-                        "Zr",
-                    ]
-                elif host == "Cu" and mechanism == "step_lift_in":
-                    elements_list = [
-                        "Cu",
-                        "Mo",
-                        "Nb",
-                        "Pd",
-                        "Rh",
-                        "Ru",
-                        "Tc",
-                        "Y",
-                        "Zr",
-                    ]
-                else:
-                    elements_list = [
-                        "Ag",
-                        "Cu",
-                        "Mo",
-                        "Nb",
-                        "Pd",
-                        "Rh",
-                        "Ru",
-                        "Tc",
-                        "Y",
-                        "Zr",
-                    ]
+        path_init = surface_alloy_reorganisation_dir / host / mechanism / state / element
 
-                for element in elements_list:
-                    path_init = (
-                        surface_alloy_reorganisation_dir
-                        / host
-                        / mechanism
-                        / state
-                        / element
-                    )
+        # Missing or unreadable inputs leave no output file, which analysis maps
+        # to NaN for every observable that depends on this structure.
+        try:
+            slab = read(path_init / "POSCAR", index=0, format="vasp")
+        except Exception as exc:
+            warn(
+                f"Failed to read structure for {model_name} {filename}: {exc}",
+                stacklevel=2,
+            )
+            continue
 
-                    structure_path = path_init / "POSCAR"
-                    initial_energy_ref_path = path_init / "pot_en"
+        try:
+            ref = float(np.loadtxt(path_init / "pot_en"))
+        except Exception as exc:
+            warn(
+                f"Failed to read reference energy for {model_name} {filename}: {exc}",
+                stacklevel=2,
+            )
+            ref = np.nan
 
-                    slab = read(structure_path, index=0, format="vasp")
+        slab.info["charge"] = 0
+        slab.info["spin"] = 1
+        slab.calc = calc
 
-                    slab.info["charge"] = 0
-                    slab.info["spin"] = 1
-                    slab.calc = calc
+        try:
+            slab.get_potential_energy()
+        except Exception as exc:
+            warn(f"Error calculating {model_name} {filename}: {exc}", stacklevel=2)
+            slab.calc = None
+            slab.info["energy"] = np.nan
 
-                    try:
-                        slab.get_potential_energy()
-                    except Exception as exc:
-                        warn(f"Error calculating {model_name}: {exc}", stacklevel=2)
-                        slab.info["energy"] = np.nan
+        slab.info["ref"] = ref
+        slab.info["system"] = f"{host}_{mechanism}_{element}"
 
-                    ref = np.loadtxt(initial_energy_ref_path)
-
-                    filename = f"{host}_{mechanism}_{state}_{element}"
-
-                    identifier = f"{host}_{mechanism}_{element}"
-
-                    slab.info["ref"] = ref
-                    slab.info["system"] = identifier
-
-                    # Write output structures
-                    write_dir = OUT_PATH / model_name
-                    write_dir.mkdir(parents=True, exist_ok=True)
-                    write(write_dir / f"{filename}.xyz", slab)
+        # Write output structures
+        write(write_dir / f"{filename}.xyz", slab)

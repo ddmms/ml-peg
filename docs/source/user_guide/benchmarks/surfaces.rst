@@ -393,6 +393,7 @@ Reference data:
 
 * PBE conjugate gradient geomerty optimizations are performed via VASP, with a cutoff energy of 500 eV.
 
+
 Surface Alloy Reorganisation
 =============================
 
@@ -417,7 +418,7 @@ Metrics
 Benchmark speed
 ------------------
 
-Fast: tests are likely to take less than a minute. A test of mace-mh-1-omat model on a NVIDIA GeForce RTX 5080 GPU. 
+Fast: tests are likely to take roughly a minute (about 20 seconds on a NVIDIA GeForce RTX 5080 for mace-mh-1-omat).
 
 Data availability
 -----------------
