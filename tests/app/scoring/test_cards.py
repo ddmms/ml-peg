@@ -32,16 +32,23 @@ def test_initial_expansion_preferences(ready_page, page_errors, expanded):
         visit(page, path, table)
         expect(page.locator(".mlpeg-bench-header")).to_have_count(2)
         expect(page.locator(".mlpeg-bench-header--open")).to_have_count(
-            2 if expanded else 1
+            2 if expanded else 0
         )
-        expect(page.locator("#B1-table")).to_be_visible()
+        expect(page.locator("#B1-table")).to_have_count(1 if expanded else 0)
         expect(page.locator("#B2-table")).to_have_count(1 if expanded else 0)
+
+    page.reload()
+    expect(page.locator(".mlpeg-bench-header")).to_have_count(2)
+    expect(page.locator(".mlpeg-bench-header--open")).to_have_count(
+        2 if expanded else 0
+    )
 
 
 def test_collapse_preference_survives_navigation(ready_page, page_errors):
     """Collapse all survives navigation, cached-page revisits and reloads."""
     page = ready_page
     visit(page, "/category/alpha", "Alpha-summary-table")
+    page.get_by_role("button", name="B1", exact=True).click()
     expect(page.locator("#B1-table")).to_be_visible()
     page.locator("#collapse-all-benchmarks").click()
     expect(page.locator(".mlpeg-bench-header--open")).to_have_count(0)
@@ -70,6 +77,7 @@ def test_individual_toggle_sends_only_expansion_state(ready_page, page_errors):
     page = ready_page
     visit(page, "/category/alpha", "Alpha-summary-table")
     header = page.get_by_role("button", name="B1", exact=True)
+    header.click()
     expect(page.locator("#B1-table")).to_be_visible()
 
     for before, after in [("true", "false"), ("false", "true")]:

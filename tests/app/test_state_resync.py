@@ -12,7 +12,7 @@ after the paint (the store write-back must not chain a stale re-render).
 
 from __future__ import annotations
 
-from conftest import set_model_visible
+from conftest import expand_benchmark, set_model_visible
 from playwright.sync_api import Page, expect
 
 TIMEOUT = 60_000
@@ -48,6 +48,7 @@ def _goto_ionpi19(page: Page) -> None:
     # Target the benchmark's own category by href: several categories are
     # built now, so the first link in the nav is not this one.
     page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
+    expand_benchmark(page, "IONPI19")
     expect(page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
 
 

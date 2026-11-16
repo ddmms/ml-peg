@@ -7,7 +7,7 @@ theming/settings work. Card controls and expansion preferences are also covered 
 
 from __future__ import annotations
 
-from conftest import wait_for_app_ready
+from conftest import expand_benchmark, wait_for_app_ready
 from playwright.sync_api import Page, expect
 
 TIMEOUT = 60_000
@@ -22,6 +22,7 @@ def _open_settings(page: Page) -> None:
 def _goto_category(page: Page) -> None:
     """Open the test category page and wait for the benchmark table."""
     page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
+    expand_benchmark(page, "IONPI19")
     expect(page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
 
 
@@ -192,6 +193,7 @@ def test_lazily_mounted_plot_follows_dark_theme(ready_page: Page) -> None:
     ready_page.locator(
         '#sidebar-nav a[href="/category/non-covalent-interactions"]'
     ).click()
+    expand_benchmark(ready_page, "IONPI19")
     expect(ready_page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
     ready_page.locator('#IONPI19-table td[data-dash-column="MAE"]').first.click()
 
@@ -263,12 +265,21 @@ def test_persisted_colour_scheme_applies_to_table_on_reload(
     )
     ready_page.reload()
     wait_for_app_ready(ready_page)
+    expand_benchmark(ready_page, "IONPI19")
     expect(ready_page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
 
-    after = _mae_cell_colours(ready_page)
-    assert after != before, (
-        "benchmark table kept the default colormap after reload; the persisted "
-        "colour scheme was not applied"
+    # Lazy mounting shows the initial table before its persisted-state callback
+    # finishes. Wait for that callback's visible result, not just the table DOM.
+    ready_page.wait_for_function(
+        """before => {
+            const cells = document.querySelectorAll(
+                '#IONPI19-table td[data-dash-column="MAE"]');
+            const colours = [...cells].map(el => getComputedStyle(el).backgroundColor);
+            return colours.length > 0 &&
+                JSON.stringify(colours) !== JSON.stringify(before);
+        }""",
+        arg=before,
+        timeout=TIMEOUT,
     )
 
 

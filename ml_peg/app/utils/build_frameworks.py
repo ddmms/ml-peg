@@ -189,7 +189,7 @@ def build_framework_page_layout(
         Framework page metadata with grouped benchmark layouts by category.
     expand_pref
         Persisted preference: ``"expanded"`` opens every card, ``"collapsed"``
-        closes every card, and ``None`` opens only the first card on the page.
+        closes every card, and ``None`` defaults to collapsed.
 
     Returns
     -------
@@ -274,10 +274,9 @@ def build_framework_page_layout(
 
     # Wrap each benchmark in a lazy-mounted collapsible card so heavy framework
     # pages (e.g. MACE-POLAR-1 with many benchmarks) hydrate instantly instead of
-    # rendering every benchmark up front. Only the first card on the page opens by
-    # default, unless the user has saved an expanded or collapsed preference.
+    # rendering every benchmark up front. Cards start collapsed unless the user
+    # has saved an expanded preference.
     sections = []
-    card_index = 0
     for category_name, tests in benchmarks_by_category.items():
         sections.append(
             Div(
@@ -306,11 +305,9 @@ def build_framework_page_layout(
                 build_benchmark_card(
                     name,
                     layout,
-                    open_default=expand_pref == "expanded"
-                    or (expand_pref is None and card_index == 0),
+                    open_default=expand_pref == "expanded",
                 )
             )
-            card_index += 1
         # Same grid class as category pages: an implicit `auto` track sizes to
         # max-content, so a wide benchmark table would stretch the track and the
         # .mlpeg-table-scroll wrapper inside it would have nothing to scroll

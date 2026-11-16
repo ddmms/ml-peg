@@ -33,7 +33,7 @@ def test_search_shows_no_matches(ready_page: Page) -> None:
 
 def test_search_result_opens_collapsed_benchmark(ready_page: Page) -> None:
     """Picking a benchmark navigates to its category and expands its card."""
-    # this benchmark is not the first card on its page, so it starts collapsed
+    # Benchmark cards start collapsed, so search must open the target.
     ready_page.locator("#sidebar-search").fill("oxid")
     ready_page.locator(
         '.mlpeg-search-result[href="/category/physicality#Iron%20Oxidation%20States"]'

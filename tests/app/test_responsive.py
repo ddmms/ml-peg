@@ -10,7 +10,7 @@ deliberately un-pinned on phones (<=768px) so the whole table can scroll.
 
 from __future__ import annotations
 
-from conftest import wait_for_app_ready
+from conftest import expand_benchmark, wait_for_app_ready
 from playwright.sync_api import Page, expect
 import pytest
 
@@ -63,6 +63,7 @@ def _open_category(page: Page) -> None:
     # Target the benchmark's own category by href: several categories are built
     # now, and the first link in the nav is not this one.
     page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
+    expand_benchmark(page, "IONPI19")
     expect(page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
 
 

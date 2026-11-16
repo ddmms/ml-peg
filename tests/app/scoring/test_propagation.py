@@ -16,9 +16,21 @@ B = "mace-mp-0b3"
 
 
 def visit(page, path):
-    """Use SPA navigation, retaining the same browser session."""
+    """Navigate and open the benchmark used by the scoring checks."""
     page.locator(f'#sidebar-nav a[href="{path}"]').first.click()
     expect(page.locator("#page-content h1").first).to_be_visible()
+    if path != "/":
+        group = path.rsplit("/", 1)[-1]
+        summary = (
+            f"{group}-framework-summary-table"
+            if path.startswith("/framework/")
+            else f"{group.title()}-summary-table"
+        )
+        expect(page.locator(f'[id="{summary}"]')).to_be_visible()
+        header = page.locator(".mlpeg-bench-header").first
+        if header.get_attribute("aria-expanded") != "true":
+            header.click()
+        expect(header).to_have_attribute("aria-expanded", "true")
 
 
 def edit(page, field, value):
@@ -123,6 +135,7 @@ def test_weight_threshold_and_navigation(ready_page, page_errors):
     page.locator(".mlpeg-bench-header").first.click()
     score(page, "B1-table", 0.725)
     page.reload()
+    page.get_by_role("button", name="B1", exact=True).click()
     score(page, "B1-table", 0.725)
 
 

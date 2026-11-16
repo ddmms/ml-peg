@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from conftest import wait_for_app_ready  # noqa: F401
+from conftest import expand_benchmark, wait_for_app_ready  # noqa: F401
 from playwright.sync_api import Page, expect
 
 TIMEOUT = 60_000
@@ -44,6 +44,7 @@ def _open_menu(page: Page) -> None:
         Loaded, hydrated page.
     """
     page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
+    expand_benchmark(page, "IONPI19")
     expect(page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
 
     # The parity plot is dispatched by clicking a metric cell, not a model name.

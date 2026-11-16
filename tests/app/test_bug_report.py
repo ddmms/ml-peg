@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from conftest import expand_benchmark
 from playwright.sync_api import Page, expect
 import pytest
 
@@ -115,6 +116,7 @@ def test_report_dialog_preserves_scrolled_view(ready_page: Page) -> None:
     ready_page.locator(
         '#sidebar-nav a[href="/category/non-covalent-interactions"]'
     ).click()
+    expand_benchmark(ready_page, "IONPI19")
     expect(ready_page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
     ready_page.evaluate("window.scrollTo(0, 600)")
     before = ready_page.evaluate("window.scrollY")
@@ -174,6 +176,7 @@ def test_empty_report_can_open_github_with_page_details(ready_page: Page) -> Non
 def test_report_includes_benchmark_curve_selection(ready_page: Page) -> None:
     """Record benchmark dropdown labels so a selected curve can be reproduced."""
     ready_page.locator('#sidebar-nav a[href="/category/bulk-crystals"]').click()
+    expand_benchmark(ready_page, "Iron Properties")
     curve = ready_page.locator('[id="Iron Properties-curve-dropdown"]')
     expect(curve).to_be_visible(timeout=TIMEOUT)
     curve.click()

@@ -94,6 +94,24 @@ def wait_for_app_ready(page, timeout: int = READY_TIMEOUT) -> None:  # noqa: ANN
     )
 
 
+def expand_benchmark(page, name: str) -> None:  # noqa: ANN001
+    """
+    Open a benchmark card unless it is already expanded.
+
+    Parameters
+    ----------
+    page
+        Playwright page containing the benchmark card.
+    name
+        Benchmark display name shown on the card header.
+    """
+    header = page.get_by_role("button", name=name, exact=True)
+    expect(header).to_be_visible(timeout=READY_TIMEOUT)
+    if header.get_attribute("aria-expanded") != "true":
+        header.click()
+    expect(header).to_have_attribute("aria-expanded", "true", timeout=READY_TIMEOUT)
+
+
 def set_model_visible(page, model: str, visible: bool) -> None:  # noqa: ANN001
     """
     Show or hide one model through the "Visible models" dropdown.

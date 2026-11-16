@@ -583,7 +583,7 @@ def build_category_page_layout(
         Category metadata including summary table, controls, and benchmark layouts.
     expand_pref
         Persisted preference: ``"expanded"`` opens every card, ``"collapsed"``
-        closes every card, and ``None`` opens only the first card.
+        closes every card, and ``None`` defaults to collapsed.
 
     Returns
     -------
@@ -600,10 +600,9 @@ def build_category_page_layout(
             build_benchmark_card(
                 test["name"],
                 test["layout"],
-                open_default=expand_pref == "expanded"
-                or (expand_pref is None and index == 0),
+                open_default=expand_pref == "expanded",
             )
-            for index, test in enumerate(tests)
+            for test in tests
         ],
         className="mlpeg-benchmark-grid",
     )

@@ -71,8 +71,8 @@ def build_benchmark_card(name: str, layout: object, open_default: bool) -> Div:
 
     The heavy benchmark body (table + plot + scoring controls) is mounted only
     when the card is expanded (injected by the ``toggle_benchmark`` callback), so
-    category and framework pages hydrate instantly instead of rendering every
-    benchmark up front. Per-benchmark ``dcc.Store``s stay globally mounted, so
+    category and framework pages avoid rendering every benchmark up front.
+    Per-benchmark ``dcc.Store``s stay globally mounted, so
     the summary table and cross-benchmark callbacks keep working regardless.
 
     Kept here (rather than in ``build_app``) so both category and framework pages
@@ -81,11 +81,11 @@ def build_benchmark_card(name: str, layout: object, open_default: bool) -> Div:
     Parameters
     ----------
     name
-        Benchmark display name; also the card's pattern-matching index.
+        Benchmark display name, also used as the card's pattern-matching index.
     layout
         Precomputed benchmark layout, pre-mounted only when ``open_default``.
     open_default
-        Whether the card starts expanded (used for the first card on a page).
+        Whether the card starts expanded.
 
     Returns
     -------

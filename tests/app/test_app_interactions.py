@@ -7,6 +7,7 @@ frontend overhaul cannot quietly break them.
 
 from __future__ import annotations
 
+from conftest import expand_benchmark
 from playwright.sync_api import Locator, Page, expect
 
 TIMEOUT = 60_000
@@ -46,6 +47,7 @@ def _goto_ionpi19(page: Page) -> None:
     # Target the benchmark's own category by href: several categories are
     # built now, so the first link in the nav is not this one.
     page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
+    expand_benchmark(page, "IONPI19")
     expect(page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
 
 
@@ -171,6 +173,7 @@ def test_table_outline_spans_scrolled_table(ready_page: Page) -> None:
     """
     ready_page.set_viewport_size({"width": 1100, "height": 1000})
     ready_page.locator('#sidebar-nav a[href="/category/bulk-crystals"]').click()
+    expand_benchmark(ready_page, "Iron Properties")
     expect(ready_page.locator(".mlpeg-bench-body table").first).to_be_visible(
         timeout=TIMEOUT
     )

@@ -7,7 +7,7 @@ silently regress clicking behaviour or ship blank plots.
 
 from __future__ import annotations
 
-from conftest import wait_for_app_ready
+from conftest import expand_benchmark, wait_for_app_ready
 from playwright.sync_api import Page, expect
 
 READY_TIMEOUT = 60_000
@@ -72,6 +72,7 @@ def test_click_table_cell_shows_plot(page: Page, app_url: str) -> None:
     _open_ready(page, app_url)
     page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
 
+    expand_benchmark(page, "IONPI19")
     table = page.locator("#IONPI19-table")
     expect(table).to_be_visible(timeout=READY_TIMEOUT)
     page.locator('#IONPI19-table td[data-dash-column="MAE"]').first.click()
