@@ -803,14 +803,9 @@ def build_weight_components(
             model_configs=model_configs,
         )
 
-    # Callbacks to sync sliders, text boxes, and stored table weights
-    for column, input_id in zip(columns, input_ids, strict=True):
-        register_weight_callbacks(
-            input_id=input_id,
-            table_id=table.id,
-            column=column,
-            default_weights=getattr(table, "weights", None),
-        )
+    register_weight_callbacks(
+        table.id, columns, input_ids, getattr(table, "weights", None)
+    )
 
     register_download_callbacks(table.id)
 
@@ -2093,6 +2088,7 @@ def build_threshold_inputs(
             ),
             DCC_Input(
                 id=f"{table_id}-{metric}-good-threshold",
+                className="mlpeg-threshold-input",
                 type="number",
                 value=good_val,
                 step=0.0001,
@@ -2132,6 +2128,7 @@ def build_threshold_inputs(
             ),
             DCC_Input(
                 id=f"{table_id}-{metric}-bad-threshold",
+                className="mlpeg-threshold-input",
                 type="number",
                 value=bad_val,
                 step=0.0001,

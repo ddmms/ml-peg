@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import json
 import time
 from typing import Any, Literal
 
@@ -21,7 +22,6 @@ from dash import (
     ctx,
     dcc,
     no_update,
-    set_props,
 )
 from dash.dash_table import DataTable
 from dash.exceptions import PreventUpdate
@@ -583,92 +583,9 @@ def register_category_table_callbacks(
             )
 
     else:
-
-        @callback(
-            Output(table_id, "data", allow_duplicate=True),
-            Output(table_id, "style_data_conditional", allow_duplicate=True),
-            Output(table_id, "tooltip_data", allow_duplicate=True),
-            Output(f"{table_id}-computed-store", "data", allow_duplicate=True),
-            Input(f"{table_id}-weight-store", "data"),
-            Input("selected-models-store", "data"),
-            Input("cmap-store", "data"),
-            State(table_id, "data"),
-            State(f"{table_id}-computed-store", "data"),
-            # "initial_duplicate": re-derive on re-mount so a returning user's
-            # weights persist (see update_benchmark_table_scores).
-            prevent_initial_call="initial_duplicate",
-            optional=True,
-            **COMPRESS_STORES,
-        )
-        def update_table_scores(
-            stored_weights: dict[str, float] | None,
-            selected_models: list[str] | None,
-            cmap_name: str | None,
-            table_data: list[dict] | None,
-            computed_store: list[dict] | None,
-        ) -> tuple[list[dict], list[dict], list[dict], list[dict]]:
-            # Always use computed_store (full unfiltered rows) as the source so
-            # that re-selecting a model restores it. Fall back to table_data only
-            # on first load before the store is populated.
-            source_data = computed_store or table_data
-            if not source_data:
-                raise PreventUpdate
-
-            trigger_id = ctx.triggered_id
-
-            # Recompute scores only when weights changed
-            if trigger_id == f"{table_id}-weight-store":
-                scored_rows, _ = update_score_style(source_data, stored_weights)
-                updated_store = scored_rows
-
-            else:
-                scored_rows = source_data
-                updated_store = no_update
-
-            # Hide models whose category scores are all NaN. Scores can flip
-            # to/from NaN when benchmark weights change, so filter on the fly here
-            # rather than removing rows from the store.
-            filtered_rows = drop_empty_model_rows(
-                filter_rows_by_models(scored_rows, selected_models)
-            )
-            style = (
-                get_table_style(
-                    filtered_rows,
-                    cmap_name=cmap_name or DEFAULT_COLORMAP,
-                    weights=stored_weights,
-                    score_rows=scored_rows,
-                )
-                if filtered_rows
-                else []
-            )
-            style, tooltip_data = apply_level_of_theory_warnings(
-                filtered_rows,
-                style,
-                model_levels=model_levels,
-                metric_levels=metric_levels,
-                model_configs=model_configs,
-            )
-
-            if not table_data or len(filtered_rows) != len(table_data):
-                return filtered_rows, style, tooltip_data, scored_rows
-
-            patch = Patch()
-            rows_changed = False
-
-            for row_index, (old_row, new_row) in enumerate(
-                zip(table_data, filtered_rows, strict=True)
-            ):
-                for key, new_value in new_row.items():
-                    if old_row.get(key) != new_value:
-                        patch[row_index][key] = new_value
-                        rows_changed = True
-
-            # No visual change
-            if not rows_changed:
-                return no_update, style, tooltip_data, updated_store
-
-            return patch, style, tooltip_data, updated_store
-
+        # Group scores have one writer: register_benchmark_to_group_callback.
+        # A second weight-only writer could restore stale benchmark rows when
+        # its response arrives after a newer benchmark score.
         @callback(
             Output(table_id, "data", allow_duplicate=True),
             Output(table_id, "style_data_conditional", allow_duplicate=True),
@@ -676,7 +593,7 @@ def register_category_table_callbacks(
             Input(f"{table_id}-computed-store", "data"),
             Input("selected-models-store", "data"),
             Input("cmap-store", "data"),
-            State(f"{table_id}-weight-store", "data"),
+            Input(f"{table_id}-weight-store", "data"),
             # "initial_duplicate": re-sync the rendered table from its computed
             # store on re-mount so edits persist across navigation.
             prevent_initial_call="initial_duplicate",
@@ -697,6 +614,10 @@ def register_category_table_callbacks(
                 Cached unfiltered rows for the category summary.
             selected_models
                 Currently selected model names.
+            cmap_name
+                Selected colour scale.
+            stored_weights
+                Current weights, including zero-weight column styling.
 
             Returns
             -------
@@ -932,117 +853,57 @@ def register_benchmark_to_group_callback(
 
 
 def register_weight_callbacks(
-    input_id: str,
     table_id: str,
-    column: str,
-    default_weights: dict[str, float],
+    columns: list[str],
+    input_ids: list[str],
+    default_weights: dict[str, float] | None = None,
     reset_id: str | None = None,
 ) -> None:
     """
-    Register all callbacks for weight inputs.
+    Register a local editor for a group of weight controls that mount together.
 
     Parameters
     ----------
-    input_id
-        ID prefix for slider and input box.
     table_id
-        ID for table. Also used to identify reset button and weight store.
-    column
-        Column header corresponding to slider and input box.
+        Table owning the shared weight store.
+    columns
+        Weight keys in the same order as the controls.
+    input_ids
+        Control prefixes without the ``-input`` suffix. Global and page controls
+        form separate groups because they mount independently.
     default_weights
-        Optional weights for each metric, usually set during analysis. Default is
-        `None`, which sets all weights to 1.
+        Weights restored by reset. Unspecified weights default to one.
     reset_id
-        Alternative reset button for controls mounted outside the table page.
+        Alternative reset button mounted with this group of controls.
     """
-    default_weights = default_weights if default_weights else {}
-    reset_id = reset_id or f"{table_id}-reset-button"
-
-    @callback(
-        Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
-        Input(f"{input_id}-input", "value"),
-        Input(reset_id, "n_clicks"),
-        State(f"{table_id}-weight-store", "data"),
-        prevent_initial_call=True,
-        optional=True,
-    )
-    def store_input_value(
-        input_weight: float | None,
-        n_clicks: int,
-        stored_weights: dict[str, float] | None,
-    ) -> dict[str, float]:
-        """
-        Store weight values from the text input.
-
-        Parameters
-        ----------
-        input_weight
-            Weight value from input box.
-        n_clicks
-            Number of clicks.
-        stored_weights
-            Stored weights dictionary.
-
-        Returns
-        -------
-        dict[str, float] or dash.NoUpdate
-            Stored weights, or no store update when restoring an empty input.
-        """
-        trigger_id = ctx.triggered_id
-
-        # Copied so an absent store cannot break the lookups below, and is not
-        # mutated in place
-        stored_weights = dict(stored_weights or {})
-
-        if trigger_id == f"{input_id}-input":
-            if input_weight is None:
-                set_props(
-                    f"{input_id}-input",
-                    {
-                        "value": stored_weights.get(
-                            column, default_weights.get(column, 1.0)
-                        )
-                    },
-                )
-                # Return normally so Dash delivers the input restoration.
-                return no_update
-            if stored_weights.get(column) == input_weight:
-                raise PreventUpdate
-            stored_weights[column] = input_weight
-        elif trigger_id == reset_id and n_clicks > 0:
-            # Keyed on the defaults too, so reset repairs a stale store
-            reset_weights = {
-                key: default_weights.get(key, 1.0)
-                for key in (*stored_weights, *default_weights)
-            }
-            stored_weights = reset_weights
-        else:
-            raise PreventUpdate
-
-        return stored_weights
-
-    @callback(
-        Output(f"{input_id}-input", "value"),
+    if not columns:
+        return
+    config = {
+        "columns": columns,
+        "inputs": [f"{prefix}-input" for prefix in input_ids],
+        "defaults": default_weights or {},
+        "reset": reset_id or f"{table_id}-reset-button",
+    }
+    clientside_callback(
+        f"""function(stored, ...values) {{
+            return window.dash_clientside.settingsEditors.weights(
+                {json.dumps(config)}, stored, ...values);
+        }}""",
+        [
+            Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
+            *[Output(control, "value") for control in config["inputs"]],
+        ],
         Input(f"{table_id}-weight-store", "data"),
+        [Input(control, "value") for control in config["inputs"]],
+        Input(config["reset"], "n_clicks"),
+        [
+            State(control, prop)
+            for control in config["inputs"]
+            for prop in ("n_submit", "n_blur")
+        ],
         prevent_initial_call="initial_duplicate",
         optional=True,
     )
-    def sync_inputs(stored_weights: dict[str, float] | None) -> float:
-        """
-        Sync the weight value from the Store into the text input.
-
-        Parameters
-        ----------
-        stored_weights
-            Stored weight values for each column.
-
-        Returns
-        -------
-        float
-            Weight to set as the text input value.
-        """
-        # A stale session store may predate this column
-        return (stored_weights or {}).get(column, default_weights.get(column, 1.0))
 
 
 def register_normalization_callbacks(
@@ -1068,94 +929,39 @@ def register_normalization_callbacks(
     """
     cleaned_defaults = clean_thresholds(default_thresholds)
 
-    # Per-metric store callbacks (simpler and reliable)
-    for metric in metrics:
-
-        @callback(
-            Output(f"{table_id}-thresholds-store", "data", allow_duplicate=True),
-            Input(f"{table_id}-{metric}-good-threshold", "value"),
-            Input(f"{table_id}-{metric}-bad-threshold", "value"),
-            Input(f"{table_id}-reset-thresholds-button", "n_clicks"),
-            State(f"{table_id}-thresholds-store", "data"),
-            prevent_initial_call=True,
+    if metrics:
+        config = {
+            "metrics": metrics,
+            "inputs": [
+                f"{table_id}-{metric}-{field}-threshold"
+                for metric in metrics
+                for field in ("good", "bad")
+            ],
+            "defaults": cleaned_defaults,
+            "reset": f"{table_id}-reset-thresholds-button",
+            "step": THRESHOLD_INPUT_STEP,
+            "digits": THRESHOLD_ROUND_DIGITS,
+        }
+        clientside_callback(
+            f"""function(stored, ...values) {{
+                return window.dash_clientside.settingsEditors.thresholds(
+                    {json.dumps(config)}, stored, ...values);
+            }}""",
+            [
+                Output(f"{table_id}-thresholds-store", "data", allow_duplicate=True),
+                *[Output(control, "value") for control in config["inputs"]],
+            ],
+            Input(f"{table_id}-thresholds-store", "data"),
+            [Input(control, "value") for control in config["inputs"]],
+            Input(config["reset"], "n_clicks"),
+            [
+                State(control, prop)
+                for control in config["inputs"]
+                for prop in ("n_submit", "n_blur")
+            ],
+            prevent_initial_call="initial_duplicate",
             optional=True,
         )
-        def store_threshold_values(
-            good_val, bad_val, n_clicks, stored_thresholds, metric=metric
-        ):
-            """Update normalization thresholds store for one metric or reset all."""
-            trigger_id = ctx.triggered_id
-            cleaned_store = clean_thresholds(stored_thresholds) or {}
-
-            # Reset to defaults is specified via reset button
-            if trigger_id == f"{table_id}-reset-thresholds-button":
-                if not n_clicks:
-                    raise PreventUpdate
-                if cleaned_defaults:
-                    return deepcopy(cleaned_defaults)
-                raise PreventUpdate
-
-            # Ensure key exists
-            if metric not in cleaned_store:
-                cleaned_store[metric] = {
-                    "good": None,
-                    "bad": None,
-                    "unit": (
-                        cleaned_defaults.get(metric, {}).get("unit")
-                        if cleaned_defaults
-                        else None
-                    ),
-                }
-
-            entry = cleaned_store[metric]
-            good_threshold = entry.get("good")
-            bad_threshold = entry.get("bad")
-
-            # Update thresholds from input boxes
-            if trigger_id == f"{table_id}-{metric}-good-threshold":
-                if good_val is None or bad_threshold is None:
-                    raise PreventUpdate
-                default_entry = cleaned_defaults.get(metric)
-                if default_entry is None:
-                    raise PreventUpdate
-
-                good, bad = enforce_threshold_direction(
-                    edited_field="good",
-                    good=float(good_val),
-                    bad=float(bad_threshold),
-                    default_good=default_entry["good"],
-                    default_bad=default_entry["bad"],
-                )
-                entry["good"] = good
-                entry["bad"] = bad
-
-            elif trigger_id == f"{table_id}-{metric}-bad-threshold":
-                if bad_val is None or good_threshold is None:
-                    raise PreventUpdate
-                default_entry = cleaned_defaults.get(metric)
-                if default_entry is None:
-                    raise PreventUpdate
-
-                good, bad = enforce_threshold_direction(
-                    edited_field="bad",
-                    good=float(good_threshold),
-                    bad=float(bad_val),
-                    default_good=default_entry["good"],
-                    default_bad=default_entry["bad"],
-                )
-                entry["good"] = good
-                entry["bad"] = bad
-            else:
-                raise PreventUpdate
-
-            # Still publish corrections when rounding changed the input value.
-            if (
-                cleaned_store == clean_thresholds(stored_thresholds)
-                and good_val == entry["good"]
-                and bad_val == entry["bad"]
-            ):
-                raise PreventUpdate
-            return cleaned_store
 
     if metrics:
         threshold_style_outputs = [
@@ -1252,34 +1058,6 @@ def register_normalization_callbacks(
                 raw_tooltips, cleaned_thresholds, normalized_active
             )
             return display_rows, style, columns, tooltips
-
-    # Register individual threshold input sync callbacks
-    for metric in metrics:
-
-        @callback(
-            Output(f"{table_id}-{metric}-good-threshold", "value"),
-            Output(f"{table_id}-{metric}-bad-threshold", "value"),
-            Input(f"{table_id}-thresholds-store", "data"),
-            optional=True,
-        )
-        def sync_threshold_inputs(
-            thresholds: Thresholds | None, metric: str = metric
-        ) -> tuple[float | None, float | None]:
-            """
-            Sync threshold input values with stored thresholds.
-
-            Parameters
-            ----------
-            thresholds
-                Stored threshold values.
-            metric
-                Metric name corresponding to the threshold inputs.
-            """
-            cleaned_thresholds = clean_thresholds(thresholds)
-            if cleaned_thresholds and metric in cleaned_thresholds:
-                entry = cleaned_thresholds[metric]
-                return entry.get("good"), entry.get("bad")
-            raise PreventUpdate
 
 
 def register_plot_download_callbacks() -> None:

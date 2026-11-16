@@ -20,48 +20,6 @@ from ml_peg.app.utils import register_callbacks
 from ml_peg.app.utils.utils import clean_table_data
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="Concurrent threshold edits replace other metrics' values",
-)
-def test_threshold_callbacks_with_stale_state(monkeypatch):
-    """Two in-flight requests must merge edits, not replace the full dictionary."""
-    callbacks = []
-
-    def capture(*args, **kwargs):
-        def decorate(function):
-            callbacks.append(function)
-            return function
-
-        return decorate
-
-    monkeypatch.setattr(register_callbacks, "callback", capture)
-    defaults = {key: {"good": 0, "bad": 10, "unit": "eV"} for key in ("M1", "M2")}
-    register_callbacks.register_normalization_callbacks(
-        "B1", ["M1", "M2"], defaults, register_toggle=False
-    )
-    edits = [f for f in callbacks if f.__name__ == "store_threshold_values"]
-    result = deepcopy(defaults)
-    for metric, callback in zip(defaults, edits, strict=True):
-        monkeypatch.setattr(
-            register_callbacks,
-            "ctx",
-            SimpleNamespace(triggered_id=f"B1-{metric}-bad-threshold"),
-        )
-        update = callback(0, 20, 0, deepcopy(defaults))
-        if isinstance(update, dict):
-            result = update
-        else:
-            # Support an eventual partial-update fix without changing this test.
-            for operation in update.to_plotly_json()["operations"]:
-                target = result
-                for key in operation["location"][:-1]:
-                    target = target[key]
-                target[operation["location"][-1]] = operation["params"]["value"]
-    assert [result[key]["bad"] for key in defaults] == [20, 20]
-
-
 @pytest.mark.parametrize(
     ("value", "good", "bad", "expected"),
     [

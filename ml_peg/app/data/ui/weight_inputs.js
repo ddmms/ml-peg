@@ -2,10 +2,10 @@
 // in its Enter/blur handlers. Commit the DOM value so editing back to that
 // earlier value works too. Keep updates on Enter/blur rather than every key.
 (function () {
-    function commitWeight(event) {
+    function commitSetting(event) {
         const input = event.target;
         if (!(input instanceof HTMLInputElement) ||
-            !input.closest('.mlpeg-weight-input') ||
+            !input.closest('.mlpeg-weight-input, .mlpeg-threshold-input') ||
             !input.id || !input.checkValidity() || input.value === '') {
             return;
         }
@@ -15,7 +15,7 @@
         }
     }
     document.addEventListener('keyup', function (event) {
-        if (event.key === 'Enter') commitWeight(event);
+        if (event.key === 'Enter') commitSetting(event);
     });
-    document.addEventListener('blur', commitWeight, true);
+    document.addEventListener('blur', commitSetting, true);
 })();

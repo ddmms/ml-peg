@@ -13,7 +13,7 @@ from ml_peg.app.utils.utils import (
 )
 
 
-def _weight_row(table: DataTable, column: str, reset_id: str) -> Div:
+def _weight_row(table: DataTable, column: str) -> Div:
     """
     Build a labelled input connected to its existing table store.
 
@@ -23,8 +23,6 @@ def _weight_row(table: DataTable, column: str, reset_id: str) -> Div:
         Summary table owning the weight store.
     column
         Weighted column identifier.
-    reset_id
-        Reset button mounted alongside this input.
 
     Returns
     -------
@@ -33,7 +31,6 @@ def _weight_row(table: DataTable, column: str, reset_id: str) -> Div:
     """
     prefix = f"global-{table.id}-{column}"
     defaults = default_weight_store_data(table)
-    register_weight_callbacks(prefix, table.id, column, defaults, reset_id)
     control = build_weight_input(f"{prefix}-input", defaults.get(column, 1.0))
     control.style.update(width="76px", flexShrink="0")
     return Div(
@@ -71,14 +68,26 @@ def build_global_weights(summary_table: DataTable, category_views: dict) -> Deta
         table = view["summary_table"]
         benchmark_reset = f"global-{table.id}-reset"
         benchmarks = [
-            _weight_row(table, col["id"], benchmark_reset)
+            _weight_row(table, col["id"])
             for col in table.columns
             if col["id"] not in RESERVED_TABLE_COLUMNS
         ]
+        columns = [
+            col["id"]
+            for col in table.columns
+            if col["id"] not in RESERVED_TABLE_COLUMNS
+        ]
+        register_weight_callbacks(
+            table.id,
+            columns,
+            [f"global-{table.id}-{col}" for col in columns],
+            default_weight_store_data(table),
+            benchmark_reset,
+        )
         categories.append(
             Details(
                 [
-                    Summary(_weight_row(summary_table, column, reset_id)),
+                    Summary(_weight_row(summary_table, column)),
                     Div(
                         [
                             *benchmarks,
@@ -95,6 +104,18 @@ def build_global_weights(summary_table: DataTable, category_views: dict) -> Deta
                 className="mlpeg-global-weight-category",
             )
         )
+    columns = [
+        f"{title} Score"
+        for title in sorted(category_views)
+        if f"{title} Score" in summary_columns
+    ]
+    register_weight_callbacks(
+        summary_table.id,
+        columns,
+        [f"global-{summary_table.id}-{col}" for col in columns],
+        default_weight_store_data(summary_table),
+        reset_id,
+    )
     return Details(
         [
             Summary("All weights"),
