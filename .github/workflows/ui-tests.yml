@@ -51,15 +51,15 @@ jobs:
         run: uv sync
 
       - name: Install Playwright browser
-        run: uv run playwright install --with-deps chromium
+        run: uv run playwright install chromium
 
       - name: Cache test fixture
         # Keeps the bucket out of every run's critical path; conftest still
         # verifies the cached archive's digest before unpacking it
         uses: actions/cache@v4
         with:
-          path: ~/.cache/ml_peg/ui-fixture-v1.zip
-          key: ui-fixture-v1-b0fab469
+          path: ~/.cache/ml_peg/ui-fixture-v2.zip
+          key: ui-fixture-v2-16571227
 
       - name: Run UI tests
         # ci.yml skips tests/app, so this job is the only coverage of ml_peg/app

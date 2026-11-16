@@ -17,6 +17,10 @@ MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
+# Convergence criteria, also used by the analysis
+FMAX = 0.01
+MAX_STEPS = 2000
+
 
 @pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
@@ -56,4 +60,4 @@ def test_water_cl2_relaxation(mlip: tuple[str, Any]) -> None:
         trajectory=write_dir / "relaxation.traj",
         logfile=write_dir / "relaxation.log",
     )
-    opt.run(fmax=0.01, steps=2000)
+    opt.run(fmax=FMAX, steps=MAX_STEPS)

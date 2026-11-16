@@ -100,6 +100,45 @@ def test_load_benchmark_credits(tmp_path: Path) -> None:
     assert credits.citations[0].role_label == "reference data"
 
 
+@pytest.mark.parametrize(
+    ("role", "detail", "label"),
+    [
+        ("reference_data", "PBE", "reference data, PBE"),
+        ("reference_data", "Experiment", "reference data, Experiment"),
+        ("reference_method", "DFT-D3", "reference method, DFT-D3"),
+        ("benchmark_method", "PBE", "benchmark paper, PBE"),
+        ("reference_data", "null", "reference data"),
+    ],
+)
+def test_citation_detail_loads_and_renders(
+    tmp_path: Path, role: str, detail: str, label: str
+) -> None:
+    """Optional context is displayed consistently in the app and terminal."""
+    path = tmp_path / "citations.yml"
+    _write_credits(path)
+    path.write_text(
+        path.read_text().replace(
+            "role: reference_data", f"role: {role}\n    detail: {detail}"
+        )
+    )
+    credits = load_benchmark_credits(path)
+
+    assert credits.citations[0].role_label == label
+    assert f"({label})" in str(build_benchmark_credit_components(credits))
+    assert f"({label})" in format_citation_summary({"category/test": credits})
+
+
+@pytest.mark.parametrize("detail", ['""', '"   "', "123", "[PBE]"])
+def test_reject_invalid_citation_detail(tmp_path: Path, detail: str) -> None:
+    """Details must be non-empty strings when supplied."""
+    path = tmp_path / "citations.yml"
+    _write_credits(path)
+    path.write_text(path.read_text() + f"    detail: {detail}\n")
+
+    with pytest.raises(CitationMetadataError, match=r"\.detail"):
+        load_benchmark_credits(path)
+
+
 @pytest.mark.parametrize("credit_role", ["implementers", "contributors"])
 @pytest.mark.parametrize("github", [None, "asmith"])
 def test_email_contacts_load_and_render(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cache
 import json
 from pathlib import Path
 
@@ -42,6 +43,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
+@cache
 def labels() -> list[str]:
     """
     Get list of system names.
@@ -139,6 +141,7 @@ def conformer_energies(analyze_results) -> dict[str, list]:
     for model_name in MODELS:
         benchmark, result = analyze_results[model_name]
         if benchmark is None or result is None:
+            results[model_name] = [np.nan] * len(labels())
             continue
 
         result_by_name = {m.molecule_name: m for m in result.molecules}
@@ -157,15 +160,18 @@ def conformer_energies(analyze_results) -> dict[str, list]:
             if not ref_stored:
                 results["ref"].append(float(molecule.reference_energy_profile[i]))
 
-            # Write structures for app
-            data_mol = data_by_name[mol_name]
-            atoms = Atoms(
-                symbols=data_mol.atom_symbols,
-                positions=data_mol.conformer_coordinates[i],
-            )
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms)
+            if not ref_stored:
+                # Write structures for app. Conformers are defined by the
+                # dataset, so are the same for all models
+                data_mol = data_by_name[mol_name]
+                atoms = Atoms(
+                    symbols=data_mol.atom_symbols,
+                    positions=data_mol.conformer_coordinates[i],
+                )
+                structs_dir = OUT_PATH / "mock"
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{label}.xyz", atoms)
+
         ref_stored = True
     return results
 
@@ -186,18 +192,21 @@ def get_mae(conformer_energies) -> dict[str, float]:
         Per-molecule MAE averaged over all molecules, for each model.
     """
     label_mols = [lbl.rsplit("_conf", 1)[0] for lbl in labels()]
+    ref_energies = conformer_energies["ref"]
     results = {}
     for model_name in MODELS:
         groups: dict[str, tuple[list, list]] = {}
+        predictions = conformer_energies[model_name]
 
-        if not conformer_energies[model_name]:
+        # Reference energies come from the models, so are missing if none ran
+        if len(ref_energies) != len(label_mols) or len(predictions) != len(label_mols):
             results[model_name] = None
             continue
 
         for mol, ref, pred in zip(
             label_mols,
-            conformer_energies["ref"],
-            conformer_energies[model_name],
+            ref_energies,
+            predictions,
             strict=True,
         ):
             groups.setdefault(mol, ([], []))

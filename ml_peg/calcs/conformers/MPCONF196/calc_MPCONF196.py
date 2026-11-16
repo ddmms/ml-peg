@@ -1,8 +1,8 @@
 """
 Calculate the MPCONF196 dataset of biomolecule conformers.
 
-J. Comput. Chem. 2024, 45(7), 419.
-https://doi.org/10.1002/jcc.27248.
+J. Chem. Theory Comput. 2018, 14(3), 1254–1266.
+https://doi.org/10.1021/acs.jctc.7b01074.
 """
 
 from __future__ import annotations

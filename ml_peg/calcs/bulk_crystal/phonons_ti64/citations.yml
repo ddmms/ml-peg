@@ -7,4 +7,8 @@ contributors:
     github: "joehart2001"
     email: "jh2536@cam.ac.uk"
 
-citations: []
+citations:
+  - bibtex_key: allen2025ti64
+    role: reference_data
+  - bibtex_key: radova2025frozen
+    role: benchmark_method

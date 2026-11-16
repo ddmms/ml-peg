@@ -10,4 +10,6 @@ contributors:
   - name: "Leon Wehrhan"
     github: "lwehrhan"
 
-citations: []
+citations:
+  - bibtex_key: ramakrishnan2014qm9
+    role: reference_data

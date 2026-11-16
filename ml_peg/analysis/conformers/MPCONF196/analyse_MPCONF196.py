@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -40,11 +40,15 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="*.xyz",
+    info_keys=["ref_rel_energy"],
     include_filenames=True,
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = [energy * EV_TO_KCAL for energy in INFO["ref_rel_energy"]]
 
 
 @pytest.fixture
@@ -66,21 +70,17 @@ def conformer_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         for label in INFO["filenames"]:
-            atoms = read(CALC_PATH / model_name / f"{label}.xyz")
+            struct_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+            atoms = read(struct_path)
             results[model_name].append(atoms.info["model_rel_energy"] * EV_TO_KCAL)
-            if not ref_stored:
-                results["ref"].append(atoms.info["ref_rel_energy"] * EV_TO_KCAL)
 
-            # Write structures for app
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms)
-        ref_stored = True
     return results
 
 

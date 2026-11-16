@@ -5,4 +5,14 @@ implementers:
 contributors: []
 
 # TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - bibtex_key: allera-2025-activation-entropy
+    role: reference_data
+  - bibtex_key: goryaeva-2020-distortion-scores
+    role: reference_data
+  - bibtex_key: roma2021boroncarbides
+    role: reference_data
+  - bibtex_key: madaan2026positrons
+    role: reference_data
+  - bibtex_key: madaan2023thesis
+    role: reference_data

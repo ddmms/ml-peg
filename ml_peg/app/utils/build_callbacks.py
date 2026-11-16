@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+import math
+from numbers import Real
+from pathlib import Path
 from typing import Literal
 
 import dash
@@ -23,6 +26,7 @@ from dash.exceptions import PreventUpdate
 from dash.html import Div, Iframe
 
 from ml_peg.app.utils.build_components import build_plot_download_controls
+from ml_peg.app.utils.load import read_plot
 from ml_peg.app.utils.plot_helpers import INSTRUCTION_STYLE, POINT_HINT, TABLE_HINT
 from ml_peg.app.utils.plot_settings import build_plot_settings_controls
 from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
@@ -179,7 +183,7 @@ def plot_from_table_cell(
         Nested dictionary of model names, column names, and plot to show.
     table_data
         Optional table data to check for None/missing values. If provided,
-        cells with None values will show "No data available" message.
+        cells with None or NaN values will show "No data available" message.
     """
     register_plot_download_callbacks()
     register_plot_settings_callbacks()
@@ -212,11 +216,18 @@ def plot_from_table_cell(
         row_id = active_cell.get("row_id", None)
         row_index = active_cell.get("row", None)
 
-        # Check if cell value is None (no data for this model)
+        # Missing metrics can be None, numeric NaN or the table's "NaN" string.
         if current_table_data and row_index is not None:
             try:
                 cell_value = current_table_data[row_index].get(column_id)
-                if cell_value is None:
+                if (
+                    cell_value is None
+                    or (isinstance(cell_value, Real) and math.isnan(cell_value))
+                    or (
+                        isinstance(cell_value, str)
+                        and cell_value.strip().lower() == "nan"
+                    )
+                ):
                     return Div("No data available for this model."), None
             except (IndexError, KeyError, TypeError):
                 pass  # Fall through to normal handling
@@ -224,6 +235,45 @@ def plot_from_table_cell(
         if row_id in cell_to_plot and column_id in cell_to_plot[row_id]:
             return plot_with_download_controls(cell_to_plot[row_id][column_id]), None
         return Div(TABLE_HINT, style=INSTRUCTION_STYLE), None
+
+
+def clear_from_table_cell(table_id: str, plot_ids: Sequence[str]) -> None:
+    """
+    Attach callback to clear placeholder Divs when a table cell is clicked.
+
+    Stops plots derived from a previously selected cell, such as a different
+    model's, from lingering after switching.
+
+    Parameters
+    ----------
+    table_id
+        ID for Dash table being clicked.
+    plot_ids
+        IDs of placeholder Divs to empty.
+    """
+
+    @callback(
+        *[Output(plot_id, "children", allow_duplicate=True) for plot_id in plot_ids],
+        Input(table_id, "active_cell"),
+        prevent_initial_call=True,
+    )
+    def clear_plots(active_cell):
+        """
+        Register callback to clear placeholders on table cell selection.
+
+        Parameters
+        ----------
+        active_cell
+            Clicked cell in Dash table.
+
+        Returns
+        -------
+        Div | tuple[Div, ...]
+            An empty Div per ID in ``plot_ids``.
+        """
+        if len(plot_ids) == 1:
+            return Div()
+        return tuple(Div() for _ in plot_ids)
 
 
 # A scatter can be passed to more than one helper, but its highlight callback
@@ -409,15 +459,124 @@ def plot_from_scatter(
         return Div(POINT_HINT, style=INSTRUCTION_STYLE)
 
 
+def _point_label(point: dict) -> str | None:
+    """
+    Get the label a clicked point carries in its ``customdata``.
+
+    Parameters
+    ----------
+    point
+        Clicked data point from a scatter's ``clickData``.
+
+    Returns
+    -------
+    str | None
+        Label stored in ``customdata``, taking the last of several values, or
+        None if the point carries no label.
+    """
+    customdata = point.get("customdata")
+    return customdata[-1] if isinstance(customdata, list) else customdata
+
+
+def plot_from_scatter_files(
+    scatter_id: str,
+    plot_id: str,
+    plot_dir: Path,
+    clear_plot_ids: Sequence[str] = (),
+) -> str:
+    """
+    Attach callback to show a plot read from disk when a scatter point is clicked.
+
+    Unlike `plot_from_scatter`, plots are read from disk on demand rather than
+    pre-loaded into a `plots_list` up front, which would be needlessly expensive
+    for scatters with many points, where only one plot is shown at a time.
+
+    Parameters
+    ----------
+    scatter_id
+        ID for Dash scatter being clicked.
+    plot_id
+        ID for Dash plot placeholder Div where new plot will be rendered.
+    plot_dir
+        Directory of saved plots, named ``<label>.json`` for the label each
+        scatter point carries in its ``customdata``.
+    clear_plot_ids
+        IDs of placeholder Divs to empty when a new plot is shown, so content
+        derived from the previous plot does not linger on screen.
+
+    Returns
+    -------
+    str
+        ID of the rendered `Graph`, so further callbacks, such as
+        `struct_from_scatter`, can be attached to clicks on it.
+    """
+    register_plot_download_callbacks()
+    register_plot_settings_callbacks()
+    _register_point_highlight(scatter_id)
+
+    graph_id = f"{scatter_id}-plot"
+
+    @callback(
+        Output(plot_id, "children", allow_duplicate=True),
+        *[
+            Output(clear_id, "children", allow_duplicate=True)
+            for clear_id in clear_plot_ids
+        ],
+        Input(scatter_id, "clickData"),
+        prevent_initial_call="initial_duplicate",
+    )
+    def show_plot(click_data):
+        """
+        Register callback to show plot read from disk when a point is clicked.
+
+        Parameters
+        ----------
+        click_data
+            Clicked data point in scatter plot.
+
+        Returns
+        -------
+        Div | tuple[Div, ...]
+            Plot on scatter click, followed by an empty Div per ID in
+            ``clear_plot_ids``.
+        """
+        plot = Div(POINT_HINT, style=INSTRUCTION_STYLE)
+
+        if click_data:
+            label = _point_label(click_data["points"][0])
+            plot_path = plot_dir / f"{label}.json"
+            if label is not None and plot_path.exists():
+                plot = plot_with_download_controls(read_plot(plot_path, id=graph_id))
+
+        if not clear_plot_ids:
+            return plot
+        return (plot, *[Div() for _ in clear_plot_ids])
+
+    return graph_id
+
+
 def struct_from_scatter(
     scatter_id: str,
     struct_id: str,
-    structs: str | list[str] | dict[str, str],
+    structs: str | list[str] | dict[str, str] | None = None,
     mode: Literal["struct", "traj"] = "struct",
     follow_frames: bool | None = None,
+    struct_template: str | None = None,
+    frame_groups: list[list[int]] | None = None,
 ) -> None:
     """
     Attach callback to show a structure when a scatter point is clicked.
+
+    Three matching modes:
+
+    - index-based (default): the clicked point number indexes ``structs``. Requires
+      ``structs`` to be in the same order as the scatter points.
+    - label-based (``structs`` is a mapping): the last element of the clicked
+      point's ``customdata`` selects a structure filename from the mapping.
+    - id-based (``struct_template`` given): the clicked point's identifier (last
+      element of its ``customdata``) fills ``struct_template``. Use this when the
+      points are filtered, reordered, or split across traces (e.g. violins, or
+      scatters with multiple category traces), where index-based matching fails.
 
     Parameters
     ----------
@@ -428,6 +587,7 @@ def struct_from_scatter(
     structs
         Structure trajectory, list of filenames in scatter-point order, or mapping
         from labels stored in point ``customdata`` to structure filenames.
+        Ignored when ``struct_template`` is given.
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
@@ -437,9 +597,17 @@ def struct_from_scatter(
         only for a single shared trajectory file. This is for e.g. a NEB, whereas a list
         of per-point files, including density-cell structure collections, keeps
         the highlight on the clicked point. Set explicitly to override.
+    struct_template
+        Asset path template containing ``{id}``, filled from the clicked point's
+        ``customdata`` (id-based matching). Default is None.
+    frame_groups
+        Optional unique XYZ trajectory frame indices per plotted point. When given,
+        only these frames are displayed, starting at the first selected frame.
     """
     if follow_frames is None:
-        follow_frames = mode == "traj" and isinstance(structs, str)
+        follow_frames = (
+            mode == "traj" and isinstance(structs, str) and frame_groups is None
+        )
     _register_point_highlight(scatter_id, follow_frames=follow_frames)
 
     @callback(
@@ -464,25 +632,47 @@ def struct_from_scatter(
         if not click_data:
             return Div()
         point = click_data["points"][0]
-        idx = point["pointNumber"]
 
-        if isinstance(structs, str):
-            struct = structs
-            index = idx
-        elif isinstance(structs, dict):
+        if struct_template is not None:
             customdata = point.get("customdata")
-            label = customdata[-1] if isinstance(customdata, list) else customdata
-            struct = structs.get(label)
+            if not customdata:
+                return Div()
+            identifier = (
+                customdata[-1] if isinstance(customdata, (list, tuple)) else customdata
+            )
+            struct = struct_template.format(id=identifier)
+            index = 0
+        elif isinstance(structs, str):
+            struct = structs
+            index = point["pointNumber"]
+        elif isinstance(structs, dict):
+            struct = structs.get(_point_label(point))
             if struct is None:
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
-            index = idx if mode == "traj" else 0
+            index = point["pointNumber"] if mode == "traj" else 0
         else:
-            struct = structs[idx]
+            # Missing if the benchmark has not been fully analysed
+            if point["pointNumber"] >= len(structs):
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
+            struct = structs[point["pointNumber"]]
+            if not struct:
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = 0
 
+        frames = None
+        if frame_groups is not None:
+            # Missing if the benchmark has not been fully analysed
+            if point["pointNumber"] >= len(frame_groups):
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
+            frames = frame_groups[point["pointNumber"]]
         return Div(
             Iframe(
-                srcDoc=generate_weas_html(struct, mode, index),
+                srcDoc=generate_weas_html(
+                    struct,
+                    mode,
+                    0 if frames is not None else index,
+                    frame_indices=frames,
+                ),
                 style={
                     "height": "550px",
                     "width": "100%",
@@ -517,6 +707,7 @@ def struct_from_multi_scatters(
     structs
         List of list of structure filenames, with outer list in same order as curves to
         be visualised, and inner list in same order as scatter data to be visualised.
+        An empty inner list clears the viewer when a reference curve is clicked.
     mode
         Whether to display a single structure ("struct"), or trajectory from an initial
         image ("traj"). Default is "struct".
@@ -562,11 +753,17 @@ def struct_from_multi_scatters(
         curve_number = click_data["points"][0]["curveNumber"]
         idx = click_data["points"][0]["pointNumber"]
 
-        if isinstance(structs[curve_number], str):
-            struct = structs[curve_number]
+        curve_structs = structs[curve_number]
+        if not curve_structs:
+            return Div()
+
+        if isinstance(curve_structs, str):
+            struct = curve_structs
             index = idx
         else:
-            struct = structs[curve_number][idx]
+            if idx >= len(curve_structs) or not curve_structs[idx]:
+                return Div()
+            struct = curve_structs[idx]
             index = 0
 
         return Div(

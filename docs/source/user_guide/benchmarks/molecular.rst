@@ -171,6 +171,5 @@ Input structures:
 * Zills, F. molify: Molecular Structure Interface. Journal of Open Source Software
   10, 8829 (2025). https://doi.org/10.21105/joss.08829
 * Density from: Yang, F., Wang, D., Wang, X. & Liu, Z. Volumetric Properties of
-  Binary and Ternary Mixtures of Bis(2-hydroxyethyl)ammonium Acetate with Methanol,
-  N,N-Dimethylformamide, and Water at Several Temperatures. J. Chem. Eng. Data 62,
+  1-Butyl-3-methylimidazolium Chloride with Organic Solvents. J. Chem. Eng. Data 62,
   3958-3966 (2017). https://doi.org/10.1021/acs.jced.7b00654

@@ -1,0 +1,17 @@
+implementers:
+  - name: "Ella Bolland"
+    github: "ellalbolland"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+citations:
+  - bibtex_key: torsionnet
+    role: reference_data
+  - bibtex_key: Weber2025MPNICE
+    role: reference_data

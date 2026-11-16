@@ -23,17 +23,20 @@ def register_shell_callbacks() -> None:
     """Register the start-up mask and mobile-navigation clientside callbacks."""
     # Hide the start-up mask once the page has rendered, or after a timeout as
     # a safety net, then stop polling. Clientside, so it adds no server load.
-    # (The progress bar fills via a CSS animation, not this callback.)
     clientside_callback(
         f"""
         function(n) {{
             var nu = window.dash_clientside.no_update;
             var ready = document.querySelector('#page-content table tbody tr');
-            // The fill + number are driven by loading_progress.js, which watches
-            // for the display:none below and completes the ring; here we only
-            // hide the mask once the first table row exists (or after a timeout).
+            var hidden = [{{'display': 'none'}}, true];
+            // Finish the ring visibly before dismissing the startup overlay.
+            if (ready && window.__mlpegLoadingProgress?.finishStartup) {{
+                return window.__mlpegLoadingProgress.finishStartup().then(
+                    function() {{ return hidden; }}
+                );
+            }}
             if (ready || n > {STARTUP_MASK_MAX_POLLS}) {{
-                return [{{'display': 'none'}}, true];
+                return hidden;
             }}
             return [nu, nu];
         }}
@@ -48,7 +51,7 @@ def register_shell_callbacks() -> None:
     # hamburger, closes on a scrim tap or on navigation. Clientside: no server load.
     clientside_callback(
         """
-        function(nToggle, nScrim, pathname) {
+        function(nToggle, nScrim, href) {
             var ctx = window.dash_clientside.callback_context;
             var trig = (ctx.triggered[0] || {}).prop_id || '';
             var open = trig.indexOf('mobile-nav-toggle') === 0
@@ -60,6 +63,6 @@ def register_shell_callbacks() -> None:
         Output("mobile-nav-state", "data"),
         Input("mobile-nav-toggle", "n_clicks"),
         Input("sidebar-scrim", "n_clicks"),
-        Input("app-location", "pathname"),
+        Input("app-location", "href"),
         prevent_initial_call=True,
     )

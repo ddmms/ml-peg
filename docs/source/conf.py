@@ -11,9 +11,16 @@
 # serve to show the default.
 
 from importlib import metadata
+from pathlib import Path
+import sys
 import time
 
+from docutils import nodes
+
 import ml_peg
+
+# Local extensions, e.g. the model registry directive
+sys.path.append(str(Path(__file__).parent / "_ext"))
 
 # -- General configuration ------------------------------------------------
 
@@ -31,8 +38,10 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinxcontrib.contentui",
+    "sphinxcontrib.details.directive",
     "sphinx_copybutton",
     "sphinx_autodoc_typehints",
+    "model_registry",
 ]
 
 always_use_bars_union = True
@@ -201,3 +210,18 @@ html_search_language = "en"
 # Warnings to ignore when using the -n (nitpicky) option
 # We should ignore any python built-in exception, for instance
 nitpicky = True
+
+
+def open_model_links_in_new_tab(app, doctree, docname):
+    """Open external links on the model guide in a separate browser tab."""
+    if docname != "user_guide/models":
+        return
+    for reference in doctree.findall(nodes.reference):
+        if reference.get("refuri", "").startswith(("https://", "http://")):
+            reference["target"] = "_blank"
+            reference["rel"] = "noopener noreferrer"
+
+
+def setup(app):
+    """Apply the model guide link behaviour when building documentation."""
+    app.connect("doctree-resolved", open_model_links_in_new_tab)

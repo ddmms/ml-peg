@@ -6,11 +6,13 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 import functools
 import json
 from json import dump
+from numbers import Real
 from pathlib import Path
 from typing import Any
 import warnings
 
 from dash import dash_table
+from matplotlib.ticker import SymmetricalLogLocator
 import numpy as np
 import pandas as pd
 import plotly.colors as pc
@@ -29,6 +31,7 @@ from ml_peg.analysis.utils.utils import (
     DENSITY_SAMPLE_SEED,
     calc_table_scores,
     sample_density_grid,
+    symlog_transform,
 )
 from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.utils import Thresholds
@@ -46,6 +49,9 @@ def plot_parity(
     filename: str = "parity.json",
     symbol_by: list | None = None,
     symbol_labels: dict[str, str] | None = None,
+    log: bool = False,
+    plot_combined: bool = True,
+    group_colors: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -64,11 +70,19 @@ def plot_parity(
         Filename to save plot as JSON. Default is "parity.json".
     symbol_by
         Per-point list of group values. When provided, each point receives a
-        marker symbol based on its group, while trace colours still represent
-        models. Legend-only traces above the plot show one marker symbol per group.
+        marker symbol based on its group. Colours represent models unless
+        ``group_colors`` is supplied. Legend-only traces show each group.
     symbol_labels
         Optional mapping from ``symbol_by`` values to shorter display names
         used in the legend. Values absent from this dict are shown as-is.
+    log
+        Whether to use log-log axes. When True, the y=x line spans the positive
+        data range. Default is False.
+    plot_combined
+        Whether to combine models in one plot or write a plot per model.
+    group_colors
+        Optional colour mapping for every group in ``symbol_by``, applied to both
+        points and group legend markers. Default preserves model colours.
 
     Returns
     -------
@@ -130,6 +144,13 @@ def plot_parity(
                 marker_kwargs = {
                     "marker": {"symbol": [group_symbol[g] for g in symbol_by]}
                 }
+                if group_colors is not None:
+                    missing = [group for group in groups if group not in group_colors]
+                    if missing:
+                        raise ValueError(f"Missing group colours for {missing}")
+                    marker_kwargs["marker"]["color"] = [
+                        group_colors[group] for group in symbol_by
+                    ]
 
             for mlip, value in results.items():
                 if mlip == "ref":
@@ -146,67 +167,103 @@ def plot_parity(
                     )
                 )
 
-            # Preserve traces for models not being analysed, before axis limits are
-            # calculated from all traces
-            fig = merge_saved_traces(fig, filename)
+            figures = [(Path(filename), fig)]
+            if not plot_combined:
+                figures = [
+                    (
+                        Path(filename).with_stem(f"{Path(filename).stem}_{trace.name}"),
+                        go.Figure(data=[trace]),
+                    )
+                    for trace in fig.data
+                ]
 
-            if symbol_by:
-                for group in groups:
-                    label = (symbol_labels or {}).get(group, group)
-                    fig.add_trace(
-                        go.Scatter(
-                            x=[None],
-                            y=[None],
-                            name=label,
-                            mode="markers",
-                            marker={"symbol": group_symbol[group], "color": "black"},
-                            hoverinfo="skip",
-                            legend="legend2",
-                            showlegend=True,
+            for out, fig in figures:
+                # Preserve traces for models not being analysed, before axis limits are
+                # calculated from all traces
+                fig = merge_saved_traces(fig, out)
+
+                if symbol_by:
+                    for group in groups:
+                        label = (symbol_labels or {}).get(group, group)
+                        fig.add_trace(
+                            go.Scatter(
+                                x=[None],
+                                y=[None],
+                                name=label,
+                                mode="markers",
+                                marker={
+                                    "symbol": group_symbol[group],
+                                    "color": (group_colors or {}).get(group, "black"),
+                                },
+                                hoverinfo="skip",
+                                legend="legend2",
+                                showlegend=True,
+                            )
                         )
+
+                if log:
+                    # Include preserved models when spanning the positive data range.
+                    all_vals = [
+                        value
+                        for trace in fig.data
+                        for coords in (trace.x, trace.y)
+                        if coords is not None
+                        for value in coords
+                    ]
+                    positive = [
+                        v
+                        for v in all_vals
+                        if isinstance(v, Real) and np.isfinite(v) and v > 0
+                    ]
+                    lims = [min(positive), max(positive)] if positive else [1e-3, 1.0]
+                else:
+                    full_fig = fig.full_figure_for_development()
+                    x_range = full_fig.layout.xaxis.range
+                    y_range = full_fig.layout.yaxis.range
+
+                    lims = [
+                        np.min([x_range, y_range]),  # min of both axes
+                        np.max([x_range, y_range]),  # max of both axes
+                    ]
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=lims,
+                        y=lims,
+                        mode="lines",
+                        name=PARITY_LINE_NAME,
+                        showlegend=False,
+                        hoverinfo="skip",
+                    )
+                )
+
+                xaxis = {"title": {"text": x_label}}
+                yaxis = {"title": {"text": y_label}}
+                if log:
+                    xaxis["type"] = "log"
+                    yaxis["type"] = "log"
+
+                fig.update_layout(
+                    title={"text": title},
+                    xaxis=xaxis,
+                    yaxis=yaxis,
+                )
+                if symbol_by:
+                    fig.update_layout(
+                        legend2={
+                            "orientation": "h",
+                            "yanchor": "bottom",
+                            "y": 1.02,
+                            "xanchor": "left",
+                            "x": 0,
+                        }
                     )
 
-            full_fig = fig.full_figure_for_development()
-            x_range = full_fig.layout.xaxis.range
-            y_range = full_fig.layout.yaxis.range
+                fig.update_traces()
 
-            lims = [
-                np.min([x_range, y_range]),  # min of both axes
-                np.max([x_range, y_range]),  # max of both axes
-            ]
-
-            fig.add_trace(
-                go.Scatter(
-                    x=lims,
-                    y=lims,
-                    mode="lines",
-                    name=PARITY_LINE_NAME,
-                    showlegend=False,
-                    hoverinfo="skip",
-                )
-            )
-
-            fig.update_layout(
-                title={"text": title},
-                xaxis={"title": {"text": x_label}},
-                yaxis={"title": {"text": y_label}},
-            )
-            if symbol_by:
-                fig.update_layout(
-                    legend2={
-                        "orientation": "h",
-                        "yanchor": "bottom",
-                        "y": 1.02,
-                        "xanchor": "left",
-                        "x": 0,
-                    }
-                )
-
-            fig.update_traces()
-
-            # Write to file
-            Path(filename).parent.mkdir(parents=True, exist_ok=True)
-            fig.write_json(filename)
+                # Write to file
+                out.parent.mkdir(parents=True, exist_ok=True)
+                fig.write_json(out)
 
             return results
 
@@ -761,6 +818,7 @@ def plot_density_scatter(
     seed: int = DENSITY_SAMPLE_SEED,
     hover_metadata: dict[str, str] | None = None,
     annotation_metadata: dict[str, str] | None = None,
+    point_metadata: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot density-coloured parity scatter with legend-based model toggling.
@@ -797,6 +855,9 @@ def plot_density_scatter(
         annotations (shown in the text box on the plot). Keys are used to look up
         values in the model's metadata dict; labels are shown in the annotation.
         Pass ``None`` (default) to omit additional annotation metadata.
+    point_metadata
+        Mapping of per-point metadata keys to hover labels. Each model supplies
+        matching full-length arrays in ``point_meta``. Values follow sampling order.
 
     Returns
     -------
@@ -843,7 +904,9 @@ def plot_density_scatter(
                 )
 
             if not results:
-                raise ValueError("No results provided for density plot.")
+                # Every model failed, or has not been calculated
+                warnings.warn("No results provided for density plot.", stacklevel=2)
+                return results
 
             global_min = np.inf
             global_max = -np.inf
@@ -851,6 +914,7 @@ def plot_density_scatter(
             annotations = {}
             annotation_fields = annotation_metadata or {}
             hover_fields = hover_metadata or {}
+            point_fields = point_metadata or {}
 
             for model in results:
                 data = results[model]
@@ -871,6 +935,13 @@ def plot_density_scatter(
                 for meta_key in hover_fields:
                     meta_raw = meta.get(meta_key)
                     hover_values.append("n/a" if meta_raw is None else str(meta_raw))
+
+                sampled_indices = []
+                point_meta = data.get("point_meta") or {}
+                if pred_vals.size:
+                    for key in point_fields:
+                        if len(point_meta.get(key, [])) != ref_vals.size:
+                            raise ValueError(f"Point metadata {key!r} must match data")
 
                 if ref_vals.size == 0 or pred_vals.size == 0:
                     sampled = ([], [], [])
@@ -910,6 +981,10 @@ def plot_density_scatter(
                 }
                 processed[model] = {
                     "samples": sampled,
+                    "customdata": [
+                        [density, *[point_meta[key][i] for key in point_fields]]
+                        for i, density in zip(sampled_indices, sampled[2], strict=True)
+                    ],
                     "counts": len(ref_vals),
                     "meta": hover_values if hover_fields else None,
                 }
@@ -920,6 +995,8 @@ def plot_density_scatter(
                 "<b>Predicted:</b> %{y:.3f}",
                 "<b>Density:</b> %{customdata[0]:.0f}",
             ]
+            for idx, label in enumerate(point_fields.values(), start=1):
+                hover_lines.append(f"<b>{label}:</b> %{{customdata[{idx}]}}")
             if hover_fields:
                 for idx, label in enumerate(hover_fields.values()):
                     hover_lines.append(f"<b>{label}:</b> %{{meta[{idx}]}}")
@@ -940,9 +1017,7 @@ def plot_density_scatter(
                             "showscale": True,
                             "colorbar": {"title": colorbar_title},
                         },
-                        customdata=np.array(density, dtype=float)[:, None]
-                        if density
-                        else None,
+                        customdata=processed[model]["customdata"] or None,
                         meta=processed[model]["meta"],
                         hovertemplate=hovertemplate,
                     )
@@ -1183,6 +1258,7 @@ def plot_periodic_table(
     colorscale: str = "Viridis",
     zmin: float | None = None,
     zmax: float | None = None,
+    symlog_scale: float | None = None,
 ) -> Callable:
     """
     Plot a periodic-table heatmap for element-wise metrics.
@@ -1201,6 +1277,13 @@ def plot_periodic_table(
         Plotly colourscale name. Default is ``"Viridis"``.
     zmin, zmax
         Optional colour scale limits. If not provided, they are inferred from the data.
+    symlog_scale
+        If set, colours are mapped symmetrically logarithmically, with this magnitude
+        setting the width of the near-linear region about zero. Typically the "good"
+        threshold for the metric, so values scoring as good stay near the midpoint,
+        while outliers remain distinguishable instead of saturating the scale.
+        The colour bar is labelled in the original units. Default is `None`,
+        corresponding to a linear scale.
 
     Returns
     -------
@@ -1267,6 +1350,37 @@ def plot_periodic_table(
                 hover_grid[row, col] = "<br>".join(hover_parts)
                 text_grid[row, col] = element
 
+            colorbar = {"title": colorbar_title}
+            plot_min, plot_max = zmin, zmax
+            if symlog_scale is not None:
+                if symlog_scale <= 0:
+                    raise ValueError("`symlog_scale` must be positive")
+
+                if plot_min is None or plot_max is None:
+                    # Fall back to the linear threshold if every value is missing
+                    finite = np.abs(grid[np.isfinite(grid)])
+                    data_limit = finite.max() if finite.size else symlog_scale
+                    plot_min = -data_limit if plot_min is None else plot_min
+                    plot_max = data_limit if plot_max is None else plot_max
+
+                # Label each decade of the colour bar, within the plotted range
+                limit = max(abs(plot_min), abs(plot_max))
+                locator = SymmetricalLogLocator(
+                    linthresh=symlog_scale, base=10, subs=[1.0, 3.0]
+                )
+                ticks = sorted(
+                    tick
+                    for tick in locator.tick_values(-limit, limit)
+                    if abs(tick) <= limit
+                )
+                colorbar["tickvals"] = symlog_transform(np.array(ticks), symlog_scale)
+                colorbar["ticktext"] = [f"{tick:g}" for tick in ticks]
+
+                grid = symlog_transform(grid, symlog_scale)
+                plot_min, plot_max = symlog_transform(
+                    np.array([plot_min, plot_max]), symlog_scale
+                )
+
             fig = go.Figure(
                 data=go.Heatmap(
                     z=grid,
@@ -1275,10 +1389,10 @@ def plot_periodic_table(
                     text=hover_grid,
                     hovertemplate="%{text}<extra></extra>",
                     colorscale=colorscale,
-                    colorbar={"title": colorbar_title},
+                    colorbar=colorbar,
                     showscale=True,
-                    zmin=zmin,
-                    zmax=zmax,
+                    zmin=plot_min,
+                    zmax=plot_max,
                 )
             )
 

@@ -10,5 +10,6 @@ contributors:
     github: "ElliottKasoar"
     email: "elliott.kasoar@stfc.ac.uk"
 
-# TODO: no paper is named in this benchmark's docs. Add its references here.
-citations: []
+citations:
+  - bibtex_key: epstein-2023-hydrolysis
+    role: reference_data

@@ -7,6 +7,7 @@ from typing import TypedDict
 from dash.dash_table import DataTable
 from dash.html import H1, H2, A, Br, Div, Img, Span
 
+from ml_peg.app.utils.build_bibtex import build_bibtex_controls
 from ml_peg.app.utils.build_components import (
     build_benchmark_card,
     build_collapse_controls,
@@ -19,6 +20,7 @@ from ml_peg.app.utils.build_components import (
 )
 from ml_peg.app.utils.icons import GITHUB_ICON
 from ml_peg.app.utils.utils import get_framework_config
+from ml_peg.utils.bibtex import BibTeXExport, combine_bibtex
 
 
 class CategoryTest(TypedDict):
@@ -29,6 +31,7 @@ class CategoryTest(TypedDict):
     layout: Div
     key: str
     speed: str | None
+    bibtex: BibTeXExport
 
 
 class CategoryView(TypedDict):
@@ -47,6 +50,7 @@ class _FrameworkViewRequired(TypedDict):
     framework_id: str
     label: str
     speeds: dict[str, str | None]
+    bibtex: BibTeXExport
     # Each benchmark is kept as a (name, layout) pair so the framework page can
     # wrap it in a lazy-mounted collapsible card (see build_framework_page_layout).
     benchmarks_by_category: dict[str, list[tuple[str, Div]]]
@@ -90,6 +94,7 @@ def build_framework_views(
 
         benchmarks_by_category: dict[str, list[tuple[str, Div]]] = {}
         speeds: dict[str, str | None] = {}
+        exports = []
         for category_name, category_view in category_views.items():
             matching = [
                 test
@@ -97,6 +102,7 @@ def build_framework_views(
                 if framework_id in test["framework_ids"]
             ]
             if matching:
+                exports.extend(test.get("bibtex", BibTeXExport()) for test in matching)
                 benchmarks_by_category[category_name] = [
                     (test["name"], test["layout"]) for test in matching
                 ]
@@ -108,6 +114,7 @@ def build_framework_views(
                 "label": get_framework_config(framework_id)["label"],
                 "benchmarks_by_category": benchmarks_by_category,
                 "speeds": speeds,
+                "bibtex": combine_bibtex(exports),
             }
 
     return framework_views
@@ -336,6 +343,11 @@ def build_framework_page_layout(
     return Div(
         [
             H1(f"{framework_label} Benchmarks"),
+            build_bibtex_controls(
+                framework_view.get("bibtex", BibTeXExport()),
+                framework_view["framework_id"],
+                scope="All source references. Model and element filters do not apply.",
+            ),
             *description_box_block,
             Div(
                 (

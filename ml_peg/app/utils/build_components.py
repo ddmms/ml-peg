@@ -16,6 +16,7 @@ from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Span, Summary
 import yaml
 
+from ml_peg import __version__
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
 from ml_peg.app.utils.build_credits import build_benchmark_credit_components
 from ml_peg.app.utils.register_callbacks import (
@@ -25,6 +26,7 @@ from ml_peg.app.utils.register_callbacks import (
     register_summary_table_callbacks,
     register_weight_callbacks,
 )
+from ml_peg.app.utils.site_update import site_updated_at
 from ml_peg.app.utils.speed import (
     SPEED_LEVELS,
     SPEED_ORDER,
@@ -45,7 +47,7 @@ from ml_peg.app.utils.utils import (
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
-from ml_peg.utils.citations import BenchmarkCredits, add_framework_citations
+from ml_peg.utils.citations import BenchmarkCredits
 
 # Width (px) of the docs-link column of the summary table (see build_app.py).
 # kept so the weights row can be translated to align with cols
@@ -570,6 +572,7 @@ def build_weight_input(
             value=default_value,
             step=0.01,
             debounce=True,
+            className="mlpeg-weight-input",
             style=weight_input_style(),
         )
     )
@@ -945,6 +948,7 @@ def build_table_loading_spinner() -> Div:
     """
     return Div(
         _progress_ring("mlpeg-progress-ring--sm"),
+        className="mlpeg-table-spinner",
         style={
             "position": "absolute",
             "top": "0",
@@ -993,6 +997,7 @@ def build_filter_overlay(table_id: str, child, delay_hide: int = 250) -> Loading
         id={"type": "filter-overlay", "index": table_id},
         fullscreen=False,
         custom_spinner=build_table_loading_spinner(),
+        parent_className="mlpeg-table-loading",
         target_components={table_id: ["data", "style_data_conditional"]},
         show_initially=False,
         # Hold off ~150ms before showing the spinner: fast re-styles (weights,
@@ -1289,6 +1294,7 @@ def build_footer() -> html.Footer:
     html.Footer
         Styled footer component rendered at the bottom of each tab.
     """
+    updated_at = site_updated_at()
     copyright_first_year = "2025"
     current_year = str(time.localtime().tm_year)
     copyright_owners = metadata.metadata("ml-peg")["author"]
@@ -1353,6 +1359,39 @@ def build_footer() -> html.Footer:
                     },
                 ),
                 style={"marginTop": "6px"},
+            ),
+            Div(
+                [
+                    html.Span(f"ML-PEG v{__version__}", id="site-version"),
+                    html.Span("·", **{"aria-hidden": "true"})
+                    if updated_at is not None
+                    else None,
+                    html.Span(
+                        [
+                            "Last updated: ",
+                            html.Time(
+                                updated_at.strftime("%d %b %Y, %H:%M UTC"),
+                                dateTime=updated_at.isoformat(),
+                            ),
+                        ],
+                        id="site-last-updated",
+                        title=(
+                            "Latest application build or benchmark results update "
+                            "(UTC)."
+                        ),
+                    )
+                    if updated_at is not None
+                    else None,
+                ],
+                id="site-build-info",
+                style={
+                    "marginTop": "8px",
+                    "color": "var(--mlpeg-muted)",
+                    "display": "flex",
+                    "justifyContent": "center",
+                    "flexWrap": "wrap",
+                    "gap": "6px",
+                },
             ),
         ],
         style={
@@ -1659,6 +1698,54 @@ def build_no_results_notice() -> Div:
     )
 
 
+# Style for links embedded in a disclaimer box, so they stay legible against the
+# amber background instead of using the default browser link colours.
+DISCLAIMER_LINK_STYLE = {
+    "color": "#8a5a00",
+    "fontWeight": "600",
+    "textDecoration": "underline",
+}
+
+
+def build_disclaimer(text: str | list[str | Component]) -> Div:
+    """
+    Build a highlighted disclaimer box.
+
+    Parameters
+    ----------
+    text
+        Body of the disclaimer, either as a string or as a list of strings and
+        components, allowing inline links. The bold "Disclaimer:" label is added
+        automatically, so it should not be repeated here.
+
+    Returns
+    -------
+    Div
+        Styled callout containing the disclaimer.
+    """
+    body = text if isinstance(text, list) else [text]
+    return Div(
+        [
+            html.Span("⚠", style={"lineHeight": "1.5"}, **{"aria-hidden": "true"}),
+            Div([html.Strong("Disclaimer: "), *body], style={"lineHeight": "1.5"}),
+        ],
+        style={
+            "display": "flex",
+            "alignItems": "flex-start",
+            "gap": "10px",
+            "backgroundColor": "#fff8e5",
+            "border": "1px solid #f0d48a",
+            "borderLeft": "4px solid #e0a300",
+            "borderRadius": "6px",
+            "padding": "10px 14px",
+            "marginBottom": "8px",
+            "maxWidth": "900px",
+            "fontSize": "13px",
+            "color": "#5c4600",
+        },
+    )
+
+
 def build_test_layout(
     name: str,
     description: str,
@@ -1670,6 +1757,7 @@ def build_test_layout(
     column_widths: dict[str, int] | None = None,
     speed: str | None = None,
     credits: BenchmarkCredits | None = None,
+    disclaimer: str | list[str | Component] | None = None,
 ) -> Div:
     """
     Build app layout for a test.
@@ -1704,6 +1792,9 @@ def build_test_layout(
         renders no badge.
     credits
         Benchmark citations and benchmark contributors. Default is None.
+    disclaimer
+        Text or inline components for a highlighted disclaimer below the description.
+        Default is None, in which case no box is shown.
 
     Returns
     -------
@@ -1735,8 +1826,11 @@ def build_test_layout(
     layout_contents.extend(
         [
             H3(description),
+            *([build_disclaimer(disclaimer)] if disclaimer else []),
             build_benchmark_credit_components(
-                add_framework_citations(credits, framework_ids)
+                credits,
+                framework_ids=framework_ids,
+                name=name,
             ),
         ]
     )

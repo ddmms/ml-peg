@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from ase import units
-from ase.io import read, write
+from ase.io import read
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
@@ -82,10 +82,19 @@ LABELS = [f"{i}_AB" for i in range(1, 18)] + ["18", "19"]
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
+    info_keys=["ref_int_energy"],
+    include_filenames=True,
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
 )
+
+# Reference values are taken from the mock calculation, which is always complete.
+# Reference energies are shared by all species in a system
+REF_INT_ENERGIES = dict(zip(INFO["filenames"], INFO["ref_int_energy"], strict=True))
+REF_ENERGIES = [
+    REF_INT_ENERGIES[species[0]] * EV_TO_KCAL for species in SPECIES.values()
+]
 
 
 @pytest.fixture
@@ -107,26 +116,21 @@ def conformer_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        for system in range(1, 20):
+        for system in SPECIES:
             model_int_energy = 0
-            for spec, stoic in zip(SPECIES[system], STOICH[system], strict=False):
-                label = spec
-                atoms = read(CALC_PATH / model_name / f"{label}.xyz")
+            for label, stoic in zip(SPECIES[system], STOICH[system], strict=True):
+                struct_path = CALC_PATH / model_name / f"{label}.xyz"
+                if not struct_path.exists():
+                    model_int_energy = float("nan")
+                    break
+                atoms = read(struct_path)
                 model_int_energy += atoms.info["model_energy"] * stoic
-                ref_int_energy = atoms.info["ref_int_energy"]
 
-                # Write structures for app
-                structs_dir = OUT_PATH / model_name
-                structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / f"{label}.xyz", atoms)
             results[model_name].append(model_int_energy * EV_TO_KCAL)
-            if not ref_stored:
-                results["ref"].append(ref_int_energy * EV_TO_KCAL)
-        ref_stored = True
+
     return results
 
 

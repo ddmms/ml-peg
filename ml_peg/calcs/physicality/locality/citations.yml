@@ -9,4 +9,6 @@ contributors:
     email: "jh2536@cam.ac.uk"
 
 # TODO: devised for ML-PEG, so cite the ML-PEG paper here once it is available.
-citations: []
+citations:
+  - bibtex_key: batatia2025crosslearningelectronicstructure
+    role: benchmark_method

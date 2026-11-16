@@ -1,0 +1,16 @@
+implementers:
+  - name: "Balázs Póta"
+    github: "bpota"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+citations:
+  - bibtex_key: pota-2024-thermal-conductivity
+    role: benchmark_method
+  - bibtex_key: togo-phonondb-103-compounds-pbe
+    role: reference_data
+  - bibtex_key: togo-2015-phonon-lifetimes
+    role: reference_method
+  - bibtex_key: seko-2015-low-thermal-conductivity
+    role: reference_data

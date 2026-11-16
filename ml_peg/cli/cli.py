@@ -12,6 +12,7 @@ from ml_peg import __version__
 from ml_peg.analysis import ANALYSIS_ROOT
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.cli.profile import register_profile_command
 
 
 def get_categories(root: Path, script_prefix: str) -> tuple[str, ...]:
@@ -164,6 +165,8 @@ app = Typer(
     epilog="Try 'ml_peg COMMAND --help' for subcommand options",
 )
 
+register_profile_command(app)
+
 
 @app.command(name="app", help="Run application")
 def run_dash_app(
@@ -223,11 +226,12 @@ def run_dash_app(
     debug
         Whether to run with Dash debugging. Default is `True`.
     """
-    from ml_peg.models import models as ml_peg_models
+    from ml_peg import models as ml_peg_models
 
     # Overwrite current_models before it is imported elsewhere
     ml_peg_models.current_models = models
-    ml_peg_models.models_file = models_file
+    if models_file:
+        ml_peg_models.models_file = models_file
 
     from ml_peg.app.run_app import run_app
 

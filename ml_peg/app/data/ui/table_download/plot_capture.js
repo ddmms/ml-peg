@@ -2,8 +2,8 @@
  * Dash clientside callback for plot export.
  *
  * Python registers this once as plot_download.downloadPlot. The callback reads
- * the rendered Plotly graph in the browser and exports either the trace x/y
- * data as CSV, the current figure as PNG/SVG, or an interactive HTML file.
+ * the rendered Plotly graph in the browser and exports either the trace data
+ * as CSV, the current figure as PNG/SVG, or an interactive HTML file.
  */
 window.dash_clientside = Object.assign({}, window.dash_clientside, {
   plot_download: {
@@ -60,30 +60,93 @@ window.dash_clientside = Object.assign({}, window.dash_clientside, {
           return text;
         };
 
-        const rows = [["trace", "point_index", "x", "y"]];
-        (plotNode.data || []).forEach((trace, traceIndex) => {
-          const xValues = Array.isArray(trace.x)
-            ? trace.x
-            : trace.x == null
-              ? []
-              : [trace.x];
-          const yValues = Array.isArray(trace.y)
-            ? trace.y
-            : trace.y == null
-              ? []
-              : [trace.y];
+        const isArray = (value) =>
+          Array.isArray(value) || ArrayBuffer.isView(value);
+        // Plotly keeps encoded NumPy inputs in .data and exposes their decoded
+        // arrays on the corresponding full trace after rendering.
+        const traces = (plotNode.data || []).map((trace, index) => {
+          const decoded = { ...trace };
+          for (const field of ["x", "y", "text", "hovertext", "customdata"]) {
+            if (trace[field] && trace[field].bdata !== undefined) {
+              decoded[field] = plotNode._fullData?.[index]?.[field] ?? trace[field];
+            }
+          }
+          return decoded;
+        });
+        const asArray = (value) =>
+          isArray(value) ? value : value == null ? [] : [value];
+        // Scalar text applies to every point, while arrays supply per-point values.
+        const pointValue = (value, index) =>
+          isArray(value) ? value[index] : value;
+        const textFields = ["text", "hovertext"].filter((field) =>
+          traces.some((trace) => trace[field] != null),
+        );
+        const headers = ["trace", "point_index", "x", "y", ...textFields];
+        const reserved = new Set(headers);
+        // A custom-data position may mean different things in different traces.
+        // Match columns by their hover label, not just by the array index.
+        const traceColumns = traces.map((trace) => {
+          const labels = new Map();
+          const templates = asArray(trace.hovertemplate);
+          templates.forEach((template) => {
+            String(template || "").split(/<br\s*\/?\s*>|\n/i).forEach((line) => {
+              // Extract labels like "Energy" from "<b>Energy:</b> %{customdata[0]:.3f}".
+              // Ignore format specifiers so CSV values retain their full precision.
+              const match = line.match(
+                /^([^%]*?)%\{customdata(?:\[(\d+)\])?(?::[^}]*|\|[^}]*)?\}/,
+              );
+              if (!match) return;
+              const label = match[1].replace(/<[^>]*>/g, "")
+                .trim().replace(/[:=]\s*$/, "").trim();
+              const index = Number(match[2] || 0);
+              if (label) {
+                if (!labels.has(index)) labels.set(index, new Set());
+                labels.get(index).add(label);
+              }
+            });
+          });
+          let width = 0;
+          asArray(trace.customdata).forEach((value) => {
+            width = Math.max(width, isArray(value) ? value.length : 1);
+          });
+          const used = new Set(reserved);
+          return Array.from({ length: width }, (_, index) => {
+            const candidates = labels.get(index);
+            // Per-point templates can disagree on a label. Fall back if ambiguous.
+            const label = candidates?.size === 1
+              ? [...candidates][0] : `customdata[${index}]`;
+            let header = label;
+            let suffix = 2;
+            // Disambiguate duplicate labels and names reserved for base columns.
+            while (used.has(header)) header = `${label} (${suffix++})`;
+            used.add(header);
+            if (!headers.includes(header)) headers.push(header);
+            return header;
+          });
+        });
+        const rows = [headers];
+        traces.forEach((trace, traceIndex) => {
+          const xValues = asArray(trace.x);
+          const yValues = asArray(trace.y);
           const pointCount = Math.max(xValues.length, yValues.length);
           // Internal tags identify helper traces in the browser; export them
           // under a readable label rather than leaking the sentinel.
           const traceName =
             TRACE_LABELS[trace.name] || trace.name || `trace_${traceIndex}`;
           for (let pointIndex = 0; pointIndex < pointCount; pointIndex += 1) {
-            rows.push([
-              traceName,
-              pointIndex,
-              pointIndex < xValues.length ? xValues[pointIndex] : "",
-              pointIndex < yValues.length ? yValues[pointIndex] : "",
+            const values = new Map([
+              ["trace", traceName],
+              ["point_index", pointIndex],
+              ["x", xValues[pointIndex]],
+              ["y", yValues[pointIndex]],
+              ...textFields.map((field) => [field, pointValue(trace[field], pointIndex)]),
             ]);
+            const custom = pointValue(trace.customdata, pointIndex);
+            traceColumns[traceIndex].forEach((header, index) => {
+              values.set(header, isArray(custom) ? custom[index] : index === 0 ? custom : "");
+            });
+            // Use the shared column order, leaving absent fields blank via csvValue.
+            rows.push(headers.map((header) => values.get(header)));
           }
         });
 
