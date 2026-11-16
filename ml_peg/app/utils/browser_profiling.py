@@ -5,7 +5,7 @@ Time common ML-PEG interactions using Playwright Chromium.
 - Loads summary, category and framework pages, edits weights and a threshold,
   opens a plot, toggles a model, and applies and clears an element filter.
 - Waits for populated tables and editable controls before interacting.
-- Waits for each edit callback and the Dash queues to finish before moving on.
+- Waits for saved edits and the Dash queues to finish before moving on.
 - Waits for visible loading rings to disappear and a 300 ms stable quiet period.
 - Records browser long tasks, Dash requests and errors alongside timings.
 - Starts each repetition with empty browser storage and cache, so no hard
@@ -344,7 +344,9 @@ def edit(page, selector):
     expect(control).to_be_visible()
     expect(control).to_be_editable()
     identifier = control.get_attribute("id")
-    table_id = identifier.split("-table-", 1)[0] + "-table"
+    setting_id = identifier.removeprefix("global-")
+    table_id, setting = setting_id.split("-table-", 1)
+    table_id += "-table"
     wait_for_table(page, by_id(table_id))
     page.wait_for_function(
         """id => {
@@ -355,20 +357,27 @@ def edit(page, selector):
         arg=identifier,
     )
     value = float(control.input_value())
-    control.fill(str(value + 0.1 if value >= 0 else value - 0.1))
-    # Wait for the callback caused by this edit, not an unrelated request.
-    with page.expect_response(
-        lambda response: (
-            urlsplit(response.url).path.endswith("/_dash-update-component")
-            and response.request.method == "POST"
-            and identifier + ".value"
-            in (response.request.post_data_json or {}).get("changedPropIds", [])
-        )
-    ) as update:
-        control.press("Enter")
-    if update.value.status != 200:
-        raise ValueError(f"Edit was not applied: HTTP {update.value.status}")
-    update.value.body()
+    value = value + 0.1 if value >= 0 else value - 0.1
+    if setting.endswith("-input"):
+        store_id = table_id + "-weight-store"
+        keys = [setting.removesuffix("-input")]
+    else:
+        metric, field = setting.removesuffix("-threshold").rsplit("-", 1)
+        store_id = table_id + "-thresholds-store"
+        keys = [metric, field]
+        value = round(value, 10)
+    control.fill(str(value))
+    control.press("Enter")
+    # Settings can commit locally. Journey.settle then waits for downstream
+    # scoring and rendering, including any server callback failures.
+    page.wait_for_function(
+        """([store, keys, expected]) => {
+            let value = JSON.parse(sessionStorage.getItem(store) || 'null');
+            for (const key of keys) value = value?.[key];
+            return value === expected;
+        }""",
+        arg=[store_id, keys, value],
+    )
 
 
 def wait_for_table(page, selector):

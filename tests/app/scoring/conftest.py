@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -12,7 +13,11 @@ import pytest
 
 @pytest.fixture(scope="session")
 def app_url(tmp_path_factory):
-    """Launch a fresh process with only the deterministic scoring dataset."""
+    """Use ML_PEG_SCORING_TEST_URL or launch an isolated deterministic app."""
+    external_url = os.environ.get("ML_PEG_SCORING_TEST_URL")
+    if external_url:
+        yield external_url
+        return
     root = tmp_path_factory.mktemp("scoring-app")
     script = Path(__file__).with_name("synthetic_app.py")
     with (root / "server.log").open("w") as log:
