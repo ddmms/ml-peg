@@ -14,6 +14,7 @@ from scipy.integrate import trapezoid
 
 from ml_peg.analysis.utils.decorators import (
     build_table,
+    merge_saved_models,
     plot_scatter,
 )
 from ml_peg.analysis.utils.utils import (
@@ -121,7 +122,8 @@ def vacfs() -> dict:
             show_markers=False,
             hovertemplate=(
                 "<b>Time: </b>%{x:.3f} ps<br>"
-                "<b>Velocity autocorrelation: </b>%{y:.3g} Å²/fs²"
+                "<b>Velocity autocorrelation: </b>%{y:.3g} Å²/fs²<br>"
+                "<b>Temperature: </b>%{meta.temperature:g} K"
                 "<extra>%{fullData.name}</extra>"
             ),
         )
@@ -137,6 +139,16 @@ def vacfs() -> dict:
             }
 
         curves()
+        filename = OUT_PATH / f"{element}_vacfs.json"
+        figure = json.loads(filename.read_text())
+        for trace in figure["data"]:
+            if "temperature" in trace.get("meta", {}):
+                continue
+            model_name, temperature = trace["name"].rsplit(", ", 1)
+            trace["name"] = model_name
+            trace["legendgroup"] = model_name
+            trace["meta"] = {"temperature": float(temperature.removesuffix(" K"))}
+        filename.write_text(json.dumps(figure))
 
     return results
 
@@ -344,6 +356,7 @@ def diffusion_plots(diffusion_constants: dict) -> None:
                 for error in results[model_name][element]["diffusion_error"]
             ]
         filename = OUT_PATH / f"{element}_diffusion_errors.json"
+        errors = merge_saved_models(errors, filename)
         filename.write_text(json.dumps(errors, allow_nan=False))
         estimates = {
             model_name: {
@@ -362,6 +375,7 @@ def diffusion_plots(diffusion_constants: dict) -> None:
             if model_name != "ref" and element in values
         }
         filename = OUT_PATH / f"{element}_diffusion_estimates.json"
+        estimates = merge_saved_models(estimates, filename)
         filename.write_text(json.dumps(estimates, allow_nan=False))
 
 

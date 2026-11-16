@@ -8,11 +8,10 @@ from dash.html import H3, Div
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_column,
     plot_with_download_controls,
-    register_plot_settings_callbacks,
 )
 from ml_peg.app.utils.load import read_json, read_plot
-from ml_peg.app.utils.register_callbacks import register_plot_download_callbacks
 
 BENCHMARK_NAME = "MetalSelfDiffusion"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#metal-self-diffusion"
@@ -23,9 +22,12 @@ class MetalSelfDiffusionApp(BaseApp):
     """Metal self-diffusion metrics and element-specific diagnostic plots."""
 
     def register_callbacks(self) -> None:
-        """Register the standard plot settings and download controls."""
-        register_plot_settings_callbacks()
-        register_plot_download_callbacks()
+        """Show element plots when the diffusion metric column is clicked."""
+        plot_from_table_column(
+            table_id=self.table_id,
+            plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
+            column_to_plot={"Diffusion coefficient log error": load_element_plots()},
+        )
 
 
 def load_vacf_plot(element: str) -> Graph | None:
@@ -50,12 +52,10 @@ def load_vacf_plot(element: str) -> Graph | None:
     traces = graph.figure["data"]
     if not traces:
         return graph
-    temperatures = sorted(
-        {float(trace["name"].rsplit(", ", 1)[1].removesuffix(" K")) for trace in traces}
-    )
+    temperatures = sorted({trace["meta"]["temperature"] for trace in traces})
     steps = []
     for temperature in temperatures:
-        visible = [trace["name"].endswith(f", {temperature:g} K") for trace in traces]
+        visible = [trace["meta"]["temperature"] == temperature for trace in traces]
         steps.append(
             {
                 "label": f"{temperature:g} K",
@@ -116,14 +116,14 @@ def load_diffusion_plot(element: str) -> Graph | None:
     return graph
 
 
-def get_app() -> MetalSelfDiffusionApp:
+def load_element_plots() -> Div:
     """
-    Build the metrics table and element tabs for VACF and diffusion plots.
+    Build element tabs containing VACF and diffusion plots.
 
     Returns
     -------
-    MetalSelfDiffusionApp
-        Benchmark application with metrics and element tabs.
+    Div
+        Element tabs with plots and their download controls.
     """
     info = read_json(DATA_PATH / "info.json")
     tabs = []
@@ -143,21 +143,36 @@ def get_app() -> MetalSelfDiffusionApp:
             )
         tabs.append(Tab(label=element, value=element, children=plots))
 
+    return Div(
+        Tabs(
+            id=f"{BENCHMARK_NAME}-elements",
+            value=info["filenames"][0] if tabs else None,
+            children=tabs,
+        )
+    )
+
+
+def get_app() -> MetalSelfDiffusionApp:
+    """
+    Build the metrics table with a placeholder for element plots.
+
+    Returns
+    -------
+    MetalSelfDiffusionApp
+        Benchmark application with plots revealed by metric-table clicks.
+    """
     return MetalSelfDiffusionApp(
         name=BENCHMARK_NAME,
         description=(
             "Liquid-metal self-diffusion coefficients and their temperature "
-            "dependence compared with experiment. Select an element to view "
+            "dependence compared with experiment. Click the diffusion metric, "
+            "then select an element to view "
             "velocity autocorrelation functions and diffusion curves across models."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "metal_self_diffusion_metrics_table.json",
         info_path=DATA_PATH / "info.json",
         extra_components=[
-            Tabs(
-                id=f"{BENCHMARK_NAME}-elements",
-                value=info["filenames"][0] if tabs else None,
-                children=tabs,
-            ),
+            Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
         ],
     )
