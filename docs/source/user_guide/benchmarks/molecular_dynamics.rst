@@ -394,6 +394,7 @@ For each composition (albite, anorthite, sanidine) and for the mean over the thr
    replicas.
 
 Errors are computed for each replica and then averaged, not on the mean density.
+A metric has no value if any of the replicas it depends on did not complete.
 
 Thresholds: a model is considered to reproduce the density correctly when the
 MAE is 0.05 g/cm^3 (MAPE 2 %) or lower which is of the order of the spread
@@ -414,13 +415,18 @@ it is equilibrated at 300 K for 20 ps.
 The reported density is the average over 21 snapshots, one every 1000 steps (1 ps),
 of the final equilibration stage (including its first frame). It is computed in the
 analysis from the saved trajectory, so the ``*_03_hold_cold.extxyz`` files must be
-kept for the analysis to work. Three replicas (different starting structures) are
-run for each composition.
+kept for the analysis to work. Three replicas (different starting structures and
+different initial velocities) are run for each composition.
 
 A similar melt-quench protocol was established on larger simulation boxes in the
 literature (https://doi.org/10.1111/jace.70962). The choice of a ~350-atom system
 represents a pragmatic compromise to significantly reduce computational cost
 while retaining physically meaningful glass density predictions.
+
+The compositions are those of the microprobe analyses of Taylor and Brown (1979),
+reported in weight per cent, converted to atomic proportions and rounded to whole
+atoms in cells of about 350 atoms: albite Na27Al25Si83O217 (352 atoms), anorthite
+Ca27Al50Si57O216 (350 atoms) and sanidine K25Al29Si81O218 (353 atoms).
 
 The MD uses float32 for the MACE models and MatterSim. The other models use the
 default ML-PEG precision. `mace-omol` and `mace-polar-1-l` did not complete the
@@ -441,7 +447,9 @@ Input structures:
 
 Generated with Packmol using `data/build_structure.py`, which is included in the
 benchmark folder. Three random structures (seeds 0, 1 and 2) are generated for each
-composition.
+composition, with a minimum interatomic distance of 2.0 Å (Packmol seed
+``seed * 99991 + 7``). The box edge is set from a target density of 2.4, 2.7 and
+2.4 g/cm^3 for albite, anorthite and sanidine, respectively.
 
 Reference data:
 

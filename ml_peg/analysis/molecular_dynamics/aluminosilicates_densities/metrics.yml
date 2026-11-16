@@ -5,7 +5,8 @@ metrics:
     unit: g/cm³
     tooltip: >
       Mean absolute error of simulated vs experimental glass density for albite
-      (NaAlSi3O8, g/cm3). Computed as the mean of per-replica absolute errors.
+      (NaAlSi3O8, g/cm3). Computed as the mean of per-replica absolute errors;
+      no value is shown if any of the three replicas did not complete.
       Reference: 2.382 g/cm3 (Taylor & Brown, GCA 1979).
     level_of_theory: Experimental
     weight: 1.0
@@ -15,8 +16,9 @@ metrics:
     unit: g/cm³
     tooltip: >
       Mean absolute error of simulated vs experimental glass density for
-      anorthite (CaAl2Si2O8, g/cm3). Computed as the mean of per-replica
-      absolute errors. Reference: 2.691 g/cm3 (Taylor & Brown, GCA 1979).
+      anorthite (CaAl2Si2O8, g/cm3). Computed as the mean of per-replica absolute errors;
+      no value is shown if any of the three replicas did not complete.
+      Reference: 2.691 g/cm3 (Taylor & Brown, GCA 1979).
     level_of_theory: Experimental
     weight: 1.0
   Density MAE (sanidine):
@@ -25,8 +27,9 @@ metrics:
     unit: g/cm³
     tooltip: >
       Mean absolute error of simulated vs experimental glass density for
-      sanidine (KAlSi3O8, g/cm3). Computed as the mean of per-replica
-      absolute errors. Reference: 2.366 g/cm3 (Taylor & Brown, GCA 1979).
+      sanidine (KAlSi3O8, g/cm3). Computed as the mean of per-replica absolute errors;
+      no value is shown if any of the three replicas did not complete.
+      Reference: 2.366 g/cm3 (Taylor & Brown, GCA 1979).
     level_of_theory: Experimental
     weight: 1.0
   Density MAE (mean):
@@ -47,8 +50,9 @@ metrics:
     unit: "%"
     tooltip: >
       Mean absolute percentage error of simulated vs experimental glass density
-      for albite (NaAlSi3O8, %). Computed as the mean of per-replica percentage
-      errors. Reference: 2.382 g/cm3 (Taylor & Brown, GCA 1979).
+      for albite (NaAlSi3O8, %). Computed as the mean of per-replica percentage errors;
+      no value is shown if any of the three replicas did not complete.
+      Reference: 2.382 g/cm3 (Taylor & Brown, GCA 1979).
     level_of_theory: Experimental
     weight: 1.0
   Density MAPE (anorthite):
@@ -57,8 +61,9 @@ metrics:
     unit: "%"
     tooltip: >
       Mean absolute percentage error of simulated vs experimental glass density
-      for anorthite (CaAl2Si2O8, %). Computed as the mean of per-replica
-      percentage errors. Reference: 2.691 g/cm3 (Taylor & Brown, GCA 1979).
+      for anorthite (CaAl2Si2O8, %). Computed as the mean of per-replica percentage errors;
+      no value is shown if any of the three replicas did not complete.
+      Reference: 2.691 g/cm3 (Taylor & Brown, GCA 1979).
     level_of_theory: Experimental
     weight: 1.0
   Density MAPE (sanidine):
@@ -67,8 +72,9 @@ metrics:
     unit: "%"
     tooltip: >
       Mean absolute percentage error of simulated vs experimental glass density
-      for sanidine (KAlSi3O8, %). Computed as the mean of per-replica percentage
-      errors. Reference: 2.366 g/cm3 (Taylor & Brown, GCA 1979).
+      for sanidine (KAlSi3O8, %). Computed as the mean of per-replica percentage errors;
+      no value is shown if any of the three replicas did not complete.
+      Reference: 2.366 g/cm3 (Taylor & Brown, GCA 1979).
     level_of_theory: Experimental
     weight: 1.0
   Density MAPE (mean):

@@ -21,53 +21,7 @@ from ase import Atoms
 from ase.data import atomic_masses, atomic_numbers
 from ase.io import read, write
 
-# ---------------------------------------------------------------------------
-# Pair-specific minimum distances (Angstrom)
-# Based on sum of ionic radii + small margin
-# ---------------------------------------------------------------------------
-PAIR_DIST = {
-    ("O", "O"): 2.4,
-    ("Si", "O"): 1.6,
-    ("Al", "O"): 1.75,
-    ("Na", "O"): 2.2,
-    ("K", "O"): 2.4,
-    ("Ca", "O"): 2.2,
-    ("Si", "Si"): 3.0,
-    ("Al", "Al"): 3.0,
-    ("Si", "Al"): 3.0,
-    ("Na", "Si"): 2.8,
-    ("Na", "Al"): 2.8,
-    ("K", "Si"): 3.0,
-    ("K", "Al"): 3.0,
-    ("Ca", "Si"): 2.8,
-    ("Ca", "Al"): 2.8,
-    ("Na", "Na"): 3.0,
-    ("K", "K"): 3.5,
-    ("Ca", "Ca"): 3.0,
-}
-
-
-def get_min_dist(e1: str, e2: str) -> float:
-    """
-    Get minimum distance for a pair of elements.
-
-    Parameters
-    ----------
-    e1 : str
-        Chemical symbol of the first element (e.g., 'Si', 'O').
-    e2 : str
-        Chemical symbol of the second element (e.g., 'Al', 'Na').
-
-    Returns
-    -------
-    float
-        Minimum allowed distance between the element pair in Å (defaults to 2.0 Å).
-    """
-    key = tuple(sorted([e1, e2]))
-    return PAIR_DIST.get(key, 2.0)  # default 2.0 if pair not listed
-
-
-# Use the maximum pairwise distance as global tolerance for packmol
+# Global minimum distance between any two atoms, enforced by packmol
 TOLERANCE = 2.0  # Angstrom — conservative global minimum
 BORDER = 2.0  # Angstrom margin from box edges (avoids PBC clashes)
 

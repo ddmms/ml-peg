@@ -25,16 +25,19 @@ feldspars (Na/K, low Al/Si ratio).
 MAE and MAPE are computed as the mean of per-replica errors (not the error
 on the mean density).
 
-Density extraction: for each replica, the density is computed here from the
-production-run trajectory ('replica{N}_03_hold_cold.extxyz', 21 snapshots,
-one every 1 ps, including the first frame of the stage) as mass / cell volume
-of each frame, then averaged. A replica that is missing, marked as failed,
-unreadable or with an incomplete trajectory gives NaN, and so does every metric
-that depends on it.
+Density extraction: the density of each replica is the mean over the 21
+snapshots of the 300 K production trajectory (replica{N}_03_hold_cold.extxyz:
+one frame per ps for 20 ps, plus the first frame), computed here from the saved
+frames. A replica is valid only if its final structure replica{N}_quenched.xyz
+exists, is readable and is not marked as failed, and its trajectory has exactly
+21 frames; otherwise its density is NaN. A per-composition metric is NaN if any
+of its replicas is NaN, and the mean over compositions is NaN if any
+composition is NaN.
 """
 
 from __future__ import annotations
 
+from functools import cache
 import os
 from pathlib import Path
 
@@ -43,7 +46,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config
+from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
@@ -111,7 +114,8 @@ def write_element_info() -> None:
     )
 
 
-def get_replica_densities(model_name: str, composition: str) -> list[float]:
+@cache
+def get_replica_densities(model_name: str, composition: str) -> tuple[float, ...]:
     """
     Mean density of each replica over the production run, from its trajectory.
 
@@ -124,7 +128,7 @@ def get_replica_densities(model_name: str, composition: str) -> list[float]:
 
     Returns
     -------
-    list[float]
+    tuple[float, ...]
         One mean density per replica (g/cm3), in replica order. NaN for a
         replica that is missing, failed, unreadable or has an incomplete
         production trajectory.
@@ -153,7 +157,7 @@ def get_replica_densities(model_name: str, composition: str) -> list[float]:
             except Exception:  # noqa: BLE001
                 density = float("nan")
         densities.append(density if np.isfinite(density) else float("nan"))
-    return densities
+    return tuple(densities)
 
 
 def compute_mae(model_name: str, composition: str) -> float:
@@ -179,8 +183,8 @@ def compute_mae(model_name: str, composition: str) -> float:
     values = np.array(get_replica_densities(model_name, composition))
     if np.isnan(values).any():
         return float("nan")
-    ref = EXP_DENSITY[composition]
-    return float(np.mean(np.abs(values - ref)))
+    ref = np.full(len(values), EXP_DENSITY[composition])
+    return float(mae(ref, values))
 
 
 def compute_mape(model_name: str, composition: str) -> float:
@@ -202,11 +206,7 @@ def compute_mape(model_name: str, composition: str) -> float:
     float
         MAPE in %, or NaN if any replica is missing.
     """
-    values = np.array(get_replica_densities(model_name, composition))
-    if np.isnan(values).any():
-        return float("nan")
-    ref = EXP_DENSITY[composition]
-    return float(np.mean(np.abs(values - ref) / ref * 100))
+    return compute_mae(model_name, composition) / EXP_DENSITY[composition] * 100
 
 
 def _mean_over_compositions(
@@ -237,6 +237,8 @@ def copy_all_structures() -> None:
     """
     Wrap and save .xyz structures to the app output folder.
 
+    Unreadable final files and failed runs are skipped.
+
     Returns
     -------
     None
@@ -246,15 +248,19 @@ def copy_all_structures() -> None:
         for comp in COMPOSITIONS:
             for replica in range(N_REPLICAS):
                 src = CALC_PATH / model_name / comp / f"replica{replica}_quenched.xyz"
-                if src.exists():
+                if not src.exists():
+                    continue
+                try:
                     atoms = read(str(src))
-                    if atoms.info.get("failed", False):
-                        continue  # a failed run has no result to display
-                    atoms.wrap()
-                    filename = f"{model_name}_{comp}_replica{replica}_quenched.xyz"
-                    dst = OUT_PATH / model_name / comp / filename
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    write(str(dst), atoms)
+                except Exception:  # noqa: BLE001
+                    continue  # unreadable final file: skip it
+                if atoms.info.get("failed", False):
+                    continue  # failed runs have no structure to show
+                atoms.wrap()
+                filename = f"{model_name}_{comp}_replica{replica}_quenched.xyz"
+                dst = OUT_PATH / model_name / comp / filename
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                write(str(dst), atoms)
 
 
 @pytest.fixture
