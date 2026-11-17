@@ -346,9 +346,25 @@ covalent bonds.
 This is compared to the reference RI-MP2/CBS binding energy (aug-cc-pVDZ -> aug-cc-pVTZ,
 Helgaker extrapolation, counterpoise-corrected, including the monomer deformation energy).
 
-Both metrics use the reference binding energies of the paper. For the pairs where larger
-basis sets and CCSD(T) corrections are available, these underbind by 0.3-1.3 kcal/mol,
-which applies to the reference interaction energies as well.
+Thresholds
+----------
+
+Both metrics use the thresholds good = 0.5 kcal/mol and bad = 2.0 kcal/mol.
+
+* Good: the reference work states that an accuracy of 0.5 kcal/mol for hydrogen-bonded
+  base pairs requires an extrapolation from larger basis sets and a CCSD(T) correction,
+  which are not available for all 30 base pairs. Differences from the reference below
+  0.5 kcal/mol are therefore within its accuracy, and a smaller error does not score
+  higher.
+* Bad: 2.0 kcal/mol is in the range of the errors of the medium-quality methods that the
+  reference work compares with the same reference energies. From its Table 3, the mean
+  absolute errors are 1.4 kcal/mol for the Cornell et al. (AMBER) force field (17 base
+  pairs), 2.4 kcal/mol for B3LYP/6-31G** (27 base pairs) and 2.8 kcal/mol for
+  MP2/6-31G*(0.25)//HF/6-31G** (23 base pairs). A model with an error of 2.0 kcal/mol is
+  not an improvement on these methods, and scores 0, in particular as it is worse than the cheap AMBER force field.
+* The same thresholds are used for both metrics, as both are compared with the same
+  reference energies: the reference interaction energy is the reference binding energy
+  minus the deformation energy of the bases.
 
 Benchmark speed
 ---------------
