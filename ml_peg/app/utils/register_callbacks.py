@@ -963,7 +963,7 @@ def register_weight_callbacks(
     def store_input_value(
         input_weight: float | None,
         n_clicks: int,
-        stored_weights: dict[str, float],
+        stored_weights: dict[str, float] | None,
     ) -> dict[str, float]:
         """
         Store weight values from the text input.
@@ -984,6 +984,10 @@ def register_weight_callbacks(
         """
         trigger_id = ctx.triggered_id
 
+        # Copied so an absent store cannot break the lookups below, and is not
+        # mutated in place
+        stored_weights = dict(stored_weights or {})
+
         if trigger_id == f"{input_id}-input":
             if input_weight is None:
                 set_props(
@@ -1000,8 +1004,10 @@ def register_weight_callbacks(
                 raise PreventUpdate
             stored_weights[column] = input_weight
         elif trigger_id == reset_id and n_clicks > 0:
+            # Keyed on the defaults too, so reset repairs a stale store
             reset_weights = {
-                key: default_weights.get(key, 1.0) for key in stored_weights
+                key: default_weights.get(key, 1.0)
+                for key in (*stored_weights, *default_weights)
             }
             stored_weights = reset_weights
         else:
@@ -1015,7 +1021,7 @@ def register_weight_callbacks(
         prevent_initial_call="initial_duplicate",
         optional=True,
     )
-    def sync_inputs(stored_weights: dict[str, float]) -> float:
+    def sync_inputs(stored_weights: dict[str, float] | None) -> float:
         """
         Sync the weight value from the Store into the text input.
 
@@ -1029,7 +1035,8 @@ def register_weight_callbacks(
         float
             Weight to set as the text input value.
         """
-        return stored_weights[column]
+        # A stale session store may predate this column
+        return (stored_weights or {}).get(column, default_weights.get(column, 1.0))
 
 
 def register_normalization_callbacks(

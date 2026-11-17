@@ -7,7 +7,10 @@ from dash.html import Button, Details, Div, Label, Summary
 
 from ml_peg.app.utils.build_components import build_weight_input
 from ml_peg.app.utils.register_callbacks import register_weight_callbacks
-from ml_peg.app.utils.utils import RESERVED_TABLE_COLUMNS
+from ml_peg.app.utils.utils import (
+    RESERVED_TABLE_COLUMNS,
+    default_weight_store_data,
+)
 
 
 def _weight_row(table: DataTable, column: str, reset_id: str) -> Div:
@@ -29,7 +32,7 @@ def _weight_row(table: DataTable, column: str, reset_id: str) -> Div:
         Label and numeric weight input.
     """
     prefix = f"global-{table.id}-{column}"
-    defaults = getattr(table, "weights", None) or {}
+    defaults = default_weight_store_data(table)
     register_weight_callbacks(prefix, table.id, column, defaults, reset_id)
     control = build_weight_input(f"{prefix}-input", defaults.get(column, 1.0))
     control.style.update(width="76px", flexShrink="0")
