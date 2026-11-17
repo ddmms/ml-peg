@@ -478,11 +478,14 @@ def test_overlapping_metric_edits(ready_page, page_errors, kind):
         page.wait_for_timeout(100)
     assert held, "The first edit was not intercepted"
     edit(page, second, 2 if kind == "weight" else 20)
-    page.wait_for_timeout(500)
+    expected = 0.56 if kind == "weight" else 0.75
+    stored_score(page, "B1-table", expected)
     route, response = held[0]
     route.fulfill(response=response)
     page.unroute("**/_dash-update-component*", delay_first)
-    expected = 0.56 if kind == "weight" else 0.75
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
     chain(page, expected, (expected + 0.3) / 2, ((expected + 0.3) / 2 + 0.9) / 2)
 
 
@@ -599,10 +602,13 @@ def test_latest_edit_wins_over_delayed_response(ready_page, page_errors, kind, a
         button = "reset-button" if kind == "weight" else "reset-thresholds-button"
         page.locator(f"#B1-table-{button}").click()
         expected = 0.5
-    page.wait_for_timeout(500)
+    stored_score(page, "B1-table", expected)
     route, response = held[0]
     route.fulfill(response=response)
     page.unroute("**/_dash-update-component*", delay_first)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
     chain(page, expected, (expected + 0.3) / 2, ((expected + 0.3) / 2 + 0.9) / 2)
 
 
@@ -736,9 +742,17 @@ def test_rapid_edits_preserve_full_precision(ready_page, page_errors, seed):
     if sum(weights) == 0:
         weights[0] = 1
         edit(page, "B1-table-M1-input", 1)
+    expected_a = sum(
+        weight * max(0, min(1, 1 - value / bound))
+        for weight, value, bound in zip(weights, [2, 8], bounds, strict=True)
+    ) / sum(weights)
+    stored_score(page, "B1-table", expected_a)
     route, response = held[0]
     route.fulfill(response=response)
     page.unroute("**/_dash-update-component*", hold_first_score)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
     # Independent arithmetic from the fixture's raw values, with no scorer import.
     for model, raw, b2, beta in [(A, [2, 8], 0.3, 0.9), (B, [6, 4], 0.5, 0.7)]:
         normalized = [
