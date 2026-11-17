@@ -186,8 +186,13 @@ at 298.2 K and 1 atm with a 1 fs timestep. The first 300 ps of each 500 ps
 trajectory is discarded, leaving 200 ps of production. Densities are compared
 to experimental values at 298.2 K.
 
-Density errors are reported for stable systems. Stable runs is the percentage of systems
-that complete the full simulation with finite positions, energies and forces.
+Stable runs is the percentage of the 25 expected systems that complete the full
+simulation with finite positions, energies and forces.
+
+Density errors require every system to be stable: if a model fails any system,
+its MAE, RMSE and MAPE are undefined, and so is its overall score. Averaging
+over only the systems a model completed would not be comparable between models,
+since failures are most likely on the systems a model handles worst.
 
 Computational cost
 ------------------
