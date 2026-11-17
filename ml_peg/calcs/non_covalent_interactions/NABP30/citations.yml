@@ -1,0 +1,12 @@
+implementers:
+  - name: "Debarshi Banerjee"
+    github: "debarshibanerjee"
+
+contributors: []
+
+citations:
+  - bibtex_key: sponer2004accurate
+    role: benchmark_method
+  - bibtex_key: jurecka2006benchmark
+    role: reference_data
+    detail: A...A 3 geometry

@@ -302,3 +302,75 @@ Input structures:
 Reference data:
 
 * CCSD(T)/CBS
+
+NABP30
+======
+
+Summary
+-------
+
+Performance in predicting interaction and binding energies of 30 hydrogen-bonded nucleic
+acid base pairs (NABP30), ranging from the weak, nonpolar adenine...difluorotoluene pair to the protonated
+cytosine...cytosine+ pair. The set covers Watson-Crick, wobble, purine-purine and
+pyrimidine-pyrimidine pairs, including thio-, oxo- and amino-modified bases and planar and
+nonplanar variants of some pairs.
+
+Metrics
+-------
+
+1. Interaction energy error
+
+For each base pair, the energies of the base pair and of its two bases are calculated at
+the reference geometry (RI-MP2 optimised), with each base kept as it is in the base pair.
+The interaction energy is the energy of the base pair minus the energies of the two bases.
+Nothing is relaxed, so it does not include the energy needed to deform the bases on
+binding.
+
+This is compared to the reference RI-MP2/CBS interaction energy: the reference binding
+energy described below minus the reference deformation energy of the bases.
+
+2. Binding energy error
+
+For each base pair, the base pair and the two isolated bases are relaxed with the model
+(BFGS, maximum force 0.002 eV/Å). Each of the 13 distinct bases is relaxed once, starting
+from its geometry in a base pair, and used for every base pair that contains it. As amino
+groups are planar in many base pairs but pyramidal in the isolated bases, each base is
+relaxed from three starting structures, randomly displaced by 0.05 Å, and the lowest energy
+is used. Base pairs that were optimised with Cs symmetry in the reference work are kept
+planar; the other base pairs are randomly displaced by 0.01 Å, so that they can leave a
+planar starting structure. The binding energy is the energy of the relaxed base pair minus
+the energies of the two relaxed bases, so it includes the energy needed to deform the bases
+on binding. A base pair is counted as failed if a relaxation does not converge or changes
+covalent bonds.
+
+This is compared to the reference RI-MP2/CBS binding energy (aug-cc-pVDZ -> aug-cc-pVTZ,
+Helgaker extrapolation, counterpoise-corrected, including the monomer deformation energy).
+
+Both metrics use the reference binding energies of the paper. For the pairs where larger
+basis sets and CCSD(T) corrections are available, these underbind by 0.3-1.3 kcal/mol,
+which applies to the reference interaction energies as well.
+
+Benchmark speed
+---------------
+
+Fast: tests are likely to take minutes to run on GPU (about 5 minutes for mace-mp-0a on
+one NVIDIA H200).
+
+Data availability
+-----------------
+
+Input structures:
+
+* Sponer, J., Jurecka, P. and Hobza, P., 2004. Accurate interaction energies of
+  hydrogen-bonded nucleic acid base pairs. Journal of the American Chemical Society,
+  126(32), pp.10142-10151.
+* Adenine...adenine 3 (not in the supporting information of the above): Jurecka, P.,
+  Sponer, J., Cerny, J. and Hobza, P., 2006. Benchmark database of accurate (MP2 and
+  CCSD(T) complete basis set limit) interaction energies of small model complexes, DNA
+  base pairs, and amino acid pairs. Physical Chemistry Chemical Physics, 8(17),
+  pp.1985-1993.
+
+Reference data:
+
+* Sponer, J., Jurecka, P. and Hobza, P., 2004 (as above)
+* MP2/CBS
