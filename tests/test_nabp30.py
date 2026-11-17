@@ -249,6 +249,7 @@ def analysis_module(
     monkeypatch.delitem(sys.modules, ANALYSIS_MODULE, raising=False)
     module = importlib.import_module(ANALYSIS_MODULE)
     monkeypatch.setattr(module, "MODELS", ["mock", "size", "error"])
+    monkeypatch.setattr(module, "N_PAIRS", len(TOY_PAIRS))
     yield module
     # Clean up after the test
     sys.modules.pop(ANALYSIS_MODULE, None)

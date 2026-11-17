@@ -35,6 +35,9 @@ EV_TO_KCAL = units.mol / units.kcal
 CALC_PATH = CALCS_ROOT / "non_covalent_interactions" / "NABP30" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "non_covalent_interactions" / "NABP30"
 
+# Number of base pairs in the benchmark
+N_PAIRS = 30
+
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
@@ -54,10 +57,48 @@ INFO = get_struct_info(
 )
 
 LABELS = INFO["filenames"]
+# NaN for a reference energy that is missing from the mock output
 REF_INTERACTION_ENERGIES = [
-    energy * EV_TO_KCAL for energy in INFO["ref_interaction_energy"]
+    np.nan if energy is None else energy * EV_TO_KCAL
+    for energy in INFO["ref_interaction_energy"]
 ]
-REF_BINDING_ENERGIES = [energy * EV_TO_KCAL for energy in INFO["ref_binding_energy"]]
+REF_BINDING_ENERGIES = [
+    np.nan if energy is None else energy * EV_TO_KCAL
+    for energy in INFO["ref_binding_energy"]
+]
+
+
+def check_references() -> None:
+    """
+    Check that all base pairs and their reference energies were read.
+
+    The base pairs and their references are read from the outputs of the mock
+    calculation. If it is incomplete, errors would be calculated for fewer base pairs.
+
+    Raises
+    ------
+    ValueError
+        If the number of base pairs is not ``N_PAIRS``, or a reference energy is
+        missing.
+    """
+    mock_path = CALC_PATH / "mock"
+    if len(LABELS) != N_PAIRS:
+        raise ValueError(
+            f"Expected {N_PAIRS} base pairs in {mock_path}, found {len(LABELS)}. "
+            "Please rerun the mock calculation."
+        )
+    missing = [
+        label
+        for label, interaction, binding in zip(
+            LABELS, REF_INTERACTION_ENERGIES, REF_BINDING_ENERGIES, strict=True
+        )
+        if not (np.isfinite(interaction) and np.isfinite(binding))
+    ]
+    if missing:
+        raise ValueError(
+            f"No reference energies for {missing} in {mock_path}. "
+            "Please rerun the mock calculation."
+        )
 
 
 def read_frames(model_name: str, label: str) -> dict[str, list[Atoms]] | None:
@@ -177,6 +218,7 @@ def interaction_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted interaction energies.
     """
+    check_references()
     results = {"ref": list(REF_INTERACTION_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
@@ -206,6 +248,7 @@ def binding_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted binding energies.
     """
+    check_references()
     results = {"ref": list(REF_BINDING_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
