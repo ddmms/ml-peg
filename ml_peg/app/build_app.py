@@ -1118,6 +1118,68 @@ def build_nav(
             "aria-expanded",
             allow_duplicate=True,
         ),
+        Input("bench-open-request", "data"),
+        State({"type": "bench-toggle", "index": ALL}, "id"),
+        State({"type": "bench-toggle", "index": ALL}, "aria-expanded"),
+        prevent_initial_call=True,
+    )
+    def open_benchmark_from_search(
+        request: dict[str, object] | None,
+        toggle_ids: list[dict[str, str]],
+        expanded: list[str],
+    ) -> tuple[list[object], list[str], list[str]]:
+        """
+        Expand the benchmark card named by a search-result jump.
+
+        Unlike the per-card toggle this states a desired outcome rather than
+        flipping the current one, so repeated requests for the same card are
+        harmless: a single selection can trigger the jump more than once.
+
+        Parameters
+        ----------
+        request
+            Jump request holding the target card's display ``name``.
+        toggle_ids
+            Pattern-matching ids of every card header on the page.
+        expanded
+            Each header's current ``aria-expanded`` value.
+
+        Returns
+        -------
+        tuple[list[object], list[str], list[str]]
+            Body children, header classNames and ``aria-expanded`` values, left
+            unchanged for every card except the requested one.
+
+        Raises
+        ------
+        PreventUpdate
+            If no card matches, or the requested card is already open.
+        """
+        name = (request or {}).get("name")
+        bodies: list[object] = [no_update] * len(toggle_ids)
+        classes: list[str] = [no_update] * len(toggle_ids)
+        aria: list[str] = [no_update] * len(toggle_ids)
+
+        for index, toggle_id in enumerate(toggle_ids):
+            if toggle_id["index"] != name or expanded[index] == "true":
+                continue
+            bodies[index] = benchmark_layouts.get(toggle_id["index"])
+            classes[index] = "mlpeg-bench-header mlpeg-bench-header--open"
+            aria[index] = "true"
+            return bodies, classes, aria
+
+        raise PreventUpdate
+
+    @callback(
+        Output({"type": "bench-body", "index": ALL}, "children", allow_duplicate=True),
+        Output(
+            {"type": "bench-toggle", "index": ALL}, "className", allow_duplicate=True
+        ),
+        Output(
+            {"type": "bench-toggle", "index": ALL},
+            "aria-expanded",
+            allow_duplicate=True,
+        ),
         Output("bench-expand-store", "data"),
         Input("collapse-all-benchmarks", "n_clicks"),
         State({"type": "bench-body", "index": ALL}, "id"),
