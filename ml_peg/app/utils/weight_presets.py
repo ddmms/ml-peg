@@ -15,6 +15,7 @@ from ml_peg.app import APP_ROOT
 
 # Each preset lists the category titles that stay weighted (1.0); every other
 # category is set to 0.0. Titles must match the category `title:` values exactly.
+# A category can instead map to a list of its tests, so only those are weighted.
 # The "Random" preset is generated in code.
 WEIGHT_PRESETS = safe_load((APP_ROOT / "utils" / "weight_presets.yml").read_text())
 
@@ -148,7 +149,9 @@ def build_weight_preset_selector(label_style: dict[str, str]) -> Details:
 
 
 def register_weight_preset_callbacks(
-    summary_table: DataTable, default_weights: dict[str, float]
+    summary_table: DataTable,
+    default_weights: dict[str, float],
+    category_defaults: dict[str, dict[str, float]],
 ) -> None:
     """
     Register the weight-preset toggle/apply/reset callbacks.
@@ -163,7 +166,14 @@ def register_weight_preset_callbacks(
         Overall summary table, used to enumerate the weightable category columns.
     default_weights
         Default summary weights restored by the reset button.
+    category_defaults
+        Default test weights of each category summary table, keyed by category
+        title, restored by the reset button.
     """
+    category_outputs = [
+        Output(f"{title}-summary-table-weight-store", "data", allow_duplicate=True)
+        for title in category_defaults
+    ]
 
     @callback(
         Output("weight-preset-pending", "data", allow_duplicate=True),
@@ -227,17 +237,21 @@ def register_weight_preset_callbacks(
 
     @callback(
         Output("summary-table-weight-store", "data", allow_duplicate=True),
+        *category_outputs,
         Input("weight-preset-apply", "n_clicks"),
         State("weight-preset-pending", "data"),
         prevent_initial_call=True,
     )
-    def apply_weight_presets(n_clicks: int, pending: list[str]) -> dict[str, float]:
+    def apply_weight_presets(
+        n_clicks: int, pending: list[str]
+    ) -> tuple[dict[str, float], ...]:
         """
         Apply the union of the selected presets to the summary weights.
 
         A category is weighted 1.0 if it appears in any selected preset, else 0.0
         (the union of the selected presets). "Random" instead gives every category
-        an independent random weight in [0, 1].
+        an independent random weight in [0, 1]. A category restricted to listed
+        tests (and not selected whole) keeps only those tests weighted.
 
         Parameters
         ----------
@@ -248,21 +262,30 @@ def register_weight_preset_callbacks(
 
         Returns
         -------
-        dict[str, float]
-            Category-column weights written to the summary weight store.
+        tuple[dict[str, float], ...]
+            Category-column weights written to the summary weight store, then
+            each category's test weights.
         """
         if not n_clicks or not pending:
             raise PreventUpdate
 
         weight_columns = _weight_columns(summary_table)
         weights = dict.fromkeys(weight_columns, 0.0)
+        whole: set[str] = set()
+        restricted: dict[str, set[str]] = {}
         for name in pending:
             if name == "Random":
                 contribution = {
                     column: round(random.random(), 2) for column in weight_columns
                 }
             else:
-                relevant = {f"{title} Score" for title in WEIGHT_PRESETS[name]}
+                for entry in WEIGHT_PRESETS[name]:
+                    if isinstance(entry, str):
+                        whole.add(entry)
+                    else:
+                        for title, tests in entry.items():
+                            restricted.setdefault(title, set()).update(tests)
+                relevant = {f"{title} Score" for title in whole | restricted.keys()}
                 contribution = {
                     column: (1.0 if column in relevant else 0.0)
                     for column in weight_columns
@@ -271,15 +294,29 @@ def register_weight_preset_callbacks(
                 column: max(weights[column], contribution[column])
                 for column in weight_columns
             }
-        return weights
+        test_weights = (
+            {
+                column: weight
+                if title not in restricted
+                or title in whole
+                or column.removesuffix(" Score") in restricted[title]
+                else 0.0
+                for column, weight in defaults.items()
+            }
+            for title, defaults in category_defaults.items()
+        )
+        return weights, *test_weights
 
     @callback(
         Output("summary-table-weight-store", "data", allow_duplicate=True),
         Output("weight-preset-pending", "data", allow_duplicate=True),
+        *category_outputs,
         Input("weight-preset-reset", "n_clicks"),
         prevent_initial_call=True,
     )
-    def reset_weight_presets(n_clicks: int) -> tuple[dict[str, float], list[str]]:
+    def reset_weight_presets(
+        n_clicks: int,
+    ) -> tuple[dict[str, float] | list[str], ...]:
         """
         Restore the category yml default weights and clear the selection.
 
@@ -290,9 +327,10 @@ def register_weight_preset_callbacks(
 
         Returns
         -------
-        tuple[dict[str, float], list[str]]
-            Default category weights and an empty pending selection.
+        tuple[dict[str, float] | list[str], ...]
+            Default category weights, an empty pending selection, and each
+            category's default test weights.
         """
         if not n_clicks:
             raise PreventUpdate
-        return default_weights, []
+        return default_weights, [], *category_defaults.values()
