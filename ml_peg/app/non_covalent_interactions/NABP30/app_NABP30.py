@@ -10,8 +10,10 @@ from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
     struct_from_multi_scatters,
+    struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_json, read_plot
+from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 
 BENCHMARK_NAME = "NABP30"
 DOCS_URL = (
@@ -23,9 +25,9 @@ INFO_PATH = DATA_PATH / "info.json"
 ASSETS_PATH = "/assets/non_covalent_interactions/NABP30"
 
 
-def get_structs(scatter: Graph, labels: list[str], relaxed: bool) -> list[list[str]]:
+def get_relaxed_structs(scatter: Graph, labels: list[str]) -> list[list[str]]:
     """
-    Get the structure to show for each point of a parity plot.
+    Get the relaxed base pair to show for each point of the binding energy plot.
 
     Parameters
     ----------
@@ -33,27 +35,19 @@ def get_structs(scatter: Graph, labels: list[str], relaxed: bool) -> list[list[s
         Parity plot with one trace per model, and the parity line.
     labels
         Base pair labels, in the order of the points of each trace.
-    relaxed
-        Whether to show the base pair relaxed by each model, or the input structure,
-        which is the same for all models.
 
     Returns
     -------
     list[list[str]]
-        Structure files for each trace, in the order of its points. Empty for traces
-        without structures (the parity line), which clears the viewer.
+        Base pair relaxed by the model of each trace, in the order of its points.
+        Empty for the parity line.
     """
-    structs = []
-    for trace in (scatter.figure or {}).get("data", []):
-        model_name = str(trace.get("name"))
-        # Relaxed pairs: <model>/<label>_relaxed.xyz. Input: mock/<label>.xyz
-        struct_dir, suffix = (model_name, "_relaxed") if relaxed else ("mock", "")
-        structs.append(
-            [f"{ASSETS_PATH}/{struct_dir}/{label}{suffix}.xyz" for label in labels]
-            if (DATA_PATH / model_name).is_dir()
-            else []
-        )
-    return structs
+    return [
+        [f"{ASSETS_PATH}/{trace.get('name')}/{label}_relaxed.xyz" for label in labels]
+        if trace.get("name") != PARITY_LINE_NAME
+        else []
+        for trace in (scatter.figure or {}).get("data", [])
+    ]
 
 
 class NABP30App(BaseApp):
@@ -81,18 +75,19 @@ class NABP30App(BaseApp):
             },
         )
 
-        # Interaction energies: input structure. Binding energies: base pair relaxed
-        # by the model of the selected point. Showing another plot clears the viewer.
-        struct_from_multi_scatters(
+        # Showing another plot clears the viewer.
+        # Interaction energies: input structure, the same for all models
+        struct_from_scatter(
             scatter_id=f"{BENCHMARK_NAME}-interaction-figure",
             struct_id=struct_id,
-            structs=get_structs(scatter_interaction, labels, relaxed=False),
+            structs=[f"{ASSETS_PATH}/mock/{label}.xyz" for label in labels],
             mode="struct",
         )
+        # Binding energies: base pair relaxed by the model of the selected point
         struct_from_multi_scatters(
             scatter_id=f"{BENCHMARK_NAME}-binding-figure",
             struct_id=struct_id,
-            structs=get_structs(scatter_binding, labels, relaxed=True),
+            structs=get_relaxed_structs(scatter_binding, labels),
             mode="struct",
         )
 
