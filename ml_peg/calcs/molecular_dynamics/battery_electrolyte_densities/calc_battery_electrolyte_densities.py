@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
+import shutil
 import time
 from typing import Any
 from warnings import warn
@@ -28,6 +30,7 @@ import pytest
 
 from ml_peg.calcs.molecular_dynamics.battery_electrolyte_densities.protocol import (
     LOG_INTERVAL,
+    N_SYSTEMS,
     NUM_MD_STEPS,
     TIMESTEP,
 )
@@ -39,11 +42,11 @@ MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
+# Canonical copy of the input structures, used by the analysis for system metadata.
+REFERENCE_PATH = OUT_PATH / "reference"
+
 AU_TO_G_CM3 = 1e24 / units.mol
 ATM = 1.01325 * units.bar
-
-# Number of configurations in the dataset.
-N_SYSTEMS = 25
 
 # 500 ps of NPT per system: 300 ps equilibration, then 200 ps of production.
 
@@ -71,6 +74,30 @@ def get_density_g_cm3(atoms: Atoms) -> float:
     mass = atoms.get_masses().sum()
     volume = atoms.get_volume()
     return AU_TO_G_CM3 * mass / volume
+
+
+def copy_reference_structures(input_dir: Path) -> None:
+    """
+    Copy every input structure into the shared reference directory.
+
+    The analysis reads system metadata from these files rather than from a
+    model's trajectories, so the expected systems are known without a complete
+    mock run. Each file is written via a process-unique temporary name and then
+    moved into place, so concurrent jobs cannot leave a partial file behind.
+
+    Parameters
+    ----------
+    input_dir
+        Downloaded directory of input structures.
+    """
+    REFERENCE_PATH.mkdir(parents=True, exist_ok=True)
+    for input_xyz_path in input_dir.glob("*.xyz"):
+        reference_xyz = REFERENCE_PATH / input_xyz_path.name
+        if reference_xyz.exists():
+            continue
+        tmp = reference_xyz.with_name(f"{reference_xyz.name}.{os.getpid()}.tmp")
+        shutil.copyfile(input_xyz_path, tmp)
+        tmp.replace(reference_xyz)
 
 
 def log_md(dyn, start_time: float) -> None:
@@ -240,6 +267,7 @@ def test_battery_electrolyte_densities(mlip: tuple[str, Any], system_id: int) ->
             f"Expected {N_SYSTEMS} structures in {data_path / 'structures'}, "
             f"found {len(structure_paths)}"
         )
+    copy_reference_structures(data_path / "structures")
     input_xyz_path = structure_paths[system_id]
 
     model_name, model = mlip

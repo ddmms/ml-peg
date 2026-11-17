@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from ase import units
 
+# Number of configurations in the dataset.
+N_SYSTEMS = 25
+
 NUM_MD_STEPS = 500_000
 TIMESTEP = 1 * units.fs
 LOG_INTERVAL = 100

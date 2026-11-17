@@ -15,22 +15,16 @@ import pytest
 
 from ml_peg import app
 from ml_peg.analysis.utils import decorators, utils
+from ml_peg.calcs.molecular_dynamics.battery_electrolyte_densities import protocol
 from ml_peg.models import get_models
 
 
-@pytest.fixture
-def analysis(monkeypatch, tmp_path):
-    """Load analysis without requiring downloaded benchmark inputs."""
+def load_analysis(monkeypatch, tmp_path, info, n_systems):
+    """Import the analysis module against a stubbed reference set."""
     monkeypatch.setattr(app, "APP_ROOT", tmp_path / "app")
-    info = {
-        "filenames": ["complete", "missing"],
-        "exp_density": [1.0, 2.0],
-        "salt": ["", ""],
-        "solvent": ["", ""],
-        "category": ["solvent", "solvent"],
-        "concentration_M": [0, 0],
-    }
     monkeypatch.setattr(utils, "get_struct_info", lambda **kwargs: info)
+    # Patched before import, so the analysis picks it up via `from ... import`.
+    monkeypatch.setattr(protocol, "N_SYSTEMS", n_systems)
     monkeypatch.setattr(utils, "build_dispersion_name_map", lambda *args: {})
     monkeypatch.setattr(get_models, "get_model_names", lambda *args: ["test-model"])
     monkeypatch.setattr(decorators, "get_model_names", lambda *args: ["test-model"])
@@ -41,10 +35,37 @@ def analysis(monkeypatch, tmp_path):
     spec = importlib.util.spec_from_file_location("electrolyte_analysis_test", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    return module
+
+
+def two_system_info():
+    """Build reference metadata for one complete and one missing system."""
+    return {
+        "filenames": ["complete", "missing"],
+        "exp_density": [1.0, 2.0],
+        "salt": ["", ""],
+        "solvent": ["", ""],
+        "category": ["solvent", "solvent"],
+        "concentration_M": [0, 0],
+    }
+
+
+@pytest.fixture
+def analysis(monkeypatch, tmp_path):
+    """Load analysis without requiring downloaded benchmark inputs."""
+    info = two_system_info()
+    module = load_analysis(monkeypatch, tmp_path, info, len(info["filenames"]))
     monkeypatch.setattr(module, "CALC_PATH", tmp_path)
     monkeypatch.setattr(module, "EXPECTED_FRAMES", 4)
     monkeypatch.setattr(module, "EQUILIB_TIME_PS", 0.1)
     return module
+
+
+def test_incomplete_reference_set_skips(monkeypatch, tmp_path):
+    """A partial reference set skips analysis, rather than shrinking the contract."""
+    info = two_system_info()
+    with pytest.raises(pytest.skip.Exception, match="Expected 25 reference structures"):
+        load_analysis(monkeypatch, tmp_path, info, 25)
 
 
 def write_trajectory(path, frames=4, invalid=False):
@@ -166,6 +187,28 @@ def test_resume_has_no_duplicate_frame_and_corruption_restarts(calculation, tmp_
     assert backups[0].read_text() == "invalid trajectory"
     with Trajectory(corrupt) as traj:
         assert len(traj) == 3
+
+
+def test_reference_structures_copied_atomically(calculation, tmp_path, monkeypatch):
+    """Every input reaches the reference set once, leaving no partial files."""
+    source = tmp_path / "structures"
+    source.mkdir()
+    for name in ("napf6_dme_0.5M.xyz", "pc.xyz"):
+        (source / name).write_text(name)
+    destination = tmp_path / "outputs" / "reference"
+    monkeypatch.setattr(calculation, "REFERENCE_PATH", destination)
+
+    calculation.copy_reference_structures(source)
+    # A second run, as every system's job makes, must not rewrite the set.
+    (destination / "pc.xyz").write_text("already copied")
+    calculation.copy_reference_structures(source)
+
+    assert sorted(path.name for path in destination.iterdir()) == [
+        "napf6_dme_0.5M.xyz",
+        "pc.xyz",
+    ]
+    assert (destination / "napf6_dme_0.5M.xyz").read_text() == "napf6_dme_0.5M.xyz"
+    assert (destination / "pc.xyz").read_text() == "already copied"
 
 
 def test_md_exception_is_persisted(calculation, tmp_path, monkeypatch):

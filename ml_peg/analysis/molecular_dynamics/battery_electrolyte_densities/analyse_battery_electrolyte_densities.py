@@ -25,6 +25,7 @@ from ml_peg.calcs.molecular_dynamics.battery_electrolyte_densities.protocol impo
     EQUILIB_TIME_PS,
     EXPECTED_FRAMES,
     LOG_INTERVAL_PS,
+    N_SYSTEMS,
 )
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -41,9 +42,12 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+# System metadata comes from the canonical input structures copied by the calc,
+# so the expected systems and reference densities do not depend on any model run.
 INFO = get_struct_info(
     calc_path=CALC_PATH,
-    glob_pattern="*.traj",
+    model_name="reference",
+    glob_pattern="*.xyz",
     index=0,
     info_keys=["exp_density", "concentration_M", "category", "salt", "solvent"],
     write_info=True,
@@ -51,6 +55,13 @@ INFO = get_struct_info(
     out_path=OUT_PATH,
     include_filenames=True,
 )
+
+if len(INFO["filenames"]) != N_SYSTEMS:
+    pytest.skip(
+        f"Expected {N_SYSTEMS} reference structures in {CALC_PATH / 'reference'}, "
+        f"found {len(INFO['filenames'])}. Please run the calculation.",
+        allow_module_level=True,
+    )
 
 
 def compute_density(traj_path: Path) -> float:
@@ -286,7 +297,7 @@ def stable_runs(densities: dict[str, list]) -> dict[str, float]:
     completion_plot(densities)
     return {
         model_name: (
-            100.0 * np.isfinite(densities[model_name]).sum() / len(INFO["filenames"])
+            100.0 * np.isfinite(densities[model_name]).sum() / N_SYSTEMS
             if any(
                 (CALC_PATH / model_name / f"{label}.traj").exists()
                 for label in INFO["filenames"]

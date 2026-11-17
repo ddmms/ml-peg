@@ -78,6 +78,7 @@ def test_selects_clicked_model_and_label(registered_app):
         "/assets/molecular_dynamics/battery_electrolyte_densities/model-b/a.xyz",
         "struct",
         0,
+        frame_indices=None,
     )
     assert isinstance(view.children, Iframe)
 
