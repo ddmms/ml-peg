@@ -42,7 +42,7 @@ MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
 
-# Canonical copy of the input structures, used by the analysis for system metadata.
+# Canonical input structures, read by the analysis for system metadata.
 REFERENCE_PATH = OUT_PATH / "reference"
 
 AU_TO_G_CM3 = 1e24 / units.mol
@@ -80,10 +80,8 @@ def copy_reference_structures(input_dir: Path) -> None:
     """
     Copy every input structure into the shared reference directory.
 
-    The analysis reads system metadata from these files rather than from a
-    model's trajectories, so the expected systems are known without a complete
-    mock run. Each file is written via a process-unique temporary name and then
-    moved into place, so concurrent jobs cannot leave a partial file behind.
+    Copies are written via a process-unique temporary name, so concurrent jobs
+    cannot leave a partial file behind.
 
     Parameters
     ----------

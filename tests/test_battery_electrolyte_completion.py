@@ -199,7 +199,7 @@ def test_reference_structures_copied_atomically(calculation, tmp_path, monkeypat
     monkeypatch.setattr(calculation, "REFERENCE_PATH", destination)
 
     calculation.copy_reference_structures(source)
-    # A second run, as every system's job makes, must not rewrite the set.
+    # Every system's job calls this, so repeat calls must not rewrite the set.
     (destination / "pc.xyz").write_text("already copied")
     calculation.copy_reference_structures(source)
 

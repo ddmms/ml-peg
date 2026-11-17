@@ -42,8 +42,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-# System metadata comes from the canonical input structures copied by the calc,
-# so the expected systems and reference densities do not depend on any model run.
+# Read from the canonical inputs copied by the calc, not from a model's outputs.
 INFO = get_struct_info(
     calc_path=CALC_PATH,
     model_name="reference",
@@ -115,9 +114,8 @@ def mape(ref: list, prediction: list) -> float:
     """
     Get mean absolute percentage error.
 
-    ML-PEG's analysis utilities provide MAE and RMSE but not MAPE, so it is
-    defined here. NaN handling matches those helpers: any NaN prediction makes
-    the whole metric NaN, so a failed system cannot be hidden by averaging.
+    Defined here as the analysis utilities provide MAE and RMSE but not MAPE.
+    Guards match those helpers.
 
     Parameters
     ----------
@@ -131,7 +129,7 @@ def mape(ref: list, prediction: list) -> float:
     float
         Mean absolute percentage error, in percent.
     """
-    if np.isnan(np.sum(prediction)):
+    if len(ref) != len(prediction) or not len(ref) or np.isnan(np.sum(prediction)):
         return np.nan
 
     ref_arr = np.asarray(ref, dtype=float)
