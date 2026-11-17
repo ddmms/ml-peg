@@ -46,9 +46,10 @@ def get_structs(scatter: Graph, labels: list[str], relaxed: bool) -> list[list[s
     structs = []
     for trace in (scatter.figure or {}).get("data", []):
         model_name = str(trace.get("name"))
-        struct_dir = model_name if relaxed else "mock"
+        # Relaxed pairs: <model>/<label>_relaxed.xyz. Input: mock/<label>.xyz
+        struct_dir, suffix = (model_name, "_relaxed") if relaxed else ("mock", "")
         structs.append(
-            [f"{ASSETS_PATH}/{struct_dir}/{label}.xyz" for label in labels]
+            [f"{ASSETS_PATH}/{struct_dir}/{label}{suffix}.xyz" for label in labels]
             if (DATA_PATH / model_name).is_dir()
             else []
         )

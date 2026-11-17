@@ -213,9 +213,13 @@ def binding_energies() -> dict[str, list]:
             frames = read_frames(model_name, label)
             results[model_name].append(get_binding_energy(frames))
             if frames is not None:
-                # Relaxed base pair, shown in the app
+                # Relaxed base pair, shown in the app. Its own filename keeps it apart
+                # from the input structures (mock/<label>.xyz) if mock is analysed.
                 (OUT_PATH / model_name).mkdir(parents=True, exist_ok=True)
-                write(OUT_PATH / model_name / f"{label}.xyz", frames["relaxed"][0])
+                write(
+                    OUT_PATH / model_name / f"{label}_relaxed.xyz",
+                    frames["relaxed"][0],
+                )
 
     return results
 
