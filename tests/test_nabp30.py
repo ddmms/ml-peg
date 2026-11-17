@@ -326,6 +326,29 @@ def test_relax_base_keeps_lowest_good_start(
     assert best.info["start_energies"] == energies
 
 
+def test_relax_base_keeps_good_starts_if_one_raises(monkeypatch: pytest.MonkeyPatch):
+    """Test an error in one start does not fail the base."""
+
+    def fake_relax(atoms, calc, planar=False, rattle=0.0, seed=RATTLE_SEED):
+        """Raise an error for the second start, return a good result otherwise."""
+        if seed == RATTLE_SEED + 1:
+            raise RuntimeError("calculation failed")
+        relaxed = atoms.copy()
+        relaxed.info.update(
+            model_energy=-1.0, converged=True, bonds_unchanged=True, n_steps=1
+        )
+        return relaxed
+
+    monkeypatch.setattr(calc_module, "relax", fake_relax)
+    base = get_monomers(make_pair("AT_planar"))[0]
+    with pytest.warns(UserWarning, match="start 1 failed"):
+        best = relax_base(base, calc=None)
+
+    assert best.info["converged"]
+    assert best.info["model_energy"] == -1.0
+    assert np.isnan(best.info["start_energies"][1])
+
+
 def test_calc_writes_six_tagged_frames(calc_outputs: Path):
     """Test each output file has the pair and its bases, unrelaxed and relaxed."""
     for label, (_, names, _, ref_binding, ref_e_def) in TOY_PAIRS.items():

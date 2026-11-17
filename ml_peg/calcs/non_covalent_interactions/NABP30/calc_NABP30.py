@@ -243,7 +243,7 @@ def failed(atoms: Atoms) -> Atoms:
     return atoms
 
 
-def relax_base(base: Atoms, calc: Calculator) -> Atoms:
+def relax_base(base: Atoms, calc: Calculator, label: str = "base") -> Atoms:
     """
     Relax an isolated base from several starts and keep the lowest-energy result.
 
@@ -253,21 +253,30 @@ def relax_base(base: Atoms, calc: Calculator) -> Atoms:
         Base at its geometry in a base pair.
     calc
         Calculator to use.
+    label
+        Name of the model and base, used in warnings. Default is "base".
 
     Returns
     -------
     Atoms
         Lowest-energy relaxed structure among those that converged with unchanged
         covalent bonds (among all, if none did), with the energies (eV) of all starts
-        in ``info["start_energies"]``.
+        in ``info["start_energies"]``. A start whose relaxation raised an error counts
+        as failed, with NaN energy.
     """
-    relaxed = [
-        relax(base, calc, rattle=BASE_RATTLE_STDEV, seed=RATTLE_SEED + start)
-        for start in range(BASE_STARTS)
-    ]
+    relaxed = []
+    for start in range(BASE_STARTS):
+        try:
+            relaxed.append(
+                relax(base, calc, rattle=BASE_RATTLE_STDEV, seed=RATTLE_SEED + start)
+            )
+        except Exception as exc:
+            warn(f"{label}: relaxation of start {start} failed: {exc}", stacklevel=1)
+            relaxed.append(failed(base))
     best = min(
         [atoms for atoms in relaxed if is_ok(atoms)] or relaxed,
-        key=lambda atoms: atoms.info["model_energy"],
+        # NaN energies (failed starts) last
+        key=lambda atoms: np.nan_to_num(atoms.info["model_energy"], nan=np.inf),
     )
     best.info["start_energies"] = [atoms.info["model_energy"] for atoms in relaxed]
     return best
@@ -335,18 +344,14 @@ def test_nabp30(mlip: tuple[str, Any]) -> None:
             bases.setdefault(name, monomer)
     relaxed_bases = {}
     for name, base in tqdm(bases.items()):
-        try:
-            relaxed_bases[name] = relax_base(base, calc)
-        except Exception as exc:
-            warn(f"{model_name}, base {name}: relaxation failed: {exc}", stacklevel=1)
-            relaxed_bases[name] = failed(base)
-        else:
-            if not is_ok(relaxed_bases[name]):
-                warn(
-                    f"{model_name}, base {name}: relaxation did not converge or "
-                    "changed covalent bonds",
-                    stacklevel=1,
-                )
+        # A start that raises an error is caught in relax_base
+        relaxed_bases[name] = relax_base(base, calc, f"{model_name}, base {name}")
+        if not is_ok(relaxed_bases[name]):
+            warn(
+                f"{model_name}, base {name}: no start converged with unchanged "
+                "covalent bonds",
+                stacklevel=1,
+            )
 
     for dimer in tqdm(dimers):
         label = dimer.info["label"]
