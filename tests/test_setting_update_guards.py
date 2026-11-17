@@ -1,5 +1,7 @@
 """Weight defaults remain complete for stale session stores."""
 
+from __future__ import annotations
+
 from types import SimpleNamespace
 
 from ml_peg.app.utils.utils import default_weight_store_data

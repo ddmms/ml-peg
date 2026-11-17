@@ -100,8 +100,8 @@
         } else {
             config.metrics.forEach((metric, i) => {
                 const defaults = config.defaults[metric];
-                const original = next[metric];
-                if (!defaults || !original) return;
+                if (!defaults) return;
+                const original = next[metric] || {...defaults};
                 let good = Number(original.good), bad = Number(original.bad);
                 if (!Number.isFinite(good) || !Number.isFinite(bad)) return;
                 let edited = false;
