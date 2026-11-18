@@ -333,6 +333,7 @@ def get_all_tests(
     dict[str, dict[str, list[Div]]],
     dict[str, dict[str, DataTable]],
     dict[str, dict[str, str]],
+    dict[str, dict[str, str]],
 ]:
     """
     Get layout and register callbacks for all categories.
@@ -347,7 +348,8 @@ def get_all_tests(
     Returns
     -------
     tuple
-        Apps by test name, and layouts, tables, and framework IDs for all categories.
+        Apps by test name, and layouts, tables, framework IDs, and display names
+        for all categories.
     """
     # Find Python files e.g. app_OC157.py in mlip_tesing.app module.
     # We will get the category from the parent's parent directory
@@ -357,6 +359,8 @@ def get_all_tests(
     layouts = {}
     tables = {}
     frameworks = {}
+    # Benchmark directory name -> app display name, which keys the summary columns
+    names: dict[str, dict[str, str]] = {}
 
     # Build all layouts, and register all callbacks to main app.
     for test in tests:
@@ -375,10 +379,12 @@ def get_all_tests(
                 layouts[category_name] = {}
                 tables[category_name] = {}
                 frameworks[category_name] = {}
+                names[category_name] = {}
 
             layouts[category_name][test_app.name] = test_app.layout
             tables[category_name][test_app.name] = test_app.table
             frameworks[category_name][test_app.name] = test_app.framework_ids
+            names[category_name][test_name] = test_app.name
 
         except FileNotFoundError as err:
             warnings.warn(
@@ -399,7 +405,7 @@ def get_all_tests(
             )
             continue
 
-    return apps, layouts, tables, frameworks
+    return apps, layouts, tables, frameworks, names
 
 
 def _collect_benchmark_speeds(
@@ -429,6 +435,7 @@ def build_category(
     all_layouts: dict[str, dict[str, list[Div]]],
     all_tables: dict[str, dict[str, DataTable]],
     all_frameworks: dict[str, dict[str, str]],
+    all_names: dict[str, dict[str, str]],
 ) -> tuple[
     dict[str, dict[str, object]],
     dict[str, DataTable],
@@ -446,6 +453,8 @@ def build_category(
         Tables for all tests, grouped by category.
     all_frameworks
         Framework IDs for all tests, grouped by category.
+    all_names
+        Display name of each benchmark directory, grouped by category.
 
     Returns
     -------
@@ -478,13 +487,29 @@ def build_category(
 
         category_to_title[category] = category_title
 
+        # Summary columns are keyed by display name, `benchmark_weights` by directory
+        display_names = all_names.get(category, {})
+        summary_weights = {
+            f"{display_names[key]} Score": value
+            for key, value in benchmark_weights.items()
+            if key in display_names
+        }
+
         # Build category summary table
         summary_table = build_summary_table(
             dict(sorted(all_tables[category].items())),
             table_id=f"{category_title}-summary-table",
             description=category_descrip,
-            weights={f"{key} Score": value for key, value in benchmark_weights.items()},
+            weights=summary_weights,
         )
+
+        # A category whose benchmarks are all zero-weighted has no score of its own,
+        # so it must not block the total score either.
+        benchmark_columns = {f"{name} Score" for name in all_tables[category]}
+        if benchmark_columns and all(
+            summary_weights.get(column, 1.0) == 0 for column in benchmark_columns
+        ):
+            category_weight = 0
 
         # Store category weight for overall summary
         category_weights[f"{category_title} Score"] = category_weight
@@ -1373,7 +1398,7 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         Test to build app for. Default is `*`, corresponding to all tests.
     """
     # Get layouts and tables for each test, grouped by categories
-    all_apps, all_layouts, all_tables, all_frameworks = get_all_tests(
+    all_apps, all_layouts, all_tables, all_frameworks, all_names = get_all_tests(
         category=category, test=test
     )
 
@@ -1386,7 +1411,7 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
 
     # Combine tests into categories and create category summary
     cat_views, cat_tables, cat_weights, framework_ids = build_category(
-        all_layouts, all_tables, all_frameworks
+        all_layouts, all_tables, all_frameworks, all_names
     )
     framework_views = build_framework_views(cat_views, framework_ids)
     # Build per-framework summary tables and the combined framework summary
