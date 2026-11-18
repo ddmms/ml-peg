@@ -1038,6 +1038,25 @@ def clean_info(info: dict[str, Any] | list[Any]) -> None:
                 info[key] = int(value)
 
 
+def check_dataset(dataset_path: Path) -> None:
+    """
+    Skip the module if the dataset saved by the calculation is unavailable.
+
+    The calculation copies the downloaded dataset into its outputs, so the
+    analysis does not need to download the input data again.
+
+    Parameters
+    ----------
+    dataset_path
+        Path to the dataset within the calculation outputs.
+    """
+    if not dataset_path.exists():
+        pytest.skip(
+            f"{dataset_path} does not exist. Please run the calculation.",
+            allow_module_level=True,
+        )
+
+
 def get_struct_info(
     *,
     calc_path: Path,
