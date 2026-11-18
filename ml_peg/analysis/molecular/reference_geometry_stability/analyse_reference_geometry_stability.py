@@ -6,19 +6,15 @@ import json
 from pathlib import Path
 from warnings import warn
 
-from ase import units
 from ase.calculators.calculator import Calculator
 import numpy as np
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
-import mdtraj as md
 from mlipaudit.benchmarks.reference_geometry_stability import (
     reference_geometry_stability as rgs,
 )
 from mlipaudit.io import load_model_output_from_disk
-from mlipaudit.scoring import compute_benchmark_score
-from mlipaudit.utils.stability import is_simulation_stable
 
 from ml_peg.analysis.utils.decorators import build_table, plot_hist
 from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
@@ -65,60 +61,6 @@ def reference_benchmark():
     )
 
 
-def _subset_rmsds(dataset, records):
-    """
-    Align each converged geometry to its reference and retain individual failures.
-
-    Parameters
-    ----------
-    dataset
-        Reference molecules keyed by ID.
-    records
-        Model output for the same set of molecules.
-
-    Returns
-    -------
-    list
-        Heavy-atom RMSDs in angstrom, with None for failed molecules.
-    """
-    if (
-        len(records) != len(dataset)
-        or {r.molecule_name for r in records} != dataset.keys()
-    ):
-        raise ValueError("Archive molecule IDs do not match the reference dataset")
-    values = []
-    for record in records:
-        if record.failed:
-            values.append(None)
-            continue
-        state = record.simulation_state
-        molecule = dataset[record.molecule_name]
-        forces = np.asarray(state.forces[-1])
-        if (
-            not np.isfinite(forces).all()
-            or np.linalg.norm(forces, axis=1).max()
-            > rgs.SIMULATION_CONFIG["max_force_convergence_threshold"]
-        ):
-            raise ValueError(
-                f"{record.molecule_name}: forces exceed convergence tolerance. "
-                "Rerun the calculation."
-            )
-        if not is_simulation_stable(state):
-            values.append(None)
-            continue
-        ref = rgs.create_mdtraj_trajectory_from_positions(
-            np.asarray(molecule.coordinates), molecule.atom_symbols
-        )
-        pred = rgs.create_mdtraj_trajectory_from_positions(
-            state.positions[-1], molecule.atom_symbols
-        )
-        rmsd_nm = md.rmsd(
-            pred, ref, atom_indices=ref.top.select("not element H"), parallel=False
-        )[0]
-        values.append(float(rmsd_nm * units.nm / units.Angstrom))
-    return values
-
-
 @pytest.fixture
 def analyze_results(reference_benchmark) -> dict:
     """
@@ -132,7 +74,7 @@ def analyze_results(reference_benchmark) -> dict:
     Returns
     -------
     dict
-        Per-molecule RMSDs by model, or None for an invalid archive.
+        MLIP Audit results by model, or None if analysis failed.
     """
     results = {}
     for model_name in MODELS:
@@ -140,14 +82,10 @@ def analyze_results(reference_benchmark) -> dict:
         if not (output_dir / "model_output.zip").exists():
             continue
         try:
-            output = load_model_output_from_disk(
+            reference_benchmark.model_output = load_model_output_from_disk(
                 CALC_PATH / model_name, MlPegReferenceGeometryStabilityBenchmark
             )
-            results[model_name] = _subset_rmsds(
-                reference_benchmark._openff_neutral_dataset, output.openff_neutral
-            ) + _subset_rmsds(
-                reference_benchmark._openff_charged_dataset, output.openff_charged
-            )
+            results[model_name] = reference_benchmark.analyze()
         except Exception as exc:
             warn(f"Cannot score {model_name}: {exc}", stacklevel=2)
             results[model_name] = None
@@ -202,7 +140,7 @@ def rmsd_histogram(analyze_results) -> dict[str, list]:
     Parameters
     ----------
     analyze_results
-        Per-molecule RMSDs by model, or None for an invalid archive.
+        MLIP Audit results by model, or None if analysis failed.
 
     Returns
     -------
@@ -210,8 +148,11 @@ def rmsd_histogram(analyze_results) -> dict[str, list]:
         RMSD values (Angstrom) across both datasets for each model.
     """
     results = {}
-    for model_name, values in analyze_results.items():
-        successful = [value for value in values or [] if value is not None]
+    for model_name, result in analyze_results.items():
+        if result is None:
+            continue
+        values = result.openff_neutral.rmsd_values + result.openff_charged.rmsd_values
+        successful = [value for value in values if value is not None]
         if successful:
             results[model_name] = successful
     return results
@@ -225,7 +166,7 @@ def get_avg_rmsd(analyze_results) -> dict[str, float]:
     Parameters
     ----------
     analyze_results
-        Per-molecule RMSDs by model, or None for an invalid archive.
+        MLIP Audit results by model, or None if analysis failed.
 
     Returns
     -------
@@ -233,8 +174,8 @@ def get_avg_rmsd(analyze_results) -> dict[str, float]:
         Average RMSD in Angstrom for each model.
     """
     return {
-        model_name: float(np.mean(values)) if values and None not in values else np.nan
-        for model_name, values in analyze_results.items()
+        model_name: result.avg_rmsd if result is not None else np.nan
+        for model_name, result in analyze_results.items()
     }
 
 
@@ -246,7 +187,7 @@ def get_score(analyze_results) -> dict[str, float]:
     Parameters
     ----------
     analyze_results
-        Per-molecule RMSDs by model, or None for an invalid archive.
+        MLIP Audit results by model, or None if analysis failed.
 
     Returns
     -------
@@ -254,10 +195,8 @@ def get_score(analyze_results) -> dict[str, float]:
         The mlipaudit per-molecule soft-threshold RMSD score (0 to 1) for each model.
     """
     return {
-        model_name: compute_benchmark_score([values], [rgs.RMSD_SCORE_THRESHOLD])
-        if values
-        else np.nan
-        for model_name, values in analyze_results.items()
+        model_name: result.score if result is not None else np.nan
+        for model_name, result in analyze_results.items()
     }
 
 

@@ -4,7 +4,7 @@ metrics:
     bad: 0.3
     unit: Å
     weight: 0
-    tooltip: Average heavy-atom RMSD between the minimized and reference geometry across all 220 molecules. Unavailable if any molecule fails.
+    tooltip: MLIP Audit mean of the neutral and charged subset average heavy-atom RMSDs.
     level_of_theory: B3LYP-D3(BJ)/DZVP
   Geometry Score:
     good: 1.0

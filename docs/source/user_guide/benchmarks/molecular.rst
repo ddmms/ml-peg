@@ -191,16 +191,15 @@ Metrics
 1. Average RMSD
 
 ASE BFGS relaxes each molecule for up to 1,000 steps with a maximum force
-threshold of 0.01 eV/Å. The heavy atoms of the final geometry are aligned to
-the reference before computing the RMSD. The reported average weights each
-of the 220 molecules equally and is unavailable if any molecule fails.
+threshold of 0.01 eV/Å. MLIP Audit aligns the heavy atoms of the last saved frame
+to the reference, then computes the mean RMSD within each subset. Avg RMSD
+gives the neutral and charged subset means equal weight.
 
 2. Geometry Score
 
 MLIP Audit gives each molecule a score of one up to 0.075 Å RMSD and applies
 its exponential decay above this threshold. A failed molecule contributes zero.
-The reported score averages all 220 contributions. Invalid or incomplete
-archives have no score. The histogram shows RMSDs for successful molecules.
+The reported score averages all 220 contributions. If MLIP Audit cannot produce a result, the model has no score. The histogram shows RMSDs for successful molecules.
 
 Computational cost
 ------------------
