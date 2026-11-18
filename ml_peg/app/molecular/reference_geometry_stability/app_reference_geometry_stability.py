@@ -28,7 +28,7 @@ class ReferenceGeometryStabilityApp(BaseApp):
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
-            column_to_plot={"Avg RMSD": histogram},
+            column_to_plot={"Avg RMSD": histogram, "Geometry Score": histogram},
         )
 
 
