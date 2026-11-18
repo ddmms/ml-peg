@@ -347,6 +347,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mlip_audit")
 def test_inference_speed(metrics: dict[str, dict], struct_info: None) -> None:
     """
     Run inference speed analysis.

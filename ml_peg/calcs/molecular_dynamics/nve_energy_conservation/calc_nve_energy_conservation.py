@@ -36,6 +36,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
+@pytest.mark.framework("mlip_audit")
 def test_nve_energy_conservation(mlip: tuple[str, Any]) -> None:
     """
     Benchmark total energy conservation during NVE molecular dynamics.

@@ -365,6 +365,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mlip_audit")
 def test_nve_energy_conservation(metrics: dict[str, dict], struct_info: dict) -> None:
     """
     Run NVE energy conservation analysis.
