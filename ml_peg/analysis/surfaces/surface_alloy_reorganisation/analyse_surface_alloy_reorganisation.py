@@ -33,14 +33,6 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
-# Reactions whose initial and final states are identical up to symmetry have a
-# reference reaction energy of zero (to numerical precision) and are excluded from
-# the energy metric (all vacancy-mediated diffusion, and terrace pop-in/slide-in of a
-# host-element dopant). They are identified by |reference energy| <= this cutoff
-# (eV), which lies between the largest symmetric (~0.009 eV) and smallest
-# non-symmetric (~0.014 eV) reference reaction energies in the dataset.
-ZERO_ENERGY_TOL = 1e-2
-
 STATES = ("initial_state", "transition_state", "final_state")
 
 
@@ -51,14 +43,14 @@ def _build_info() -> dict[str, list]:
     Reactions come from the shared dataset definition rather than from discovered
     files, so a reaction with missing or unreadable mock outputs is retained (with
     NaN reference data) instead of being dropped. Each reaction's structures contain
-    only the host and dopant elements, so element info for filtering is written
-    without reading structures.
+    only the host and dopant elements, so element info is known without reading
+    structures.
 
     Returns
     -------
     dict[str, list]
-        Initial-state filename stems, reaction identifiers and elements for every
-        reaction, sorted by filename stem.
+        Initial-state filename stems, reaction identifiers, elements, and whether
+        each reaction is evaluated for the energy MAE, sorted by filename stem.
     """
     if not (CALC_PATH / "mock").exists():
         pytest.skip(
@@ -67,17 +59,16 @@ def _build_info() -> dict[str, list]:
         )
     reactions = sorted(
         get_reactions(),
-        key=lambda r: f"{r[0]}_{r[1]}_initial_state_{r[2]}",
+        key=lambda r: f"{r.host}_{r.mechanism}_initial_state_{r.element}",
     )
-    info = {
-        "filenames": [f"{h}_{m}_initial_state_{e}" for h, m, e in reactions],
-        "system": [f"{h}_{m}_{e}" for h, m, e in reactions],
-        "elements": [sorted({h, e}) for h, _, e in reactions],
+    return {
+        "filenames": [
+            f"{r.host}_{r.mechanism}_initial_state_{r.element}" for r in reactions
+        ],
+        "system": [f"{r.host}_{r.mechanism}_{r.element}" for r in reactions],
+        "elements": [sorted({r.host, r.element}) for r in reactions],
+        "energy_evaluated": [r.energy_evaluated for r in reactions],
     }
-    OUT_PATH.mkdir(parents=True, exist_ok=True)
-    with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
-        json.dump({key: info[key] for key in ("elements", "system")}, f, indent=1)
-    return info
 
 
 INFO = _build_info()
@@ -180,56 +171,50 @@ def _get_ref(struct: Atoms | None, path: Path) -> float:
     return ref if np.isfinite(ref) else np.nan
 
 
-def _load_reference() -> tuple[list[float], list[float]]:
+def _load_reference() -> tuple[list[float], list[float], list[list[Atoms] | None]]:
     """
     Load reference reaction energies and barriers from the mock outputs.
 
-    Also writes initial, transition and final structures for each reaction as a
-    trajectory for the app, named by reaction identifier.
-
     Returns
     -------
-    tuple[list[float], list[float]]
-        Reference reaction energies and barriers in eV, in canonical order.
+    tuple[list[float], list[float], list[list[Atoms] | None]]
+        Reference reaction energies and barriers in eV, and initial, transition and
+        final structures (None if any is unavailable), in canonical order.
     """
     mock_dir = CALC_PATH / "mock"
-    structs_dir = OUT_PATH / "mock"
-    structs_dir.mkdir(parents=True, exist_ok=True)
-
-    energies, barriers = [], []
-    for stem, system in zip(INFO["filenames"], INFO["system"], strict=True):
+    energies, barriers, trajs = [], [], []
+    for stem in INFO["filenames"]:
         paths = {state: _state_file(mock_dir, stem, state) for state in STATES}
         structs = {state: _read_struct(path) for state, path in paths.items()}
         refs = {state: _get_ref(structs[state], paths[state]) for state in STATES}
         energies.append(refs["final_state"] - refs["initial_state"])
         barriers.append(refs["transition_state"] - refs["initial_state"])
-
-        # Remove any trajectory left by a previous run if a state is now missing
-        traj_path = structs_dir / f"{system}.xyz"
-        if all(struct is not None for struct in structs.values()):
-            write(traj_path, list(structs.values()))
-        else:
-            traj_path.unlink(missing_ok=True)
-
-    return energies, barriers
+        complete = all(struct is not None for struct in structs.values())
+        trajs.append(list(structs.values()) if complete else None)
+    return energies, barriers, trajs
 
 
-REF_ENERGIES_EV, REF_BARRIERS_EV = _load_reference()
+REF_ENERGIES_EV, REF_BARRIERS_EV, MOCK_TRAJS = _load_reference()
 
 # Missing reference data is a dataset failure, not an intentional exclusion: the
 # affected MAE is reported as NaN, while the other metric is still computed.
-ENERGY_REF_COMPLETE = bool(np.all(np.isfinite(REF_ENERGIES_EV)))
+# Only reactions evaluated for the energy MAE need a reference reaction energy.
+ENERGY_REF_COMPLETE = all(
+    np.isfinite(energy)
+    for energy, evaluated in zip(REF_ENERGIES_EV, INFO["energy_evaluated"], strict=True)
+    if evaluated
+)
 BARRIER_REF_COMPLETE = bool(np.all(np.isfinite(REF_BARRIERS_EV)))
 if not ENERGY_REF_COMPLETE:
     warn("Missing reference reaction energies; energy MAE will be NaN.", stacklevel=1)
 if not BARRIER_REF_COMPLETE:
     warn("Missing reference reaction barriers; barrier MAE will be NaN.", stacklevel=1)
 
-# Symmetric reactions (zero reference energy) are excluded from the energy metric.
+# Symmetric reactions are excluded from the energy metric (see `get_reactions`).
 # Points without a reference value cannot be plotted.
 ENERGY_MASK = [
-    bool(np.isfinite(energy) and abs(energy) > ZERO_ENERGY_TOL)
-    for energy in REF_ENERGIES_EV
+    bool(evaluated and np.isfinite(energy))
+    for energy, evaluated in zip(REF_ENERGIES_EV, INFO["energy_evaluated"], strict=True)
 ]
 ENERGY_SYSTEMS = [
     system for system, keep in zip(INFO["system"], ENERGY_MASK, strict=True) if keep
@@ -238,6 +223,27 @@ BARRIER_MASK = [bool(np.isfinite(barrier)) for barrier in REF_BARRIERS_EV]
 BARRIER_SYSTEMS = [
     system for system, keep in zip(INFO["system"], BARRIER_MASK, strict=True) if keep
 ]
+
+
+@pytest.fixture
+def app_files() -> None:
+    """
+    Write element info and mock trajectories for the app.
+
+    Trajectories (initial, transition and final structures) are named by reaction
+    identifier, and reuse the structures read for the reference data. Any trajectory
+    left by a previous run is removed if a state is now unavailable.
+    """
+    structs_dir = OUT_PATH / "mock"
+    structs_dir.mkdir(parents=True, exist_ok=True)
+    with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
+        json.dump({"elements": INFO["elements"], "system": INFO["system"]}, f, indent=1)
+    for system, traj in zip(INFO["system"], MOCK_TRAJS, strict=True):
+        traj_path = structs_dir / f"{system}.xyz"
+        if traj is not None:
+            write(traj_path, traj)
+        else:
+            traj_path.unlink(missing_ok=True)
 
 
 @pytest.fixture
@@ -435,12 +441,16 @@ def metrics(
     }
 
 
-def test_surface_alloy_reorganisation(metrics: dict[str, dict]) -> None:
+def test_surface_alloy_reorganisation(
+    app_files: None, metrics: dict[str, dict]
+) -> None:
     """
     Run surface alloy reorganisation test.
 
     Parameters
     ----------
+    app_files
+        Writes element info and mock trajectories for the app.
     metrics
         All surface alloy reorganisation metrics.
     """

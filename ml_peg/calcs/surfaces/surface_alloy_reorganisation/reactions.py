@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from itertools import product
+from typing import NamedTuple
 
 HOSTS = ["Ag", "Cu"]
 MECHANISMS = [
@@ -32,17 +33,62 @@ ELEMENTS_SUBSETS = {
 }
 
 
-def get_reactions() -> list[tuple[str, str, str]]:
+# Mechanisms whose initial and final states are identical up to symmetry when the
+# dopant is the host element itself
+SELF_DOPANT_SYMMETRIC_MECHANISMS = ("terrace_pop_in", "terrace_slide_in")
+# Mechanisms whose initial and final states are always identical up to symmetry
+SYMMETRIC_MECHANISMS = ("vacancy_mediated_diffusion",)
+
+
+class Reaction(NamedTuple):
+    """Reaction in the dataset, and whether it is evaluated for the energy MAE."""
+
+    host: str
+    mechanism: str
+    element: str
+    energy_evaluated: bool
+
+
+def is_energy_evaluated(host: str, mechanism: str, element: str) -> bool:
     """
-    Get all (host, mechanism, element) reactions in the dataset.
+    Get whether a reaction is evaluated for the reaction energy MAE.
+
+    Reactions whose initial and final states are identical up to symmetry have a
+    reaction energy of zero by construction, so are excluded from the energy metric.
+
+    Parameters
+    ----------
+    host
+        Host metal.
+    mechanism
+        Reorganisation mechanism.
+    element
+        Dopant element.
 
     Returns
     -------
-    list[tuple[str, str, str]]
-        Host, mechanism and dopant element for every reaction.
+    bool
+        Whether the reaction is evaluated for the reaction energy MAE.
+    """
+    if mechanism in SYMMETRIC_MECHANISMS:
+        return False
+    return not (mechanism in SELF_DOPANT_SYMMETRIC_MECHANISMS and element == host)
+
+
+def get_reactions() -> list[Reaction]:
+    """
+    Get all reactions in the dataset.
+
+    Returns
+    -------
+    list[Reaction]
+        Host, mechanism, dopant element, and whether the reaction is evaluated for
+        the reaction energy MAE, for every reaction.
     """
     return [
-        (host, mechanism, element)
+        Reaction(
+            host, mechanism, element, is_energy_evaluated(host, mechanism, element)
+        )
         for host, mechanism in product(HOSTS, MECHANISMS)
         for element in ELEMENTS_SUBSETS.get((host, mechanism), ALL_ELEMENTS)
     ]
