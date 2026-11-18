@@ -61,8 +61,8 @@ Summary
 -------
 
 Performance in exploring the conformational space of small proteins during molecular
-dynamics. A short molecular dynamics simulation is run for each of a set of small
-proteins (chignolin, Trp-cage, and an orexin beta fragment), and the sampled backbone
+dynamics. A molecular dynamics simulation is run for each of a set of small
+proteins (chignolin, Trp-cage, and a capped villin headpiece), and the sampled backbone
 dihedral angles are compared to reference distributions. This probes whether a model
 samples physically reasonable protein conformations rather than only reproducing
 static reference geometries.
@@ -79,22 +79,30 @@ trajectory and binned into a distribution per residue type. This distribution is
 compared to a reference distribution using the root mean square deviation (RMSD) and the
 Hellinger distance. The outliers ratio measures the fraction of sampled dihedrals that
 lie far from any point in the reference data. All three metrics are averaged over residue
-types and over the stable systems, and lower values are better.
+types and over the stable systems, and lower values are better. If two simulations fail,
+the reported metrics describe only the remaining protein. Select a metric cell to
+see its values by residue type for each model. Select a point to view the
+starting structure of any protein contributing to that value.
 
 Computational cost
 ------------------
 
-High: each model runs several molecular dynamics simulations of solvated proteins.
+Allow several days per model on a GPU as a rough estimate. Sampling uses the
+same three solvated systems and MD protocol as the folding stability benchmark.
+Wall time depends on the model and GPU.
 
 Data availability
 -----------------
 
 Input structures:
 
-* Experimental structures from the Protein Data Bank (chignolin 1UAO, Trp-cage 2JOF,
-  orexin beta 1CQ0).
+* The same solvated chignolin (1UAO), Trp-cage (2JOF), and capped villin
+  headpiece structures used for protein folding stability.
 
 Reference data:
 
-* Reference backbone and side-chain dihedral distributions derived from molecular
-  dynamics reference simulations.
+* MLIP Audit supplies residue-specific backbone and side-chain reference angles.
+  The three distribution metrics use the angles in
+  ``backbone_reference_data.json``. The `MLIP Audit sampling guide
+  <https://instadeepai.github.io/mlipaudit/benchmarks/biomolecules/sampling.html>`_
+  cites Lovell et al., *The Penultimate Rotamer Library* (2000).
