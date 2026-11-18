@@ -8,13 +8,14 @@ from pathlib import Path
 from ase.calculators.calculator import Calculator
 from ase.io import read
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.io import load_model_output_from_disk
 from mlipaudit.utils.biomolecules import STRUCTURE_NAMES
 
-from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.decorators import build_table, merge_saved_traces
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     load_metrics_config,
@@ -253,7 +254,9 @@ def metrics(
     }
 
 
-def test_protein_sampling(metrics: dict[str, dict], struct_info: dict) -> None:
+def test_protein_sampling(
+    metrics: dict[str, dict], struct_info: dict, analyze_results: dict
+) -> None:
     """
     Run protein sampling analysis.
 
@@ -263,4 +266,29 @@ def test_protein_sampling(metrics: dict[str, dict], struct_info: dict) -> None:
         Protein sampling metric results provided by fixtures.
     struct_info : dict
         Element info written to ``info.json`` for filtering.
+    analyze_results
+        Upstream sampling results containing metrics for each residue type.
     """
+    for metric, attribute in (
+        ("Backbone Dihedral RMSD", "rmsd_backbone_dihedrals"),
+        ("Backbone Hellinger Distance", "hellinger_distance_backbone_dihedrals"),
+        ("Backbone Outliers Ratio", "outliers_ratio_backbone_dihedrals"),
+    ):
+        figure = go.Figure()
+        for model, result in analyze_results.items():
+            values = getattr(result, attribute) or {}
+            residues = sorted(values)
+            figure.add_scatter(
+                name=model,
+                mode="markers",
+                x=residues,
+                y=[values[residue] for residue in residues],
+                hovertemplate="Residue: %{x}<br>Value: %{y:.4g}",
+            )
+        figure.update_layout(
+            title=f"{metric} by residue type",
+            xaxis_title="Residue type",
+            yaxis_title=metric,
+        )
+        path = OUT_PATH / f"figure_{metric.lower().replace(' ', '_')}.json"
+        merge_saved_traces(figure, path).write_json(path)
