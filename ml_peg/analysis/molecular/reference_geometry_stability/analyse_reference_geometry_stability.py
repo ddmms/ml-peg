@@ -121,6 +121,7 @@ def struct_info() -> dict:
 @pytest.fixture
 @plot_hist(
     filename=OUT_PATH / "figure_rmsd_histogram.json",
+    bins=40,
     title="Heavy-atom RMSD after minimization",
     x_label="RMSD / Å",
     y_label="Probability density",
