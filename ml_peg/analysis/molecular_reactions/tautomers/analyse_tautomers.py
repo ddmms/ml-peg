@@ -17,7 +17,11 @@ from mlipaudit.benchmarks.tautomers.tautomers import (
 )
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    check_dataset,
+    load_metrics_config,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegTautomersBenchmark
@@ -38,21 +42,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def check_dataset() -> None:
-    """
-    Check the dataset saved by the calculation is available.
-
-    The calculation copies the downloaded dataset into its outputs, so the
-    analysis does not need to download the input data again.
-
-    Raises
-    ------
-    ValueError
-        If the dataset is missing from the calculation outputs.
-    """
-    dataset_path = CALC_PATH / BENCHMARK / TAUTOMERS_DATASET_FILENAME
-    if not dataset_path.exists():
-        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
+DATASET_PATH = CALC_PATH / BENCHMARK / TAUTOMERS_DATASET_FILENAME
 
 
 def labels() -> list:
@@ -66,7 +56,10 @@ def labels() -> list:
     """
     mock_path = CALC_PATH / "mock" / "model_output.json"
     if not mock_path.exists():
-        raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
+        pytest.skip(
+            f"{mock_path} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
     output = TautomersModelOutput.model_validate_json(mock_path.read_text())
     return sorted(output.structure_ids)
 
@@ -81,7 +74,7 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``TautomersResult``.
     """
-    check_dataset()
+    check_dataset(DATASET_PATH)
 
     results = {}
     for model_name in MODELS:
@@ -113,7 +106,7 @@ def struct_info() -> dict:
     dict
         Mapping with the sorted list of elements present in the dataset.
     """
-    check_dataset()
+    check_dataset(DATASET_PATH)
 
     benchmark = MlPegTautomersBenchmark(
         force_field=Calculator(),

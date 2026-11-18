@@ -22,6 +22,7 @@ from mlipaudit.io import load_model_output_from_disk
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    check_dataset,
     load_metrics_config,
     mae,
 )
@@ -45,21 +46,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def check_dataset() -> None:
-    """
-    Check the dataset saved by the calculation is available.
-
-    The calculation copies and unzips the downloaded dataset into its outputs,
-    so the analysis does not need to download the input data again.
-
-    Raises
-    ------
-    ValueError
-        If the dataset is missing from the calculation outputs.
-    """
-    dataset_path = CALC_PATH / BENCHMARK / NEB_DATASET_FILENAME
-    if not dataset_path.exists():
-        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
+DATASET_PATH = CALC_PATH / BENCHMARK / NEB_DATASET_FILENAME
 
 
 def write_neb_profiles(model_name: str, states: list, references: list) -> None:
@@ -229,7 +216,7 @@ def neb_metrics() -> dict[str, dict[str, float]]:
     dict[str, dict[str, float]]
         Metric names mapped to per-model values.
     """
-    check_dataset()
+    check_dataset(DATASET_PATH)
     benchmark = MlPegGrambowOrganicsBenchmark(
         force_field=Calculator(), data_input_dir=CALC_PATH, run_mode="standard"
     )
@@ -272,7 +259,7 @@ def struct_info() -> dict:
     dict
         Mapping with the sorted list of elements present in the dataset.
     """
-    check_dataset()
+    check_dataset(DATASET_PATH)
 
     benchmark = MlPegGrambowOrganicsBenchmark(
         force_field=Calculator(),

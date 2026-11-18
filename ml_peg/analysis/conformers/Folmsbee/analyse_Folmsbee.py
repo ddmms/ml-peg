@@ -23,6 +23,7 @@ from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    check_dataset,
     load_metrics_config,
     mae,
 )
@@ -46,21 +47,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def check_dataset() -> None:
-    """
-    Check the dataset saved by the calculation is available.
-
-    The calculation copies the downloaded dataset into its outputs, so the
-    analysis does not need to download the input data again.
-
-    Raises
-    ------
-    ValueError
-        If the dataset is missing from the calculation outputs.
-    """
-    dataset_path = CALC_PATH / BENCHMARK / FOLMSBEE_DATASET_FILENAME
-    if not dataset_path.exists():
-        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
+DATASET_PATH = CALC_PATH / BENCHMARK / FOLMSBEE_DATASET_FILENAME
 
 
 @cache
@@ -73,11 +60,14 @@ def labels() -> list[str]:
     list[str]
         List of all system names.
     """
-    check_dataset()
+    check_dataset(DATASET_PATH)
 
     mock_path = CALC_PATH / "mock" / "model_output.json"
     if not mock_path.exists():
-        raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
+        pytest.skip(
+            f"{mock_path} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
     raw = mock_path.read_text()
     output = ConformerSelectionModelOutput.model_validate_json(raw)
     benchmark = MlPegConformerSelectionBenchmark(
@@ -116,7 +106,7 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
     """
-    check_dataset()
+    check_dataset(DATASET_PATH)
 
     results = {}
     for model_name in MODELS:
