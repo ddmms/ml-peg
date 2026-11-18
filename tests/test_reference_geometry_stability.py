@@ -60,3 +60,45 @@ def test_stale_step_zero_archive_is_rejected():
     )
     with pytest.raises(ValueError, match="convergence tolerance"):
         analysis._subset_rmsds({"mol_0": None}, [record])
+
+
+def test_transferred_model_output_scores_final_geometry(tmp_path, monkeypatch):
+    """Read the transferred model ZIP with references from the archive cache."""
+    import json
+    import shutil
+
+    cache = tmp_path / "cache"
+    dataset = cache / analysis.BENCHMARK
+    dataset.mkdir(parents=True)
+    molecule = {
+        "atom_symbols": ["Ar", "Ar"],
+        "coordinates": [[0, 0, 0], [1.4, 0, 0]],
+        "charge": 0,
+        "smiles": "[Ar].[Ar]",
+    }
+    for name in (calc.rgs.OPENFF_NEUTRAL_FILENAME, calc.rgs.OPENFF_CHARGED_FILENAME):
+        (dataset / name).write_text(json.dumps({"mol_0": molecule}))
+
+    outputs = tmp_path / "outputs"
+    monkeypatch.setattr(calc, "OUT_PATH", outputs)
+    monkeypatch.setattr(calc, "download_s3_data", lambda **kwargs: cache)
+    model = SimpleNamespace(
+        get_calculator=lambda **kwargs: LennardJones(),
+        add_d3_calculator=lambda calculator: calculator,
+    )
+    calc.test_reference_geometry_stability(("test-model", model))
+
+    transferred = tmp_path / "transferred"
+    shutil.copytree(outputs / "test-model", transferred / "test-model")
+    corrupt = transferred / "corrupt" / analysis.BENCHMARK
+    corrupt.mkdir(parents=True)
+    (corrupt / "model_output.zip").write_bytes(b"truncated")
+    monkeypatch.setattr(analysis, "CALC_PATH", transferred)
+    monkeypatch.setattr(analysis, "MODELS", ["corrupt", "test-model"])
+    monkeypatch.setattr(analysis, "download_s3_data", lambda **kwargs: cache)
+    reference = analysis.reference_benchmark.__wrapped__()
+    with pytest.warns(UserWarning, match="Cannot score corrupt"):
+        values = analysis.analyze_results.__wrapped__(reference)
+    assert values["corrupt"] is None
+    assert len(values["test-model"]) == 2
+    assert all(0.1 < rmsd < 0.2 for rmsd in values["test-model"])
