@@ -1,0 +1,14 @@
+implementers:
+  - name: "Lucien Walewski"
+    github: "lwalew"
+
+contributors:
+  - name: "Marco Carobene"
+    github: "mcarobene-id"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: berman2000pdb
+    role: reference_data
