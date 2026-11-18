@@ -297,6 +297,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mlip_audit")
 def test_reference_geometry_stability(
     metrics: dict[str, dict], struct_info: dict
 ) -> None:

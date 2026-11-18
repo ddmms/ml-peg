@@ -72,6 +72,8 @@ def minimize_molecule(molecule, calc) -> SimulationState:
         )
 
 
+@pytest.mark.medium
+@pytest.mark.framework("mlip_audit")
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_reference_geometry_stability(mlip: tuple[str, Any]) -> None:
     """
