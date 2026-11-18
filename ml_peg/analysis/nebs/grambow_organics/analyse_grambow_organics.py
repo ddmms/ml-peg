@@ -309,6 +309,7 @@ def metrics(neb_metrics: dict[str, dict[str, float]]) -> dict[str, dict]:
     return neb_metrics
 
 
+@pytest.mark.framework("mlip_audit")
 def test_grambow_organics(metrics: dict[str, dict], struct_info: dict) -> None:
     """
     Run Grambow organics NEB analysis.

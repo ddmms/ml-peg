@@ -272,6 +272,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mlip_audit")
 def test_grambow_barrier_heights(
     metrics: dict[str, dict], barrier_density: dict[str, dict], struct_info: dict
 ) -> None:

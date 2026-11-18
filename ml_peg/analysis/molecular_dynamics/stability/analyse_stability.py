@@ -161,6 +161,7 @@ def element_info() -> None:
     write_struct_info(data_path=xyz_paths, out_path=OUT_PATH)
 
 
+@pytest.mark.framework("mlip_audit")
 def test_stability(
     metrics: dict[str, dict],
     progress: dict[str, tuple[list, list]],

@@ -34,6 +34,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
+@pytest.mark.framework("mlip_audit")
 def test_ring_planarity(mlip: tuple[str, Any]) -> None:
     """
     Benchmark aromatic ring planarity during MD.

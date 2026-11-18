@@ -251,6 +251,7 @@ def metrics(
     return get_rmsd
 
 
+@pytest.mark.framework("mlip_audit")
 def test_protein_folding_stability(metrics: dict[str, dict], struct_info: dict) -> None:
     """
     Run protein folding stability analysis.
