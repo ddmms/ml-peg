@@ -6,6 +6,7 @@ benchmark_weights:
   ethanol_water_density: 0
   inference_speed: 0
   liquid_densities: 0
+  nve_energy_conservation: 0
   polymers: 0
   ring_planarity: 0
   stability: 0
