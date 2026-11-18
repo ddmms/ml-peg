@@ -192,7 +192,7 @@ def _ref_complete(mp_id: str, out_dir: Path) -> bool:
 
 
 @pytest.mark.framework("mace-multihead")
-@pytest.mark.slow
+@pytest.mark.medium
 def test_phonons_ref(alex_phonon_inputs: tuple[Path, list[str]]) -> None:
     """
     Generate DFT reference outputs from ALEX pre-computed force constants.
@@ -414,7 +414,7 @@ def _calc_model_mp_id(
     success = True
     with redirect_stdout(log), redirect_stderr(log):
         try:
-            calc = model.get_calculator()
+            calc = model.get_calculator(precision="high")
             _calc_mp_id(mp_id, calc, yaml_dir, ref_dir, out_dir)
         except Exception:  # noqa: BLE001
             success = False
@@ -423,7 +423,7 @@ def _calc_model_mp_id(
 
 
 @pytest.mark.framework("mace-multihead")
-@pytest.mark.very_slow
+@pytest.mark.slow
 @pytest.mark.parametrize("model_name", MODEL_NAMES)
 def test_phonons(
     model_name: str,
@@ -474,7 +474,10 @@ def test_phonons(
         for mp_id, success, log_text in results:
             _append_model_log(log_path, mp_id, success, log_text)
             if not success:
-                if "cuda out of memory" in log_text.lower():
+                # Compiled (AOTInductor) models print errors such as running out of
+                # memory from C++, so Python only sees that the API call failed
+                text = log_text.lower()
+                if "cuda out of memory" in text or "api call failed" in text:
                     oom_mp_ids.append(mp_id)
                 else:
                     failed_mp_ids.append(mp_id)

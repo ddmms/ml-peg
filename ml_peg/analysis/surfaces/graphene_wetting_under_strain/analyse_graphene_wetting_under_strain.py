@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 
 from ase import Atoms
 import ase.io
@@ -14,7 +15,11 @@ import pytest
 from scipy.optimize import curve_fit
 import yaml
 
-from ml_peg.analysis.utils.decorators import build_table
+from ml_peg.analysis.utils.decorators import (
+    build_table,
+    get_model_colour,
+    merge_saved_traces,
+)
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
@@ -194,76 +199,66 @@ def processed_data() -> dict[str, list]:
         Dictionary of all processed data.
     """
     results = {"distances": [], "ref": {}} | {model: {} for model in MODELS}
-    ref_stored = False
-    dist_stored = False
     struct_write_dir = OUT_PATH / "structs"
     struct_write_dir.mkdir(parents=True, exist_ok=True)
 
+    # Read mock data for reference values and structures
+    mock_dir = CALC_PATH / "mock"
+    dist_stored = False
+    for orientation in ORIENTATIONS:
+        results["ref"][orientation] = {}
+        for strain in STRAINS:
+            systems = ase.io.read(
+                mock_dir / f"{orientation}_{strain}.xyz",
+                index=":",
+                format="extxyz",
+            )
+
+            energies = []
+            for atoms in systems:
+                if not dist_stored:
+                    results["distances"].append(get_molecule_distance(atoms))
+                energies.append(atoms.info["ref_adsorption_energy"] * 1000.0)
+
+            results["ref"][orientation][strain] = {
+                "energies": energies,
+                "params": get_binding_parameters(results["distances"], energies),
+            }
+
+            # Write out ground truth structures for display in the app
+            ase.io.write(
+                struct_write_dir / f"{orientation}_{strain}.xyz",
+                systems,
+                format="xyz",
+            )
+
+            dist_stored = True
+
+    n_distances = len(results["distances"])
+
+    # Per-model predictions. Missing model outputs are filled with NaN so that all
+    # orientation/strain keys are always present and metrics evaluate to NaN.
     for model in MODELS:
         model_dir = CALC_PATH / model
-        if not model_dir.exists():
-            continue
-
         for orientation in ORIENTATIONS:
-            if not ref_stored:
-                results["ref"][orientation] = {}
             results[model][orientation] = {}
-
             for strain in STRAINS:
-                if not ref_stored:
-                    results["ref"][orientation][strain] = {
-                        "energies": [],
+                struct_file = model_dir / f"{orientation}_{strain}.xyz"
+                if not struct_file.exists():
+                    results[model][orientation][strain] = {
+                        "energies": [float("nan")] * n_distances,
+                        "params": (float("nan"), float("nan")),
                     }
+                    continue
+
+                systems = ase.io.read(struct_file, index=":", format="extxyz")
+                energies = [
+                    atoms.info["mlip_adsorption_energy"] * 1000.0 for atoms in systems
+                ]
                 results[model][orientation][strain] = {
-                    "energies": [],
+                    "energies": energies,
+                    "params": get_binding_parameters(results["distances"], energies),
                 }
-
-                systems = ase.io.iread(
-                    model_dir / f"{orientation}_{strain}.xyz",
-                    index=":",
-                    format="extxyz",
-                )
-
-                if not ref_stored:
-                    (struct_write_dir / f"{orientation}_{strain}.xyz").unlink(
-                        missing_ok=True
-                    )
-
-                for atoms in systems:
-                    dist = get_molecule_distance(atoms)
-                    if not dist_stored:
-                        results["distances"].append(dist)
-                    if not ref_stored:
-                        results["ref"][orientation][strain]["energies"].append(
-                            atoms.info["ref_adsorption_energy"] * 1000.0
-                        )
-                    results[model][orientation][strain]["energies"].append(
-                        atoms.info["mlip_adsorption_energy"] * 1000.0
-                    )
-
-                    if not ref_stored:
-                        ase.io.write(
-                            struct_write_dir / f"{orientation}_{strain}.xyz",
-                            atoms,
-                            format="xyz",
-                            append=True,
-                        )
-
-                if not ref_stored:
-                    results["ref"][orientation][strain]["params"] = (
-                        get_binding_parameters(
-                            results["distances"],
-                            results["ref"][orientation][strain]["energies"],
-                        )
-                    )
-                results[model][orientation][strain]["params"] = get_binding_parameters(
-                    results["distances"],
-                    results[model][orientation][strain]["energies"],
-                )
-
-                dist_stored = True
-
-        ref_stored = True
 
     return results
 
@@ -308,10 +303,10 @@ def generate_plots_for_app(processed_data) -> None:
                 row=(j + 1),
                 col=(i + 1),
             )
-    for iter, model in enumerate(MODELS):
+    for model in MODELS:
+        color = get_model_colour(model, DEFAULT_PLOTLY_COLORS)
         for i, orientation in enumerate(ORIENTATIONS):
             for j, strain in enumerate(STRAINS):
-                color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
                 fig.add_trace(
                     go.Scatter(
                         x=processed_data["distances"],
@@ -340,6 +335,10 @@ def generate_plots_for_app(processed_data) -> None:
         hovermode="x unified",
     )
     filename = OUT_PATH / "figure_adsorption_energies.json"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename, subplot_titles)
+
     Path(filename).parent.mkdir(parents=True, exist_ok=True)
     fig.write_json(filename)
 
@@ -368,8 +367,8 @@ def generate_plots_for_app(processed_data) -> None:
             row=1,
             col=(i + 1),
         )
-    for iter, model in enumerate(MODELS):
-        color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
+    for model in MODELS:
+        color = get_model_colour(model, DEFAULT_PLOTLY_COLORS)
         for i, orientation in enumerate(ORIENTATIONS):
             fig.add_trace(
                 go.Scatter(
@@ -400,6 +399,9 @@ def generate_plots_for_app(processed_data) -> None:
         hovermode="x unified",
     )
     filename = OUT_PATH / "figure_binding_energies.json"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename, ORIENTATIONS)
     fig.write_json(filename)
 
     # Third plot: 1x3 grid of binding lengths across all orientations
@@ -426,8 +428,8 @@ def generate_plots_for_app(processed_data) -> None:
             row=1,
             col=(i + 1),
         )
-    for iter, model in enumerate(MODELS):
-        color = DEFAULT_PLOTLY_COLORS[iter % len(DEFAULT_PLOTLY_COLORS)]
+    for model in MODELS:
+        color = get_model_colour(model, DEFAULT_PLOTLY_COLORS)
         for i, orientation in enumerate(ORIENTATIONS):
             fig.add_trace(
                 go.Scatter(
@@ -458,6 +460,9 @@ def generate_plots_for_app(processed_data) -> None:
         hovermode="x unified",
     )
     filename = OUT_PATH / "figure_binding_lengths.json"
+
+    # Preserve traces for models not being analysed
+    fig = merge_saved_traces(fig, filename, ORIENTATIONS)
     fig.write_json(filename)
 
     return
@@ -625,4 +630,5 @@ def test_graphene_wetting_under_strain(
     generate_plots_for_app
         Hook for PyTest fixture.
     """
-    return
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    shutil.copy(CALC_PATH / "database_info.yml", OUT_PATH / "database_info.yml")

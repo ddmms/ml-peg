@@ -21,6 +21,7 @@ from dash import (
     ctx,
     dcc,
     no_update,
+    set_props,
 )
 from dash.dash_table import DataTable
 from dash.exceptions import PreventUpdate
@@ -33,10 +34,14 @@ from ml_peg.analysis.utils.utils import (
     update_score_style,
 )
 from ml_peg.app.utils.utils import (
+    DEFAULT_COLORMAP,
+    SUMMARY_TABLE_ID,
     Thresholds,
+    apply_column_decimals,
     build_level_of_theory_warnings,
     build_threshold_input_style,
     clean_thresholds,
+    drop_empty_model_rows,
     filter_rows_by_models,
     format_metric_columns,
     format_tooltip_headers,
@@ -47,6 +52,10 @@ from ml_peg.app.utils.utils import (
 
 THRESHOLD_INPUT_STEP = 0.0001
 THRESHOLD_ROUND_DIGITS = 10
+
+# Callbacks taking whole table stores re-upload 6-104 kB per interaction. Gzip in
+# the browser (~5x on this JSON); Dash's 5,000 byte threshold skips small payloads.
+COMPRESS_STORES = {"compress_payload": True}
 
 
 def enforce_threshold_direction(
@@ -140,7 +149,7 @@ def register_summary_table_callbacks(
     model_levels: dict[str, str | None] | None = None,
     metric_levels: dict[str, str | None] | None = None,
     model_configs: dict[str, Any] | None = None,
-    prefix: str = "summary-table",
+    prefix: str = SUMMARY_TABLE_ID,
 ) -> None:
     """
     Register callbacks to update summary table.
@@ -171,6 +180,7 @@ def register_summary_table_callbacks(
         Input(f"{prefix}-weight-store", "data"),
         State(f"{prefix}-computed-store", "data"),
         prevent_initial_call=True,
+        **COMPRESS_STORES,
     )
     def update_summary_computed_store(
         stored_scores: dict[str, dict[str, float]] | None,
@@ -216,9 +226,10 @@ def register_summary_table_callbacks(
         Input("selected-models-store", "data"),
         Input(f"{prefix}-computed-store", "data"),
         Input("cmap-store", "data"),
-        State("summary-table-weight-store", "data"),
+        State(f"{prefix}-weight-store", "data"),
         prevent_initial_call="initial_duplicate",
         optional=True,
+        **COMPRESS_STORES,
     )
     def sync_summary_table(
         selected_models: list[str] | None,
@@ -248,11 +259,12 @@ def register_summary_table_callbacks(
         if not computed_store:
             raise PreventUpdate
 
-        filtered_rows = filter_rows_by_models(computed_store, selected_models)
+        visible_rows = drop_empty_model_rows(computed_store)
+        filtered_rows = filter_rows_by_models(visible_rows, selected_models)
         base_style = (
             get_table_style(
                 filtered_rows,
-                cmap_name=cmap_name or "viridis_r",
+                cmap_name=cmap_name or DEFAULT_COLORMAP,
                 weights=stored_weights,
             )
             if filtered_rows
@@ -265,11 +277,12 @@ def register_summary_table_callbacks(
             metric_levels=metric_levels,
             model_configs=model_configs,
         )
-        # Keep the model-link column white, even on greyed no-data rows.
+        # Keep the model-link column on the plain surface (theme-aware), even
+        # on greyed no-data rows.
         style_with_warnings = style_with_warnings + [
             {
                 "if": {"column_id": "link"},
-                "backgroundColor": "white",
+                "backgroundColor": "var(--mlpeg-link-cell-bg, #ffffff)",
                 "backgroundImage": "none",
             }
         ]
@@ -326,6 +339,7 @@ def register_category_table_callbacks(
         State(table_id, "columns"),
         prevent_initial_call=True,
         optional=True,
+        **COMPRESS_STORES,
     )
     def update_table_from_store(
         stored_raw_data: list[dict] | None,
@@ -377,7 +391,7 @@ def register_category_table_callbacks(
             get_table_style(
                 filtered_rows,
                 scored_data=filtered_scores,
-                cmap_name=cmap_name or "viridis_r",
+                cmap_name=cmap_name or DEFAULT_COLORMAP,
                 weights=weights,
             )
             if filtered_rows
@@ -412,8 +426,15 @@ def register_category_table_callbacks(
             State(f"{table_id}-computed-store", "data"),
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(table_id, "columns"),
+            # "initial_duplicate" (not True): a benchmark table re-mounted on
+            # navigation must re-derive its scores from the persisted weight/
+            # threshold stores, otherwise it shows the build-time default and a
+            # user's edits appear to reset when they return to the page (review:
+            # weight-persistence race). The cost is a redundant initial recompute
+            # per off-screen benchmark — accepted as the original, correct value.
             prevent_initial_call="initial_duplicate",
             optional=True,
+            **COMPRESS_STORES,
         )
         def update_benchmark_table_scores(
             stored_weights: dict[str, float] | None,
@@ -465,17 +486,24 @@ def register_category_table_callbacks(
                 trigger_id in (f"{table_id}-normalized-toggle", "cmap-store")
                 and stored_computed_data
             ):
-                display_rows = get_scores(
-                    stored_raw_data, stored_computed_data, thresholds, toggle_value
-                )
+                # Colour/normalise flips don't change scores, but the computed-store
+                # is only warmed to calc_metric_scores(raw, thresholds) by the
+                # weights/thresholds branch below, which does not fire on the very
+                # first paint (initial_duplicate) — so before the user's first weight
+                # edit the store still holds the raw baked rows. Recompute the scores
+                # here so colouring and the normalised view are correct on the very
+                # first colour/toggle flip (get_table_style colouring stays memoized).
                 scored_rows = calc_metric_scores(stored_raw_data, thresholds=thresholds)
+                display_rows = get_scores(
+                    stored_raw_data, scored_rows, thresholds, toggle_value
+                )
                 filtered_rows = filter_rows_by_models(display_rows, selected_models)
                 filtered_scores = filter_rows_by_models(scored_rows, selected_models)
                 style = (
                     get_table_style(
                         filtered_rows,
                         scored_data=filtered_scores,
-                        cmap_name=cmap_name or "viridis_r",
+                        cmap_name=cmap_name or DEFAULT_COLORMAP,
                         weights=stored_weights,
                     )
                     if filtered_rows
@@ -488,8 +516,9 @@ def register_category_table_callbacks(
                     metric_levels=metric_levels,
                     model_configs=model_configs,
                 )
-                columns = format_metric_columns(
-                    current_columns, thresholds, show_normalized
+                columns = apply_column_decimals(
+                    format_metric_columns(current_columns, thresholds, show_normalized),
+                    filtered_rows,
                 )
                 tooltips = format_tooltip_headers(
                     raw_tooltips, thresholds, show_normalized
@@ -520,7 +549,8 @@ def register_category_table_callbacks(
                 get_table_style(
                     filtered_rows,
                     scored_data=filtered_scores,
-                    cmap_name=cmap_name or "viridis_r",
+                    cmap_name=cmap_name or DEFAULT_COLORMAP,
+                    weights=stored_weights,
                 )
                 if filtered_rows
                 else []
@@ -532,8 +562,9 @@ def register_category_table_callbacks(
                 metric_levels=metric_levels,
                 model_configs=model_configs,
             )
-            columns = format_metric_columns(
-                current_columns, thresholds, show_normalized
+            columns = apply_column_decimals(
+                format_metric_columns(current_columns, thresholds, show_normalized),
+                filtered_rows,
             )
             tooltips = format_tooltip_headers(raw_tooltips, thresholds, show_normalized)
 
@@ -559,8 +590,11 @@ def register_category_table_callbacks(
             Input("cmap-store", "data"),
             State(table_id, "data"),
             State(f"{table_id}-computed-store", "data"),
+            # "initial_duplicate": re-derive on re-mount so a returning user's
+            # weights persist (see update_benchmark_table_scores).
             prevent_initial_call="initial_duplicate",
             optional=True,
+            **COMPRESS_STORES,
         )
         def update_table_scores(
             stored_weights: dict[str, float] | None,
@@ -587,11 +621,16 @@ def register_category_table_callbacks(
                 scored_rows = source_data
                 updated_store = no_update
 
-            filtered_rows = filter_rows_by_models(scored_rows, selected_models)
+            # Hide models whose category scores are all NaN. Scores can flip
+            # to/from NaN when benchmark weights change, so filter on the fly here
+            # rather than removing rows from the store.
+            filtered_rows = drop_empty_model_rows(
+                filter_rows_by_models(scored_rows, selected_models)
+            )
             style = (
                 get_table_style(
                     filtered_rows,
-                    cmap_name=cmap_name or "viridis_r",
+                    cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
                 )
                 if filtered_rows
@@ -633,6 +672,8 @@ def register_category_table_callbacks(
             Input("selected-models-store", "data"),
             Input("cmap-store", "data"),
             State(f"{table_id}-weight-store", "data"),
+            # "initial_duplicate": re-sync the rendered table from its computed
+            # store on re-mount so edits persist across navigation.
             prevent_initial_call="initial_duplicate",
             optional=True,
         )
@@ -660,11 +701,13 @@ def register_category_table_callbacks(
             if not computed_store:
                 raise PreventUpdate
 
-            filtered_rows = filter_rows_by_models(computed_store, selected_models)
+            filtered_rows = drop_empty_model_rows(
+                filter_rows_by_models(computed_store, selected_models)
+            )
             style = (
                 get_table_style(
                     filtered_rows,
-                    cmap_name=cmap_name or "viridis_r",
+                    cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
                 )
                 if filtered_rows
@@ -679,53 +722,53 @@ def register_category_table_callbacks(
             )
             return filtered_rows, style, tooltip_data
 
-    @callback(
-        Output(scores_store_id, "data", allow_duplicate=True),
-        Input(f"{table_id}-computed-store", "data"),
-        State(scores_store_id, "data"),
-        prevent_initial_call="initial_duplicate",
-    )
-    def update_scores_store(
-        computed_rows: list[dict] | None,
-        scores_data: dict[str, dict[str, float]],
-    ) -> dict[str, dict[str, float]]:
-        """
-        Update stored scores values when weights update.
+    # Only summary tables write to the global scores store
+    if table_id.endswith(summary_suffix):
 
-        Parameters
-        ----------
-        computed_rows
-            Cached full rows for the category summary table.
-        scores_data
-            Stored overall-summary inputs, keyed by category score column.
+        @callback(
+            Output(scores_store_id, "data", allow_duplicate=True),
+            Input(f"{table_id}-computed-store", "data"),
+            State(scores_store_id, "data"),
+            prevent_initial_call="initial_duplicate",
+            **COMPRESS_STORES,
+        )
+        def update_scores_store(
+            computed_rows: list[dict] | None,
+            scores_data: dict[str, dict[str, float]],
+        ) -> dict[str, dict[str, float]]:
+            """
+            Update stored scores values when weights update.
 
-        Returns
-        -------
-        dict[str, dict[str, float]]
-            Updated summary-score mapping.
-        """
-        # Only summary tables should write to the global store
-        if not table_id.endswith(summary_suffix):
-            raise PreventUpdate
+            Parameters
+            ----------
+            computed_rows
+                Cached full rows for the category summary table.
+            scores_data
+                Stored overall-summary inputs, keyed by category score column.
 
-        if not computed_rows:
-            raise PreventUpdate
+            Returns
+            -------
+            dict[str, dict[str, float]]
+                Updated summary-score mapping.
+            """
+            if not computed_rows:
+                raise PreventUpdate
 
-        # Summary table IDs are of form "[key]{summary_suffix}"
-        category_key = table_id.removesuffix(summary_suffix) + " Score"
+            # Summary table IDs are of form "[key]{summary_suffix}"
+            category_key = table_id.removesuffix(summary_suffix) + " Score"
 
-        new_scores = {
-            row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
-        }
-        current_scores = (scores_data or {}).get(category_key)
+            new_scores = {
+                row["MLIP"]: row["Score"] for row in computed_rows if row.get("MLIP")
+            }
+            current_scores = (scores_data or {}).get(category_key)
 
-        if current_scores == new_scores:
-            return no_update
+            if current_scores == new_scores:
+                return no_update
 
-        patch = Patch()
-        patch[category_key] = new_scores
+            patch = Patch()
+            patch[category_key] = new_scores
 
-        return patch
+            return patch
 
 
 def register_benchmark_to_group_callback(
@@ -775,12 +818,17 @@ def register_benchmark_to_group_callback(
         outputs.append(
             Output(f"{group_table_id}-computed-store", "data", allow_duplicate=True)
         )
-        state_inputs.append(State(f"{group_table_id}-weight-store", "data"))
+        state_inputs.append(Input(f"{group_table_id}-weight-store", "data"))
         state_inputs.append(State(f"{group_table_id}-computed-store", "data"))
 
     benchmark_inputs = [Input(f"{bid}-computed-store", "data") for bid in benchmark_ids]
 
-    @callback(outputs, state_inputs + benchmark_inputs, prevent_initial_call=True)
+    @callback(
+        outputs,
+        state_inputs + benchmark_inputs,
+        prevent_initial_call=True,
+        **COMPRESS_STORES,
+    )
     def update_group_from_benchmark(*args) -> list:
         """
         Update cached group summary rows from all benchmarks' cached scores.
@@ -788,7 +836,7 @@ def register_benchmark_to_group_callback(
         Parameters
         ----------
         *args
-            Per-group (weight-store, computed-store) States followed by the
+            Per-group weight Inputs and computed-store States followed by the
             de-duplicated benchmark computed-store Inputs.
 
         Returns
@@ -807,6 +855,13 @@ def register_benchmark_to_group_callback(
         for _group, group_info in sorted(all_info.items()):
             group_weights = next(state_iter)
             current_rows = next(state_iter)
+
+            # A group whose computed-store is empty/None (e.g. cleared session
+            # state) has nothing to propagate into — skip it rather than iterate
+            # None (TypeError) or strict-zip a length mismatch below.
+            if not current_rows:
+                patched_outputs.append(no_update)
+                continue
 
             updated_rows = [row.copy() for row in current_rows]
             updated_by_mlip = {row["MLIP"]: row for row in updated_rows}
@@ -833,7 +888,9 @@ def register_benchmark_to_group_callback(
                         target_row[benchmark_column] = new_score
                         benchmark_changed = True
 
-            if not benchmark_changed:
+            weight_id = f"{group_to_id[_group]}{table_id_suffix}-weight-store"
+            weights_changed = f"{weight_id}.data" in ctx.triggered_prop_ids
+            if not benchmark_changed and not weights_changed:
                 patched_outputs.append(no_update)
                 continue
 
@@ -869,7 +926,11 @@ def register_benchmark_to_group_callback(
 
 
 def register_weight_callbacks(
-    input_id: str, table_id: str, column: str, default_weights: dict[str, float]
+    input_id: str,
+    table_id: str,
+    column: str,
+    default_weights: dict[str, float],
+    reset_id: str | None = None,
 ) -> None:
     """
     Register all callbacks for weight inputs.
@@ -885,13 +946,16 @@ def register_weight_callbacks(
     default_weights
         Optional weights for each metric, usually set during analysis. Default is
         `None`, which sets all weights to 1.
+    reset_id
+        Alternative reset button for controls mounted outside the table page.
     """
     default_weights = default_weights if default_weights else {}
+    reset_id = reset_id or f"{table_id}-reset-button"
 
     @callback(
         Output(f"{table_id}-weight-store", "data", allow_duplicate=True),
         Input(f"{input_id}-input", "value"),
-        Input(f"{table_id}-reset-button", "n_clicks"),
+        Input(reset_id, "n_clicks"),
         State(f"{table_id}-weight-store", "data"),
         prevent_initial_call=True,
         optional=True,
@@ -899,7 +963,7 @@ def register_weight_callbacks(
     def store_input_value(
         input_weight: float | None,
         n_clicks: int,
-        stored_weights: dict[str, float],
+        stored_weights: dict[str, float] | None,
     ) -> dict[str, float]:
         """
         Store weight values from the text input.
@@ -915,19 +979,37 @@ def register_weight_callbacks(
 
         Returns
         -------
-        dict[str, float]
-            Stored weights for each input box.
+        dict[str, float] or dash.NoUpdate
+            Stored weights, or no store update when restoring an empty input.
         """
         trigger_id = ctx.triggered_id
 
+        # Copied so an absent store cannot break the lookups below, and is not
+        # mutated in place
+        stored_weights = dict(stored_weights or {})
+
         if trigger_id == f"{input_id}-input":
             if input_weight is None:
+                set_props(
+                    f"{input_id}-input",
+                    {
+                        "value": stored_weights.get(
+                            column, default_weights.get(column, 1.0)
+                        )
+                    },
+                )
+                # Return normally so Dash delivers the input restoration.
+                return no_update
+            if stored_weights.get(column) == input_weight:
                 raise PreventUpdate
             stored_weights[column] = input_weight
-        elif trigger_id == f"{table_id}-reset-button" and n_clicks > 0:
-            stored_weights.update(
-                (key, default_weights.get(key, 1.0)) for key in stored_weights
-            )
+        elif trigger_id == reset_id and n_clicks > 0:
+            # Keyed on the defaults too, so reset repairs a stale store
+            reset_weights = {
+                key: default_weights.get(key, 1.0)
+                for key in (*stored_weights, *default_weights)
+            }
+            stored_weights = reset_weights
         else:
             raise PreventUpdate
 
@@ -939,7 +1021,7 @@ def register_weight_callbacks(
         prevent_initial_call="initial_duplicate",
         optional=True,
     )
-    def sync_inputs(stored_weights: dict[str, float]) -> float:
+    def sync_inputs(stored_weights: dict[str, float] | None) -> float:
         """
         Sync the weight value from the Store into the text input.
 
@@ -953,7 +1035,8 @@ def register_weight_callbacks(
         float
             Weight to set as the text input value.
         """
-        return stored_weights[column]
+        # A stale session store may predate this column
+        return (stored_weights or {}).get(column, default_weights.get(column, 1.0))
 
 
 def register_normalization_callbacks(
@@ -1004,7 +1087,7 @@ def register_normalization_callbacks(
                     raise PreventUpdate
                 if cleaned_defaults:
                     return deepcopy(cleaned_defaults)
-                return cleaned_store
+                raise PreventUpdate
 
             # Ensure key exists
             if metric not in cleaned_store:
@@ -1059,6 +1142,13 @@ def register_normalization_callbacks(
             else:
                 raise PreventUpdate
 
+            # Still publish corrections when rounding changed the input value.
+            if (
+                cleaned_store == clean_thresholds(stored_thresholds)
+                and good_val == entry["good"]
+                and bad_val == entry["bad"]
+            ):
+                raise PreventUpdate
             return cleaned_store
 
     if metrics:
@@ -1119,6 +1209,7 @@ def register_normalization_callbacks(
             State("cmap-store", "data"),
             prevent_initial_call=True,
             optional=True,
+            **COMPRESS_STORES,
         )
         def toggle_normalized_display(
             show_normalized: list[str] | None,
@@ -1143,10 +1234,13 @@ def register_normalization_callbacks(
             style = get_table_style(
                 display_rows,
                 scored_data=scored_rows,
-                cmap_name=cmap_name or "viridis_r",
+                cmap_name=cmap_name or DEFAULT_COLORMAP,
             )
-            columns = format_metric_columns(
-                current_columns, cleaned_thresholds, normalized_active
+            columns = apply_column_decimals(
+                format_metric_columns(
+                    current_columns, cleaned_thresholds, normalized_active
+                ),
+                display_rows,
             )
             tooltips = format_tooltip_headers(
                 raw_tooltips, cleaned_thresholds, normalized_active
@@ -1227,6 +1321,7 @@ def register_download_callbacks(table_id: str) -> None:
         State(table_id, "columns"),
         prevent_initial_call=True,
         optional=True,
+        **COMPRESS_STORES,
     )
     def download_table(
         n_clicks: int,
@@ -1353,6 +1448,8 @@ def register_filter_tables_callback(apps: dict[str, Dash]) -> None:
         Input("element-filter", "data"),
         states,
         prevent_initial_call=True,
+        # Four stores per table across every app: the largest payload in the app.
+        **COMPRESS_STORES,
     )
     def recompute_tables(elements, *args):
         """

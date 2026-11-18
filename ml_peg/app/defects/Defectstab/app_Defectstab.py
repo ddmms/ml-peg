@@ -11,11 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-# Get all models
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Defectstab Formation Energies"
 # Update this URL when documentation is added
 DOCS_URL = (
@@ -36,11 +32,10 @@ class DefectstabApp(BaseApp):
         )
 
         # Assets dir will be parent directory - individual files for each system
-        # Assuming the first model has all structures
-        structs_dir = DATA_PATH / MODELS[0]
+        structs_dir = DATA_PATH / "mock"
         # Sort files to match the order in the scatter plot
         structs = [
-            f"/assets/defects/Defectstab/{MODELS[0]}/{struct_file.name}"
+            f"/assets/defects/Defectstab/mock/{struct_file.name}"
             for struct_file in sorted(structs_dir.glob("*.xyz"))
         ]
 

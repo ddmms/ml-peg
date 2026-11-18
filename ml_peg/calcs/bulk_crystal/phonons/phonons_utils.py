@@ -38,9 +38,7 @@ def _ase_atoms_to_phonopy_atoms(atoms: Atoms) -> PhonopyAtoms:
     PhonopyAtoms
         Equivalent phonopy atom container.
     """
-    return PhonopyAtoms(
-        atoms.symbols, cell=atoms.cell, positions=atoms.positions, pbc=True
-    )
+    return PhonopyAtoms(atoms.symbols, cell=atoms.cell, positions=atoms.positions)
 
 
 def _ase_atoms_to_phonopy(
@@ -152,6 +150,7 @@ def init_phonopy_from_ref(
     symprec: float = 1e-5,
     displacement_dataset: dict | None = None,
     displacement_distance: float | None = None,
+    is_plusminus: bool | str = "auto",
     **kwargs: Any,
 ) -> Phonopy:
     """
@@ -175,6 +174,9 @@ def init_phonopy_from_ref(
         Displacement distance used to generate new displacements when
         ``displacement_dataset`` is omitted. Set to ``None`` to require an
         explicit displacement dataset.
+    is_plusminus
+        Passed to ``Phonopy.generate_displacements`` when new displacements are
+        generated. Defaults to phonopy's ``"auto"`` behaviour.
     **kwargs
         Additional keyword arguments forwarded to ``Phonopy``.
 
@@ -195,7 +197,9 @@ def init_phonopy_from_ref(
     if displacement_dataset is not None:
         phonons.dataset = displacement_dataset
     elif displacement_distance is not None:
-        phonons.generate_displacements(distance=displacement_distance)
+        phonons.generate_displacements(
+            distance=displacement_distance, is_plusminus=is_plusminus
+        )
     else:
         raise ValueError(
             'Either "displacement_dataset" or "displacement_distance" is required when '
@@ -286,20 +290,13 @@ def download_alex_parallel(sample_every: int = 1, max_threads: int = 16) -> None
     max_threads
         Maximum number of download threads.
     """
-    from bs4 import BeautifulSoup
-
     local_path = BENCHMARK_DATA_DIR / "alex_phonons" / "alex_phonon_data"
     local_path.mkdir(parents=True, exist_ok=True)
 
     url = "https://alexandria.icams.rub.de/data/phonon_benchmark/pbe/"
     response = requests.get(url)
     response.raise_for_status()
-    soup = BeautifulSoup(response.text, "html.parser")
-    mp_ids = [
-        re.match(r"(mp-\d+)\.yaml\.bz2$", link["href"]).group(1)
-        for link in soup.find_all("a", href=True)
-        if re.match(r"(mp-\d+)\.yaml\.bz2$", link["href"])
-    ]
+    mp_ids = re.findall(r"""href=["']?(mp-\d+)\.yaml\.bz2["'\s>]""", response.text)
     print(f"Found {len(mp_ids)} mp-ids.")
 
     (local_path.parent / "mp_ids.txt").write_text("\n".join(mp_ids) + "\n")

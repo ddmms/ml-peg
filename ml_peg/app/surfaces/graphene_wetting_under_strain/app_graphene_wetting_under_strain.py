@@ -12,7 +12,6 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_multi_scatters,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.calcs import CALCS_ROOT
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -22,8 +21,7 @@ BENCHMARK_NAME = "Graphene Wetting Under Strain"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces.html#graphene-wetting-under-strain"
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "graphene_wetting_under_strain"
 
-CALC_PATH = CALCS_ROOT / "surfaces" / "graphene_wetting_under_strain" / "outputs"
-with open(CALC_PATH / "database_info.yml") as fp:
+with open(DATA_PATH / "database_info.yml") as fp:
     DATABASE_INFO = yaml.safe_load(fp)
 ORIENTATIONS = DATABASE_INFO["orientations"]
 STRAINS = DATABASE_INFO["strains"]

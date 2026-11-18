@@ -72,7 +72,7 @@ def relaxed_structs() -> dict[str, Atoms]:
     return relaxed_structs
 
 
-@pytest.mark.slow
+@pytest.mark.fast
 @pytest.mark.parametrize("compound", COMPOUNDS)
 @pytest.mark.parametrize("model_name", MODELS)
 def test_o_diffusion(
@@ -97,6 +97,7 @@ def test_o_diffusion(
             init_struct=init_struct,
             final_struct=final_struct,
             n_images=11,
+            neb_kwargs={"climb": True},
             interpolator="pymatgen",
             minimize=True,
             write_band=True,
@@ -108,6 +109,7 @@ def test_o_diffusion(
                 init_struct=init_struct,
                 final_struct=final_struct,
                 n_images=11,
+                neb_kwargs={"climb": True},
                 interpolator="ase",
                 minimize=True,
                 write_band=True,

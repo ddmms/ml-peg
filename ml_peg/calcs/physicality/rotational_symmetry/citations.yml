@@ -1,0 +1,9 @@
+implementers:
+  - name: "Ella Bolland"
+    github: "ellalbolland"
+
+contributors: []
+
+citations:
+  - bibtex_key: chiang-2025-mlip-arena
+    role: inspired_by

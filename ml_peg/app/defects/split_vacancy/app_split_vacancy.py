@@ -45,7 +45,7 @@ VACANCY_LABELS = {"NV": "normal vacancy", "SV": "split vacancy"}
 IFRAME_STYLE = {
     "height": "550px",
     "width": "100%",
-    "border": "1px solid #ddd",
+    "border": "1px solid var(--mlpeg-border)",
     "borderRadius": "5px",
 }
 GRID_STYLE = {
@@ -465,7 +465,12 @@ def _trace_models(graph: Graph) -> list[str | None]:
     """
     if graph.figure is None:
         return []
-    return [trace.name for trace in graph.figure.data]
+    # ``read_plot`` hands back the parsed JSON dict rather than a plotly
+    # ``Figure`` (see ``read_json`` in app/utils/load.py), so index the mapping
+    # instead of reaching for attributes — ``.data`` would raise AttributeError
+    # here, and ``get_all_tests`` only rescues FileNotFoundError, so it would
+    # take the whole app build down rather than skipping this benchmark.
+    return [trace.get("name") for trace in (graph.figure.get("data") or [])]
 
 
 class SplitVacancyApp(BaseApp):

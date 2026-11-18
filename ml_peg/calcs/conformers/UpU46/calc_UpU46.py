@@ -80,6 +80,7 @@ def get_ref_energies(data_path: Path) -> dict[str, float]:
 
 
 @pytest.mark.framework("mace-polar-1")
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_upu46(mlip: tuple[str, Any]) -> None:
     """

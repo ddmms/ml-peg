@@ -34,10 +34,10 @@ Mean lattice constant error compared to PBE data
 Same as (1), but optimised lattice constants are compared to reference PBE data.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -45,13 +45,108 @@ Data availability
 
 Input structures:
 
-* Built from experimental lattice constants from various sources
+* Built from experimental lattice constants in
+  ``lattice_constants_ref_exp.json`` inside the S3 archive
+  ``inputs/bulk_crystal/lattice_constants/lattice_constants.zip``.
+  The same archive contains the MACE-MP PBE reference values in
+  ``lattice_constants_ref.json`` and crystal types in
+  ``lattice_constants_ref_types.json``.
 
 Reference data:
 
-* Experimental data same as input data
+* Experimental data are the same as the input data, using the following sources:
 
-* DFT data
+  * Ag, Pd, Rh, Li, Na, K, Rb, Ca, Sr, Ba, Al and Cu: the publications below.
+    Values are rounded to three decimal places in Å.
+
+    .. list-table:: Elemental lattice-constant references
+       :header-rows: 1
+       :widths: 10 15 20 55
+
+       * - Element
+         - a (Å)
+         - Temperature (K)
+         - Source
+       * - Ag
+         - 4.086
+         - 293
+         - `Suh, Ohta and Waseda (1988) <https://doi.org/10.1007/BF01174717>`_
+       * - Pd
+         - 3.8898
+         - Not recorded
+         - Wyckoff (1963)
+       * - Rh
+         - 3.8031
+         - Not recorded
+         - Wyckoff (1963)
+       * - Li
+         - 3.5093
+         - 293
+         - Wyckoff (1963)
+       * - Na
+         - 4.2906
+         - 293
+         - Wyckoff (1963)
+       * - K
+         - 5.328
+         - Not recorded
+         - `Liu (1986) <https://doi.org/10.1016/0022-3697(86)90073-9>`_, 0 GPa
+       * - Rb
+         - 5.699
+         - 293.15
+         - `Arblaster (2018), Table 37a, p. 298
+           <https://my.asminternational.org/asm-store?store-path=/products/05244G>`_
+       * - Ca
+         - 5.5884
+         - 299.15
+         - `Bernstein and Smith (1959) <https://doi.org/10.1107/S0365110X59001268>`_
+       * - Sr
+         - 6.0847
+         - Not recorded
+         - Wyckoff (1963)
+       * - Ba
+         - 5.025
+         - 300
+         - Wyckoff (1963)
+       * - Al
+         - 4.04961
+         - 298.15
+         - `Straumanis (1949) <https://doi.org/10.1063/1.1698520>`_
+       * - Cu
+         - 3.6150
+         - Not recorded
+         - `Otte (1961) <https://doi.org/10.1063/1.1728392>`_
+
+    Ag, Pd, Rh, Ca, Sr, Al and Cu use fcc cells. Li, Na, K, Rb and Ba use
+    bcc cells. Wyckoff refers to *Crystal Structures*, volume 1, second edition
+    (Interscience Publishers, 1963). Except for Rb, values and available measurement
+    conditions were cross-checked against COD records. Missing conditions are not
+    assumed to imply ambient conditions. Rb uses Arblaster's recommended value
+    of 5.699 ± 0.002 Å at 20 °C.
+    The Al value includes the kX-to-Å conversion documented in
+    `COD entry 9012002 <https://www.crystallography.net/cod/9012002.cif>`_.
+  * Cs: `Weir, Piermarini and Block (1971)
+    <https://doi.org/10.1063/1.1675251>`_, ambient bcc Cs, 6.141 Å.
+    This value is also tabulated in the
+    `NIST-hosted review, Table 3, reference 413
+    <https://srd.nist.gov/jpcrdreprint/1.3253148.pdf>`_.
+  * C (diamond), Si and Ge: `Hom, Kiszenik and Post (1975)
+    <https://doi.org/10.1107/S0021889875010965>`_. Their measured lattice
+    constants round to the values used here.
+  * GaAs: `Ioffe Institute NSM Archive
+    <https://www.ioffe.ru/SVA/NSM/Semicond/GaAs/basic.html>`_, 300 K.
+  * LiF, LiCl, NaF and NaCl: `Joung and Cheatham (2008), Table 3
+    <https://doi.org/10.1021/jp8001614>`_, room-temperature lattice constants.
+  * MgO: the experimental column of `Oganov, Gillan and Price (2003), Table I
+    <https://doi.org/10.1063/1.1570394>`_, 300 K and zero pressure.
+  * 2H-SiC: `Li et al. (2014), Table 1
+    <https://doi.org/10.1088/2053-1591/1/4/045023>`_, which reproduces ICSD
+    entry 41487.
+
+  LiF, LiCl, NaF and NaCl use 4.027, 5.140, 4.634 and 5.640 Å, respectively.
+  For 2H-SiC, ``a = 3.076 Å`` and ``c = 5.048 Å``.
+
+* Benchmark and DFT data
 
   * Batatia, I., Benner, P., Chiang, Y., Elena, A.M., Kovács, D.P., Riebesell, J.,
     Advincula, X.R., Asta, M., Avaylon, M., Baldwin, W.J. and Berger, F., 2025. A
@@ -103,10 +198,10 @@ Symmetry-independent elastic constants are extracted based on crystal system:
 triclinic, monoclinic, orthorhombic, tetragonal, trigonal, hexagonal, or cubic.
 Symmetry checks are applied to components on the diagonal with a relative tolerance of 10%. If checks fail, a triclinic symmetry is assumed. Tensor components which are zero in both the reference and comparison tensors are excluded.
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours-days to run on GPU.
+Very slow: around 20 hours per model on an A100 GPU.
 
 Data availability
 -----------------
@@ -123,6 +218,295 @@ Reference data:
 * PBE
 
 
+Phonons: Diamond
+================
+
+Summary
+-------
+
+Performance in predicting the phonon dispersion and thermal properties of bulk
+diamond (Carbon).
+
+The benchmark evaluates (1) phonon frequency accuracy along a fixed high-symmetry
+path in the Brillouin zone, and (2) the Grüneisen parameter, Debye temperature, and
+Slack-formula lattice thermal conductivity — all compared against RSCAN DFT references.
+The total phonon density of states (DOS) is additionally computed and displayed
+alongside the dispersion in the app for qualitative comparison.
+The thermal metrics probe two physically independent aspects of the force constants:
+anharmonicity (Grüneisen parameter) and absolute stiffness (Debye temperature).
+
+
+Metrics
+-------
+
+1. Band MAE
+
+Mean absolute error (MAE) between predicted and reference phonon frequencies.
+It is evaluated over all q-points and all phonon branches.
+
+
+2. Δγ
+
+Absolute error in the mean Grüneisen parameter relative to the DFT reference.
+The mean Grüneisen parameter is computed on a 20×20×20 q-mesh by finite differences
+between force constants at volumes V\ :sub:`0` ± 1% (see the Method section below).
+
+3. Δθ\ :sub:`D` (K)
+
+Absolute error in the Debye temperature relative to the DFT reference. The Debye
+temperature is estimated from the maximum phonon frequency on a 20×20×20 mesh:
+θ\ :sub:`D` = ℏω\ :sub:`max` / k\ :sub:`B`.
+
+4. Δκ\ :sub:`L` (W/m·K)
+
+Absolute error in the Slack-formula lattice thermal conductivity at 300 K relative
+to the DFT reference. Both prediction and reference use the identical Slack formula,
+so this metric isolates MLIP error in the force constants rather than Slack
+approximation error.
+
+**Score thresholds**
+
+The ``bad`` thresholds in ``metrics.yml`` are set as follows. The band MAE bar
+(1 THz) corresponds to 2.5% of diamond's 40 THz spectrum — a deliberately strict
+choice, so that only quantitatively accurate force constants score. Δγ = 0.2
+corresponds to a 20% error in the predicted thermal expansion
+(α ∝ γ) and to the spread among experimental determinations of diamond's Grüneisen
+parameter. Δθ\ :sub:`D` = 90 K corresponds to a ~1.9 THz error in the highest phonon
+frequency (θ\ :sub:`D` = ħω\ :sub:`max`/k\ :sub:`B` ≈ 48 K per THz), consistent with
+the band-structure threshold. Δκ\ :sub:`L` = 400 W/m/K (≈50% of the reference κ)
+approximately equals the κ error obtained by propagating the Δγ and Δθ\ :sub:`D`
+bars through the Slack formula (κ ∝ θ\ :sub:`D`\ ³/γ²), keeping the three thermal
+thresholds mutually consistent.
+
+
+Method
+------
+
+All MLIP calculations (band structure and thermal) use the **512-atom conventional
+supercell** (cubic 8-atom cell × 4×4×4). All DFT references (band structure and
+thermal) use the **128-atom primitive supercell** (CASTEP/RSCAN), which is sufficient
+for DFT due to the rapid decay of diamond's interatomic force constants.
+
+**Relaxation**
+
+Before computing force constants, atomic positions are relaxed for each model using
+the FIRE optimiser with symmetry fixed (``fmax=0.005``, up to 1000 steps).
+The cell is kept fixed at the reference geometry so
+that band paths remain directly comparable to the DFT reference.
+
+**Phonon band structure**
+
+Force constants are computed from phonopy-generated ±0.01 Å displacements, equivalent
+to the displacement dataset used for the DFT reference. MLIP forces are evaluated for
+each displaced supercell and used to produce second-order force constants via phonopy,
+which are then symmetrised. The force constants are Fourier-interpolated to the
+reference q-point path, and phonon frequencies are compared mode-by-mode after sorting
+to avoid branch-labelling ambiguities.
+
+**Phonon density of states**
+
+The total DOS is computed from the same equilibrium force constants on a 20×20×20
+q-mesh via phonopy (``run_mesh`` + ``run_total_dos``), as in the general and Ti64
+phonon benchmarks, and rendered next to the band structure in the interactive
+dispersion plot. No DOS-based metric is scored.
+
+**Grüneisen parameter**
+
+The mode Grüneisen parameter describes how phonon frequencies shift with volume:
+
+.. math::
+
+   \gamma_i(\mathbf{q}) = -\frac{V}{\omega_i(\mathbf{q})}
+   \frac{\partial \omega_i(\mathbf{q})}{\partial V}
+
+It is computed from three sets of second-order force constants:
+
+1. Equilibrium volume :math:`V_0` — force constants at the relaxed volume.
+2. Expanded volume :math:`V_0(1 + \delta)` — force constants at +1% volumetric strain.
+3. Compressed volume :math:`V_0(1 - \delta)` — force constants at −1% volumetric strain.
+
+The volumetric strain is applied as a uniform scaling of the unit cell
+(:math:`\delta = 0.01` by default). Atomic positions are scaled affinely with the cell,
+no re-relaxation is performed at the strained volumes. Mode Grüneisen parameters are
+evaluated on a 20×20×20 sampling mesh via phonopy's ``PhonopyGruneisen`` interface. The
+reported scalar :math:`\bar{\gamma}` is the q-point- and mode-weighted mean over all
+positive-frequency modes.
+
+**Debye temperature**
+
+The Debye temperature is estimated from the maximum phonon frequency on the sampling
+mesh:
+
+.. math::
+
+   \theta_D = \frac{\hbar \omega_{\max}}{k_B}
+
+where :math:`\omega_{\max} = 2\pi f_{\max}` and :math:`f_{\max}` is the largest
+frequency (THz) found on the 20×20×20 mesh.
+
+**Lattice thermal conductivity**
+
+The lattice thermal conductivity is estimated using the Slack formula (Slack, 1973):
+
+.. math::
+
+   \kappa_L = A \frac{\bar{M} \, \theta_D^3 \, \delta_a}
+                     {\bar{\gamma}^2 \, n^{2/3} \, T}
+
+where :math:`A = 2.43 \times 10^{-6}`, :math:`\bar{M}` is the mean atomic mass (amu),
+:math:`\delta_a = (V_\text{prim}/n)^{1/3}` is the cube root of the volume per atom (Å),
+:math:`\bar{\gamma}` is the mean Grüneisen parameter, :math:`n` is the number of atoms
+in the primitive cell, and :math:`T` is temperature (K). The result is in W/(m·K).
+
+The Slack formula is a semi-empirical approximation that captures the dominant anharmonic
+scattering channel. It does not include phonon–phonon scattering from third-order force
+constants and should be treated as an order-of-magnitude estimate.
+
+
+Benchmark speed
+------------------
+
+Fast: band-structure and thermal-property calculations together typically take
+several minutes to tens of minutes per model on CPU. Both steps use the same 512-atom
+conventional supercell and share the equilibrium force constants; the thermal step
+adds force-constant evaluations at V\ :sub:`0` + δ and V\ :sub:`0` − δ, so total wall
+time is roughly three times the band-structure-only run. Calculations were run as a
+single process on CPU on an x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7;
+4 cores / 8 threads). No explicit parallel execution (MPI or multiprocessing) was used
+in the benchmark driver.
+
+
+
+
+Data availability
+-----------------
+
+* ``diamond.xyz``: conventional cubic cell (8 atoms, a = 3.56 Å), the
+  CASTEP/RSCAN-relaxed geometry used for the DFT reference calculations; each MLIP
+  re-relaxes atomic positions (fixed cell and symmetry) and computes force constants
+  on a 4×4×4 (512-atom) supercell.
+
+* DFT phonon band structure for bulk diamond along a fixed high-symmetry path,
+  computed with CASTEP using the RSCAN functional, pre-converted to the shared phonon
+  benchmark format, along with the q-path metadata used for the MLIP band structures.
+
+* DFT total phonon DOS (``diamond_dos.npz``), computed from the same DFT force
+  constants on a 20×20×20 q-mesh in the shared phonon benchmark format (phonopy
+  ``get_total_dos_dict()``: frequency points in THz and total DOS).
+
+* DFT Grüneisen parameter and lattice thermal conductivity computed using the same
+  Grüneisen + Slack pipeline as the MLIP predictions, with CASTEP/RSCAN force constants
+  at V\ :sub:`0`, V\ :sub:`0` + 1%, and V\ :sub:`0` − 1% on a 128-atom primitive
+  supercell.
+
+Thermal conductivity method:
+
+* Slack, G.A. (1973). Nonmetallic crystals with high thermal conductivity.
+  *Journal of Physics and Chemistry of Solids*, 34(2), 321–335.
+  https://doi.org/10.1016/0022-3697(73)90092-9
+
+The reference data is independent of public DFT databases, though diamond chemistry
+should be in-domain for models trained on bulk-materials datasets such as OMat24.
+
+
+Phonons: Ti64
+=============
+
+Summary
+-------
+
+Performance in predicting phonon dispersions, vibrational densities of states (DOS),
+and thermodynamic Helmholtz free energies for a suite of 10 Ti–Al–V alloy phases.
+
+Each case is evaluated by comparing ML-predicted phonon frequencies to CASTEP reference
+phonon frequencies along a fixed high-symmetry q-path. For a subset of cases,
+Helmholtz free-energy errors per atom are additionally reported.
+
+
+Metrics
+-------
+
+1. ω_avg MAE
+
+   Mean absolute error (MAE) in the average phonon frequency ω_avg over the 10 Ti64 cases.
+
+   For each case, ω_avg is computed as the arithmetic mean of all phonon frequencies after
+   interpolating the reference dispersion onto the ML band-path grid. The per-case absolute
+   error is then averaged across cases. Frequencies are averaged as stored; if imaginary modes
+   are present as negative values, they contribute directly.
+
+2. ω_max MAE
+
+   Mean absolute error in the maximum phonon frequency ω_max over the 10 Ti64 cases.
+
+   For each case, ω_max is the largest frequency after interpolating the reference
+   dispersion onto the ML band-path grid. The per-case absolute error is then
+   averaged across cases.
+
+3. ΔF (0 K) mean
+
+   Mean absolute error in Helmholtz free energy at 0 K, reported as eV/atom, over the
+   subset of cases where thermodynamic outputs are available.
+
+   For applicable cases, a reference Helmholtz free energy is provided, computed in the
+   harmonic approximation from CASTEP q-point phonon frequencies and weights (zero-point
+   plus thermal contributions) on a temperature grid spanning 0–2000 K in 10 K steps, and
+   interpolated to the ML temperatures. The ML free energy is computed with phonopy on the
+   same temperature grid. The absolute difference between ML and reference free energy at
+   0 K is divided by the number of atoms and averaged across thermodynamics-enabled cases.
+   Weights are taken directly from CASTEP; no explicit renormalisation is applied.
+
+4. ΔF (2000 K) mean
+
+   Mean absolute error in Helmholtz free energy at 2000 K, reported as eV/atom, over the
+   subset of cases where thermodynamic outputs are available.
+
+   Computed as in (3), but using the final temperature point (2000 K).
+
+**Score thresholds**
+
+The ``bad`` thresholds in ``metrics.yml`` are set as follows. The ω_avg and ω_max
+MAE bars (1 THz, 10% of the spectrum) bound systematic softening or stiffening
+of the lattice and errors at the top of the phonon spectrum. The Helmholtz free-energy
+bars (7 meV/atom at 0 K, ≈20% of the ~35 meV/atom zero-point energy; 30 meV/atom at
+2000 K) are set so that errors beyond them are comparable to the phase free-energy
+differences (tens of meV/atom) that such calculations are used to resolve.
+
+
+Benchmark speed
+------------------
+
+Fast: dispersion, DOS and thermodynamic calculations typically take minutes per model on CPU.
+Thermodynamic calculations are enabled for a 7/10 subset of cases.
+Ti64 calculations were run as a single process on CPU on an
+x86_64 machine (11th Gen Intel(R) Core(TM) i5-1145G7; 4 cores / 8 threads). No explicit
+parallel execution (MPI or multiprocessing) was used in the benchmark driver.
+
+
+
+Data availability
+-----------------
+
+Full details on the data and benchmark:
+
+* Allen, C. S. & Bartók, A. P. Multi-phase dataset for Ti and Ti-6Al-4V.
+       Preprint at https://arxiv.org/abs/2501.06116 (2025).
+
+* Radova, M., Stark, W. G., Allen, C. S., Maurer, R.J. & Bartók, A. P.
+       Fine-tuning foundation models of materials interatomic potentials
+       with frozen transfer learning.
+       npj Comput Mater 11, 237 (2025).
+       https://doi.org/10.1038/s41524-025-01727-x
+
+* Per-case structures, phonon dispersions, DOS, and (subset) harmonic Helmholtz free
+  energies for 10 Ti–Al–V alloy cases, pre-converted from CASTEP (PBE) outputs to the
+  shared phonon benchmark formats.
+
+Ti, Ti–Al, Ti–V and Ti–Al–V compounds exist in Alexandria, so metallic Ti-alloy
+environments are in-domain for models trained on datasets derived from it, such as
+OMat24. However, the 8-atom hcp/bcc/hex supercells with particular Al/V substitution
+patterns studied here come from the Allen & Bartók dataset and do not appear in these
+training sets.
 Energy-volume curves for metals
 ===============================
 
@@ -167,10 +551,10 @@ Metrics
    Percentage of volume grid points at which the model correctly identifies all non-ground-state phases as higher in energy than the ground-state phase. A value of 100 % means the model preserves the correct phase ordering at every
    volume point. This metric is practically important: it indicates whether a model predicts spurious phase transitions under extreme conditions, such as the high tensile stresses at a crack tip.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low. Every eos curve requires 50 calls on unit cells.
+Fast. Every EOS curve requires 50 calls on unit cells.
 
 Data availability
 -----------------
@@ -186,6 +570,142 @@ Reference data (PBE):
 * non-magnetic Cr: `Soulairol, R., Fu, C. C., & Barreteau, C. (2010). Structure and magnetism of bulk Fe and Cr: From plane waves to LCAO methods. Journal of Physics Condensed Matter, 22(29), 295502. <https://doi.org/10.1088/0953-8984/22/29/295502>`_
 * ferromagnetic Ni: `He, X., Kong, L. T., & Liu, B. X. (2005). Calculation of ferromagnetic states in metastable bcc and hcp Ni by projector-augmented wave method. Journal of Applied Physics, 97(10). <https://doi.org/10.1063/1.1903104>`_
 * ferromagnetic Fe: `Dézerald, L., Marinica, M. C., Ventelon, L., Rodney, D., & Willaime, F. (2014). Stability of self-interstitial clusters with C15 Laves phase structure in iron. Journal of Nuclear Materials, 449(1–3), 219–224. <https://doi.org/10.1016/j.jnucmat.2014.02.012>`_ and `Wang, K., Shang, S. L., Wang, Y., Liu, Z. K., & Liu, F. (2018). Martensitic transition in Fe via Bain path at finite temperatures: A comprehensive first-principles study. Acta Materialia, 147, 261–276. <https://doi.org/10.1016/j.actamat.2018.01.013>`_
+
+
+Equation of state (ACWF)
+========================
+
+Summary
+-------
+
+Energy-volume curves of the 960 crystals of the ACWF verification set: four unaries
+(BCC, FCC, SC and diamond) and six oxides (XO, XO2, XO3, X2O, X2O3 and X2O5) for each
+element from H to Cm (Z = 1-96). The curves are compared with the all-electron PBE
+reference data published with the ACWF verification study, using its measures.
+
+For each structure, the model energy is computed at seven volumes, 0.94, 0.96, ...,
+1.06 times the central volume, scaling the cell isotropically. These are single-point
+calculations on the structures of the ACWF set, as for the DFT codes in the ACWF study:
+neither the central volume nor the atomic positions are relaxed with the model. A
+third-order Birch-Murnaghan equation of state is fitted to these points as in the
+reference data, giving the equilibrium volume :math:`V_0`, the bulk modulus
+:math:`B_0` and its pressure derivative :math:`B_1`.
+
+Metrics
+-------
+
+Following Bosoni *et al.*, the ε, ν and Δ measures are computed with the
+equations of the published ACWF implementation. Each metric is the median over all
+structures. Structures for which a calculation failed or the fitted curve has no
+minimum count as infinitely bad, and also towards the unphysical E(V) metric.
+
+1. ε
+
+   Root-mean-square difference between the model and reference curves, both aligned
+   at their minimum, divided by the geometric mean of the standard deviations of the
+   two curves. All three are taken over 0.94-1.06 times the average :math:`V_0` of
+   the two curves:
+
+   .. math::
+
+      \varepsilon = \sqrt{\frac{\langle (E_\text{model} - E_\text{ref})^2 \rangle}
+      {\sqrt{\langle (E_\text{model} - \langle E_\text{model} \rangle)^2 \rangle
+      \langle (E_\text{ref} - \langle E_\text{ref} \rangle)^2 \rangle}}}
+
+   ε does not depend on the scale of the bulk modulus, so it can be compared across
+   all elements. As in the published implementation, the mean of the model curve is
+   used for both variances.
+
+   The colour scale runs from 0.2, the ACWF threshold for good agreement between DFT
+   codes, to 1.7, which corresponds to a 5% error in :math:`V_0`. The ACWF study uses
+   0.06 for excellent agreement and 1 for outliers. ε saturates near 2 for large
+   errors, above the bad threshold, so this does not affect the score.
+
+2. ν
+
+   Weighted relative differences in the Birch-Murnaghan parameters:
+
+   .. math::
+
+      \nu = 100 \sqrt{\left(\frac{V_0^\text{model} - V_0^\text{ref}}{\bar{V}_0}\right)^2
+      + \left(\frac{1}{20} \frac{B_0^\text{model} - B_0^\text{ref}}{\bar{B}_0}\right)^2
+      + \left(\frac{1}{400} \frac{B_1^\text{model} - B_1^\text{ref}}{\bar{B}_1}\right)^2}
+
+   where :math:`\bar{X}` is the average of the model and reference values. ν is close
+   to the percentage error in :math:`V_0`, as the errors in :math:`B_0` and
+   :math:`B_1` are weighted down. The good threshold, 0.33, is the ACWF threshold for
+   good agreement between DFT codes; the bad threshold, 5, corresponds to a 5% error in
+   :math:`V_0`. The ACWF study uses 0.1 for excellent agreement and 1.65 for
+   outliers.
+
+3. Unphysical E(V)
+
+   Percentage of structures for which a calculation failed, including elements the
+   model does not support, or the fitted curve has no minimum. A minimum outside the
+   sampled volumes is not counted, as ν already penalises the error in :math:`V_0`.
+
+4. ε (no +U or magnetic)
+
+   ε excluding structures for which the reference and typical MLIP training data
+   differ: elements that are magnetic in spin-polarised PBE (Cr, Mn, Fe, Co, Ni,
+   lanthanides and actinides), and oxides of the elements for which Materials Project
+   applies +U (Co, Cr, Fe, Mn, Mo, Ni, V and W). The reference is non-spin-polarised
+   PBE without +U. Not included in the score.
+
+5. Δ
+
+   Root-mean-square energy difference between the curves, aligned at their minimum,
+   over 0.94-1.06 times their average :math:`V_0`, in meV/atom (Lejaeghere *et al.*).
+   This is the ACWF definition. The values cannot be compared with the Δ metric of the
+   *Energy-volume curves for metals* benchmark, which uses a wider volume range. Not
+   included in the score.
+
+6. V0, B0 and B1 errors
+
+   Median absolute relative differences in :math:`V_0`, :math:`B_0` and :math:`B_1`.
+   Not included in the score.
+
+Each metric can also be shown on a periodic table, as the median over the ten
+structures of each element. Clicking an element shows its ten E(V) curves; hovering
+over a fitted curve shows the residuals (1 - R²) of the fit.
+
+Clicking a V0, B0 or B1 error shows box plots of the signed relative differences in
+:math:`V_0`, :math:`B_0` and :math:`B_1` for all models, as in Figure 1 of Yu *et al.*
+The results of FLEUR, WIEN2k and VASP from the ACWF study are shown above the models,
+as baselines of the differences between DFT codes. Structures without a fitted minimum
+are not shown.
+
+Computational cost
+------------------
+
+Fast: 6720 single-point calculations on cells of 1 to 14 atoms. With ``mace-mp-0a``,
+the calculations take a few minutes on a laptop CPU (Apple M-series).
+
+Data availability
+-----------------
+
+Input structures:
+
+* PBE input structures of the ACWF verification set (``xsfs-*-verification-PBE-v1``),
+  from https://github.com/aiidateam/acwf-verification-scripts.
+
+Reference data (PBE):
+
+* All-electron Birch-Murnaghan parameters averaged over WIEN2k and FLEUR, as published
+  with Bosoni *et al.*
+  (``acwf_paper_plots/code-data/results-*-verification-PBE-v1-AE-average.json``), from
+  https://github.com/aiidateam/acwf-verification-scripts.
+* Birch-Murnaghan parameters of FLEUR, WIEN2k and VASP, shown as baselines
+  (``results-*-verification-PBE-v1-{fleur,wien2k-dk_0.06,vasp}.json`` in the same
+  directory).
+* E. Bosoni *et al.*, How to verify the precision of density-functional-theory
+  implementations via reproducible and universal workflows, Nat. Rev. Phys. 6, 45
+  (2024). https://doi.org/10.1038/s42254-023-00655-3
+* K. Lejaeghere *et al.*, Reproducibility in density functional theory calculations
+  of solids, Science 351, aad3000 (2016). https://doi.org/10.1126/science.aad3000
+* H. Yu *et al.*, Systematic assessment of various universal machine-learning
+  interatomic potentials, Mater. Genome Eng. Adv. 2, e58 (2024).
+  https://doi.org/10.1002/mgea.58
 
 
 High-Pressure Relaxation
@@ -225,11 +745,11 @@ below 0.0002 eV/Å or until 500 steps are reached. If not converged, relaxation 
 repeated up from the last structure of the previous relaxation up to 3 times.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours-days to run on GPU, depending on the number of
-structures and pressure conditions tested.
+Very slow: tests are likely to take 10 hours to a day on GPU, depending on the
+number of structures and pressure conditions tested.
 
 
 Data availability
@@ -302,11 +822,11 @@ Relaxation continues until the maximum force component is below 0.0002 eV/Å or 
 500 steps are reached. If not converged, relaxation is repeated up to 3 times.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-High: tests are likely to take hours-days to run on GPU, depending on the number of
-structures tested.
+Very slow: tests are likely to take 10 hours to a day on GPU, depending on the
+number of structures tested.
 
 
 Data availability
@@ -329,138 +849,63 @@ Iron Properties
 Summary
 -------
 
-This benchmark evaluates MLIP performance on a comprehensive set of BCC iron
-properties relevant to plasticity and fracture. The benchmark is based on
-`Zhang et al. (2023) <https://arxiv.org/abs/2307.10072>`_, which assessed the
-efficiency, accuracy, and transferability of machine learning potentials for
-dislocations and cracks in iron.
+This benchmark evaluates BCC iron properties relevant to plasticity and fracture. It
+adapts the validation workflow of `Zhang et al. (2024)
+<https://doi.org/10.1016/j.actamat.2024.119788>`_ by scoring complete Bain,
+generalised stacking-fault energy (GSFE), and traction-separation curves, and by
+grouping related properties. Its score is therefore not directly comparable with the
+quality factor in the original paper.
 
-Seven groups of properties are computed and compared against DFT (PBE) reference
-values: equation of state, elastic constants, the Bain path, vacancy formation
-energy, surface energies, generalised stacking fault energies, and
-traction-separation curves.
-
-Metrics
--------
-
-EOS properties
-^^^^^^^^^^^^^^
-
-1. Lattice parameter error (%)
-
-The equilibrium BCC lattice parameter :math:`a_0` is obtained by fitting a
-third-order Birch-Murnaghan equation of state to 30 energy-volume points
-sampled around 2.834 Å. The percentage error relative to the DFT reference
-value (2.831 Å) is reported.
-
-2. Bulk modulus error (%)
-
-The bulk modulus :math:`B_0` is extracted from the same EOS fit. The
-percentage error relative to the DFT reference value (178.0 GPa) is reported.
-
-
-Elastic constants
-^^^^^^^^^^^^^^^^^
-
-3. :math:`C_{11}` error (%)
-
-The elastic constant :math:`C_{11}` is computed using a stress-strain approach
-on a 4x4x4 BCC supercell. Small positive and negative strains
-(:math:`\pm 10^{-5}`) are applied along each Voigt direction, and the elastic
-constants are extracted from the resulting stress differences. The percentage
-error relative to the DFT reference value (296.7 GPa) is reported.
-
-4. :math:`C_{12}` error (%)
-
-Same as (3), for the elastic constant :math:`C_{12}`. Reference: 151.4 GPa.
-
-5. :math:`C_{44}` error (%)
-
-Same as (3), for the elastic constant :math:`C_{44}`. Reference: 104.7 GPa.
-
-
-Vacancy formation energy
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-6. :math:`E_{\mathrm{vac}}` error (%)
-
-A single vacancy is created in a 4x4x4 BCC supercell by removing one atom.
-Atomic positions are relaxed at fixed cell volume. The vacancy formation energy
-is calculated as
-:math:`E_{\mathrm{vac}} = E_{\mathrm{defect}} - E_{\mathrm{perfect}} + E_{\mathrm{coh}}`,
-where :math:`E_{\mathrm{coh}}` is the cohesive energy per atom. The percentage
-error relative to the DFT reference value (2.02 eV) is reported.
-
-
-Bain path
-^^^^^^^^^
-
-7. BCC-FCC energy difference error (meV)
-
-The Bain path maps the continuous tetragonal distortion from BCC
-(:math:`c/a = 1`) to FCC (:math:`c/a = \sqrt{2}`). For each of 65 target
-:math:`c/a` ratios between 0.72 and 2.0, a tetragonally distorted cell is
-created and its volume is relaxed isotropically (uniform scaling preserving the
-:math:`c/a` ratio). The absolute error in the BCC-FCC energy difference
-relative to the DFT reference (83.5 meV/atom) is reported.
-
-
-Surface energies
-^^^^^^^^^^^^^^^^
-
-8. Surface energy MAE (J/m²)
-
-Surface energies are computed for the (100), (110), (111), and (112) cleavage
-planes. For each surface, a slab is created with vacuum and the surface energy
-is calculated as
-:math:`\gamma = (E_{\mathrm{slab}} - E_{\mathrm{bulk}}) / 2A`.
-Atomic positions are relaxed at fixed cell shape. The mean absolute error
-across all four surfaces, relative to DFT reference values
-(:math:`\gamma_{100}` = 2.41, :math:`\gamma_{110}` = 2.37,
-:math:`\gamma_{111}` = 2.58, :math:`\gamma_{112}` = 2.48 J/m²), is reported.
-
-
-Stacking fault energies
-^^^^^^^^^^^^^^^^^^^^^^^
-
-9. Max SFE :math:`\{110\}\langle111\rangle` error (%)
-
-The generalised stacking fault energy (GSFE) curve for the
-:math:`\{110\}\langle111\rangle` slip system is computed by incrementally
-displacing the upper half of a crystallographically oriented supercell along
-the slip direction. The displacement covers one full Burgers vector
-(:math:`b = a\sqrt{3}/2`) in 16 steps. Atoms are constrained to relax only
-perpendicular to the fault plane. The percentage error in the maximum
-(unstable) SFE relative to the DFT reference (0.75 J/m²) is reported.
-
-10. Max SFE :math:`\{112\}\langle111\rangle` error (%)
-
-Same as (9), for the :math:`\{112\}\langle111\rangle` slip system.
-Reference: 1.12 J/m².
-
-
-Traction-separation curves
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-11. Max traction (100) error (%)
-
-A traction-separation curve is computed for the (100) cleavage plane by
-incrementally separating crystal halves in 0.05 Å steps up to 5.0 Å, without
-atomic relaxation, and measuring forces at each step. The traction (tensile
-stress) is obtained from the sum of z-forces on the upper region divided by
-the cross-sectional area. The percentage error in the maximum traction relative
-to the DFT reference (35.0 GPa) is reported.
-
-12. Max traction (110) error (%)
-
-Same as (11), for the (110) cleavage plane. Reference: 30.0 GPa.
-
-
-Computational cost
+Method and scoring
 ------------------
 
-Medium: tests are likely to take minutes to run on GPU, or hours on CPU for each model.
-The benchmark is marked as slow and excluded from default test runs.
+The calculations and reported groups are:
+
+* **Bulk response:** lattice parameter (25%), bulk modulus (25%), and
+  :math:`C_{11}`, :math:`C_{12}`, and :math:`C_{44}` (one sixth each). The first two
+  are obtained from a third-order Birch-Murnaghan fit to 30 energy-volume points.
+  Elastic constants use central stress differences at strains of
+  :math:`\pm10^{-5}` in a 4x4x4 BCC supercell.
+* **Defect and phase energetics:** vacancy formation energy (50%) and the Bain path
+  (50%). Vacancy positions are relaxed at fixed cell volume. The Bain path spans
+  :math:`0.72 \leq c/a \leq 2.0`, with volume relaxation at fixed :math:`c/a` and an
+  exact FCC point at :math:`c/a=\sqrt{2}`. Its score combines curve error (70%) and
+  FCC-BCC endpoint error (30%).
+* **Slip:** equally weighted :math:`\{110\}\langle111\rangle` and
+  :math:`\{112\}\langle111\rangle` GSFE curves. Each oriented cell is displaced in
+  0.04 Å increments over one Burgers vector, with relaxation restricted to the fault
+  normal and an exact endpoint.
+* **Cleavage:** the four (100), (110), (111), and (112) surface energies (50%) and
+  unrelaxed (100) and (110) traction-separation curves (25% each). Separation is
+  sampled every 0.05 Å to 5 Å; traction is the finite-difference derivative of the
+  energy and its reported maximum is restricted to positive values.
+
+A scalar relative error :math:`e` is mapped to
+:math:`s=1-\mathrm{clip}(e/e_{\mathrm{bad}},0,1)`. The zero-score cutoffs are 2% for
+:math:`a_0`, 50% for :math:`B_0`, 75% for the elastic constants, and 20% for vacancy
+and surface energies. Scalar components with missing or non-finite predictions, or
+calculation status marked invalid, receive a score of zero (maximum penalty). These
+components retain their assigned weights in the group score, so failed components
+penalise both the group and overall scores.
+
+GSFE and traction curves compare their model and DFT interpolants over the common
+domain. GSFE scores combine relative integrated absolute error (62.5%) and relative
+peak-height error (37.5%) through a root-mean-square penalty. Traction scores combine
+relative integrated absolute error (50%), relative peak-height error (30%), and
+peak-location error (20%) through the same type of penalty. Integrated and
+peak-height errors reach their maximum penalty at 30%; the peak-location cutoff for
+traction is 0.30 Å. Missing curve coverage is penalised. The Bain curve uses the same
+integrated-error cutoff, with a separate 50% cutoff for its FCC endpoint.
+
+Component penalties are combined by weighted root mean square within each group.
+The dashboard then uses ML-PEG's standard weighted mean of the four group scores for
+the overall score. Selecting a group cell displays its component scores, while the
+curve selector shows the model and DFT reference curves.
+
+Benchmark speed
+------------------
+
+Medium: tests are likely to take tens of minutes to run on GPU.
 
 
 Data availability
@@ -472,14 +917,94 @@ Input structures:
   supercells are constructed from the equilibrium lattice parameter obtained via EOS
   fitting.
 
+Reference data (DFT with the PBE exchange-correlation functional):
+
+* Zhang, L., Csányi, G., van der Giessen, E., & Maresca, F. (2024). "Efficiency,
+  Accuracy, and Transferability of Machine Learning Potentials: Application to
+  Dislocations and Cracks in Iron." `Acta Materialia 270, 119788
+  <https://doi.org/10.1016/j.actamat.2024.119788>`_.
+* Dragoni, D., Daff, T. D., Csányi, G., & Marzari, N. (2018). "Achieving DFT accuracy
+  with a machine-learning interatomic potential: Thermomechanics and defects in bcc
+  ferromagnetic iron." `Physical Review Materials 2, 013808
+  <https://doi.org/10.1103/PhysRevMaterials.2.013808>`_.
+
+
+Thermal conductivity
+====================
+
+Summary
+-------
+
+Performance in evaluating lattice thermal conductivity for 103 binary compounds in
+rocksalt, zincblende, and wurtzite structures.
+
+Metrics
+-------
+
+1. κSRE (PBE)
+
+Mean symmetric relative error (SRE) between predicted and PBE reference lattice
+thermal conductivity values.
+
+DFT-optimised structures are relaxed with fixed symmetries to 0.0001 eV/Å forces.
+Interatomic force constants are calculated using finite differences with a 0.03 Å
+displacement. The Wigner transport equation is solved within the single-mode
+relaxation-time approximation (RTA) to obtain lattice thermal conductivity. The
+symmetric relative error in the thermal conductivity at 300 K for a single material
+is calculated as:
+
+.. math::
+
+    \operatorname{SRE}(\kappa_i) =
+    2\frac{|\kappa_i^{\mathrm{pred}} - \kappa_i^{\mathrm{ref}}|}
+    {\kappa_i^{\mathrm{pred}} + \kappa_i^{\mathrm{ref}}}
+
+where :math:`\kappa^{\mathrm{pred}}` and :math:`\kappa^{\mathrm{ref}}` are the
+predicted and reference thermal conductivities for material :math:`i`. The mean SRE
+is calculated across all materials in the dataset.
+
+2. κSRME (PBE)
+
+Mean symmetric relative mean error (SRME) between predicted and PBE reference lattice
+phonon-mode contributions to thermal conductivity. Thermal conductivity is calculated
+as above. The symmetric relative mean error in the phonon-mode contributions to
+thermal conductivity at 300 K for a single material is calculated as:
+
+.. math::
+
+    \operatorname{SRME}(\kappa_i) =
+    2\frac{\sum_j |\kappa_i^{\mathrm{pred}}(q)_s -
+    \kappa_i^{\mathrm{ref}}(q)_s|}
+    {\kappa_i^{\mathrm{pred}} + \kappa_i^{\mathrm{ref}}}
+
+where :math:`\kappa_i^{\mathrm{pred}}(q)_s` and
+:math:`\kappa_i^{\mathrm{ref}}(q)_s` are the predicted and reference thermal
+conductivity contributions from phonon mode :math:`s` at wavevector :math:`q` for
+material :math:`i`. The mean SRME is calculated across all materials in the dataset.
+
+Both metrics are based on Póta, B., Ahlawat, P., Csányi, G., & Simoncelli, M. (2026).
+Thermal conductivity predictions with foundation atomistic models. Nature
+Communications 17, 10566. https://doi.org/10.1038/s41467-026-76391-w
+
+Computational cost
+------------------
+
+High: tests are likely to take hours to run on both CPU and GPU. Thermal conductivity
+evaluation requires a CPU.
+
+Data availability
+-----------------
+
+Input structures:
+
+* DFT-optimised structures from the reference dataset.
+
 Reference data:
 
-* DFT (PBE) reference values from:
-
-  * Zhang, L., Csányi, G., van der Giessen, E., & Maresca, F. (2023).
-    "Efficiency, Accuracy, and Transferability of Machine Learning Potentials:
-    Application to Dislocations and Cracks in Iron."
-    `arXiv:2307.10072 <https://arxiv.org/abs/2307.10072>`_
+* DFT (PBE) data
+* A. Togo, L. Chaput, and I. Tanaka, Phys. Rev. B, 91, 094306 (2015), and
+  A. Seko et al., Phys. Rev. Lett., 115, 205901 (2015).
+* https://github.com/atztogo/phonondb/blob/main/mdr/phono3py_103compounds_fd_PBE/README.md
 
 
 Phonons
@@ -551,17 +1076,17 @@ stable when ω\ :sub:`min` > -2.4 K (-0.05 THz). Agreement with DFT is
 classified as true positive, false positive, true negative, or false negative.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-The DFT reference preprocessing (``test_phonons_ref``) runs once and takes
+Medium: the DFT reference preprocessing (``test_phonons_ref``) runs once and takes
 30 minutes to 1 hour on CPU or GPU, as it only processes pre-computed force
 constants from the Alexandria database to generate band structures for later
-comparison. This part of the test is marked ``slow``.
+comparison.
 
-The MLIP evaluation (``test_phonons``) requires computing forces for all
+Slow: the MLIP evaluation (``test_phonons``) requires computing forces for all
 displaced supercells of 9958 structures, taking 6-10 hours on GPU. Larger
-models will be slower. This part of the test is marked ``very_slow``.
+models will be slower.
 
 
 Data availability
@@ -602,10 +1127,10 @@ From the reference paper providing the structures, the elemental transition meta
     * For magnetic structures, the reference spin-polarized calculations only is used.
     * Unstable element-structure combinations are not included.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take a couple of minutes to run on CPU.
+Fast: tests are likely to take a couple of minutes to run on CPU.
 
 
 Data availability
@@ -613,7 +1138,7 @@ Data availability
 
 Input structures:
 
-* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2024 16 015018
+* T. Angsten et al. Elemental vacancy diffusion database from high-throughput first-principles calculations for fcc and hcp structures. New J. Phys. 2014 16 015018
 
 Reference data:
 

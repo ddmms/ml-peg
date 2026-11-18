@@ -26,9 +26,6 @@ CALC_PATH_PBESOL = CALC_PATH / "pbesol"  # oxides
 CALC_PATH_PBE = CALC_PATH / "pbe"  # nitrides
 OUT_PATH = APP_ROOT / "data" / "defects" / "split_vacancy"
 
-print(f"Copying xyz files from {CALC_PATH} to {OUT_PATH} for flask app.")
-shutil.copytree(CALC_PATH, OUT_PATH, dirs_exist_ok=True)
-
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
@@ -57,6 +54,12 @@ def iter_mock_pairs(
         normal- and split-vacancy xyz files.
     """
     mock_dir = functional_path / "mock"
+    if not mock_dir.exists():
+        pytest.skip(
+            f"{mock_dir} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
+
     for material_dir in sorted(mock_dir.iterdir()):
         if not material_dir.is_dir():
             continue
@@ -249,6 +252,7 @@ def build_results(
 
             nv_initial_energies = []
             nv_relaxed_energies = []
+            nv_ref_structure_mlip_energies = []
             for nv_atoms in nv_atoms_list:
                 match = nv_atoms.info["ref_max_distance"] < STOL
                 match_list.append(match)
@@ -258,9 +262,13 @@ def build_results(
                 rmsd_list.append(nv_atoms.info["ref_rmsd"])
                 max_dist_list.append(nv_atoms.info["ref_max_distance"])
                 nv_initial_energies.append(nv_atoms.info["initial_energy"])
+                nv_ref_structure_mlip_energies.append(
+                    nv_atoms.info["ref_structure_mlip_energy"]
+                )
 
             sv_initial_energies = []
             sv_relaxed_energies = []
+            sv_ref_structure_mlip_energies = []
             for sv_atoms in sv_atoms_list:
                 match = sv_atoms.info["ref_max_distance"] < STOL
                 match_list.append(match)
@@ -270,12 +278,18 @@ def build_results(
                 rmsd_list.append(sv_atoms.info["ref_rmsd"])
                 max_dist_list.append(sv_atoms.info["ref_max_distance"])
                 sv_initial_energies.append(sv_atoms.info["initial_energy"])
+                sv_ref_structure_mlip_energies.append(
+                    sv_atoms.info["ref_structure_mlip_energy"]
+                )
 
             sv_formation_energy = min(sv_relaxed_energies, default=np.nan) - min(
                 nv_relaxed_energies, default=np.nan
             )
+            # ranking agreement with DFT, isolated from relaxation/geometry
+            # quality: MLIP single-point energy AT the DFT-relaxed structure,
+            # not the MLIP's own (possibly differently-converged) relaxed energy.
             spearmans_coefficient = spearmanr(
-                nv_initial_energies + sv_initial_energies,
+                nv_ref_structure_mlip_energies + sv_ref_structure_mlip_energies,
                 ref_nv_energies + ref_sv_energies,
             ).statistic
 
@@ -739,6 +753,10 @@ def test_new_benchmark(metrics: dict[str, dict]) -> None:
     metrics
         All new benchmark metric names and dictionary of values for each model.
     """
+    # Structures are shown per model, so all outputs are copied for the app
+    print(f"Copying xyz files from {CALC_PATH} to {OUT_PATH} for flask app.")
+    shutil.copytree(CALC_PATH, OUT_PATH, dirs_exist_ok=True)
+
     # Save the set of elements used by the benchmark (from the mock calculation)
     # so the application can filter results by element. See filter.rst.
     write_struct_info(

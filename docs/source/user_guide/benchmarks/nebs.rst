@@ -29,10 +29,10 @@ through deletion an atom from the initial structure. These structures are relaxe
 and the Nudged Elastic Band method is used to calculate the energy barrier. This is
 compared to the reference activation energy for this path.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 
 Data availability
@@ -71,10 +71,10 @@ for both the DFT reference and the MLIP predictions.
 
 Mean absolute error (MAE) of forces across all atoms and images along the NEB.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Medium: tests are likely to take several minutes to run on CPU.
+Fast: the benchmark takes around one minute for ``mace-mp-0a`` on an A100 GPU.
 
 Data availability
 -----------------
@@ -116,7 +116,9 @@ Metrics
 
 1. Diffusion barrier error
 
-The diffusion barrier is defined as the maximum energy along the NEB minimum energy path (MEP), relative to the initial state energy. This is compared to the reference DFT-PBE calculated barrier for each material.
+The diffusion barrier is defined as the maximum energy along the climbing-image NEB
+(cNEB) minimum energy path (MEP), relative to the initial state energy. This is
+compared to the reference DFT-PBE calculated barrier for each material.
 
 The benchmark includes the following 2D TMD materials (2H phase):
 
@@ -127,10 +129,17 @@ The benchmark includes the following 2D TMD materials (2H phase):
 * WSe₂
 * WTe₂
 
-Computational cost
+For each material, the endpoints are first relaxed using LBFGS until the maximum force
+component is below 0.1 eV/Å or 100 steps is reached. The cNEB band is constructed with
+11 images, and interpolation is attempted with pymatgen's structure interpolation,
+falling back to ASEs interpolation if any exceptions are raised during optimisation,
+which is carried out by ASE's NEBOptimizer.
+
+
+Benchmark speed
 ------------------
 
-Medium: tests involving multiple foundation models are likely to take around an one hour to run on a single GPU.
+Fast: the benchmark takes around one minute per model on an A100 GPU.
 
 Data availability
 -----------------
@@ -157,3 +166,100 @@ Reference data:
 
 * Manually taken from https://doi.org/10.1039/C4RA17320A
 * GGA (PBE) exchange correlation functional
+
+
+OC20NEB
+=======
+
+Summary
+-------
+
+Performance in running NEB for surface reactions on multiple catalytic surfaces from OC20NEB dataset.
+
+Metrics
+-------
+
+1. Reaction energy difference compared to DFT reference
+
+2. Activation barrier difference compared to DFT reference
+
+3. NEB convergence
+
+Benchmark speed
+------------------
+
+Very slow: tests may take over 10 hours to run on GPU.
+
+
+Data availability
+-----------------
+
+Input structure:
+
+* OC20NEB dataset : https://dl.fbaipublicfiles.com/opencatalystproject/data/oc20neb/oc20neb_dft_trajectories_04_23_24.tar.gz
+
+Reference data:
+
+* Manually taken from https://doi.org/10.1021/acscatal.4c04272
+* GGA RPBE exchange correlation functional
+
+
+Grambow organics
+================
+
+Summary
+-------
+
+Performance in converging nudged elastic band (NEB) simulations for 100
+elementary organic reactions sampled from the Grambow dataset, involving small
+neutral molecules containing H, C, N and O. The benchmark assesses whether a
+model can produce a stable, converged reaction path and accurate forward barriers.
+
+Metrics
+-------
+
+The reactant and product structures of each reaction are first minimised for up
+to 50 steps each. A NEB simulation with 10 images is then run between the
+minimised endpoints for up to 500 steps, using the provided transition state
+structure to build the initial path. This is followed by up to a further 500
+climbing-image NEB steps from the resulting images.
+
+1. Convergence rate
+
+A reaction counts as converged when the maximum force of the final climbing-image
+NEB falls below 0.05 eV/Å. The reported metric is the fraction of the 100 reactions
+that converged. If any simulation errors or is missing, the metric is reported
+as NaN.
+
+2. Barrier height MAE
+
+Mean absolute error of the forward barrier, calculated as the highest final NEB
+image energy minus the reactant energy, against the DFT transition-state barrier.
+All reactions contribute, including unconverged paths as barrier estimates.
+Missing reactions or invalid energies give NaN rather than an error over only
+successful reactions.
+
+
+Benchmark speed
+---------------
+
+Very slow: approximately 12-24 hours per model for 100 NEB calculations,
+depending on hardware and convergence. Each reaction uses 10 images, up to
+500 ordinary and 500 climbing-image NEB steps, plus up to 50 minimisation
+steps per endpoint.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Grambow, C.A., Pattanaik, L. & Green, W.H. Reactants, products, and
+  transition states of elementary chemical reactions based on quantum
+  chemistry. Sci Data 7, 137 (2020). DOI: 10.1038/s41597-020-0460-4
+
+Reference data:
+
+The input geometries come from calculations at the
+:math:`\omega B97X-D3/def2-TZVP` level of theory. The barrier metric compares
+against energies at this level of theory. The benchmark protocol is adapted from
+MLIP Audit, which is credited through the framework citation.

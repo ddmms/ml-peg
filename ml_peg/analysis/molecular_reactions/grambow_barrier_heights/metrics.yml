@@ -1,0 +1,22 @@
+metrics:
+  Barrier Height MAE:
+    good: 0.0
+    bad: 2.0
+    unit: kcal/mol
+    weight: 0
+    tooltip: Mean absolute error of the reaction activation energy (barrier height).
+    level_of_theory: wB97X-D3/def2-TZVP
+  Reaction Energy MAE:
+    good: 0.0
+    bad: 2.0
+    unit: kcal/mol
+    weight: 0
+    tooltip: Mean absolute error of the enthalpy of reaction.
+    level_of_theory: wB97X-D3/def2-TZVP
+  Grambow Score:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1
+    tooltip: mlipaudit soft-threshold score combining activation energy and reaction energy errors (failed reactions score 0).
+    level_of_theory: wB97X-D3/def2-TZVP

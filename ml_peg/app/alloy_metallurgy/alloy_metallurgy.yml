@@ -1,0 +1,5 @@
+title: Alloy Metallurgy
+description: Alloy benchmark properties including formation energies, solutes, surfaces, stacking faults, and defects.
+weight: 1
+benchmark_weights:
+  AlZnCuMg_regression: 0

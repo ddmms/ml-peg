@@ -1,0 +1,9 @@
+implementers:
+  - name: "Alexandre Peuch"
+    github: "alxdr-peuch"
+
+contributors: []
+
+citations:
+  - bibtex_key: angsten-2014-vacancy
+    role: benchmark_method

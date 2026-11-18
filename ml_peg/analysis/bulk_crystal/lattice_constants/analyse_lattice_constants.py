@@ -264,6 +264,7 @@ def lattice_constant_dft_errors(lattice_constants_dft) -> dict[str, float]:
     filename=OUT_PATH / "lattice_constants_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
 def metrics(
     lattice_constant_exp_errors: dict[str, float],

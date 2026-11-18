@@ -1,14 +1,20 @@
-"""Analyse elemental slab oxygen adsorption benchmark."""
+"""
+Analyse elemental slab oxygen adsorption benchmark.
+
+[1] Warford, Thomas, Fabian L. Thiemann, and Gábor Csányi. "Better without U: impact
+of selective Hubbard U correction on foundational MLIPs." Machine Learning: Science
+and Technology 7.3 (2026): 035033 (https://doi.org/10.1088/2632-2153/ae6be5).
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from ase.io import read, write
+from ase.io import read
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.decorators import build_table, plot_parity
+from ml_peg.analysis.utils.decorators import build_table, plot_periodic_table
 from ml_peg.analysis.utils.utils import (
     get_struct_info,
     load_metrics_config,
@@ -26,15 +32,6 @@ OUT_PATH = APP_ROOT / "data" / "surfaces" / "elemental_slab_oxygen_adsorption"
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
-)
-
-# Extract system metadata from mock calculation (filenames)
-SYSTEM_INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    index="0",
-    include_filenames=True,
-    out_path=OUT_PATH,
 )
 
 
@@ -61,16 +58,66 @@ def compute_adsorption_energy(
     return mol_surf_e - (surface_e + molecule_e)
 
 
-@pytest.fixture
-@plot_parity(
-    filename=OUT_PATH / "figure_adsorption_energies.json",
-    title="Adsorption energies",
-    x_label="Predicted adsorption energy / eV",
-    y_label="Reference adsorption energy / eV",
-    hoverdata={
-        "System": SYSTEM_INFO["filenames"],
+def ref_adsorption_energy(structs: list) -> float:
+    """
+    Compute reference adsorption energy from all frames of a calculation output.
+
+    Parameters
+    ----------
+    structs
+        Surface, molecule+surface, and molecule structures.
+
+    Returns
+    -------
+    float
+        Reference adsorption energy.
+    """
+    return compute_adsorption_energy(*(struct.info["ref_energy"] for struct in structs))
+
+
+def slab_element(structs: list) -> str:
+    """
+    Get the element of the clean slab from all frames of a calculation output.
+
+    Parameters
+    ----------
+    structs
+        Surface, molecule+surface, and molecule structures.
+
+    Returns
+    -------
+    str
+        Element symbol of the clean slab.
+    """
+    return structs[0].get_chemical_symbols()[0]
+
+
+# Extract system metadata from mock calculation (filenames)
+SYSTEM_INFO = get_struct_info(
+    calc_path=CALC_PATH,
+    glob_pattern="*.xyz",
+    index="1",
+    include_filenames=True,
+    out_path=OUT_PATH,
+    write_structs=True,
+    per_file_info={
+        "ref_adsorption_energy": ref_adsorption_energy,
+        "slab_element": slab_element,
     },
 )
+
+# Frame 1 (slab+oxygen) is read for filtering, so take the slab element from frame 0
+ELEMENTS = SYSTEM_INFO["slab_element"]
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = SYSTEM_INFO["ref_adsorption_energy"]
+
+# Transition metals commonly given a Hubbard U correction in GGA+U training data,
+# as analysed in Warford et al. (https://doi.org/10.1088/2632-2153/ae6be5)
+U_ELEMENTS = frozenset({"Co", "Cr", "Fe", "Mn", "Mo", "Ni", "V", "W"})
+
+
+@pytest.fixture
 def adsorption_energies() -> dict[str, list]:
     """
     Get adsorption energies for all systems.
@@ -80,45 +127,136 @@ def adsorption_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted adsorption energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        for system_path in sorted((CALC_PATH / model_name).glob("*.xyz")):
-            structs = read(system_path, index=":")
+        for label in SYSTEM_INFO["filenames"]:
+            system_path = CALC_PATH / model_name / f"{label}.xyz"
+            if not system_path.exists():
+                results[model_name].append(float("nan"))
+                continue
 
-            surface, mol_surface, molecule = structs
+            surface, mol_surface, molecule = read(system_path, index=":")
 
             # Get predicted energies
             surface_e = surface.get_potential_energy()
             mol_surf_e = mol_surface.get_potential_energy()
             molecule_e = molecule.get_potential_energy()
-            pred_ads_energy = compute_adsorption_energy(
-                surface_e, mol_surf_e, molecule_e
+            results[model_name].append(
+                compute_adsorption_energy(surface_e, mol_surf_e, molecule_e)
             )
-            results[model_name].append(pred_ads_energy)
 
-            # Get reference energies (only store once)
-            if not ref_stored:
-                ref_surface_e = surface.info["ref_energy"]
-                ref_mol_surf_e = mol_surface.info["ref_energy"]
-                ref_molecule_e = molecule.info["ref_energy"]
-                ref_ads_energy = compute_adsorption_energy(
-                    ref_surface_e, ref_mol_surf_e, ref_molecule_e
-                )
-                results["ref"].append(ref_ads_energy)
-
-            # Only write the first struct (slab+oxygen)
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{system_path.stem}.xyz", structs[1])
-
-        ref_stored = True
     return results
 
 
 @pytest.fixture
-def adsorption_mae(adsorption_energies) -> dict[str, float]:
+def periodic_tables(adsorption_energies: dict[str, list]) -> None:
+    """
+    Write per-model periodic tables of adsorption energy errors.
+
+    Parameters
+    ----------
+    adsorption_energies
+        Dictionary of reference and predicted adsorption energies.
+    """
+    ref_energies = adsorption_energies["ref"]
+
+    model_errors = {
+        model_name: {
+            element: pred - ref
+            for element, pred, ref in zip(
+                ELEMENTS, adsorption_energies[model_name], ref_energies, strict=True
+            )
+        }
+        for model_name in MODELS
+    }
+
+    # Share one colour scale across models, wide enough that no error is clipped.
+    # Failed single points are NaN, which max() propagates if seen before any finite
+    # value, so drop non-finite errors first
+    all_errors = np.abs(
+        [error for errors in model_errors.values() for error in errors.values()]
+    )
+    finite_errors = all_errors[np.isfinite(all_errors)]
+    limit = (
+        np.max(finite_errors)
+        if finite_errors.size
+        else DEFAULT_THRESHOLDS["MAE"]["bad"]
+    )
+
+    ref_hover = {
+        element: f"{energy:.3f}"
+        for element, energy in zip(ELEMENTS, ref_energies, strict=True)
+    }
+
+    scale_note = (
+        "<br><sub>Symmetric log colour scale, near-linear within "
+        f"\u00b1{DEFAULT_THRESHOLDS['MAE']['good']:g} eV</sub>"
+    )
+
+    for model_name, errors in model_errors.items():
+        plot_periodic_table(
+            title=f"Adsorption energy error - {model_name}{scale_note}",
+            colorbar_title="Error / eV",
+            hoverdata={
+                "Reference / eV": ref_hover,
+                "Predicted / eV": {
+                    element: f"{energy:.3f}"
+                    for element, energy in zip(
+                        ELEMENTS, adsorption_energies[model_name], strict=True
+                    )
+                },
+            },
+            filename=str(
+                OUT_PATH / model_name / "adsorption_error_periodic_table.json"
+            ),
+            colorscale="RdBu",
+            zmin=-limit,
+            zmax=limit,
+            # Errors within the "good" threshold stay near the midpoint colour,
+            # so outliers remain distinguishable rather than saturating the scale
+            symlog_scale=DEFAULT_THRESHOLDS["MAE"]["good"],
+        )(lambda values=errors: values)()
+
+
+def _subset_mae(
+    adsorption_energies: dict[str, list], elements: set[str] | None = None
+) -> dict[str, float]:
+    """
+    Get mean absolute error for adsorption energies of selected elements.
+
+    Parameters
+    ----------
+    adsorption_energies
+        Dictionary of reference and predicted adsorption energies.
+    elements
+        Elements to include. Default is `None`, corresponding to all elements.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted adsorption energy errors for all models.
+    """
+    mask = [elements is None or element in elements for element in ELEMENTS]
+    refs = [
+        energy
+        for energy, keep in zip(adsorption_energies["ref"], mask, strict=True)
+        if keep
+    ]
+
+    results = {}
+    for model_name in MODELS:
+        preds = [
+            energy
+            for energy, keep in zip(adsorption_energies[model_name], mask, strict=True)
+            if keep
+        ]
+        results[model_name] = mae(refs, preds)
+    return results
+
+
+@pytest.fixture
+def adsorption_mae(adsorption_energies: dict[str, list]) -> dict[str, float]:
     """
     Get mean absolute error for adsorption energies.
 
@@ -132,15 +270,43 @@ def adsorption_mae(adsorption_energies) -> dict[str, float]:
     dict[str, float]
         Dictionary of predicted adsorption energy errors for all models.
     """
-    results = {}
-    for model_name in MODELS:
-        if adsorption_energies[model_name]:
-            results[model_name] = mae(
-                adsorption_energies["ref"], adsorption_energies[model_name]
-            )
-        else:
-            results[model_name] = np.nan
-    return results
+    return _subset_mae(adsorption_energies)
+
+
+@pytest.fixture
+def adsorption_mae_u(adsorption_energies: dict[str, list]) -> dict[str, float]:
+    """
+    Get mean absolute error for adsorption energies of Hubbard U elements.
+
+    Parameters
+    ----------
+    adsorption_energies
+        Dictionary of reference and predicted adsorption energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted adsorption energy errors for all models.
+    """
+    return _subset_mae(adsorption_energies, U_ELEMENTS)
+
+
+@pytest.fixture
+def adsorption_mae_non_u(adsorption_energies: dict[str, list]) -> dict[str, float]:
+    """
+    Get mean absolute error for adsorption energies of non-Hubbard U elements.
+
+    Parameters
+    ----------
+    adsorption_energies
+        Dictionary of reference and predicted adsorption energies.
+
+    Returns
+    -------
+    dict[str, float]
+        Dictionary of predicted adsorption energy errors for all models.
+    """
+    return _subset_mae(adsorption_energies, set(ELEMENTS) - U_ELEMENTS)
 
 
 @pytest.fixture
@@ -148,8 +314,13 @@ def adsorption_mae(adsorption_energies) -> dict[str, float]:
     filename=OUT_PATH / "elemental_slab_oxygen_adsorption_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
+    weights=DEFAULT_WEIGHTS,
 )
-def metrics(adsorption_mae: dict[str, float]) -> dict[str, dict]:
+def metrics(
+    adsorption_mae: dict[str, float],
+    adsorption_mae_u: dict[str, float],
+    adsorption_mae_non_u: dict[str, float],
+) -> dict[str, dict]:
     """
     Get all metrics.
 
@@ -157,6 +328,10 @@ def metrics(adsorption_mae: dict[str, float]) -> dict[str, dict]:
     ----------
     adsorption_mae
         Mean absolute errors for all models.
+    adsorption_mae_u
+        Mean absolute errors for Hubbard U elements, for all models.
+    adsorption_mae_non_u
+        Mean absolute errors for non-Hubbard U elements, for all models.
 
     Returns
     -------
@@ -165,10 +340,14 @@ def metrics(adsorption_mae: dict[str, float]) -> dict[str, dict]:
     """
     return {
         "MAE": adsorption_mae,
+        "U MAE": adsorption_mae_u,
+        "non-U MAE": adsorption_mae_non_u,
     }
 
 
-def test_elemental_slab_oxygen_adsorption(metrics: dict[str, dict]) -> None:
+def test_elemental_slab_oxygen_adsorption(
+    metrics: dict[str, dict], periodic_tables: None
+) -> None:
     """
     Run elemental_slab_oxygen_adsorption test.
 
@@ -176,5 +355,7 @@ def test_elemental_slab_oxygen_adsorption(metrics: dict[str, dict]) -> None:
     ----------
     metrics
         All elemental slab oxygen adsorption metrics.
+    periodic_tables
+        Per-model periodic-table heatmaps (side-effect only).
     """
     return

@@ -24,10 +24,10 @@ lowest-energy isomer in the r2SCAN-3c reference set and compared to the r2SCAN-3
 relative energies reported in the reference dataset.
 
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low: tests are likely to take less than a minute to run on CPU.
+Fast: tests are likely to take less than a minute to run on CPU.
 
 
 Data availability
@@ -68,12 +68,15 @@ Mean absolute error of force (individual components) predictions against DFT+U c
 
 Mean absolute error of stress (individual tensor components) predictions against DFT+U calculations.
 
-Computational cost
+Benchmark speed
 ------------------
 
-Low
+Fast
 
 Data availability
 -----------------
 
-Reference data: availabile in repo. Data and complete calculation details will be released in an upcoming publication. For now, please contact willdavie2002@gmail.com.
+Reference data are available in the repository but are currently unpublished.
+The data and complete calculation details will be described in a future publication,
+and its citation will be added when available. For now, please contact
+willdavie2002@gmail.com.
