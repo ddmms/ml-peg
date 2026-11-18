@@ -25,7 +25,6 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegReferenceGeometryStabilityBenchmark
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -46,24 +45,17 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 @pytest.fixture
 def reference_benchmark():
     """
-    Load both reference subsets from staged outputs or the benchmark archive.
+    Load both reference subsets from the calculation outputs.
 
     Returns
     -------
     MlPegReferenceGeometryStabilityBenchmark
         Benchmark configured with the available reference dataset.
     """
-    filenames = (rgs.OPENFF_NEUTRAL_FILENAME, rgs.OPENFF_CHARGED_FILENAME)
-    data_root = CALC_PATH
-    if not all((data_root / BENCHMARK / name).is_file() for name in filenames):
-        data_root = download_s3_data(
-            key=f"inputs/molecular/{BENCHMARK}/{BENCHMARK}.zip",
-            filename=f"{BENCHMARK}.zip",
-        )
-    for name in filenames:
-        check_dataset(data_root / BENCHMARK / name)
+    for name in (rgs.OPENFF_NEUTRAL_FILENAME, rgs.OPENFF_CHARGED_FILENAME):
+        check_dataset(CALC_PATH / BENCHMARK / name)
     return MlPegReferenceGeometryStabilityBenchmark(
-        force_field=Calculator(), data_input_dir=data_root, run_mode="standard"
+        force_field=Calculator(), data_input_dir=CALC_PATH, run_mode="standard"
     )
 
 

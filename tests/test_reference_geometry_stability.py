@@ -17,7 +17,7 @@ from ml_peg.calcs.molecular.reference_geometry_stability import (
 
 
 def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
-    """Read the transferred model ZIP with references from the archive cache."""
+    """Score transferred calculation outputs against the staged reference subsets."""
     import json
     import shutil
 
@@ -52,7 +52,11 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
     (corrupt / "model_output.zip").write_bytes(b"truncated")
     monkeypatch.setattr(analysis, "CALC_PATH", transferred)
     monkeypatch.setattr(analysis, "MODELS", ["corrupt", "test-model"])
-    monkeypatch.setattr(analysis, "download_s3_data", lambda **kwargs: cache)
+    with pytest.raises(
+        pytest.skip.Exception, match=analysis.rgs.OPENFF_NEUTRAL_FILENAME
+    ):
+        analysis.reference_benchmark.__wrapped__()
+    shutil.copytree(outputs / analysis.BENCHMARK, transferred / analysis.BENCHMARK)
     reference = analysis.reference_benchmark.__wrapped__()
     with pytest.warns(UserWarning, match="Cannot score corrupt"):
         values = analysis.analyze_results.__wrapped__(reference)
