@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from warnings import warn
 
@@ -11,13 +12,12 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
-from ml_peg.analysis.utils.utils import (
-    get_struct_info,
-    load_metrics_config,
-    mae,
-)
+from ml_peg.analysis.utils.utils import load_metrics_config, mae
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.surfaces.surface_alloy_reorganisation.reactions import (
+    get_reactions,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -33,23 +33,54 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 # Unit conversion
 EV_TO_KJ_PER_MOL = units.mol / units.kJ
 
-# Reference reaction energies below this magnitude (eV) are zero by symmetry
+# Reactions whose initial and final states are identical up to symmetry have a
+# reference reaction energy of zero (to numerical precision) and are excluded from
+# the energy metric (all vacancy-mediated diffusion, and terrace pop-in/slide-in of a
+# host-element dopant). They are identified by |reference energy| <= this cutoff
+# (eV), which lies between the largest symmetric (~0.009 eV) and smallest
+# non-symmetric (~0.014 eV) reference reaction energies in the dataset.
 ZERO_ENERGY_TOL = 1e-2
 
 STATES = ("initial_state", "transition_state", "final_state")
 
-# Canonical reaction list, taken from the mock calculation, which is always complete.
-# Only initial states are read so there is one entry per reaction.
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*_initial_state_*.xyz",
-    index="0",
-    info_keys=["system"],
-    include_filenames=True,
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
+
+def _build_info() -> dict[str, list]:
+    """
+    Build the canonical reaction list from the dataset definition.
+
+    Reactions come from the shared dataset definition rather than from discovered
+    files, so a reaction with missing or unreadable mock outputs is retained (with
+    NaN reference data) instead of being dropped. Each reaction's structures contain
+    only the host and dopant elements, so element info for filtering is written
+    without reading structures.
+
+    Returns
+    -------
+    dict[str, list]
+        Initial-state filename stems, reaction identifiers and elements for every
+        reaction, sorted by filename stem.
+    """
+    if not (CALC_PATH / "mock").exists():
+        pytest.skip(
+            f"{CALC_PATH / 'mock'} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
+    reactions = sorted(
+        get_reactions(),
+        key=lambda r: f"{r[0]}_{r[1]}_initial_state_{r[2]}",
+    )
+    info = {
+        "filenames": [f"{h}_{m}_initial_state_{e}" for h, m, e in reactions],
+        "system": [f"{h}_{m}_{e}" for h, m, e in reactions],
+        "elements": [sorted({h, e}) for h, _, e in reactions],
+    }
+    OUT_PATH.mkdir(parents=True, exist_ok=True)
+    with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
+        json.dump({key: info[key] for key in ("elements", "system")}, f, indent=1)
+    return info
+
+
+INFO = _build_info()
 
 
 def _state_file(model_dir: Path, initial_stem: str, state: str) -> Path:
@@ -114,19 +145,25 @@ def _get_energy(struct: Atoms | None) -> float:
     if struct is None:
         return np.nan
     try:
-        return float(struct.get_potential_energy())
+        energy = float(struct.get_potential_energy())
     except Exception:
-        return float(struct.info.get("energy", np.nan))
+        try:
+            energy = float(struct.info.get("energy", np.nan))
+        except (TypeError, ValueError):
+            energy = np.nan
+    return energy if np.isfinite(energy) else np.nan
 
 
-def _get_ref(struct: Atoms | None) -> float:
+def _get_ref(struct: Atoms | None, path: Path) -> float:
     """
-    Get the reference energy of a structure, or NaN if unavailable.
+    Get the reference energy of a structure, or NaN if unavailable or invalid.
 
     Parameters
     ----------
     struct
         Structure to get reference energy from.
+    path
+        Path the structure was read from, used in warnings.
 
     Returns
     -------
@@ -135,7 +172,12 @@ def _get_ref(struct: Atoms | None) -> float:
     """
     if struct is None:
         return np.nan
-    return float(struct.info.get("ref", np.nan))
+    try:
+        ref = float(struct.info.get("ref", np.nan))
+    except (TypeError, ValueError) as exc:
+        warn(f"Invalid reference energy in {path}: {exc}", stacklevel=2)
+        return np.nan
+    return ref if np.isfinite(ref) else np.nan
 
 
 def _load_reference() -> tuple[list[float], list[float]]:
@@ -156,22 +198,35 @@ def _load_reference() -> tuple[list[float], list[float]]:
 
     energies, barriers = [], []
     for stem, system in zip(INFO["filenames"], INFO["system"], strict=True):
-        structs = {
-            state: _read_struct(_state_file(mock_dir, stem, state)) for state in STATES
-        }
-        refs = {state: _get_ref(struct) for state, struct in structs.items()}
+        paths = {state: _state_file(mock_dir, stem, state) for state in STATES}
+        structs = {state: _read_struct(path) for state, path in paths.items()}
+        refs = {state: _get_ref(structs[state], paths[state]) for state in STATES}
         energies.append(refs["final_state"] - refs["initial_state"])
         barriers.append(refs["transition_state"] - refs["initial_state"])
 
+        # Remove any trajectory left by a previous run if a state is now missing
+        traj_path = structs_dir / f"{system}.xyz"
         if all(struct is not None for struct in structs.values()):
-            write(structs_dir / f"{system}.xyz", list(structs.values()))
+            write(traj_path, list(structs.values()))
+        else:
+            traj_path.unlink(missing_ok=True)
 
     return energies, barriers
 
 
 REF_ENERGIES_EV, REF_BARRIERS_EV = _load_reference()
 
-# Reactions with (near) zero reference energy are excluded from the energy metric
+# Missing reference data is a dataset failure, not an intentional exclusion: the
+# affected MAE is reported as NaN, while the other metric is still computed.
+ENERGY_REF_COMPLETE = bool(np.all(np.isfinite(REF_ENERGIES_EV)))
+BARRIER_REF_COMPLETE = bool(np.all(np.isfinite(REF_BARRIERS_EV)))
+if not ENERGY_REF_COMPLETE:
+    warn("Missing reference reaction energies; energy MAE will be NaN.", stacklevel=1)
+if not BARRIER_REF_COMPLETE:
+    warn("Missing reference reaction barriers; barrier MAE will be NaN.", stacklevel=1)
+
+# Symmetric reactions (zero reference energy) are excluded from the energy metric.
+# Points without a reference value cannot be plotted.
 ENERGY_MASK = [
     bool(np.isfinite(energy) and abs(energy) > ZERO_ENERGY_TOL)
     for energy in REF_ENERGIES_EV
@@ -179,7 +234,6 @@ ENERGY_MASK = [
 ENERGY_SYSTEMS = [
     system for system, keep in zip(INFO["system"], ENERGY_MASK, strict=True) if keep
 ]
-# Reactions without a reference barrier cannot be scored for any model
 BARRIER_MASK = [bool(np.isfinite(barrier)) for barrier in REF_BARRIERS_EV]
 BARRIER_SYSTEMS = [
     system for system, keep in zip(INFO["system"], BARRIER_MASK, strict=True) if keep
@@ -206,7 +260,9 @@ def model_energies() -> dict[str, dict[str, list[float]]]:
         for stem in INFO["filenames"]:
             if model_dir.exists():
                 preds = {
-                    state: _get_energy(_read_struct(_state_file(model_dir, stem, state)))
+                    state: _get_energy(
+                        _read_struct(_state_file(model_dir, stem, state))
+                    )
                     for state in STATES
                 }
             else:
@@ -316,6 +372,8 @@ def reaction_energy_errors(reaction_energies) -> dict[str, float]:
     dict[str, float]
         Dictionary of predicted reaction energy errors for all models.
     """
+    if not ENERGY_REF_COMPLETE:
+        return dict.fromkeys(MODELS, np.nan)
     return {
         model_name: mae(reaction_energies["ref"], reaction_energies[model_name])
         for model_name in MODELS
@@ -337,6 +395,8 @@ def reaction_barrier_errors(reaction_barriers) -> dict[str, float]:
     dict[str, float]
         Dictionary of predicted reaction barrier errors for all models.
     """
+    if not BARRIER_REF_COMPLETE:
+        return dict.fromkeys(MODELS, np.nan)
     return {
         model_name: mae(reaction_barriers["ref"], reaction_barriers[model_name])
         for model_name in MODELS

@@ -21,5 +21,5 @@ metrics:
 #The diffusion barrier is on the order of 5 kJ/mol, and a change in reaction barrier of this magnitude
 #is expected to have limited difference in determining the frequency at which it occurs.
 #On the other hand, a wrong estimate by 40 kJ/mol for a barrier leads to a significant change in
-#how often this mechanism occurs and is likely to lead to incorrect conclusions about the structure 
+#how often this mechanism occurs and is likely to lead to incorrect conclusions about the structure
 #of the surface. Reaction energies are assessed on the same scale for consistency.

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from itertools import product
 from pathlib import Path
 from typing import Any
 from warnings import warn
@@ -12,6 +11,9 @@ import numpy as np
 import pytest
 from tqdm import tqdm
 
+from ml_peg.calcs.surfaces.surface_alloy_reorganisation.reactions import (
+    get_systems,
+)
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
@@ -20,49 +22,6 @@ MODELS = load_models(current_models)
 
 DATA_PATH = Path(__file__).parent / "data"
 OUT_PATH = Path(__file__).parent / "outputs"
-
-HOSTS = ["Ag", "Cu"]
-MECHANISMS = [
-    "diffusion_over_step",
-    "step_lift_in",
-    "terrace_pop_in",
-    "terrace_slide_in",
-    "vacancy_mediated_diffusion",
-]
-STATES = ["initial_state", "final_state", "transition_state"]
-ALL_ELEMENTS = ["Ag", "Cu", "Mo", "Nb", "Pd", "Rh", "Ru", "Tc", "Y", "Zr"]
-# Host/mechanism pairs for which only a subset of elements is available
-ELEMENTS_SUBSETS = {
-    ("Cu", "diffusion_over_step"): ["Ag", "Cu", "Nb", "Pd", "Rh", "Ru", "Tc", "Zr"],
-    ("Ag", "diffusion_over_step"): [
-        "Ag",
-        "Cu",
-        "Mo",
-        "Nb",
-        "Pd",
-        "Rh",
-        "Ru",
-        "Tc",
-        "Zr",
-    ],
-    ("Cu", "step_lift_in"): ["Cu", "Mo", "Nb", "Pd", "Rh", "Ru", "Tc", "Y", "Zr"],
-}
-
-
-def get_systems() -> list[tuple[str, str, str, str]]:
-    """
-    Get all (host, mechanism, state, element) combinations in the dataset.
-
-    Returns
-    -------
-    list[tuple[str, str, str, str]]
-        Host, mechanism, state and element for every structure to evaluate.
-    """
-    return [
-        (host, mechanism, state, element)
-        for host, mechanism, state in product(HOSTS, MECHANISMS, STATES)
-        for element in ELEMENTS_SUBSETS.get((host, mechanism), ALL_ELEMENTS)
-    ]
 
 
 @pytest.mark.fast
@@ -96,10 +55,15 @@ def test_surface_alloy_reorganisation(mlip: tuple[str, Any]) -> None:
         filename = f"{host}_{mechanism}_{state}_{element}"
         progress.set_postfix_str(filename)
 
-        path_init = surface_alloy_reorganisation_dir / host / mechanism / state / element
+        path_init = (
+            surface_alloy_reorganisation_dir / host / mechanism / state / element
+        )
+        out_file = write_dir / f"{filename}.xyz"
 
-        # Missing or unreadable inputs leave no output file, which analysis maps
-        # to NaN for every observable that depends on this structure.
+        # Remove any output from a previous run, so a failure in this run leaves no
+        # output file, which analysis maps to NaN for every dependent observable.
+        out_file.unlink(missing_ok=True)
+
         try:
             slab = read(path_init / "POSCAR", index=0, format="vasp")
         except Exception as exc:
@@ -132,5 +96,12 @@ def test_surface_alloy_reorganisation(mlip: tuple[str, Any]) -> None:
         slab.info["ref"] = ref
         slab.info["system"] = f"{host}_{mechanism}_{element}"
 
-        # Write output structures
-        write(write_dir / f"{filename}.xyz", slab)
+        # Write to a temporary file and publish only once the write succeeds, so a
+        # failed write cannot leave a truncated output file
+        tmp_file = out_file.with_name(f".{out_file.name}.tmp")
+        try:
+            write(tmp_file, slab, format="extxyz")
+            tmp_file.replace(out_file)
+        except Exception as exc:
+            warn(f"Failed to write {model_name} {filename}: {exc}", stacklevel=2)
+            tmp_file.unlink(missing_ok=True)
