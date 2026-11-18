@@ -70,7 +70,7 @@ def reference_benchmark():
 @pytest.fixture
 def analyze_results(reference_benchmark) -> dict:
     """
-    Run the mlipaudit analysis for each model.
+    Run the MLIP Audit analysis for each model.
 
     Parameters
     ----------
@@ -188,7 +188,7 @@ def get_avg_rmsd(analyze_results) -> dict[str, float]:
 @pytest.fixture
 def get_score(analyze_results) -> dict[str, float]:
     """
-    Get the mlipaudit benchmark score for each model.
+    Get the MLIP Audit benchmark score for each model.
 
     Parameters
     ----------
@@ -198,7 +198,7 @@ def get_score(analyze_results) -> dict[str, float]:
     Returns
     -------
     dict[str, float]
-        The mlipaudit per-molecule soft-threshold RMSD score (0 to 1) for each model.
+        The MLIP Audit per-molecule soft-threshold RMSD score (0 to 1) for each model.
     """
     return {
         model_name: result.score if result is not None else np.nan
@@ -229,7 +229,7 @@ def metrics(
     get_avg_rmsd
         Average RMSDs for all models.
     get_score
-        The mlipaudit benchmark scores for all models.
+        The MLIP Audit benchmark scores for all models.
 
     Returns
     -------
