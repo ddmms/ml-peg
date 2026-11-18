@@ -190,15 +190,17 @@ Metrics
 
 1. Average RMSD
 
-Each molecule is relaxed with a short energy minimization starting from its
-reference geometry. The heavy-atom RMSD between the minimized and reference
-structure is computed for every molecule, and the reported metric is the average
-RMSD across all molecules. The overall score is the mlipaudit per-molecule
-soft-threshold score on the RMSD, so a model that keeps geometries close to the
-reference scores highly.
+ASE BFGS relaxes each molecule for up to 1,000 steps with a maximum force
+threshold of 0.01 eV/Å. The heavy atoms of the final geometry are aligned to
+the reference before computing the RMSD. The reported average weights each
+of the 220 molecules equally and is unavailable if any molecule fails.
 
-A histogram of the per-molecule heavy-atom RMSD values is shown on clicking the
-metric column.
+2. Geometry Score
+
+MLIP Audit gives each molecule a score of one up to 0.075 Å RMSD and applies
+its exponential decay above this threshold. A failed molecule contributes zero.
+The reported score averages all 220 contributions. Invalid or incomplete
+archives have no score. The histogram shows RMSDs for successful molecules.
 
 Computational cost
 ------------------
