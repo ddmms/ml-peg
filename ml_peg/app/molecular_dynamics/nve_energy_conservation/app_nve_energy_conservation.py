@@ -29,11 +29,12 @@ class NVEEnergyConservationApp(BaseApp):
             model: dict.fromkeys(
                 METRICS,
                 read_plot(
-                    DATA_PATH / f"{model}_drift_scatter.json",
+                    plot_path,
                     id=f"{BENCHMARK_NAME}-{model}-figure-drift",
                 ),
             )
             for model in MODELS
+            if (plot_path := DATA_PATH / f"{model}_drift_scatter.json").exists()
         }
 
         plot_from_table_cell(
