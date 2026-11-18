@@ -5,6 +5,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from ase.calculators.lj import LennardJones
+from ase.io import read
+import numpy as np
 import pytest
 
 pytest.importorskip("mlipaudit")
@@ -57,6 +59,7 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
     ):
         analysis.reference_benchmark.__wrapped__()
     shutil.copytree(outputs / analysis.BENCHMARK, transferred / analysis.BENCHMARK)
+    monkeypatch.setattr(analysis, "OUT_PATH", tmp_path / "app")
     reference = analysis.reference_benchmark.__wrapped__()
     with pytest.warns(UserWarning, match="Cannot score corrupt"):
         values = analysis.analyze_results.__wrapped__(reference)
@@ -77,3 +80,25 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
     assert analysis.get_score.__wrapped__(values)["test-model"] == pytest.approx(
         expected.score
     )
+
+    plot = json.loads((analysis.OUT_PATH / "figure_molecule_rmsd.json").read_text())
+    (trace,) = plot["data"]
+    assert trace["name"] == "test-model"
+    assert trace["x"] == ["neutral / mol_0", "charged / mol_0"]
+    for subset, asset, value in zip(
+        analysis.rgs.DATASET_PREFIXES, trace["customdata"], trace["y"], strict=True
+    ):
+        frames = read(analysis.OUT_PATH / "structures" / f"{asset}.xyz", index=":")
+        assert len(frames) == 2
+        np.testing.assert_allclose(frames[0].positions.mean(axis=0), 0, atol=1e-8)
+        np.testing.assert_allclose(frames[1].positions.mean(axis=0), 0, atol=1e-8)
+        output = getattr(reference.model_output, subset)[0]
+        for frame, raw in zip(
+            frames,
+            (molecule["coordinates"], output.simulation_state.positions[-1]),
+            strict=True,
+        ):
+            assert frame.get_distance(0, 1) == pytest.approx(
+                np.linalg.norm(np.subtract(raw[0], raw[1]))
+            )
+        assert value == getattr(expected, subset).rmsd_values[0]

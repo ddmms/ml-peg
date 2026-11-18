@@ -6,8 +6,12 @@ import json
 from pathlib import Path
 from warnings import warn
 
+from ase import Atoms
+from ase.build.rotate import rotation_matrix_from_points
 from ase.calculators.calculator import Calculator
+from ase.io import write
 import numpy as np
+import plotly.graph_objects as go
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
@@ -16,7 +20,7 @@ from mlipaudit.benchmarks.reference_geometry_stability import (
 )
 from mlipaudit.io import load_model_output_from_disk
 
-from ml_peg.analysis.utils.decorators import build_table, plot_hist
+from ml_peg.analysis.utils.decorators import build_table, merge_saved_traces, plot_hist
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
     check_dataset,
@@ -59,6 +63,61 @@ def reference_benchmark():
     )
 
 
+def molecule_trace(model, benchmark, result) -> go.Scatter:
+    """
+    Save reference and final geometries for the molecules scored by MLIP Audit.
+
+    Parameters
+    ----------
+    model
+        Model identifier used in the output directory.
+    benchmark
+        Benchmark holding this model's output and the OpenFF reference datasets.
+    result
+        Upstream RMSDs in the same order as the model output within each subset.
+
+    Returns
+    -------
+    go.Scatter
+        One point per successfully scored molecule with its structure asset identifier.
+    """
+    labels, rmsds, assets = [], [], []
+    directory = OUT_PATH / "structures" / model
+    directory.mkdir(parents=True, exist_ok=True)
+    for subset in rgs.DATASET_PREFIXES:
+        dataset = getattr(benchmark, f"_{subset}_dataset")
+        outputs = getattr(benchmark.model_output, subset)
+        values = getattr(result, subset).rmsd_values
+        for index, (output, value) in enumerate(zip(outputs, values, strict=True)):
+            if value is None:
+                continue
+            molecule = dataset[output.molecule_name]
+            reference = Atoms(molecule.atom_symbols, positions=molecule.coordinates)
+            positions = np.asarray(output.simulation_state.positions).reshape(
+                -1, len(reference), 3
+            )[-1]
+            heavy = reference.numbers != 1
+            reference.translate(-reference.positions[heavy].mean(axis=0))
+            centered = positions - positions[heavy].mean(axis=0)
+            rotation = rotation_matrix_from_points(
+                centered[heavy].T, reference.positions[heavy].T
+            )
+            relaxed = Atoms(molecule.atom_symbols, positions=centered @ rotation.T)
+            asset = f"{subset}_{index}"
+            write(directory / f"{asset}.xyz", [reference, relaxed], format="xyz")
+            labels.append(f"{subset.removeprefix('openff_')} / {output.molecule_name}")
+            rmsds.append(value)
+            assets.append(f"{model}/{asset}")
+    return go.Scatter(
+        name=model,
+        x=labels,
+        y=rmsds,
+        customdata=assets,
+        mode="markers",
+        hovertemplate="%{x}<br>Heavy-atom RMSD: %{y:.4g} Å",
+    )
+
+
 @pytest.fixture
 def analyze_results(reference_benchmark) -> dict:
     """
@@ -75,6 +134,7 @@ def analyze_results(reference_benchmark) -> dict:
         MLIP Audit results by model, or None if analysis failed.
     """
     results = {}
+    figure = go.Figure()
     for model_name in MODELS:
         output_dir = CALC_PATH / model_name / BENCHMARK
         if not (output_dir / "model_output.zip").exists():
@@ -87,6 +147,19 @@ def analyze_results(reference_benchmark) -> dict:
         except Exception as exc:
             warn(f"Cannot score {model_name}: {exc}", stacklevel=2)
             results[model_name] = None
+            continue
+        figure.add_trace(
+            molecule_trace(model_name, reference_benchmark, results[model_name])
+        )
+    figure.update_layout(
+        title="Heavy-atom RMSD by molecule",
+        xaxis_title="OpenFF subset / molecule",
+        yaxis_title="RMSD / Å",
+        xaxis={"nticks": 12},
+    )
+    path = OUT_PATH / "figure_molecule_rmsd.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    merge_saved_traces(figure, path).write_json(path)
     return results
 
 

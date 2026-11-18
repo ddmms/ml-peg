@@ -201,7 +201,10 @@ gives the neutral and charged subset means equal weight.
 
 MLIP Audit gives each molecule a score of one up to 0.075 Å RMSD and applies
 its exponential decay above this threshold. A failed molecule contributes zero.
-The reported score averages all 220 contributions. If MLIP Audit cannot produce a result, the model has no score. The histogram shows RMSDs for successful molecules.
+The reported score averages all 220 contributions. If MLIP Audit cannot produce a result, the model has no score. Select **Geometry Score** to see the RMSD histogram for successful molecules.
+Select **Avg RMSD** to open the per-molecule plot, then click a point to compare the OpenFF reference
+geometry (first frame) with the final saved model geometry (second frame).
+The viewer aligns the heavy atoms and displays all atoms in both frames.
 
 Computational cost
 ------------------
