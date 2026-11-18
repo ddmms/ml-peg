@@ -39,9 +39,7 @@ def _run_simulation_or_none(*args: Any, **kwargs: Any) -> Any:
     """
     Run an mlipaudit simulation, returning ``None`` if it raises.
 
-    ``None`` is what mlipaudit's NVE ``run_model`` already expects from a
-    simulation that produced no usable state, so the failing system is recorded
-    as failed and the remaining systems still run.
+    ``run_model`` already treats ``None`` as a failed system, so the rest still run.
 
     Parameters
     ----------
@@ -138,15 +136,9 @@ class MlPegNVEEnergyConservationBenchmark(
     """
     ``NVEEnergyConservationBenchmark`` wired up for ml-peg.
 
-    Two upstream behaviours are patched out:
-
-    ``run_model`` calls ``skip_unallowed_elements`` regardless of
-    ``skip_if_elements_missing``, which raises for ASE ``Calculator`` objects.
-
-    ``run_model`` also calls ``run_simulation`` without catching exceptions, so one
-    failing system aborts the whole benchmark, losing the systems already
-    simulated. Upstream already handles a simulation that returns no state, so
-    failures are routed into that path instead.
+    ``run_model`` is patched to avoid two upstream bugs: ``skip_unallowed_elements``
+    raises for ASE ``Calculator`` objects, and an unguarded ``run_simulation`` lets
+    one failing system discard the systems already simulated.
     """
 
     def run_model(self) -> None:
