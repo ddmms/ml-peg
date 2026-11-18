@@ -19,10 +19,9 @@ from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegReferenceGeometryStabilityBenchmark
+from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-
-EXAMPLE_INPUT_FILENAME = rgs.OPENFF_NEUTRAL_FILENAME
 
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
@@ -38,45 +37,49 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def check_dataset() -> None:
+@pytest.fixture
+def reference_benchmark():
     """
-    Check the dataset saved by the calculation is available.
+    Load both reference subsets from staged outputs or the benchmark archive.
 
-    The calculation copies and unzips the downloaded dataset into its outputs,
-    so the analysis does not need to download the input data again.
-
-    Raises
-    ------
-    ValueError
-        If the dataset is missing from the calculation outputs.
+    Returns
+    -------
+    MlPegReferenceGeometryStabilityBenchmark
+        Benchmark configured with the available reference dataset.
     """
-    dataset_path = CALC_PATH / BENCHMARK / EXAMPLE_INPUT_FILENAME
-    if not dataset_path.exists():
-        raise ValueError(f"{dataset_path} does not exist. Please run the calculation.")
+    filenames = (rgs.OPENFF_NEUTRAL_FILENAME, rgs.OPENFF_CHARGED_FILENAME)
+    data_root = CALC_PATH
+    if not all((data_root / BENCHMARK / name).is_file() for name in filenames):
+        data_root = download_s3_data(
+            key=f"inputs/molecular/{BENCHMARK}/{BENCHMARK}.zip",
+            filename=f"{BENCHMARK}.zip",
+        )
+    return MlPegReferenceGeometryStabilityBenchmark(
+        force_field=Calculator(), data_input_dir=data_root, run_mode="standard"
+    )
 
 
 @pytest.fixture
-def analyze_results() -> dict:
+def analyze_results(reference_benchmark) -> dict:
     """
     Run the mlipaudit analysis for each model.
+
+    Parameters
+    ----------
+    reference_benchmark
+        Benchmark initialized with both OpenFF reference subsets.
 
     Returns
     -------
     dict
         Mapping of model name to its ``ReferenceGeometryStabilityResult``.
     """
-    check_dataset()
-
     results = {}
     for model_name in MODELS:
         output_dir = CALC_PATH / model_name / BENCHMARK
         if not (output_dir / "model_output.zip").exists():
             continue
-        benchmark = MlPegReferenceGeometryStabilityBenchmark(
-            force_field=Calculator(),
-            data_input_dir=CALC_PATH,
-            run_mode="standard",
-        )
+        benchmark = reference_benchmark
         benchmark.model_output = load_model_output_from_disk(
             CALC_PATH / model_name, MlPegReferenceGeometryStabilityBenchmark
         )
@@ -85,22 +88,21 @@ def analyze_results() -> dict:
 
 
 @pytest.fixture
-def struct_info() -> dict:
+def struct_info(reference_benchmark) -> dict:
     """
     Write the combined element set to ``info.json`` for filtering.
+
+    Parameters
+    ----------
+    reference_benchmark
+        Benchmark initialized with both OpenFF reference subsets.
 
     Returns
     -------
     dict
         Mapping with the sorted list of elements present in the dataset.
     """
-    check_dataset()
-
-    benchmark = MlPegReferenceGeometryStabilityBenchmark(
-        force_field=Calculator(),
-        data_input_dir=CALC_PATH,
-        run_mode="standard",
-    )
+    benchmark = reference_benchmark
     elements = sorted(
         {
             symbol
