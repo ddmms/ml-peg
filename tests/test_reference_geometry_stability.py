@@ -79,7 +79,11 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
         assert table[metric]["test-model"] == pytest.approx(expected.avg_rmsd)
         assert np.isnan(table[metric]["corrupt"])
         assert analysis.DEFAULT_WEIGHTS[metric] == 0
-    assert table["Geometry Score"]["test-model"] == pytest.approx(expected.score)
+    for metric in ("Geometry Score", "Geometry Score (MLIP Audit)"):
+        assert table[metric]["test-model"] == pytest.approx(expected.score)
+        assert np.isnan(table[metric]["corrupt"])
+    assert analysis.DEFAULT_WEIGHTS["Geometry Score"] == 1
+    assert analysis.DEFAULT_WEIGHTS["Geometry Score (MLIP Audit)"] == 0
 
     plot = json.loads((analysis.OUT_PATH / "figure_molecule_rmsd.json").read_text())
     (trace,) = plot["data"]
@@ -103,7 +107,7 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
             )
         assert value == getattr(expected, subset).rmsd_values[0]
 
-    # A missing output and a recorded failure both invalidate the complete mean.
+    # A missing output and a recorded failure both invalidate the weighted score.
     reference["openff_neutral"]["mol_1"] = reference["openff_neutral"]["mol_0"]
     for recorded_failure in (False, True):
         if recorded_failure:
@@ -115,4 +119,9 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
         row, _ = analysis.analyze_model("partial", upstream.model_output, reference)
         assert np.isnan(row["Avg RMSD"])
         assert row["Avg RMSD (stable only)"] == pytest.approx(partial.avg_rmsd)
-        assert row["Geometry Score"] == pytest.approx(partial.score)
+        assert np.isnan(row["Geometry Score"])
+        assert row["Geometry Score (MLIP Audit)"] == pytest.approx(partial.score)
+        if recorded_failure:
+            assert partial.score < expected.score
+        else:
+            assert partial.score == pytest.approx(expected.score)

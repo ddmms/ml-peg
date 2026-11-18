@@ -38,6 +38,7 @@ class ReferenceGeometryStabilityApp(BaseApp):
                 "Avg RMSD": molecules,
                 "Avg RMSD (stable only)": molecules,
                 "Geometry Score": histogram,
+                "Geometry Score (MLIP Audit)": histogram,
             },
         )
         # A structure selection belongs to the plot that produced it.

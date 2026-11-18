@@ -141,15 +141,17 @@ def analyze_model(model, model_output, datasets) -> tuple[dict, go.Scatter]:
             assets.append(f"{model}/{asset}")
         subset_means.append(np.mean(subset_rmsds) if subset_rmsds else np.nan)
     stable_mean = float(np.mean(subset_means))
+    audit_score = (
+        compute_benchmark_score([score_inputs], [rgs.RMSD_SCORE_THRESHOLD])
+        if np.isfinite(stable_mean)
+        else np.nan
+    )
     row = {
         "rmsds": rmsds,
         "Avg RMSD": stable_mean if complete else np.nan,
         "Avg RMSD (stable only)": stable_mean,
-        "Geometry Score": compute_benchmark_score(
-            [score_inputs], [rgs.RMSD_SCORE_THRESHOLD]
-        )
-        if np.isfinite(stable_mean)
-        else np.nan,
+        "Geometry Score": audit_score if complete else np.nan,
+        "Geometry Score (MLIP Audit)": audit_score,
     }
     return row, go.Scatter(
         name=model,
