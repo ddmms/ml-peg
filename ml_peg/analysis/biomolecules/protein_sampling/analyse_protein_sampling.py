@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from shutil import copyfile
 
 from ase.calculators.calculator import Calculator
 from ase.io import read
@@ -135,6 +136,8 @@ def struct_info() -> dict:
     }
 
     OUT_PATH.mkdir(parents=True, exist_ok=True)
+    for name in STRUCTURE_NAMES:
+        copyfile(structure_xyz(name), OUT_PATH / f"{name}.xyz")
     with (OUT_PATH / "info.json").open("w", encoding="utf-8") as f:
         json.dump(info, f, indent=1)
 
@@ -278,11 +281,21 @@ def test_protein_sampling(
         for model, result in analyze_results.items():
             values = getattr(result, attribute) or {}
             residues = sorted(values)
+            contributors = [
+                [
+                    system.structure_name
+                    for system in result.systems
+                    if not system.failed
+                    and residue in (getattr(system, attribute) or {})
+                ]
+                for residue in residues
+            ]
             figure.add_scatter(
                 name=model,
                 mode="markers",
                 x=residues,
                 y=[values[residue] for residue in residues],
+                customdata=contributors,
                 hovertemplate="Residue: %{x}<br>Value: %{y:.4g}",
             )
         figure.update_layout(
