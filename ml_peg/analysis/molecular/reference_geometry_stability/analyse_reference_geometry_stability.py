@@ -17,7 +17,11 @@ from mlipaudit.benchmarks.reference_geometry_stability import (
 from mlipaudit.io import load_model_output_from_disk
 
 from ml_peg.analysis.utils.decorators import build_table, plot_hist
-from ml_peg.analysis.utils.utils import build_dispersion_name_map, load_metrics_config
+from ml_peg.analysis.utils.utils import (
+    build_dispersion_name_map,
+    check_dataset,
+    load_metrics_config,
+)
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegReferenceGeometryStabilityBenchmark
@@ -56,6 +60,8 @@ def reference_benchmark():
             key=f"inputs/molecular/{BENCHMARK}/{BENCHMARK}.zip",
             filename=f"{BENCHMARK}.zip",
         )
+    for name in filenames:
+        check_dataset(data_root / BENCHMARK / name)
     return MlPegReferenceGeometryStabilityBenchmark(
         force_field=Calculator(), data_input_dir=data_root, run_mode="standard"
     )
