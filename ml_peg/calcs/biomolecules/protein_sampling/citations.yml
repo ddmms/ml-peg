@@ -1,0 +1,15 @@
+implementers:
+  - name: "Lucien Walewski"
+    github: "lwalew"
+
+contributors:
+  - name: "Leon Wehrhan"
+    github: "lwehrhan"
+
+citations:
+  - bibtex_key: berman2000pdb
+    role: reference_data
+    detail: Source of the starting protein structures.
+  - bibtex_key: lovell2000rotamer
+    role: reference_method
+    detail: Rotamer library cited in the MLIP Audit sampling protocol.
