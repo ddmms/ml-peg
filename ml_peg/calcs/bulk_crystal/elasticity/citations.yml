@@ -1,0 +1,15 @@
+implementers:
+  - name: "Fraser Birks"
+    github: "Fraser-Birks"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: de2015charting
+    role: benchmark_method

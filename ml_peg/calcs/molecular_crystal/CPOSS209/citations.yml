@@ -1,0 +1,12 @@
+implementers:
+  - name: "Mikołaj Gawkowski"
+    github: "mikolgawk"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: cposs209
+    role: benchmark_method

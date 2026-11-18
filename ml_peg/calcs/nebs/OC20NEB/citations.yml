@@ -1,0 +1,9 @@
+implementers:
+  - name: "Hyunwook Jung"
+    github: "jungsdao"
+
+contributors: []
+
+citations:
+  - bibtex_key: cattsunami2024
+    role: reference_data

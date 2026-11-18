@@ -1,0 +1,9 @@
+implementers:
+  - name: "Jonathan Schmidt"
+    github: "JonathanSchmidt1"
+
+contributors: []
+
+citations:
+  - bibtex_key: loew-2026-pressure
+    role: reference_data

@@ -1,0 +1,5 @@
+title: Biomolecules
+description: Folding stability and dynamics of proteins and other biomolecules
+weight: 1
+benchmark_weights:
+  protein_folding_stability: 0

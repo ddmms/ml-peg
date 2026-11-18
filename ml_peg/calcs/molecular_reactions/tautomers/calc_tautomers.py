@@ -31,7 +31,9 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
+@pytest.mark.framework("mlip_audit")
 def test_tautomers(mlip: tuple[str, Any]) -> None:
     """
     Benchmark the Tautobase dataset.
@@ -53,10 +55,12 @@ def test_tautomers(mlip: tuple[str, Any]) -> None:
     out_path = OUT_PATH / model_name
     out_path.mkdir(parents=True, exist_ok=True)
 
-    dataset_dir = OUT_PATH / MlPegTautomersBenchmark.name
+    benchmark_name = MlPegTautomersBenchmark.name
+
+    dataset_dir = OUT_PATH / benchmark_name
     dataset_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(
-        data_input_dir / MlPegTautomersBenchmark.name / TAUTOMERS_DATASET_FILENAME,
+        data_input_dir / benchmark_name / TAUTOMERS_DATASET_FILENAME,
         dataset_dir,
     )
 

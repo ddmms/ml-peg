@@ -1,0 +1,11 @@
+implementers:
+  - name: "Daniel Marchand"
+    github: "daniel-sintef"
+
+contributors: []
+
+citations:
+  - bibtex_key: saal-2013-oqmd
+    role: reference_data
+  - bibtex_key: kirklin-2015-oqmd
+    role: reference_data

@@ -68,6 +68,7 @@ def get_app() -> EthanolWaterDecompositionCurvesApp:
     """
     return EthanolWaterDecompositionCurvesApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-mp",
         description=(
             "Ethanol–water mixture density at 293.15 K. Metrics include density RMSE, "
             "excess-volume RMSE, and error in the mole-fraction location of the "

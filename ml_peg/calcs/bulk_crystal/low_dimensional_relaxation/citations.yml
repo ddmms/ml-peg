@@ -1,0 +1,16 @@
+implementers:
+  - name: "Jonathan Schmidt"
+    github: "JonathanSchmidt1"
+
+contributors:
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: Cavignac2026Alexandria
+    role: reference_data
+  - bibtex_key: wang-2023-2d-materials
+    role: reference_data
+  - bibtex_key: schmidt-2021-crystal-graph
+    role: reference_method

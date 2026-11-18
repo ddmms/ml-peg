@@ -1,3 +1,4 @@
 mock-error:
   module: ml_peg.models.mock
   class_name: MockErrorCalculator
+  trained_on_dispersion: true

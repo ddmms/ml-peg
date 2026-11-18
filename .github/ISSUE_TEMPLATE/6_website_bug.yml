@@ -1,0 +1,56 @@
+name: Website bug
+description: Report a problem with the ML-PEG website
+labels: ["bug", "web-bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem with the [ML-PEG website](https://ml-peg.stfc.ac.uk).
+        The **Report a bug** button in the site header fills in this form for you.
+
+        If the button downloaded a screenshot, drag it into the **Screenshots** field below.
+        Screenshots are not uploaded automatically.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the problem.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the Bulk Crystals category
+        2. Click a cell in the table
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Drag images into this field to attach them.
+    validations:
+      required: false
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Page details
+      description: |
+        Filled in by the **Report a bug** button. If reporting manually, include the page URL,
+        your browser and any models or settings you changed.
+      render: json
+    validations:
+      required: false

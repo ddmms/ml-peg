@@ -1,0 +1,15 @@
+implementers:
+  - name: "Domantas Kuryla"
+    github: "kuryla"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+  - name: "Elliott Kasoar"
+    github: "ElliottKasoar"
+    email: "elliott.kasoar@stfc.ac.uk"
+
+citations:
+  - bibtex_key: ez2020-2
+    role: benchmark_method

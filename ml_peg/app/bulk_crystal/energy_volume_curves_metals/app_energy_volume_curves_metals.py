@@ -6,11 +6,11 @@ from dash import ALL, Input, Output, callback, callback_context
 from dash.dcc import Graph
 from dash.exceptions import PreventUpdate
 from dash.html import Div
-from plotly.io import read_json
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.load import read_json
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -116,6 +116,7 @@ def get_app() -> EquationOfStateApp:
     """
     return EquationOfStateApp(
         name=BENCHMARK_NAME,
+        framework_ids="mace-mp",
         description=(
             "Energy-volume curves and phase stability for BCC metals "
             "(W, Nb, Mo, Ta, Ti, Zr, Cr, Fe),"

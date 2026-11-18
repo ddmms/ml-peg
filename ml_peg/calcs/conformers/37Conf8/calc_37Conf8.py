@@ -29,6 +29,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 
 @pytest.mark.framework("mace-polar-1")
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_37conf8_conformer_energies(mlip: tuple[str, Any]) -> None:
     """

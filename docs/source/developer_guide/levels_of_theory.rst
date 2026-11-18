@@ -130,15 +130,21 @@ please add it to this table when making a pull request for your benchmark or mod
 
 **Models** (``ml_peg/models/models.yml``)
 
+- ``B97-3c``
 - ``PBE``
+- ``PBE+D3``
 - ``PBEsol``
 - ``r2SCAN``
+- ``ωB97M/def2-TZVPP``
+- ``ωB97M-D4rev/def2-TZVPD``
 - ``ωB97M-V``
 - ``ωB97M-V/def2-TZVPD``
+- ``ωB97M-V/def2-TZVPPD``
 
 **Benchmarks** (``ml_peg/analysis/<category>/<benchmark>/metrics.yml``)
 
 - ``PBE``
+- ``PBE+D3``
 - ``r2SCAN``
 - ``r2SCAN-3c``
 - ``CCSD(T)``

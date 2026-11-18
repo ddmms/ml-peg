@@ -1,0 +1,68 @@
+/* Fast-appearing tooltip for the benchmark test-speed badge.
+
+   The native `title` attribute cannot have its delay configured, and browsers
+   wait roughly 1-2 seconds before showing it. The badge therefore carries a
+   `data-tooltip` attribute instead, and the bubble is drawn here so the delay
+   is ours to set. */
+
+/* Per-tier badge colours, read by SPEED_LEVELS in app/utils/speed.py. */
+:root {
+    --mlpeg-speed-fast-bg: #dcfce7;
+    --mlpeg-speed-fast-fg: #166534;
+    --mlpeg-speed-medium-bg: #fef9c3;
+    --mlpeg-speed-medium-fg: #854d0e;
+    --mlpeg-speed-slow-bg: #ffedd5;
+    --mlpeg-speed-slow-fg: #9a3412;
+    --mlpeg-speed-very-slow-bg: #fee2e2;
+    --mlpeg-speed-very-slow-fg: #991b1b;
+    --mlpeg-speed-multi-day-bg: #ede9fe;
+    --mlpeg-speed-multi-day-fg: #5b21b6;
+}
+
+html[data-theme="dark"] {
+    --mlpeg-speed-fast-bg: #12301f;
+    --mlpeg-speed-fast-fg: #86efac;
+    --mlpeg-speed-medium-bg: #3a3210;
+    --mlpeg-speed-medium-fg: #fde68a;
+    --mlpeg-speed-slow-bg: #3d2410;
+    --mlpeg-speed-slow-fg: #fdba74;
+    --mlpeg-speed-very-slow-bg: #3f1d1d;
+    --mlpeg-speed-very-slow-fg: #fca5a5;
+    --mlpeg-speed-multi-day-bg: #2e2350;
+    --mlpeg-speed-multi-day-fg: #c4b5fd;
+}
+
+.speed-badge {
+    position: relative;
+}
+
+.speed-badge::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 0;
+    /* Above the loading overlays (1200/1400) and header controls (1600). */
+    z-index: 1700;
+    padding: 6px 10px;
+    border-radius: 6px;
+    /* Inverted surface, so the bubble contrasts with the page in both themes. */
+    background-color: var(--mlpeg-ink);
+    color: var(--mlpeg-surface);
+    font-size: 12px;
+    font-weight: 500;
+    /* The badge itself is uppercase with extra tracking, which would otherwise
+       be inherited by the bubble. */
+    text-transform: none;
+    letter-spacing: normal;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 80ms ease-in;
+    transition-delay: 100ms;
+}
+
+.speed-badge:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
