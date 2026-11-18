@@ -40,6 +40,8 @@ DOWNLOAD_DATA_DIR = "protein_sampling"
 BENCHMARK_DATA_DIR = MlPegSamplingBenchmark.data_name or MlPegSamplingBenchmark.name
 
 
+@pytest.mark.framework("mlip_audit")
+@pytest.mark.multi_day
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_protein_sampling(mlip: tuple[str, Any]) -> None:
     """

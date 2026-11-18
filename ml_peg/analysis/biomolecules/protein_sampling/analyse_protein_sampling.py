@@ -257,6 +257,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mlip_audit")
 def test_protein_sampling(
     metrics: dict[str, dict], struct_info: dict, analyze_results: dict
 ) -> None:
