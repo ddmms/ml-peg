@@ -6,6 +6,7 @@ import functools
 import logging
 from typing import Any
 from unittest.mock import patch
+from warnings import warn
 
 from ase import Atoms
 from mlip.simulation import SimulationState
@@ -28,9 +29,37 @@ from mlipaudit.benchmarks.nve_energy_conservation import nve_energy_conservation
 from mlipaudit.benchmarks.reference_geometry_stability import (
     reference_geometry_stability as rgs,
 )
+from mlipaudit.utils import run_simulation
 from mlipaudit.utils.simulation import get_simulation_engine
 
 logger = logging.getLogger(__name__)
+
+
+def _run_simulation_or_none(*args: Any, **kwargs: Any) -> Any:
+    """
+    Run an mlipaudit simulation, returning ``None`` if it raises.
+
+    ``None`` is what mlipaudit's NVE ``run_model`` already expects from a
+    simulation that produced no usable state, so the failing system is recorded
+    as failed and the remaining systems still run.
+
+    Parameters
+    ----------
+    *args
+        Positional arguments for ``run_simulation``.
+    **kwargs
+        Keyword arguments for ``run_simulation``.
+
+    Returns
+    -------
+    Any
+        Final simulation state, or ``None`` if the simulation raised.
+    """
+    try:
+        return run_simulation(*args, **kwargs)
+    except Exception as exc:
+        warn(f"Simulation failed: {exc}", stacklevel=2)
+        return None
 
 
 class MlPegAuditBenchmark:
@@ -109,17 +138,30 @@ class MlPegNVEEnergyConservationBenchmark(
     """
     ``NVEEnergyConservationBenchmark`` wired up for ml-peg.
 
+    Two upstream behaviours are patched out:
+
     ``run_model`` calls ``skip_unallowed_elements`` regardless of
-    ``skip_if_elements_missing``, which raises for ASE ``Calculator`` objects, so
-    it is patched out here.
+    ``skip_if_elements_missing``, which raises for ASE ``Calculator`` objects.
+
+    ``run_model`` also calls ``run_simulation`` without catching exceptions, so one
+    failing system aborts the whole benchmark, losing the systems already
+    simulated. Upstream already handles a simulation that returns no state, so
+    failures are routed into that path instead.
     """
 
     def run_model(self) -> None:
-        """Run the benchmark without the per-system element pre-check."""
-        with patch.object(
-            nve_energy_conservation,
-            "skip_unallowed_elements",
-            lambda force_field, structure_tuples: [],
+        """Run the benchmark, tolerating per-system simulation failures."""
+        with (
+            patch.object(
+                nve_energy_conservation,
+                "skip_unallowed_elements",
+                lambda force_field, structure_tuples: [],
+            ),
+            patch.object(
+                nve_energy_conservation,
+                "run_simulation",
+                _run_simulation_or_none,
+            ),
         ):
             super().run_model()
 
