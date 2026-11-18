@@ -12,6 +12,7 @@ import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.nve_energy_conservation.nve_energy_conservation import (
+    SIMULATION_CONFIG,
     SYSTEMS,
     NVEEnergyConservationModelOutput,
     NVEEnergyConservationResult,
@@ -19,10 +20,7 @@ from mlipaudit.benchmarks.nve_energy_conservation.nve_energy_conservation import
 )
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import (
-    build_dispersion_name_map,
-    load_metrics_config,
-)
+from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegNVEEnergyConservationBenchmark
@@ -30,7 +28,6 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map()
 
 BENCHMARK = MlPegNVEEnergyConservationBenchmark.name
 
@@ -43,6 +40,11 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 EV_TO_MEV = 1000.0
+
+# Snapshots a full trajectory produces, used to spot one that stopped early.
+EXPECTED_FRAMES = (
+    SIMULATION_CONFIG["num_steps"] // SIMULATION_CONFIG["snapshot_interval"]
+)
 
 
 def check_dataset() -> None:
@@ -66,7 +68,9 @@ def completed(result: NVEEnergyConservationResult) -> list[NVEStructureResult]:
     Get the systems that were simulated and analysed successfully.
 
     Skipped systems have no score, and failed systems have no drift statistics, so
-    both are excluded from the averaged metrics and from the drift plot.
+    both are excluded from the averaged metrics and from the drift plot. A
+    trajectory that stopped early is still fitted by mlipaudit, over its shorter
+    window, so the frame count is checked too.
 
     Parameters
     ----------
@@ -84,6 +88,7 @@ def completed(result: NVEEnergyConservationResult) -> list[NVEStructureResult]:
         if not structure.skipped
         and not structure.failed
         and structure.energy_drift_ratio is not None
+        and structure.num_frames >= EXPECTED_FRAMES
     ]
 
 
@@ -191,6 +196,9 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
         y_label="Total energy drift, offset corrected / meV/atom",
         show_line=True,
         show_markers=False,
+        hovertemplate=(
+            "<b>Time: </b>%{x:.3g} ps<br><b>Drift: </b>%{y:.3g} meV/atom<br>"
+        ),
         horizontal_lines=[{"y": 0.0, "name": "Perfect conservation"}],
     )
     def plot_result() -> dict[str, list[list[float]]]:
@@ -331,7 +339,6 @@ def get_score(
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
-    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     drift_plots: None,
