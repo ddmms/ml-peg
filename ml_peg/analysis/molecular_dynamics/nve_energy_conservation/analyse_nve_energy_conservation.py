@@ -13,7 +13,6 @@ import pytest
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.nve_energy_conservation.nve_energy_conservation import (
     SYSTEMS,
-    NVEEnergyConservationBenchmark,
     NVEEnergyConservationModelOutput,
     NVEEnergyConservationResult,
     NVEStructureResult,
@@ -26,13 +25,14 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
+from ml_peg.calcs.utils.mlipaudit import MlPegNVEEnergyConservationBenchmark
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
+DISPERSION_NAME_MAP = build_dispersion_name_map()
 
-BENCHMARK = NVEEnergyConservationBenchmark.name
+BENCHMARK = MlPegNVEEnergyConservationBenchmark.name
 
 CALC_PATH = CALCS_ROOT / "molecular_dynamics" / "nve_energy_conservation" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "molecular_dynamics" / "nve_energy_conservation"
@@ -108,7 +108,7 @@ def analyze_results() -> dict[str, NVEEnergyConservationResult]:
         output_path = CALC_PATH / model_name / "model_output.json"
         if not output_path.exists():
             continue
-        benchmark = NVEEnergyConservationBenchmark(
+        benchmark = MlPegNVEEnergyConservationBenchmark(
             force_field=Calculator(),
             data_input_dir=CALC_PATH,
             run_mode="standard",
