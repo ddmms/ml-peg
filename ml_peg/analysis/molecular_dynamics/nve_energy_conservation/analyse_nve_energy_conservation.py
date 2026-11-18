@@ -51,17 +51,13 @@ def check_dataset() -> None:
 
     The calculation copies the downloaded structures into its outputs, so the
     analysis does not need to download the input data again.
-
-    Raises
-    ------
-    ValueError
-        If any structure is missing from the calculation outputs.
     """
     for spec in SYSTEMS:
         structure_path = CALC_PATH / BENCHMARK / spec.filename
         if not structure_path.exists():
-            raise ValueError(
-                f"{structure_path} does not exist. Please run the calculation."
+            pytest.skip(
+                f"{structure_path} does not exist. Please run the calculation.",
+                allow_module_level=True,
             )
 
 
