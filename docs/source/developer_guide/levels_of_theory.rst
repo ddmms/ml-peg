@@ -132,6 +132,7 @@ please add it to this table when making a pull request for your benchmark or mod
 
 - ``B97-3c``
 - ``PBE``
+- ``PBE+D3``
 - ``PBEsol``
 - ``r2SCAN``
 - ``ωB97M/def2-TZVPP``

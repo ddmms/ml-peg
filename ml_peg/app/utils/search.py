@@ -34,6 +34,7 @@ def build_search_box() -> Div:
             ),
             Div(id="sidebar-search-results", className="mlpeg-search-results"),
             Store(id="sidebar-search-jump", storage_type="memory"),
+            Store(id="bench-open-request", storage_type="memory"),
         ],
         className="mlpeg-search",
         **{"role": "search"},
@@ -216,7 +217,15 @@ def register_search_callbacks(entries: list[dict[str, str]]) -> None:
                     if (tries++ < 100) setTimeout(openCard, 100);
                     return;
                 }
-                if (toggle.getAttribute("aria-expanded") !== "true") toggle.click();
+                // Ask for the card to be open, rather than clicking its
+                // toggle: a jump can be triggered more than once for a single
+                // selection (the result click and the href change it causes),
+                // and a toggle would then close what the first one opened.
+                if (toggle.getAttribute("aria-expanded") !== "true") {
+                    window.dash_clientside.set_props(
+                        "bench-open-request", {data: {name: name, token: token}}
+                    );
+                }
                 var card = toggle.closest(".mlpeg-bench-card") || toggle;
                 card.scrollIntoView({behavior: "smooth", block: "start"});
                 setTimeout(function() {
