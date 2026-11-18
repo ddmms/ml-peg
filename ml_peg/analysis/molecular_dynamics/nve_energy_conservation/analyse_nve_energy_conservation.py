@@ -161,6 +161,10 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
     an axis, and keeps its sign, which distinguishes a model that heats up from one
     that cools down.
 
+    The fitted intercept is subtracted, so systems that relax at the start are not
+    left offset from the zero line. Only the slope is scored, which a shift cannot
+    change.
+
     Parameters
     ----------
     model_name
@@ -172,7 +176,7 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
         structure.structure_name: [
             structure.times_ps,
             [
-                drift / structure.num_atoms * EV_TO_MEV
+                (drift - structure.intercept_ev) / structure.num_atoms * EV_TO_MEV
                 for drift in structure.energy_drift_ev
             ],
         ]
@@ -184,7 +188,7 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
         filename=OUT_PATH / f"{model_name}_drift_scatter.json",
         title=f"<b>{model_name} NVE MD</b>",
         x_label="Time / ps",
-        y_label="Total energy drift / meV/atom",
+        y_label="Total energy drift, offset corrected / meV/atom",
         show_line=True,
         show_markers=False,
         horizontal_lines=[{"y": 0.0, "name": "Perfect conservation"}],
@@ -196,7 +200,7 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
         Returns
         -------
         dict[str, list[list[float]]]
-            Times and per-atom drifts for each system.
+            Times and offset-corrected per-atom drifts for each system.
         """
         return drifts
 
