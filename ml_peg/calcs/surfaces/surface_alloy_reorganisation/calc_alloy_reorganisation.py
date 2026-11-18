@@ -62,7 +62,15 @@ def test_surface_alloy_reorganisation(mlip: tuple[str, Any]) -> None:
 
         # Remove any output from a previous run, so a failure in this run leaves no
         # output file, which analysis maps to NaN for every dependent observable.
-        out_file.unlink(missing_ok=True)
+        try:
+            out_file.unlink(missing_ok=True)
+        except OSError as exc:
+            warn(
+                f"Failed to remove previous output for {model_name} {filename}, "
+                f"skipping: {exc}",
+                stacklevel=2,
+            )
+            continue
 
         try:
             slab = read(path_init / "POSCAR", index=0, format="vasp")
@@ -104,4 +112,11 @@ def test_surface_alloy_reorganisation(mlip: tuple[str, Any]) -> None:
             tmp_file.replace(out_file)
         except Exception as exc:
             warn(f"Failed to write {model_name} {filename}: {exc}", stacklevel=2)
-            tmp_file.unlink(missing_ok=True)
+            try:
+                tmp_file.unlink(missing_ok=True)
+            except OSError as cleanup_exc:
+                warn(
+                    f"Failed to remove temporary file for {model_name} {filename}: "
+                    f"{cleanup_exc}",
+                    stacklevel=2,
+                )
