@@ -65,7 +65,7 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
 
     benchmark = MlPegConformerSelectionBenchmark(
         force_field=calc,
-        data_input_dir=data_input_dir,
+        data_input_dir=OUT_PATH,
         run_mode="standard",
     )
     benchmark.run_model()
