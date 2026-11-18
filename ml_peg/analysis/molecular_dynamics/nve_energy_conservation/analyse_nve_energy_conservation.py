@@ -317,6 +317,10 @@ def get_score(
     """
     Get the mlipaudit benchmark score for each model.
 
+    A trajectory that stopped early is scored 0, as mlipaudit scores one that
+    failed. Its drift is fitted over a shorter window, so it would otherwise score
+    highly for having drifted less.
+
     Parameters
     ----------
     analyze_results
@@ -327,10 +331,16 @@ def get_score(
     dict[str, float]
         Mean of the per-system soft threshold scores, between 0 and 1.
     """
-    return {
-        model_name: (result.score if result.score is not None else np.nan)
-        for model_name, result in analyze_results.items()
-    }
+    scores = {}
+    for model_name, result in analyze_results.items():
+        system_scores = [
+            0.0 if structure.num_frames < EXPECTED_FRAMES else structure.score
+            for structure in result.structure_results
+            if not structure.skipped and structure.score is not None
+        ]
+        scores[model_name] = float(np.mean(system_scores)) if system_scores else np.nan
+
+    return scores
 
 
 @pytest.fixture
