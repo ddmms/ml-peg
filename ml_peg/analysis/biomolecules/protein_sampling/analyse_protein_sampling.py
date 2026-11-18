@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from shutil import copyfile
+from warnings import warn
 
 from ase.calculators.calculator import Calculator
 from ase.io import read
@@ -19,15 +20,16 @@ from mlipaudit.utils.biomolecules import STRUCTURE_NAMES
 from ml_peg.analysis.utils.decorators import build_table, merge_saved_traces
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    check_dataset,
     load_metrics_config,
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import MlPegSamplingBenchmark
 from ml_peg.models import current_models
-from ml_peg.models.get_models import load_models
+from ml_peg.models.get_models import get_model_names
 
-MODELS = load_models(current_models)
+MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
 
 BENCHMARK = MlPegSamplingBenchmark.name
@@ -45,74 +47,61 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
-def structure_xyz(structure_name: str) -> Path:
+@pytest.fixture
+def dataset_dir() -> Path:
     """
-    Get the path to a starting structure saved by the calculation.
-
-    Parameters
-    ----------
-    structure_name
-        Name of the structure.
+    Locate the shared reference data staged by the calculation.
 
     Returns
     -------
     Path
-        Path to the structure's starting geometry.
+        Directory containing the starting structures, topologies and angle libraries.
     """
-    return CALC_PATH / BENCHMARK_DATA_DIR / f"{structure_name}.xyz"
-
-
-def check_dataset() -> None:
-    """
-    Check the input structures saved by the calculation are available.
-
-    The calculation copies the downloaded input data into its outputs, so the
-    analysis does not need to download it again.
-
-    Raises
-    ------
-    ValueError
-        If any starting structure is missing from the calculation outputs.
-    """
-    for structure_name in STRUCTURE_NAMES:
-        if not structure_xyz(structure_name).exists():
-            raise ValueError(
-                f"{structure_xyz(structure_name)} does not exist. "
-                "Please run the calculation."
-            )
+    directory = CALC_PATH / BENCHMARK_DATA_DIR
+    for name in STRUCTURE_NAMES:
+        check_dataset(directory / f"{name}.xyz")
+        check_dataset(directory / f"{name}.pdb")
+    for name in ("backbone_reference_data.json", "sidechain_reference_data.json"):
+        check_dataset(directory / name)
+    return directory
 
 
 @pytest.fixture
-def analyze_results() -> dict:
+def analyze_results(dataset_dir: Path) -> dict:
     """
-    Run the mlipaudit analysis for each model.
+    Run the MLIP Audit analysis for each model.
+
+    Parameters
+    ----------
+    dataset_dir
+        Directory containing the staged benchmark data.
 
     Returns
     -------
     dict
-        Mapping of model name to its ``SamplingResult``.
+        Mapping of model name to its sampling result, or None for an unreadable run.
     """
-    check_dataset()
-
+    benchmark = MlPegSamplingBenchmark(
+        force_field=Calculator(), data_input_dir=dataset_dir.parent, run_mode="standard"
+    )
     results = {}
     for model_name in MODELS:
-        output_dir = CALC_PATH / model_name / BENCHMARK
-        if not (output_dir / "model_output.zip").exists():
+        output_dir = CALC_PATH / model_name
+        if not (output_dir / BENCHMARK / "model_output.zip").exists():
             continue
-        benchmark = MlPegSamplingBenchmark(
-            force_field=Calculator(),
-            data_input_dir=CALC_PATH,
-            run_mode="standard",
-        )
-        benchmark.model_output = load_model_output_from_disk(
-            CALC_PATH / model_name, MlPegSamplingBenchmark
-        )
-        results[model_name] = benchmark.analyze()
+        try:
+            benchmark.model_output = load_model_output_from_disk(
+                output_dir, MlPegSamplingBenchmark
+            )
+            results[model_name] = benchmark.analyze()
+        except Exception as exc:
+            warn(f"Cannot score {model_name}: {exc}", stacklevel=2)
+            results[model_name] = None
     return results
 
 
 @pytest.fixture
-def struct_info() -> dict:
+def struct_info(dataset_dir: Path) -> dict:
     """
     Write per-structure element info to ``info.json`` for filtering.
 
@@ -120,104 +109,32 @@ def struct_info() -> dict:
     be excluded once partial filtering is supported. The order follows
     ``STRUCTURE_NAMES``.
 
+    Parameters
+    ----------
+    dataset_dir
+        Directory containing the staged starting structures.
+
     Returns
     -------
     dict
         Mapping with the per-structure lists of elements.
     """
-    check_dataset()
+    elements = []
+    for name in STRUCTURE_NAMES:
+        path = dataset_dir / f"{name}.xyz"
+        try:
+            elements.append(sorted(set(read(path).get_chemical_symbols())))
+        except Exception as exc:
+            pytest.skip(f"Cannot read starting structure {path}: {exc}")
 
-    info = {
-        "systems": list(STRUCTURE_NAMES),
-        "elements": [
-            sorted(set(read(structure_xyz(name)).get_chemical_symbols()))
-            for name in STRUCTURE_NAMES
-        ],
-    }
-
+    info = {"systems": list(STRUCTURE_NAMES), "elements": elements}
     OUT_PATH.mkdir(parents=True, exist_ok=True)
     for name in STRUCTURE_NAMES:
-        copyfile(structure_xyz(name), OUT_PATH / f"{name}.xyz")
+        copyfile(dataset_dir / f"{name}.xyz", OUT_PATH / f"{name}.xyz")
     with (OUT_PATH / "info.json").open("w", encoding="utf-8") as f:
         json.dump(info, f, indent=1)
 
     return info
-
-
-@pytest.fixture
-def get_rmsd_backbone(analyze_results) -> dict[str, float]:
-    """
-    Get the mean backbone dihedral distribution RMSD for each model.
-
-    Parameters
-    ----------
-    analyze_results
-        Mapping of model name to its ``SamplingResult``.
-
-    Returns
-    -------
-    dict[str, float]
-        Backbone dihedral distribution RMSD averaged over residues and systems.
-    """
-    return {
-        model_name: (
-            result.rmsd_backbone_total
-            if result.rmsd_backbone_total is not None
-            else np.nan
-        )
-        for model_name, result in analyze_results.items()
-    }
-
-
-@pytest.fixture
-def get_hellinger_backbone(analyze_results) -> dict[str, float]:
-    """
-    Get the mean backbone dihedral Hellinger distance for each model.
-
-    Parameters
-    ----------
-    analyze_results
-        Mapping of model name to its ``SamplingResult``.
-
-    Returns
-    -------
-    dict[str, float]
-        Backbone dihedral Hellinger distance averaged over residues and systems.
-    """
-    return {
-        model_name: (
-            result.hellinger_distance_backbone_total
-            if result.hellinger_distance_backbone_total is not None
-            else np.nan
-        )
-        for model_name, result in analyze_results.items()
-    }
-
-
-@pytest.fixture
-def get_outliers_ratio_backbone(analyze_results) -> dict[str, float]:
-    """
-    Get the mean backbone dihedral outliers ratio for each model.
-
-    Parameters
-    ----------
-    analyze_results
-        Mapping of model name to its ``SamplingResult``.
-
-    Returns
-    -------
-    dict[str, float]
-        Fraction of sampled backbone dihedrals lying far from the reference data,
-        averaged over residues and systems.
-    """
-    return {
-        model_name: (
-            result.outliers_ratio_backbone_total
-            if result.outliers_ratio_backbone_total is not None
-            else np.nan
-        )
-        for model_name, result in analyze_results.items()
-    }
 
 
 @pytest.fixture
@@ -228,33 +145,36 @@ def get_outliers_ratio_backbone(analyze_results) -> dict[str, float]:
     weights=DEFAULT_WEIGHTS,
     mlip_name_map=DISPERSION_NAME_MAP,
 )
-def metrics(
-    get_rmsd_backbone: dict[str, float],
-    get_hellinger_backbone: dict[str, float],
-    get_outliers_ratio_backbone: dict[str, float],
-) -> dict[str, dict]:
+def metrics(analyze_results: dict) -> dict[str, dict]:
     """
-    Get all metrics.
+    Report upstream scores, backbone diagnostics and simulation coverage.
 
     Parameters
     ----------
-    get_rmsd_backbone
-        Backbone dihedral distribution RMSD for all models.
-    get_hellinger_backbone
-        Backbone dihedral Hellinger distance for all models.
-    get_outliers_ratio_backbone
-        Backbone dihedral outliers ratio for all models.
+    analyze_results
+        Upstream sampling results by model, including failures.
 
     Returns
     -------
     dict[str, dict]
-        Metric names and values for all models.
+        Metric names mapped to per-model values.
     """
-    return {
-        "Backbone Dihedral RMSD": get_rmsd_backbone,
-        "Backbone Hellinger Distance": get_hellinger_backbone,
-        "Backbone Outliers Ratio": get_outliers_ratio_backbone,
-    }
+    rows = {name: {} for name in DEFAULT_THRESHOLDS}
+    for model, result in analyze_results.items():
+        for metric, attribute in (
+            ("Sampling Score", "score"),
+            ("Backbone Dihedral RMSD", "rmsd_backbone_total"),
+            ("Backbone Hellinger Distance", "hellinger_distance_backbone_total"),
+            ("Backbone Outliers Ratio", "outliers_ratio_backbone_total"),
+        ):
+            value = getattr(result, attribute, None)
+            rows[metric][model] = value if value is not None else np.nan
+        rows["Stable Proteins"][model] = (
+            sum(not system.failed for system in result.systems)
+            if result is not None
+            else np.nan
+        )
+    return rows
 
 
 @pytest.mark.framework("mlip_audit")
@@ -280,7 +200,7 @@ def test_protein_sampling(
     ):
         figure = go.Figure()
         for model, result in analyze_results.items():
-            values = getattr(result, attribute) or {}
+            values = getattr(result, attribute, None) or {}
             residues = sorted(values)
             contributors = [
                 [

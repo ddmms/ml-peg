@@ -30,6 +30,8 @@ class ProteinSamplingApp(BaseApp):
         """Show the residue breakdown for the selected metric."""
         plots = {}
         for metric in self.metrics:
+            if not metric.startswith("Backbone "):
+                continue
             slug = metric.lower().replace(" ", "_")
             plots[metric] = read_plot(
                 DATA_PATH / f"figure_{slug}.json", id=f"{BENCHMARK_NAME}-plot"
