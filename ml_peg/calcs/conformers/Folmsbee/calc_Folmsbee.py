@@ -56,11 +56,11 @@ def test_folmsbee(mlip: tuple[str, Any]) -> None:
     out_path = OUT_PATH / model_name
     out_path.mkdir(parents=True, exist_ok=True)
 
-    benchmark_name = MlPegConformerSelectionBenchmark.name
-
+    dataset_dir = OUT_PATH / MlPegConformerSelectionBenchmark.name
+    dataset_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(
         data_input_dir / "Folmsbee" / FOLMSBEE_DATASET_FILENAME,
-        OUT_PATH / benchmark_name,
+        dataset_dir,
     )
 
     benchmark = MlPegConformerSelectionBenchmark(
