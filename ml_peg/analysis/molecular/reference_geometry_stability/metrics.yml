@@ -4,7 +4,14 @@ metrics:
     bad: 0.3
     unit: Å
     weight: 0
-    tooltip: MLIP Audit mean of the neutral and charged subset average heavy-atom RMSDs.
+    tooltip: Mean of the neutral and charged subset average heavy-atom RMSDs. NaN if any reference molecule lacks a valid RMSD.
+    level_of_theory: B3LYP-D3(BJ)/DZVP
+  Avg RMSD (stable only):
+    good: 0.0
+    bad: 0.3
+    unit: Å
+    weight: 0
+    tooltip: MLIP Audit average over successful molecules, giving the neutral and charged subset means equal weight.
     level_of_theory: B3LYP-D3(BJ)/DZVP
   Geometry Score:
     good: 1.0

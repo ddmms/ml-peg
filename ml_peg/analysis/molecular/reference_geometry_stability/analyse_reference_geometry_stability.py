@@ -6,19 +6,22 @@ import json
 from pathlib import Path
 from warnings import warn
 
-from ase import Atoms
+from ase import Atoms, units
 from ase.build.rotate import rotation_matrix_from_points
-from ase.calculators.calculator import Calculator
 from ase.io import write
 import numpy as np
 import plotly.graph_objects as go
 import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
+import mdtraj as md
 from mlipaudit.benchmarks.reference_geometry_stability import (
     reference_geometry_stability as rgs,
 )
 from mlipaudit.io import load_model_output_from_disk
+from mlipaudit.scoring import compute_benchmark_score
+from mlipaudit.utils.stability import is_simulation_stable
+from mlipaudit.utils.trajectory_helpers import create_mdtraj_trajectory_from_positions
 
 from ml_peg.analysis.utils.decorators import build_table, merge_saved_traces, plot_hist
 from ml_peg.analysis.utils.utils import (
@@ -47,55 +50,83 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 
 @pytest.fixture
-def reference_benchmark():
+def reference_datasets() -> dict:
     """
-    Load both reference subsets from the calculation outputs.
+    Read the OpenFF references staged by the calculation.
 
     Returns
     -------
-    MlPegReferenceGeometryStabilityBenchmark
-        Benchmark configured with the available reference dataset.
+    dict
+        Reference molecules by subset and molecule identifier.
     """
-    for name in (rgs.OPENFF_NEUTRAL_FILENAME, rgs.OPENFF_CHARGED_FILENAME):
-        check_dataset(CALC_PATH / BENCHMARK / name)
-    return MlPegReferenceGeometryStabilityBenchmark(
-        force_field=Calculator(), data_input_dir=CALC_PATH, run_mode="standard"
-    )
+    datasets = {}
+    for subset, filename in (
+        ("openff_neutral", rgs.OPENFF_NEUTRAL_FILENAME),
+        ("openff_charged", rgs.OPENFF_CHARGED_FILENAME),
+    ):
+        path = CALC_PATH / BENCHMARK / filename
+        check_dataset(path)
+        datasets[subset] = rgs.Molecules.validate_json(path.read_text())
+    return datasets
 
 
-def molecule_trace(model, benchmark, result) -> go.Scatter:
+def analyze_model(model, model_output, datasets) -> tuple[dict, go.Scatter]:
     """
-    Save reference and final geometries for the molecules scored by MLIP Audit.
+    Calculate geometry metrics and save the aligned structures for one model.
 
     Parameters
     ----------
     model
         Model identifier used in the output directory.
-    benchmark
-        Benchmark holding this model's output and the OpenFF reference datasets.
-    result
-        Upstream RMSDs in the same order as the model output within each subset.
+    model_output
+        Raw model output containing saved minimization frames and failure flags.
+    datasets
+        OpenFF reference molecules keyed by subset and identifier.
 
     Returns
     -------
-    go.Scatter
-        One point per successfully scored molecule with its structure asset identifier.
+    tuple[dict, go.Scatter]
+        Locally calculated metrics and the per-molecule RMSD plot trace.
     """
     labels, rmsds, assets = [], [], []
+    subset_means = []
+    score_inputs = []
+    complete = True
     directory = OUT_PATH / "structures" / model
     directory.mkdir(parents=True, exist_ok=True)
-    for subset in rgs.DATASET_PREFIXES:
-        dataset = getattr(benchmark, f"_{subset}_dataset")
-        outputs = getattr(benchmark.model_output, subset)
-        values = getattr(result, subset).rmsd_values
-        for index, (output, value) in enumerate(zip(outputs, values, strict=True)):
-            if value is None:
+    for subset, dataset in datasets.items():
+        outputs = getattr(model_output, subset)
+        names = {output.molecule_name for output in outputs}
+        if len(names) != len(outputs) or not names.issubset(dataset):
+            raise ValueError(f"Invalid molecule identifiers in {subset}")
+        complete = complete and names == dataset.keys()
+        subset_rmsds = []
+        for index, output in enumerate(outputs):
+            state = output.simulation_state
+            if output.failed or state is None or not is_simulation_stable(state):
+                score_inputs.append(None)
+                complete = False
                 continue
             molecule = dataset[output.molecule_name]
             reference = Atoms(molecule.atom_symbols, positions=molecule.coordinates)
-            positions = np.asarray(output.simulation_state.positions).reshape(
-                -1, len(reference), 3
-            )[-1]
+            positions = state.positions[-1]
+            # Match the alignment, precision and unit conversion used by MLIP Audit.
+            target = create_mdtraj_trajectory_from_positions(
+                positions, molecule.atom_symbols
+            )
+            ref = create_mdtraj_trajectory_from_positions(
+                reference.positions, molecule.atom_symbols
+            )
+            heavy_indices = ref.top.select("not element H")
+            value = (
+                float(md.rmsd(target, ref, atom_indices=heavy_indices)[0]) * units.nm
+            )
+            if not np.isfinite(value):
+                score_inputs.append(None)
+                complete = False
+                continue
+            subset_rmsds.append(value)
+            score_inputs.append(value)
             heavy = reference.numbers != 1
             reference.translate(-reference.positions[heavy].mean(axis=0))
             centered = positions - positions[heavy].mean(axis=0)
@@ -108,7 +139,19 @@ def molecule_trace(model, benchmark, result) -> go.Scatter:
             labels.append(f"{subset.removeprefix('openff_')} / {output.molecule_name}")
             rmsds.append(value)
             assets.append(f"{model}/{asset}")
-    return go.Scatter(
+        subset_means.append(np.mean(subset_rmsds) if subset_rmsds else np.nan)
+    stable_mean = float(np.mean(subset_means))
+    row = {
+        "rmsds": rmsds,
+        "Avg RMSD": stable_mean if complete else np.nan,
+        "Avg RMSD (stable only)": stable_mean,
+        "Geometry Score": compute_benchmark_score(
+            [score_inputs], [rgs.RMSD_SCORE_THRESHOLD]
+        )
+        if np.isfinite(stable_mean)
+        else np.nan,
+    }
+    return row, go.Scatter(
         name=model,
         x=labels,
         y=rmsds,
@@ -119,19 +162,19 @@ def molecule_trace(model, benchmark, result) -> go.Scatter:
 
 
 @pytest.fixture
-def analyze_results(reference_benchmark) -> dict:
+def analyze_results(reference_datasets) -> dict:
     """
-    Run the MLIP Audit analysis for each model.
+    Calculate metrics from saved model output and staged reference geometries.
 
     Parameters
     ----------
-    reference_benchmark
-        Benchmark initialized with both OpenFF reference subsets.
+    reference_datasets
+        Staged OpenFF reference molecules for both subsets.
 
     Returns
     -------
     dict
-        MLIP Audit results by model, or None if analysis failed.
+        Metrics and per-molecule RMSDs by model, or None if analysis failed.
     """
     results = {}
     figure = go.Figure()
@@ -140,17 +183,16 @@ def analyze_results(reference_benchmark) -> dict:
         if not (output_dir / "model_output.zip").exists():
             continue
         try:
-            reference_benchmark.model_output = load_model_output_from_disk(
+            output = load_model_output_from_disk(
                 CALC_PATH / model_name, MlPegReferenceGeometryStabilityBenchmark
             )
-            results[model_name] = reference_benchmark.analyze()
+            row, trace = analyze_model(model_name, output, reference_datasets)
         except Exception as exc:
             warn(f"Cannot score {model_name}: {exc}", stacklevel=2)
             results[model_name] = None
             continue
-        figure.add_trace(
-            molecule_trace(model_name, reference_benchmark, results[model_name])
-        )
+        results[model_name] = row
+        figure.add_trace(trace)
     figure.update_layout(
         title="Heavy-atom RMSD by molecule",
         xaxis_title="OpenFF subset / molecule",
@@ -164,28 +206,24 @@ def analyze_results(reference_benchmark) -> dict:
 
 
 @pytest.fixture
-def struct_info(reference_benchmark) -> dict:
+def struct_info(reference_datasets) -> dict:
     """
     Write the combined element set to ``info.json`` for filtering.
 
     Parameters
     ----------
-    reference_benchmark
-        Benchmark initialized with both OpenFF reference subsets.
+    reference_datasets
+        Staged OpenFF reference molecules for both subsets.
 
     Returns
     -------
     dict
         Mapping with the sorted list of elements present in the dataset.
     """
-    benchmark = reference_benchmark
     elements = sorted(
         {
             symbol
-            for dataset in (
-                benchmark._openff_neutral_dataset,
-                benchmark._openff_charged_dataset,
-            )
+            for dataset in reference_datasets.values()
             for molecule in dataset.values()
             for symbol in molecule.atom_symbols
         }
@@ -211,63 +249,17 @@ def rmsd_histogram(analyze_results) -> dict[str, list]:
     Parameters
     ----------
     analyze_results
-        MLIP Audit results by model, or None if analysis failed.
+        Metrics and per-molecule RMSDs by model, or None if analysis failed.
 
     Returns
     -------
     dict[str, list]
         RMSD values (Angstrom) across both datasets for each model.
     """
-    results = {}
-    for model_name, result in analyze_results.items():
-        if result is None:
-            continue
-        values = result.openff_neutral.rmsd_values + result.openff_charged.rmsd_values
-        successful = [value for value in values if value is not None]
-        if successful:
-            results[model_name] = successful
-    return results
-
-
-@pytest.fixture
-def get_avg_rmsd(analyze_results) -> dict[str, float]:
-    """
-    Get the average heavy-atom RMSD for each model.
-
-    Parameters
-    ----------
-    analyze_results
-        MLIP Audit results by model, or None if analysis failed.
-
-    Returns
-    -------
-    dict[str, float]
-        Average RMSD in Angstrom for each model.
-    """
     return {
-        model_name: result.avg_rmsd if result is not None else np.nan
-        for model_name, result in analyze_results.items()
-    }
-
-
-@pytest.fixture
-def get_score(analyze_results) -> dict[str, float]:
-    """
-    Get the MLIP Audit benchmark score for each model.
-
-    Parameters
-    ----------
-    analyze_results
-        MLIP Audit results by model, or None if analysis failed.
-
-    Returns
-    -------
-    dict[str, float]
-        The MLIP Audit per-molecule soft-threshold RMSD score (0 to 1) for each model.
-    """
-    return {
-        model_name: result.score if result is not None else np.nan
-        for model_name, result in analyze_results.items()
+        model: result["rmsds"]
+        for model, result in analyze_results.items()
+        if result is not None and result["rmsds"]
     }
 
 
@@ -281,8 +273,7 @@ def get_score(analyze_results) -> dict[str, float]:
 )
 def metrics(
     rmsd_histogram,
-    get_avg_rmsd: dict[str, float],
-    get_score: dict[str, float],
+    analyze_results: dict,
 ) -> dict[str, dict]:
     """
     Get all metrics.
@@ -291,10 +282,8 @@ def metrics(
     ----------
     rmsd_histogram
         Per-molecule RMSD values (triggers the histogram plot).
-    get_avg_rmsd
-        Average RMSDs for all models.
-    get_score
-        The MLIP Audit benchmark scores for all models.
+    analyze_results
+        Calculated metrics and per-molecule RMSDs by model.
 
     Returns
     -------
@@ -302,8 +291,11 @@ def metrics(
         Metric names and values for all models.
     """
     return {
-        "Avg RMSD": get_avg_rmsd,
-        "Geometry Score": get_score,
+        metric: {
+            model: result[metric] if result is not None else np.nan
+            for model, result in analyze_results.items()
+        }
+        for metric in DEFAULT_THRESHOLDS
     }
 
 

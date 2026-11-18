@@ -57,10 +57,10 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
     with pytest.raises(
         pytest.skip.Exception, match=analysis.rgs.OPENFF_NEUTRAL_FILENAME
     ):
-        analysis.reference_benchmark.__wrapped__()
+        analysis.reference_datasets.__wrapped__()
     shutil.copytree(outputs / analysis.BENCHMARK, transferred / analysis.BENCHMARK)
     monkeypatch.setattr(analysis, "OUT_PATH", tmp_path / "app")
-    reference = analysis.reference_benchmark.__wrapped__()
+    reference = analysis.reference_datasets.__wrapped__()
     with pytest.warns(UserWarning, match="Cannot score corrupt"):
         values = analysis.analyze_results.__wrapped__(reference)
     assert values["corrupt"] is None
@@ -74,12 +74,12 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
     )
     upstream.run_model()
     expected = upstream.analyze()
-    assert analysis.get_avg_rmsd.__wrapped__(values)["test-model"] == pytest.approx(
-        expected.avg_rmsd
-    )
-    assert analysis.get_score.__wrapped__(values)["test-model"] == pytest.approx(
-        expected.score
-    )
+    table = analysis.metrics.__wrapped__.__wrapped__(None, values)
+    for metric in ("Avg RMSD", "Avg RMSD (stable only)"):
+        assert table[metric]["test-model"] == pytest.approx(expected.avg_rmsd)
+        assert np.isnan(table[metric]["corrupt"])
+        assert analysis.DEFAULT_WEIGHTS[metric] == 0
+    assert table["Geometry Score"]["test-model"] == pytest.approx(expected.score)
 
     plot = json.loads((analysis.OUT_PATH / "figure_molecule_rmsd.json").read_text())
     (trace,) = plot["data"]
@@ -92,7 +92,7 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
         assert len(frames) == 2
         np.testing.assert_allclose(frames[0].positions.mean(axis=0), 0, atol=1e-8)
         np.testing.assert_allclose(frames[1].positions.mean(axis=0), 0, atol=1e-8)
-        output = getattr(reference.model_output, subset)[0]
+        output = getattr(upstream.model_output, subset)[0]
         for frame, raw in zip(
             frames,
             (molecule["coordinates"], output.simulation_state.positions[-1]),
@@ -102,3 +102,17 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
                 np.linalg.norm(np.subtract(raw[0], raw[1]))
             )
         assert value == getattr(expected, subset).rmsd_values[0]
+
+    # A missing output and a recorded failure both invalidate the complete mean.
+    reference["openff_neutral"]["mol_1"] = reference["openff_neutral"]["mol_0"]
+    for recorded_failure in (False, True):
+        if recorded_failure:
+            failed = upstream.model_output.openff_neutral[0].model_copy(
+                update={"molecule_name": "mol_1", "failed": True}
+            )
+            upstream.model_output.openff_neutral.append(failed)
+        partial = upstream.analyze()
+        row, _ = analysis.analyze_model("partial", upstream.model_output, reference)
+        assert np.isnan(row["Avg RMSD"])
+        assert row["Avg RMSD (stable only)"] == pytest.approx(partial.avg_rmsd)
+        assert row["Geometry Score"] == pytest.approx(partial.score)

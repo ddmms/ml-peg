@@ -193,16 +193,20 @@ Metrics
 1. Average RMSD
 
 ASE BFGS relaxes each molecule for up to 1,000 steps with a maximum force
-threshold of 0.01 eV/Å. MLIP Audit aligns the heavy atoms of the last saved frame
+threshold of 0.01 eV/Å. Analysis reads the two OpenFF reference sets and each model’s raw minimization
+output from the calculation directory. It aligns the heavy atoms of the last saved frame
 to the reference, then computes the mean RMSD within each subset. Avg RMSD
-gives the neutral and charged subset means equal weight.
+gives the neutral and charged subset means equal weight and requires valid RMSDs
+for all 200 neutral and 20 charged molecules. An incomplete run gives NaN.
+**Avg RMSD (stable only)** averages the successful molecules within each subset
+and gives the two subset means equal weight. Both subsets need a valid RMSD. Both RMSD columns have zero weight by default.
 
 2. Geometry Score
 
 MLIP Audit gives each molecule a score of one up to 0.075 Å RMSD and applies
 its exponential decay above this threshold. A failed molecule contributes zero.
-The reported score averages all 220 contributions. If MLIP Audit cannot produce a result, the model has no score. Select **Geometry Score** to see the RMSD histogram for successful molecules.
-Select **Avg RMSD** to open the per-molecule plot, then click a point to compare the OpenFF reference
+The reported score averages all 220 contributions. If either subset has no valid RMSDs or the archive is unreadable, the model has no score. Select **Geometry Score** to see the RMSD histogram for successful molecules.
+Select either RMSD column to open the per-molecule plot, then click a point to compare the OpenFF reference
 geometry (first frame) with the final saved model geometry (second frame).
 The viewer aligns the heavy atoms and displays all atoms in both frames.
 
