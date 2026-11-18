@@ -184,6 +184,8 @@ Summary
 Ability to preserve the ground-state geometry of small organic molecules during
 energy minimization. Structures are 200 neutral and 20 charged molecules
 selected from the OpenFF industry dataset to maximize chemical diversity.
+The relaxation protocol and scoring follow `MLIPAudit (Wehrhan et al., 2025)
+<https://arxiv.org/abs/2511.20487>`_.
 
 Metrics
 -------
