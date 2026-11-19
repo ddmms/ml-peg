@@ -291,3 +291,47 @@ def test_resume_water_md_across_walltime(tmp_path, stop_step, damage):
 
     assert saved_steps(resumed) == saved_steps(complete) == list(range(8, 21, 2))
     assert np.loadtxt(resumed / "md-stats.dat")[:, 0].tolist() == list(range(21))
+
+
+def test_dipole_extraction_failure_is_per_model(tmp_path, monkeypatch):
+    """A model can fail dipole extraction even when its trajectory is readable."""
+    import pickle
+    from runpy import run_module
+
+    from ase.io import write
+
+    from ml_peg.calcs.utils import utils
+
+    data = tmp_path / "copper_water_interface"
+    data.mkdir()
+    np.save(data / "ref_dipole_data.npy", [0.0])
+    (data / "dipole_profile_reference.pkl").write_bytes(pickle.dumps({}))
+    monkeypatch.setattr(utils, "download_s3_data", lambda **kwargs: tmp_path)
+    module = run_module(
+        "ml_peg.analysis.surfaces.copper_water_interface.analyse_copper_water_interface"
+    )
+    slab = Atoms("Cu120", positions=np.indices((6, 5, 4)).reshape(3, -1).T * 3)
+    water = Atoms("OH2", positions=[[1, 1, 13], [1.8, 1, 13.4], [1, 1.8, 13.4]])
+    good = slab + water
+    good.set_cell([20, 20, 30])
+    for model, atoms in (("bad", slab), ("good", good)):
+        (tmp_path / model).mkdir()
+        write(tmp_path / model / "md-traj.extxyz", atoms)
+
+    stdev = module["stdev_dipole_z_deviation"].__wrapped__
+    profile = module["created_dipole_profile"].__wrapped__
+    stdev.__globals__.update(
+        MODELS=["bad", "good"], CALC_PATH=tmp_path, RUN_STEPS=1, TRAJ_EVERY=1
+    )
+    with pytest.warns(UserWarning, match="z-dipoles for bad"):
+        result = stdev()
+    assert np.isnan(result["stdev_dipole_z_deviation"]["bad"])
+    assert result["stdev_dipole_z_deviation"]["good"] == 0.0
+    assert set(result["raw_dipoles"]) == {"ref", "good"}
+    assert np.isfinite(result["raw_dipoles"]["good"]).all()
+    with pytest.warns(UserWarning, match="dipole profile for bad"):
+        profiles = profile()
+    assert profiles["bad"] is md.FAILED
+    z, integrated = profiles["good"]["dipole"]
+    assert len(z) == len(integrated) > 0
+    assert np.isfinite(integrated).all()

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import pickle
+from warnings import warn
 
 import numpy as np
 import plotly.graph_objects as go
@@ -319,7 +320,13 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
             dipole_results[model_name] = np.nan
             continue
 
-        dipoles_z = get_z_dipoles(frames, q=DIPOLE_CHARGE)
+        try:
+            with np.errstate(divide="raise", invalid="raise"):
+                dipoles_z = get_z_dipoles(frames, q=DIPOLE_CHARGE)
+        except Exception as exc:
+            warn(f"Unable to extract z-dipoles for {model_name}: {exc}", stacklevel=2)
+            dipole_results[model_name] = np.nan
+            continue
 
         dipole_results[model_name] = np.abs(np.std(dipoles_z) - ref_dipole_stdev)
         raw_dipoles[model_name] = dipoles_z.tolist()
@@ -691,10 +698,18 @@ def created_dipole_profile() -> dict[str, dict]:
             profiles[model_name] = md.FAILED
             continue
 
-        _, all_dipoles = get_z_dipoles_frames(frames)
-        z_bins, profile = get_z_dipoles_average_integrated_profile(
-            all_dipoles, n_frames=len(frames)
-        )
+        try:
+            with np.errstate(divide="raise", invalid="raise"):
+                _, all_dipoles = get_z_dipoles_frames(frames)
+                z_bins, profile = get_z_dipoles_average_integrated_profile(
+                    all_dipoles, n_frames=len(frames)
+                )
+        except Exception as exc:
+            warn(
+                f"Unable to build dipole profile for {model_name}: {exc}", stacklevel=2
+            )
+            profiles[model_name] = md.FAILED
+            continue
         profiles[model_name] = {"dipole": (z_bins, profile)}
 
     return profiles
