@@ -85,6 +85,13 @@ mace-cueq = [
     "torch == 2.14.1; sys_platform == 'linux'",
 ]
 
+# Landscape exploration, for the `landscapes` benchmarks. Not on PyPI, so it is
+# pinned to a tag rather than a version; the benchmarks skip via importorskip
+# if it is absent, so this extra is only needed to run them.
+topsearch = [
+    "topsearch @ git+https://github.com/VladCarare/topography-searcher@v0.1.7",
+]
+
 mattersim = [
     "mattersim==1.2.4; python_version >= '3.12'",
 ]
