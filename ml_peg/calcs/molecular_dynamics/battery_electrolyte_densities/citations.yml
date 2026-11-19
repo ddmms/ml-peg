@@ -1,0 +1,27 @@
+implementers:
+  - name: "Nitesh Kumar"
+    github: "KMNitesh05"
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+contributors:
+  - name: "Samuel Blau"
+    github: "samblau"
+
+citations:
+  - key: "kumar2026prediction"
+    role: benchmark_method
+    title: "Prediction and Experimental Verification of Electrolyte Solvation Structure from an OMol25-Trained Interatomic Potential"
+    authors:
+      - "Nitesh Kumar"
+      - "Jianwei Lai"
+      - "Casey S. Mezerkor"
+      - "Jiaqi Wang"
+      - "Kamila M. Wiaderek"
+      - "J. David Bazak"
+      - "Samuel M. Blau"
+      - "Ethan J. Crumlin"
+    year: 2026
+    doi: "10.1021/acs.jpclett.6c01037"
+    url: "https://pubs.acs.org/doi/10.1021/acs.jpclett.6c01037"

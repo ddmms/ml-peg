@@ -2,6 +2,7 @@ title: Molecular Dynamics
 description: Liquid Densities, Polymer Densities, Water Densities, Stability
 weight: 0
 benchmark_weights:
+  battery_electrolyte_densities: 0
   bond_length_distribution: 0
   ethanol_water_density: 0
   inference_speed: 0
