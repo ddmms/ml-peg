@@ -2747,6 +2747,10 @@ def cell_to_bar(
                         fig.to_json()
                     )
 
+            data_bundle["models"] = merge_saved_models(
+                models_data, filename, key="models"
+            )
+
             # Save to file
             Path(filename).parent.mkdir(parents=True, exist_ok=True)
             with open(filename, "w", encoding="utf8") as f:

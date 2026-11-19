@@ -150,3 +150,90 @@ def test_restored_comparison_renderers(module_name):
         {"points": [{"customdata": ["O-H", data]}]}
     )
     assert result.children[1].src.startswith("data:image/png;base64,")
+
+
+@pytest.mark.parametrize(
+    ("module_name", "benchmark"),
+    [
+        ("aqueous_solutions.bulk_water.calc_water", "bulk_water"),
+        ("aqueous_solutions.ice.calc_ice", "ice"),
+        (
+            "surfaces.copper_water_interface.calc_copper_water_interface",
+            "copper_water_interface",
+        ),
+    ],
+)
+def test_failed_md_then_successful_retry(module_name, benchmark, tmp_path, monkeypatch):
+    """Keep the failure marker during each attempt and clear it after success."""
+    from importlib import import_module
+    from unittest.mock import Mock
+
+    calc = import_module(f"ml_peg.calcs.{module_name}")
+    marker = tmp_path / "model" / "md-failed"
+    atoms = Atoms("CuOH", info={"fix_indices": [0]})
+    monkeypatch.setattr(calc, "OUT_PATH", tmp_path)
+    monkeypatch.setattr(calc, "download_s3_data", lambda **kwargs: tmp_path)
+    monkeypatch.setattr(calc, "read", lambda path: atoms.copy())
+    dynamics = Mock()
+    monkeypatch.setattr(calc, "NVT", lambda **kwargs: dynamics)
+    outcomes = iter([RuntimeError("interrupted MD"), None])
+
+    def run():
+        assert marker.exists()
+        if error := next(outcomes):
+            raise error
+
+    dynamics.run.side_effect = run
+    calculate = getattr(calc, f"test_{benchmark}")
+    mlip = ("model", Mock())
+    with pytest.warns(UserWarning, match="interrupted MD"):
+        calculate(mlip)
+    assert marker.exists()
+    calculate(mlip)
+    assert not marker.exists()
+
+
+def test_corrupt_and_valid_production_frames(tmp_path):
+    """A malformed frame is skipped and the next model is readable."""
+    from ase.io import write
+
+    from ml_peg.analysis.surfaces.copper_water_interface.density_profile import (
+        read_production_frames,
+    )
+
+    bad, good = tmp_path / "bad", tmp_path / "good"
+    bad.mkdir()
+    good.mkdir()
+    (bad / "md-traj.extxyz").write_text("2\n\nO 0 0 0\n")
+    write(good / "md-traj.extxyz", Atoms("OH2"))
+    with pytest.warns(UserWarning, match="Unable to read"):
+        assert not read_production_frames(bad, 1)
+    assert len(read_production_frames(good, 1)) == 1
+    assert not read_production_frames(good, 2)
+
+
+def test_incremental_bar_preserves_other_model(tmp_path, monkeypatch):
+    """Update one model's bar while keeping another model's saved figure."""
+    import json
+
+    from ml_peg.analysis.utils import decorators
+
+    filename = tmp_path / "bars.json"
+    monkeypatch.setattr(decorators.analysis, "update_results", True)
+    monkeypatch.setattr(decorators, "get_model_names", lambda: ["a", "b"])
+    selected = "a"
+    monkeypatch.setattr(decorators, "get_updated_models", lambda: {selected})
+
+    @decorators.cell_to_bar(filename=filename)
+    def build(score):
+        point = {"label": "O-H", "value": score, "data": {}}
+        return {"models": {selected: {"metrics": {"rdf": [point]}}}}
+
+    build(10)
+    selected = "b"
+    saved_b = build(20)["models"]["b"]
+    selected = "a"
+    build(30)
+    saved = json.loads(filename.read_text())["models"]
+    assert saved["b"] == saved_b
+    assert saved["a"]["figures"]["rdf"]["data"][0]["y"] == [30]
