@@ -1,6 +1,4 @@
-==========
 Benchmarks
-==========
 
 .. toctree::
     :maxdepth: 3
@@ -22,6 +20,7 @@ Benchmarks
     non_covalent_interactions
     physicality
     porous_materials
+    superacids
     supramolecular
     surfaces
     tm_complexes
