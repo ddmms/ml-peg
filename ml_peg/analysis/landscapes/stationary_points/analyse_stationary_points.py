@@ -172,11 +172,6 @@ def _relative_energies(frames: list) -> tuple[np.ndarray, np.ndarray]:
     the mistake stays where it happened. It is also the constant shift that
     minimises the error, so no model is penalised for an arbitrary choice.
 
-    Both means are taken over the structures where *both* methods have an
-    energy. Otherwise a model that fails on a few structures has its baseline
-    computed over a different set from the reference, which shifts every one
-    of its energies.
-
     Energies are divided by atom count so that the six molecules, 9 to 21
     atoms, contribute on the same scale rather than the largest dominating a
     pooled error.
@@ -190,22 +185,19 @@ def _relative_energies(frames: list) -> tuple[np.ndarray, np.ndarray]:
     -------
     tuple[numpy.ndarray, numpy.ndarray]
         Reference and predicted relative energies in meV/atom, aligned with
-        ``frames``. Entries are NaN where the model produced no energy.
+        ``frames``.
     """
     reference = np.array([a.info["ref_energy_ev"] for a in frames], dtype=float)
     predicted = np.array([a.info["mlip_energy_ev"] for a in frames], dtype=float)
     molecules = np.array([a.info["molecule"] for a in frames])
     natoms = np.array([len(a) for a in frames], dtype=float)
 
-    ref_rel = np.full(len(frames), np.nan)
-    pred_rel = np.full(len(frames), np.nan)
+    ref_rel = np.empty(len(frames))
+    pred_rel = np.empty(len(frames))
     for molecule in np.unique(molecules):
         mask = molecules == molecule
-        shared = mask & np.isfinite(reference) & np.isfinite(predicted)
-        if not shared.any():
-            continue
-        ref_rel[mask] = reference[mask] - reference[shared].mean()
-        pred_rel[mask] = predicted[mask] - predicted[shared].mean()
+        ref_rel[mask] = reference[mask] - reference[mask].mean()
+        pred_rel[mask] = predicted[mask] - predicted[mask].mean()
     return ref_rel / natoms * EV_TO_MEV, pred_rel / natoms * EV_TO_MEV
 
 
@@ -224,6 +216,9 @@ def _relative_energies(frames: list) -> tuple[np.ndarray, np.ndarray]:
 def stationary_energies() -> dict[str, list]:
     """
     Get relative energies at the DFT minima and transition states.
+
+    Every model's output carries the same DFT energies for the same structures,
+    so the reference is read from the first.
 
     Returns
     -------
