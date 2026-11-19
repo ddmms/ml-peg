@@ -5,3 +5,4 @@ metrics:
     unit: meV
     tooltip: "Mean Absolute Error for all polymorphs"
     level_of_theory: PBE
+    dispersion_method: D3

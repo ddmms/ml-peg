@@ -36,6 +36,7 @@ from ml_peg.analysis.utils.utils import (
 from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.utils import Thresholds
 from ml_peg.models.get_models import get_model_names, load_model_configs
+from ml_peg.models.methods import DispersionNameMap
 
 # Figure metadata key recording what each subplot panel is plotted against
 PANEL_KEYS_META = "panel_keys"
@@ -2585,6 +2586,11 @@ def build_table(
 
             model_configs, model_levels = load_model_configs(mlips)
 
+            if isinstance(mlip_name_map, DispersionNameMap):
+                for name in mlip_name_map:
+                    if name in model_configs:
+                        model_configs[name]["runtime_dispersion_method"] = "D3"
+
             model_configs = {
                 display_names[name]: config for name, config in model_configs.items()
             }
@@ -2598,6 +2604,13 @@ def build_table(
                 metric_levels[metric_name] = thresholds.get(metric_name, {}).get(
                     "level_of_theory"
                 )
+                if "dispersion_method" in thresholds.get(metric_name, {}):
+                    metric_levels[metric_name] = {
+                        "level_of_theory": metric_levels[metric_name],
+                        "dispersion_method": thresholds[metric_name][
+                            "dispersion_method"
+                        ],
+                    }
 
             # Save dict of table to be loaded
             model_name_map = {

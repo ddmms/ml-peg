@@ -183,3 +183,27 @@ def test_update_new_table(tmp_path, update_model_2):
     build(filename, {"MAE": {"model_2": 5.0}})
 
     assert get_values(filename) == {"model_1": None, "model_2": 5.0}
+
+
+def test_d3_table_metadata(tmp_path):
+    """Derive D3 metadata during analysis of existing values."""
+    from ml_peg.models.methods import DispersionNameMap
+
+    filename = tmp_path / "table.json"
+    build(
+        filename,
+        {"MAE": {"model_1": 1.0}},
+        DispersionNameMap({"model_1": "model_1-custom"}),
+    )
+    saved = json.loads(filename.read_text())
+    config = saved["model_configs"]["model_1-custom"]
+    assert config["runtime_dispersion_method"] == "D3"
+    assert "runtime_dispersion_method" not in saved["model_configs"]["model_2"]
+
+
+def test_plain_name_map_does_not_declare_d3(tmp_path):
+    """Keep arbitrary display names separate from correction metadata."""
+    filename = tmp_path / "table.json"
+    build(filename, {"MAE": {"model_1": 1.0}}, {"model_1": "model_1-D3"})
+    saved = json.loads(filename.read_text())
+    assert "runtime_dispersion_method" not in saved["model_configs"]["model_1-D3"]

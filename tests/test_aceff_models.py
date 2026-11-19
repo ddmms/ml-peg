@@ -102,7 +102,8 @@ def test_aceff_registry_metadata():
     assert config["class_name"] == "TMDNETCalculator"
     assert "overwrite_dtype" not in config
     assert config["trained_on_dispersion"]
-    assert config["level_of_theory"] == "ωB97M-V/def2-TZVPPD"
+    assert config["level_of_theory"] == "ωB97M/def2-TZVPPD"
+    assert config["dispersion_method"] == "VV10"
     assert config["kwargs"] == {
         "repo_id": ACEFF_REPO_ID,
         "filename": ACEFF_FILENAME,
