@@ -44,6 +44,9 @@ dependencies = [
     "pybtex>=0.26,<0.27",
     "pylatexenc>=2.10,<3",
     "pyxtal<2,>=1.1.3",
+    # Molecular formulas from SMILES, to identify the components of binary mixture
+    # boxes (also installed through molify, but used directly)
+    "rdkit>=2025.3",
     "scipy<1.17,>=1",
     "scikit-learn<2,>=1.7.2",
     "tqdm<5,>=4.67.3",

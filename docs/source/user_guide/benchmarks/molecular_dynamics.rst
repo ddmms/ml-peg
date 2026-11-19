@@ -158,6 +158,205 @@ Reference data:
 * Experimental
 
 
+Binary mixtures
+===============
+
+Summary
+-------
+
+Performance in predicting the enthalpy of mixing (ΔHmix), mixture density, excess molar
+volume (V^E) and pure-liquid densities of 10 binary liquid mixtures, at 3 compositions
+each (30 mixture boxes and 19 pure-liquid boxes). The systems are drawn from the OpenFF
+Sage force-field training and validation data, plus a screen of the NIST ThermoML
+archive for biologically important functional groups the Sage data lack (an N-H amide,
+an imidazole and an ester). They cover hydrogen-bonded, polar, aromatic and non-polar
+interactions, including three aqueous mixtures. Seven mix exothermically (ΔHmix < 0)
+and three endothermically (ΔHmix > 0):
+
+.. list-table::
+   :header-rows: 1
+
+   * - Mixture
+     - Interactions
+     - ΔHmix
+     - T (K)
+     - Scored properties
+   * - pyrrole + pyridine
+     - N–H···N hydrogen bonds between the components
+     - < 0
+     - 298.15
+     - ΔHmix, density, V^E
+   * - methanol + water
+     - Hydrogen-bonded, aqueous
+     - < 0
+     - 298.15
+     - ΔHmix, density, V^E
+   * - water + pyridine
+     - Hydrogen-bonded, aqueous
+     - < 0
+     - 303.15
+     - ΔHmix only (no experimental density)
+   * - NMP + 1,2-dichloroethane
+     - Polar aprotic with a weak C–H donor
+     - < 0
+     - 298.15
+     - ΔHmix, density, V^E
+   * - acetone + N-methylaniline
+     - N–H···O=C hydrogen bonds between the components
+     - < 0
+     - 298.15
+     - ΔHmix, density, V^E
+   * - 1-methylimidazole + ethanol
+     - Alcohol O–H donor with an imidazole N acceptor
+     - < 0
+     - 298.15
+     - ΔHmix, density, V^E
+   * - N-methylacetamide + water
+     - Peptide-bond model (trans secondary amide) hydrated by water
+     - < 0
+     - 323.15
+     - ΔHmix, density, V^E
+   * - ethyl acetate + ethanol
+     - Alcohol hydrogen bonds lost on dilution; ester C=O a weaker acceptor
+     - > 0
+     - 298.15
+     - ΔHmix, density, V^E
+   * - dipropylamine + DMF
+     - Weak amine self-association with a polar amide
+     - > 0
+     - 298.15
+     - ΔHmix, density, V^E
+   * - heptane + toluene
+     - Non-polar
+     - > 0
+     - 298.15
+     - ΔHmix, density, V^E
+
+Each property is scored by its mean absolute z-score (MAZE). Each prediction's error is
+divided by a fixed reference uncertainty for that point,
+σ_ref = sqrt(σ_exp² + σ_Sage²), and the MAZE is the mean of these absolute z-scores.
+σ_exp is the experimental uncertainty and σ_Sage the standard deviation of 5
+independent OpenFF Sage runs of the same box with the same protocol (pooled per system
+and floored at the median over systems), so σ_ref measures how closely the property can
+be pinned down by experiment and by a single run of this length. Because σ_ref does not
+depend on the model, a model is not rewarded for noisy predictions, and MAZEs from
+different models can be compared directly. A MAZE of 1 means that the errors are, on
+average, as large as the reference uncertainty, and a MAZE of 5 means five times as
+large. A model that matched experiment exactly would still score about 0.7 to 0.8,
+from the sampling noise of its single run. Only the ΔHmix and V^E MAZEs are weighted;
+the density MAZEs are shown at weight 0 (see below).
+
+Boxes contain 100 to 521 molecules (952 to 2,300
+atoms), with edges of at least 25 Å so that periodic images stay outside the receptive
+field of typical MLIPs. Each box is built from low-energy conformers, annealed and
+pre-equilibrated with OpenFF Sage (openff-2.3.0) at the experimental density. Every
+N-methylacetamide molecule starts trans, its dominant conformation (amide rotation is
+slow).
+
+Each box is simulated once with NPT MD (isotropic MTK barostat, 1 fs timestep, 1 atm)
+for 0.2 ns of equilibration followed by 1 ns of production.
+
+Metrics
+-------
+
+Every property is scored by its MAZE (defined in the summary above), with the mean
+absolute error (MAE) shown alongside it at weight 0. Only the ΔHmix and V^E MAZEs are
+weighted.
+The mixture and pure densities are shown at weight 0: the liquid densities benchmark
+already scores most of these pure liquids, and the mixture density errors are mostly
+pure-density errors (for Sage, the pure densities alone account for 0.0103 of the
+0.0129 g/cm³ mixture density MAE), with the mixing contribution captured by V^E.
+
+1. ΔHmix MAE (kJ/mol) and MAZE, over the 30 mixture compositions
+
+   ΔHmix = h_mix - x h_A - (1 - x) h_B, where h = (⟨E_pot⟩ + p⟨V⟩) / N_molecules.
+   The experimental value is interpolated to each box's exact composition with a
+   Redlich-Kister fit to the full isotherm.
+
+2. Mixture density MAE (g/cm³) and MAZE, over the 27 compositions with experimental
+   mixture densities.
+
+3. V^E MAE (cm³/mol) and MAZE, over the same 27 compositions.
+
+4. Pure density MAE (g/cm³) and MAZE, over all 19 pure-liquid boxes (16 liquids, with
+   water at three temperatures and pyridine at two).
+
+5. Flagged boxes (not scored)
+
+   The number of boxes with fewer than 100 effective samples, a significant drift
+   (a linear trend in the means of 10 production blocks, Holm-corrected, family-wise
+   p < 0.05), a change in covalent bonding, or a like-neighbour fraction well above
+   that of the Sage runs (demixing).
+
+'Good' thresholds are the score expected for a model that matches experiment exactly,
+given the noise of one 0.2 + 1 ns run per box, plus two standard deviations. 'Bad'
+thresholds are five times the score of Sage, which was trained on these properties.
+
+Uncertainties
+-------------
+
+Mean values and their standard errors are calculated with the autocorrelation-based
+statistical inefficiency (Chodera et al.) on every logged sample of the production data.
+Confidence intervals for the metrics are bootstrapped over the 49 boxes, so the
+correlation between compositions that share a pure-liquid box is included. Each model
+is run once per box. In the Sage reference runs, the spread between independent
+replicates was about 1.13 times the within-run standard error for the enthalpy (1.07
+times for the density), so single-run confidence intervals are likely to be somewhat too
+narrow.
+
+Sage reference
+--------------
+
+OpenFF Sage (openff-2.3.0) results, averaged over 5 replicates, are shown as a reference
+trace in the composition plots. They give a ΔHmix MAE of 0.70 kJ/mol (MAZE 7.9), a
+mixture density MAE of 0.0129 g/cm³ (MAZE 13.9) and a V^E MAE of 0.32 cm³/mol
+(MAZE 3.5). Sage misses the strongly exothermic, hydrogen-bonded mixtures pyrrole +
+pyridine and water + pyridine, and gets the sign of ΔHmix wrong at every composition
+for water + pyridine and 1-methylimidazole + ethanol.
+
+Limitations
+-----------
+
+* Nuclei are classical, so quantum nuclear effects on hydrogen bonding are not included.
+* Coverage of elements and functional groups is limited. For examplek, there is no fluorine,
+  ether, carboxylic acid, carbamate or sulfur system.
+* The noise behind σ_ref and the thresholds comes from Sage, which may have different
+  correlation times from MLIPs.
+
+Benchmark speed
+------------------
+
+Multi-day: 49 boxes × 1.2 ns (73,031 atoms in total), about 130 MACE-OFF23(M) A100
+GPU-days per model, the most expensive benchmark in this category.
+
+Pre-computed runs of each model are stored in the ML-PEG S3 bucket and used by default.
+The calculation skips any model whose runs are already on S3 (pass ``--recompute`` to
+rerun it), and the analysis downloads the runs of any box that has not been run locally
+(about 0.7 GB per model). The analysis fails for a model with neither local nor S3 runs,
+so use ``--models`` to restrict it to models that have been run.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Built with packmol and pre-equilibrated with OpenFF Sage (openff-2.3.0, NAGL AM1-BCC
+  charges, TIP3P water). The selection, build, Sage reference and power-analysis scripts
+  are kept in the separate
+  `ml-peg-liquid-mixtures-input-generation <https://github.com/fjclark/ml-peg-liquid-mixtures-input-generation>`_ repository.
+
+Reference data:
+
+* Experimental, from the NIST TRC ThermoML archive, via the OpenFF Sage 2.0 and Sage 2.3
+  physical-property data sets (openforcefield/openff-sage, openforcefield/ash-sage-rc2)
+  and a screen of the archive itself. Full isotherms and pure densities are taken from
+  each source paper and water densities are from IAPWS-95.
+* The N-methylacetamide + water ΔHmix (de Haan and Gmehling, 1996) predates ThermoML
+  and was entered by hand from the paper.
+* The full reference list, with the properties and systems taken from each source, is
+  in `sources.csv <https://github.com/fjclark/ml-peg-liquid-mixtures-input-generation/blob/main/selection/sources.csv>`_.
+
+
 Bond length distribution
 ========================
 
