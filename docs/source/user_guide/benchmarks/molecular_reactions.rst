@@ -63,9 +63,12 @@ Reference profiles were computed at the DFT (GGA) level (PBE+D3).
 Metrics
 -------
 
-1. Global MAE of predicted profiles with respect to the reference ones.
-2. MAE on free energy of reaction (F[product] - F[reactant])
-3. MAE on foward free energy barrier (F[transition state] - F[reactant])
+1. Stability computed as the percentage of simulations that successfully complete the required
+   100,000 MD steps and yield a free energy profile containing at least one finite value.
+   Missing, incomplete, or failed simulations are counted as unsuccessful.
+2. Global MAE of predicted profiles with respect to the reference ones.
+3. MAE on free energy of reaction (F[product] - F[reactant])
+4. MAE on foward free energy barrier (F[transition state] - F[reactant])
 
 Computational cost
 ------------------

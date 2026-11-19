@@ -89,21 +89,28 @@ def test_md(
         traj_path = write_dir / f"{structure_name}.extxyz"
         restart_path = write_dir / f"{structure_name}.restart.extxyz"
         log_path = write_dir / f"{structure_name}.log"
-        if traj_path.exists():
-            nsteps_done = max(
-                sum(1 for _ in iread(traj_path, format="extxyz")) - 1,
-                0,
+        try:
+            if traj_path.exists():
+                nsteps_done = max(
+                    sum(1 for _ in iread(traj_path, format="extxyz")) - 1,
+                    0,
+                )
+            else:
+                nsteps_done = 0
+            resuming = restart_path.exists()
+            if resuming:
+                atoms = read(restart_path, index=-1, format="extxyz")
+            else:
+                atoms = read(starting_frame, index=-1, format="extxyz")
+            atoms.calc = calc
+        except Exception as exc:
+            warnings.warn(
+                f"Failed to read trajectory or restart for {structure_name}: {exc}",
+                stacklevel=2,
             )
-        else:
-            nsteps_done = 0
-        resuming = restart_path.exists()
-        if resuming:
-            atoms = read(restart_path, index=-1, format="extxyz")
-            atoms.calc = calc
-        else:
-            atoms = read(starting_frame, index=-1, format="extxyz")
-            atoms.calc = calc
-            # OPTIMIZATION
+            continue
+        # OPTIMIZATION
+        if not resuming:
             try:
                 opt = LBFGS(atoms, logfile=write_dir / f"{structure_name}.opt")
                 opt.run(fmax=0.2)
