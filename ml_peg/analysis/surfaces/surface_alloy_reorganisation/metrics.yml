@@ -1,0 +1,25 @@
+metrics:
+  MAE_energies:
+    good: 5.0
+    bad: 40.0
+    weight: 1.0
+    unit: kJ/mol
+    tooltip: "Mean Absolute Error for all reaction energies"
+    level_of_theory: PBE
+
+  MAE_barriers:
+    good: 5.0
+    bad: 40.0
+    weight: 1.0
+    unit: kJ/mol
+    tooltip: "Mean Absolute Error for all reaction barriers"
+    level_of_theory: PBE
+
+#The barriers and energies are assessed to identify the contribution of each mechanism to
+#the overall surface reorganisation. As per:
+#Nanoscale (2026) 18 (18): 9709–9722. https://doi.org/10.1039/d5nr05517b
+#The diffusion barrier is on the order of 5 kJ/mol, and a change in reaction barrier of this magnitude
+#is expected to have limited difference in determining the frequency at which it occurs.
+#On the other hand, a wrong estimate by 40 kJ/mol for a barrier leads to a significant change in
+#how often this mechanism occurs and is likely to lead to incorrect conclusions about the structure
+#of the surface. Reaction energies are assessed on the same scale for consistency.

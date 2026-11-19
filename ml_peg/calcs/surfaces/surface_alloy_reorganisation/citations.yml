@@ -1,0 +1,16 @@
+implementers:
+  - name: Ioannis Karageorgiou
+    github: IKarageorg
+    email: ik416@cam.ac.uk
+
+contributors:
+  - name: Fabian Berger
+    github: prismm-group
+    email: fb593@cam.ac.uk
+
+  - name: Angelos Michaelides
+    email: am452@cam.ac.uk
+
+citations:
+  - bibtex_key: karageorgiou2026mechanisms
+    role: reference_data
