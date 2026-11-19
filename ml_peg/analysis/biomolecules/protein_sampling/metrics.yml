@@ -1,0 +1,36 @@
+metrics:
+  Sampling Score:
+    good: 1
+    bad: 0
+    unit: null
+    weight: 1
+    tooltip: MLIP Audit score from backbone and side-chain outlier ratios across stable proteins. Higher is better.
+    level_of_theory: null
+  Backbone Dihedral RMSD:
+    good: 0.0
+    bad: 0.001
+    unit: null
+    weight: 0
+    tooltip: RMSD between the sampled and reference backbone (phi/psi) dihedral distributions, averaged over residue types and systems. Lower is better.
+    level_of_theory: null
+  Backbone Hellinger Distance:
+    good: 0.0
+    bad: 1.0
+    unit: null
+    weight: 0
+    tooltip: Hellinger distance between the sampled and reference backbone (phi/psi) dihedral distributions, averaged over residue types and systems. Lower is better.
+    level_of_theory: null
+  Backbone Outliers Ratio:
+    good: 0.0
+    bad: 0.1
+    unit: null
+    weight: 0
+    tooltip: Fraction of sampled backbone dihedrals lying far from any reference data point, averaged over residue types and systems. Lower is better.
+    level_of_theory: null
+  Stable Proteins:
+    good: 3
+    bad: 0
+    unit: null
+    weight: 0
+    tooltip: Number of the three simulated proteins that passed the MLIP Audit stability check.
+    level_of_theory: null
