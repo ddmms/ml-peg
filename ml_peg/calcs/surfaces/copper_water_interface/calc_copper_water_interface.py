@@ -49,6 +49,11 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     """
     # Setup calculator with d3 correction
     model_name, model = mlip
+    write_dir = OUT_PATH / model_name
+    write_dir.mkdir(parents=True, exist_ok=True)
+    failed_marker = write_dir / "md-failed"
+    failed_marker.touch()
+
     calc = model.get_calculator(precision="low")
     calc = model.add_d3_calculator(calc)
 
@@ -79,9 +84,6 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     start_config.info["spin"] = 1
     start_config.calc = calc
 
-    write_dir = OUT_PATH / model_name
-    write_dir.mkdir(parents=True, exist_ok=True)
-
     # Run MD. equil_steps run first (not recorded); the trajectory is written
     # every step from traj_start onwards so velocities are available for VACF/VDOS.
     md = NVT(
@@ -102,5 +104,5 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
         md.run()
     except Exception as exc:
         warn(f"Error running MD: {exc}", stacklevel=2)
-        # Mark the run invalid so analysis skips the partial trajectory.
-        (write_dir / "md-failed").touch()
+    else:
+        failed_marker.unlink()
