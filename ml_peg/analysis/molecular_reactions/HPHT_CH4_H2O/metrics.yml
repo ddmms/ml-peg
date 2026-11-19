@@ -1,4 +1,10 @@
 metrics:
+  Stability:
+      good: 100
+      bad: 50
+      unit: "%"
+      tooltip: "Completion-rate"
+      level_of_theory: PBE+D3
 
   Free Energy Profile MAE:
       good: 2.49

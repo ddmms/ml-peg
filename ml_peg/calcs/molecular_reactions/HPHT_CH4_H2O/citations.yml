@@ -1,0 +1,13 @@
+implementers: 
+  - name: T. Thévenet
+    github: ThomasThevenet
+    email: thomas.thevenet@sorbonne-universite.fr
+
+contributors:
+  - name: F. Siro Brigiano
+    github: FsiroB
+    email: flavio.siro_brigiano@sorbonne-universite.fr
+
+citations:
+  - bibtex_key: thevenet2026methane
+    role: benchmark_method

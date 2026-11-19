@@ -39,6 +39,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 OUT_PATH.mkdir(parents=True, exist_ok=True)
+EXPECTED_NFRAMES = 100000
 
 
 def make_fes(data, start, end, n_bins, t):
@@ -498,6 +499,7 @@ def free_energy_profiles():
         "ref": [],
     } | {model: [] for model in MODELS}
     structures = get_structures_names()
+
     for structure_name in structures:
         ref_bins, ref_f = load_reference_fes(structure_name)
         save_ref_path = OUT_PATH / f"{structure_name}.data"
@@ -510,74 +512,81 @@ def free_energy_profiles():
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
 
-        if not model_dir.exists():
-            warnings.warn(
-                f"Missing model directory {model_name}."
-                "Filling all free energy profiles with NaN.",
-                stacklevel=2,
-            )
-            for _ in structures:
-                results[model_name].append(
-                    np.full_like(results["x"], np.nan, dtype=float)
-                )
-            continue
         for structure_name in structures:
             xyz_file = model_dir / f"{structure_name}.extxyz"
-            if xyz_file.exists():
-                bins, f_model = compute_fes(xyz_file, 3000)
-            else:
+
+            bins = results["x"]
+            f_model = np.full_like(bins, np.nan, dtype=float)
+
+            try:
+                nframes = sum(1 for _ in iread(xyz_file, format="extxyz"))
+            except Exception as exc:
                 warnings.warn(
-                    f"Missing trajectory file {xyz_file}."
-                    "Filling free energy profile with NaN.",
+                    f"Could not read trajectory {xyz_file}: {exc}",
                     stacklevel=2,
                 )
-                bins = results["x"]
-                f_model = np.full_like(bins, np.nan, dtype=float)
+                nframes = 0
+
+            if nframes >= EXPECTED_NFRAMES:
+                try:
+                    bins, f_model = compute_fes(xyz_file, 3000)
+                except Exception as exc:
+                    warnings.warn(
+                        f"FES calculation failed for {xyz_file}: {exc}",
+                        stacklevel=2,
+                    )
+            else:
+                warnings.warn(
+                    f"Incomplete or missing trajectory {xyz_file}: "
+                    f"{nframes}/{EXPECTED_NFRAMES} frames.",
+                    stacklevel=2,
+                )
 
             save_path = OUT_PATH / model_name / f"{structure_name}.data"
             save_path.parent.mkdir(parents=True, exist_ok=True)
             np.savetxt(save_path, np.column_stack((bins, f_model)))
             results[model_name].append(f_model)
-            if model_name == MODELS[-1]:
-                fig = go.Figure()
 
-                ref_file = OUT_PATH / f"{structure_name}.data"
-                ref_data = np.loadtxt(ref_file)
+    for structure_name in structures:
+        fig = go.Figure()
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=ref_data[:, 0],
-                        y=ref_data[:, 1],
-                        mode="lines",
-                        name="Reference",
-                    )
+        ref_file = OUT_PATH / f"{structure_name}.data"
+        ref_data = np.loadtxt(ref_file)
+
+        fig.add_trace(
+            go.Scatter(
+                x=ref_data[:, 0],
+                y=ref_data[:, 1],
+                mode="lines",
+                name="Reference",
+            )
+        )
+
+        for model in MODELS:
+            model_file = OUT_PATH / model / f"{structure_name}.data"
+            if not model_file.exists():
+                continue
+
+            model_data = np.loadtxt(model_file)
+
+            fig.add_trace(
+                go.Scatter(
+                    x=model_data[:, 0],
+                    y=model_data[:, 1],
+                    mode="lines",
+                    name=model,
                 )
+            )
+        fig.update_layout(
+            title=f"Free Energy Profile - {structure_name}",
+            xaxis_title="Reaction coordinate",
+            yaxis_title="Free energy (kJ/mol)",
+            template="plotly_white",
+        )
 
-                for model in MODELS:
-                    model_file = OUT_PATH / model / f"{structure_name}.data"
-                    if not model_file.exists():
-                        continue
-
-                    model_data = np.loadtxt(model_file)
-
-                    fig.add_trace(
-                        go.Scatter(
-                            x=model_data[:, 0],
-                            y=model_data[:, 1],
-                            mode="lines",
-                            name=model,
-                        )
-                    )
-                fig.update_layout(
-                    title=f"Free Energy Profile - {structure_name}",
-                    xaxis_title="Reaction coordinate",
-                    yaxis_title="Free energy (kJ/mol)",
-                    template="plotly_white",
-                )
-
-                plot_path = OUT_PATH / "fes_plots"
-                plot_path.mkdir(parents=True, exist_ok=True)
-                fig.write_json(plot_path / f"{structure_name}.json")
+        plot_path = OUT_PATH / "fes_plots"
+        plot_path.mkdir(parents=True, exist_ok=True)
+        fig.write_json(plot_path / f"{structure_name}.json")
 
     return results
 
@@ -846,6 +855,58 @@ def reaction_barriers_errors(reaction_barriers) -> dict[str, float]:
 
 
 @pytest.fixture
+def completion(free_energy_profiles) -> dict[str, float]:
+    """
+    Calculate the stability metric for each model.
+
+    Stability is defined as the percentage of expected trajectories
+    that successfully completed and produced a usable free energy profile
+    (at least one finite value).
+
+    The metric is computed from the .data files generated by
+    free_energy_profiles().
+
+    Parameters
+    ----------
+    free_energy_profiles : dict
+        Output of the ``free_energy_profiles`` fixture containing the reference
+        and predicted free energy profiles.
+
+    Returns
+    -------
+    dict[str, float]
+        Stability of each model evaluated as a completion-rate in percentage
+        (between 0.0 and 100.0).
+    """
+    results = {}
+    structures = get_structures_names()
+    for model_name in MODELS:
+        n_success = 0
+
+        for structure_name in structures:
+            data_file = OUT_PATH / model_name / f"{structure_name}.data"
+
+            if not data_file.exists():
+                continue
+
+            try:
+                fes = np.loadtxt(data_file, usecols=1)
+
+                if np.any(np.isfinite(fes)):
+                    n_success += 1
+
+            except (OSError, ValueError) as exc:
+                warnings.warn(
+                    f"Cannot read FES file {data_file}: {exc}",
+                    stacklevel=2,
+                )
+
+        results[model_name] = 100 * n_success / len(structures)
+
+    return results
+
+
+@pytest.fixture
 @build_table(
     filename=OUT_PATH / "fes_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
@@ -853,6 +914,7 @@ def reaction_barriers_errors(reaction_barriers) -> dict[str, float]:
     mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
+    completion: dict[str, float],
     profile_errors: dict[str, float],
     reaction_free_energy_errors: dict[str, float],
     reaction_barriers_errors: dict[str, float],
@@ -862,6 +924,8 @@ def metrics(
 
     Parameters
     ----------
+    completion : dict[str, float]
+        Stability.
     profile_errors : dict[str, float]
         Mean absolute errors of the free energy profiles.
     reaction_free_energy_errors : dict[str, float]
@@ -875,6 +939,7 @@ def metrics(
         Dictionary containing all benchmark metrics.
     """
     return {
+        "Stability": completion,
         "Free Energy Profile MAE": profile_errors,
         "Free Energy of reaction MAE": reaction_free_energy_errors,
         "Free Energy barrier MAE": reaction_barriers_errors,

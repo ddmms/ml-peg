@@ -7,7 +7,8 @@ from typing import Any
 import warnings
 
 from ase import units
-from ase.io import read, write
+from ase.io import iread, read, write
+from ase.md import MDLogger
 from ase.md.nose_hoover_chain import NoseHooverChainNVT
 from ase.md.velocitydistribution import (
     MaxwellBoltzmannDistribution,
@@ -34,6 +35,7 @@ def get_starting_frames() -> list[Path]:
 STARTING_FRAMES = get_starting_frames()
 
 
+@pytest.mark.multi_day
 @pytest.mark.parametrize("mlip", MODELS.items(), ids=MODELS.keys())
 def test_md(
     mlip: tuple[str, Any],
@@ -87,13 +89,15 @@ def test_md(
         traj_path = write_dir / f"{structure_name}.extxyz"
         restart_path = write_dir / f"{structure_name}.restart.extxyz"
         log_path = write_dir / f"{structure_name}.log"
-        if log_path.exists():
-            with open(log_path) as f:
-                nsteps_done = sum(1 for _ in f) - 1
-            nsteps_done = max(nsteps_done, 0)
+        if traj_path.exists():
+            nsteps_done = max(
+                sum(1 for _ in iread(traj_path, format="extxyz")) - 1,
+                0,
+            )
         else:
             nsteps_done = 0
-        if restart_path.exists():
+        resuming = restart_path.exists()
+        if resuming:
             atoms = read(restart_path, index=-1, format="extxyz")
             atoms.calc = calc
         else:
@@ -136,7 +140,16 @@ def test_md(
             tdamp=100 * units.fs,
             tchain=3,
             tloop=2,
-            logfile=str(log_path),
+        )
+
+        dyn.nsteps = nsteps_done
+
+        logger = MDLogger(
+            dyn,
+            atoms,
+            str(log_path),
+            header=not resuming,
+            mode="a",
         )
 
         dyn.attach(
@@ -146,6 +159,7 @@ def test_md(
             restart_path,
             atoms,
         )
+        dyn.attach(logger, 1)
         remaining_steps = 100000 - nsteps_done
         if remaining_steps <= 0:
             print(f"{structure_name}: trajectory already completed.")

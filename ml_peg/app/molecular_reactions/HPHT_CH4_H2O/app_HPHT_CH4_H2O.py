@@ -18,6 +18,7 @@ BENCHMARK_NAME = "HPHT_CH4_H2O"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_reactions.html#hpht-ch4-h2o"
 DATA_PATH = APP_ROOT / "data" / "molecular_reactions" / BENCHMARK_NAME
 CALCS_ROOT = APP_ROOT.parent / "calcs"
+INFO_PATH = DATA_PATH / "info.json"
 
 
 class HPHTCH4H2OApp(BaseApp):
@@ -101,6 +102,7 @@ def get_app() -> HPHTCH4H2OApp:
             Div(id=f"{BENCHMARK_NAME}-figure-placeholder"),
             Div(id=f"{BENCHMARK_NAME}-fes-plot"),
         ],
+        info_path=INFO_PATH,
     )
 
 
