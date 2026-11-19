@@ -7,7 +7,9 @@ frontend overhaul cannot quietly break them.
 
 from __future__ import annotations
 
+from conftest import set_ionpi19_order
 from playwright.sync_api import Locator, Page, expect
+import pytest
 
 TIMEOUT = 60_000
 
@@ -71,19 +73,30 @@ def test_normalized_toggle_changes_values(ready_page: Page) -> None:
     expect(mae).not_to_have_text(before, timeout=TIMEOUT)
 
 
-def test_threshold_edit_updates_score(ready_page: Page) -> None:
+@pytest.mark.parametrize("order", ["alphabetical", "random"])
+def test_threshold_edit_updates_score(ready_page: Page, order: str) -> None:
     """Editing a metric threshold rescores the benchmark table."""
     _goto_ionpi19(ready_page)
     _expand_scoring(ready_page)
-    score = ready_page.locator('#IONPI19-table td[data-dash-column="Score"]').first
+    expected_order = set_ionpi19_order(ready_page, order)
+    # This fixture model has MAE 10.341384, so good=15 raises its score to 1.
+    # The alphabetically first model is clipped at zero before and after the edit.
+    score = (
+        ready_page.locator("#IONPI19-table tbody tr")
+        .filter(has=ready_page.get_by_text("mace-mp-0a-D3", exact=True))
+        .locator('td[data-dash-column="Score"]')
+    )
     expect(score).to_be_visible(timeout=TIMEOUT)
-    before = score.inner_text()
+    expect(score).to_have_text("0.483", timeout=TIMEOUT)
 
     good = ready_page.locator("#IONPI19-table-MAE-good-threshold")
     good.fill("15")
     good.press("Enter")
 
-    expect(score).not_to_have_text(before, timeout=TIMEOUT)
+    expect(score).to_have_text("1.000", timeout=TIMEOUT)
+    expect(
+        ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    ).to_have_text(expected_order, timeout=TIMEOUT)
 
 
 def test_csv_download(ready_page: Page) -> None:
