@@ -1,0 +1,11 @@
+implementers:
+  - name: "Leon Wehrhan"
+    github: "lwehrhan"
+
+contributors:
+  - name: "Marco Carobene"
+    github: "mcarobene-id"
+
+citations:
+  - bibtex_key: damore2022openff
+    role: reference_data

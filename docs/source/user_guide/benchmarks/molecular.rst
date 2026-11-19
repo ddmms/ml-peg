@@ -173,3 +173,66 @@ Input structures:
 * Density from: Yang, F., Wang, D., Wang, X. & Liu, Z. Volumetric Properties of
   1-Butyl-3-methylimidazolium Chloride with Organic Solvents. J. Chem. Eng. Data 62,
   3958-3966 (2017). https://doi.org/10.1021/acs.jced.7b00654
+
+
+Reference geometry stability
+============================
+
+Summary
+-------
+
+Ability to preserve the ground-state geometry of small organic molecules during
+energy minimization. Structures are 200 neutral and 20 charged molecules
+selected from the OpenFF industry dataset to maximize chemical diversity.
+The relaxation protocol and scoring follow `MLIPAudit (Wehrhan et al., 2025)
+<https://arxiv.org/abs/2511.20487>`_.
+
+Metrics
+-------
+
+1. Average RMSD
+
+ASE BFGS relaxes each molecule for up to 1,000 steps with a maximum force
+threshold of 0.01 eV/Å. Analysis reads the two OpenFF reference sets and each model’s raw minimization
+output from the calculation directory. It aligns the heavy atoms of the last saved frame
+to the reference, then computes the mean RMSD within each subset. Avg RMSD
+gives the neutral and charged subset means equal weight and requires valid RMSDs
+for all 200 neutral and 20 charged molecules. An incomplete run gives NaN.
+**Avg RMSD (stable only)** averages the successful molecules within each subset
+and gives the two subset means equal weight. Both subsets need a valid RMSD. Both RMSD columns have zero weight by default.
+
+2. Geometry Score
+
+MLIP Audit gives each molecule a score of one up to 0.075 Å RMSD and applies
+its exponential decay above this threshold.
+**Geometry Score** averages all 220 contributions. Any missing or failed
+molecule makes this metric and the default leaderboard score NaN.
+
+**Geometry Score (MLIP Audit)** averages over the molecules recorded in the
+archive. Recorded failures contribute zero and omitted molecules are excluded
+from the denominator. This diagnostic has zero default weight and requires at
+least one valid RMSD in each subset. Select either geometry score column to
+see the RMSD histogram for successful molecules.
+Select either RMSD column to open the per-molecule plot, then click a point to compare the OpenFF reference
+geometry (first frame) with the final saved model geometry (second frame).
+The viewer aligns the heavy atoms and displays all atoms in both frames.
+
+Computational cost
+------------------
+
+Medium: 220 short geometry optimizations of small organic molecules.
+
+Data availability
+-----------------
+
+Input structures:
+
+* 200 neutral and 20 charged molecules from the OpenFF Industry Benchmark
+  Season 1 dataset, selected for chemical diversity as described in MLIP Audit.
+
+Reference data:
+
+* Reference geometries optimised at the B3LYP-D3(BJ)/DZVP level of theory, from:
+  L. D'Amore et al., Collaborative Assessment of Molecular Geometries and Energies
+  from the Open Force Field. J. Chem. Inf. Model. 62, 6094 (2022).
+  https://doi.org/10.1021/acs.jcim.2c01185

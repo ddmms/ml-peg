@@ -10,6 +10,7 @@ from mlipaudit.benchmarks import (
     FoldingStabilityBenchmark,
     InferenceSpeedBenchmark,
     ReactivityBenchmark,
+    ReferenceGeometryStabilityBenchmark,
     RingPlanarityBenchmark,
     StabilityBenchmark,
     TautomersBenchmark,
@@ -87,3 +88,9 @@ class MlPegStabilityBenchmark(MlPegAuditBenchmark, StabilityBenchmark):
 
 class MlPegGrambowOrganicsBenchmark(MlPegAuditBenchmark, NudgedElasticBandBenchmark):
     """``NudgedElasticBandBenchmark`` wired up for ml-peg."""
+
+
+class MlPegReferenceGeometryStabilityBenchmark(
+    MlPegAuditBenchmark, ReferenceGeometryStabilityBenchmark
+):
+    """``ReferenceGeometryStabilityBenchmark`` wired up for ml-peg."""

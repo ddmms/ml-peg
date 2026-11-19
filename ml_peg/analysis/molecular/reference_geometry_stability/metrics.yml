@@ -1,0 +1,29 @@
+metrics:
+  Avg RMSD:
+    good: 0.0
+    bad: 0.3
+    unit: Å
+    weight: 0
+    tooltip: Mean of the neutral and charged subset average heavy-atom RMSDs. NaN if any reference molecule lacks a valid RMSD.
+    level_of_theory: B3LYP-D3(BJ)/DZVP
+  Avg RMSD (stable only):
+    good: 0.0
+    bad: 0.3
+    unit: Å
+    weight: 0
+    tooltip: MLIP Audit average over successful molecules, giving the neutral and charged subset means equal weight.
+    level_of_theory: B3LYP-D3(BJ)/DZVP
+  Geometry Score:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 1
+    tooltip: Mean soft-threshold score across all 220 reference molecules. NaN if any molecule lacks a valid RMSD.
+    level_of_theory: B3LYP-D3(BJ)/DZVP
+  Geometry Score (MLIP Audit):
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 0
+    tooltip: MLIP Audit score over recorded molecules. Recorded failures contribute zero and omitted molecules are excluded. Requires a valid RMSD in both subsets.
+    level_of_theory: B3LYP-D3(BJ)/DZVP
