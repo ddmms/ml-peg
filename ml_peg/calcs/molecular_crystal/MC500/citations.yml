@@ -1,0 +1,10 @@
+implementers:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+    email: "jh2536@cam.ac.uk"
+
+citations:
+  - bibtex_key: husak2026verification
+    role: reference_data
+  - bibtex_key: vandestreek2010validation
+    role: benchmark_method
