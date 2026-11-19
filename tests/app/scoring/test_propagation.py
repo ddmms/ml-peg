@@ -11,8 +11,20 @@ from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import expect
 import pytest
 
+from ml_peg.app.utils import browser_profiling
+
 A = "mace-mp-0a"
 B = "mace-mp-0b3"
+
+
+def test_profiler_edits_clientside_settings(ready_page, page_errors):
+    """Profiling waits for committed settings and their full score propagation."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    browser_profiling.edit(page, '[id="B1-table-M1-input"]')
+    stored_score(page, "B1-table", (0.8 * 1.1 + 0.2) / 2.1)
+    browser_profiling.edit(page, '[id="B1-table-M1-bad-threshold"]')
+    stored_score(page, "B1-table", ((1 - 2 / 10.1) * 1.1 + 0.2) / 2.1)
 
 
 def visit(page, path):
@@ -427,3 +439,404 @@ def test_global_reset_remains_accessible_when_scrolled(ready_page, panel_width):
     assert button["x"] + button["width"] <= bounds["x"] + bounds["width"]
     reset.click()
     score(page, "summary-table", 0.65)
+
+
+@pytest.mark.parametrize("kind", ["weight", "threshold"])
+def test_overlapping_metric_edits(ready_page, page_errors, kind):
+    """A slow first response must not overwrite a newer edit to another metric."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    score(page, "B1-table", 0.5)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
+    suffix = "input" if kind == "weight" else "bad-threshold"
+    first = f"B1-table-M1-{suffix}"
+    second = f"B1-table-M2-{suffix}"
+    held = []
+
+    def delay_first(route):
+        """Hold one completed response while the browser submits the second edit."""
+        payload = route.request.post_data_json
+        changed_store = (
+            f"B1-table-{'weight' if kind == 'weight' else 'thresholds'}-store.data"
+        )
+        if (
+            not held
+            and changed_store in payload.get("changedPropIds", [])
+            and "B1-table-computed-store.data" in payload["output"]
+        ):
+            held.append((route, route.fetch()))
+        else:
+            route.continue_()
+
+    page.route("**/_dash-update-component*", delay_first)
+    edit(page, first, 3 if kind == "weight" else 20)
+    for _ in range(50):
+        if held:
+            break
+        page.wait_for_timeout(100)
+    assert held, "The first edit was not intercepted"
+    edit(page, second, 2 if kind == "weight" else 20)
+    expected = 0.56 if kind == "weight" else 0.75
+    stored_score(page, "B1-table", expected)
+    route, response = held[0]
+    route.fulfill(response=response)
+    page.unroute("**/_dash-update-component*", delay_first)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
+    chain(page, expected, (expected + 0.3) / 2, ((expected + 0.3) / 2 + 0.9) / 2)
+
+
+@pytest.mark.parametrize("path", ["/", "/category/alpha", "/framework/mace-polar-1"])
+@pytest.mark.parametrize("collapsed", [False, True])
+def test_saved_settings_are_ready_at_direct_entry(
+    page, app_url, page_errors, path, collapsed
+):
+    """Restored scores are fully propagated when the startup mask disappears."""
+    from conftest import wait_for_app_ready
+
+    page.add_init_script("""
+        localStorage.setItem('onboarding-state-store', '{"completed":true}');
+        sessionStorage.setItem('B1-table-weight-store', '{"M1":3,"M2":2}');
+        sessionStorage.setItem('B1-table-thresholds-store', JSON.stringify({
+            M1: {good: 0, bad: 20, unit: 'eV'},
+            M2: {good: 0, bad: 10, unit: 'eV'}
+        }));
+    """)
+    if collapsed:
+        page.add_init_script(
+            "localStorage.setItem('bench-expand-store', '\"collapsed\"')"
+        )
+    page.goto(app_url + path)
+    wait_for_app_ready(page)
+    # Read immediately, without waiting for values to eventually converge.
+    actual = page.evaluate("""() => Object.fromEntries([
+        'B1-table', 'Alpha-summary-table', 'summary-table',
+        'mace-polar-1-framework-summary-table', 'framework-summary-table'
+    ].map(id => [id, JSON.parse(sessionStorage.getItem(id + '-computed-store'))
+        .find(row => row.MLIP === 'mace-mp-0a').Score]))""")
+    assert actual == pytest.approx(
+        {
+            "B1-table": 0.62,
+            "Alpha-summary-table": 0.46,
+            "summary-table": 0.68,
+            "mace-polar-1-framework-summary-table": 0.62,
+            "framework-summary-table": 0.66,
+        },
+        abs=1e-10,
+    )
+    visit(page, "/category/alpha")
+    if collapsed:
+        page.locator(".mlpeg-bench-header").first.click()
+    expect(page.locator('[id="B1-table-M1-input"]')).to_have_value("3")
+    expect(page.locator('[id="B1-table-M2-input"]')).to_have_value("2")
+    expect(page.locator('[id="B1-table-M1-bad-threshold"]')).to_have_value("20")
+
+
+def test_control_restoration_is_local(ready_page, page_errors):
+    """Restoring a control group never makes a server request for input values."""
+    page = ready_page
+    dependencies = page.request.get(page.url + "_dash-dependencies").json()
+    restorers = [
+        dep
+        for dep in dependencies
+        if any(
+            item["id"].endswith(("-weight-store", "-thresholds-store"))
+            for item in dep["inputs"]
+        )
+        and ("-input.value" in dep["output"] or "-threshold.value" in dep["output"])
+    ]
+    assert restorers
+    assert all(dep["clientside_function"] for dep in restorers)
+    # Both M1/M2 controls are restored together, including their four bounds.
+    weights = [dep for dep in restorers if "B1-table-M1-input.value" in dep["output"]]
+    thresholds = [
+        dep for dep in restorers if "B1-table-M1-good-threshold.value" in dep["output"]
+    ]
+    assert len(weights) == len(thresholds) == 1
+    assert "B1-table-M2-input.value" in weights[0]["output"]
+    assert "B1-table-M2-bad-threshold.value" in thresholds[0]["output"]
+
+
+@pytest.mark.parametrize("kind", ["weight", "threshold"])
+@pytest.mark.parametrize("action", ["replace", "reset"])
+def test_latest_edit_wins_over_delayed_response(ready_page, page_errors, kind, action):
+    """A delayed earlier response cannot undo a newer value or an explicit reset."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    score(page, "B1-table", 0.5)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
+    field = "B1-table-M1-" + ("input" if kind == "weight" else "bad-threshold")
+    held = []
+
+    def delay_first(route):
+        """Hold only the first committed edit, leaving subsequent requests runnable."""
+        payload = route.request.post_data_json
+        changed_store = (
+            f"B1-table-{'weight' if kind == 'weight' else 'thresholds'}-store.data"
+        )
+        if (
+            not held
+            and changed_store in payload.get("changedPropIds", [])
+            and "B1-table-computed-store.data" in payload["output"]
+        ):
+            held.append((route, route.fetch()))
+        else:
+            route.continue_()
+
+    page.route("**/_dash-update-component*", delay_first)
+    edit(page, field, 3 if kind == "weight" else 20)
+    for _ in range(50):
+        if held:
+            break
+        page.wait_for_timeout(100)
+    assert held
+    if action == "replace":
+        edit(page, field, 4 if kind == "weight" else 30)
+        expected = 0.68 if kind == "weight" else (1 - 2 / 30 + 0.2) / 2
+    else:
+        button = "reset-button" if kind == "weight" else "reset-thresholds-button"
+        page.locator(f"#B1-table-{button}").click()
+        expected = 0.5
+    stored_score(page, "B1-table", expected)
+    route, response = held[0]
+    route.fulfill(response=response)
+    page.unroute("**/_dash-update-component*", delay_first)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
+    chain(page, expected, (expected + 0.3) / 2, ((expected + 0.3) / 2 + 0.9) / 2)
+
+
+@pytest.mark.parametrize(
+    "group,path",
+    [
+        ("Alpha-summary-table", "/category/alpha"),
+        ("mace-multihead-framework-summary-table", "/framework/mace-multihead"),
+    ],
+)
+def test_group_weight_then_benchmark_edit(ready_page, page_errors, group, path):
+    """A delayed group-weight response cannot replace newer benchmark scores."""
+    page = ready_page
+    visit(page, path)
+    score(page, "B1-table", 0.5)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
+    held = []
+
+    def delay_group(route):
+        """Hold the group propagation response after a weight edit."""
+        payload = route.request.post_data_json
+        if (
+            not held
+            and group + "-weight-store.data" in payload.get("changedPropIds", [])
+            and group + "-computed-store.data" in payload["output"]
+        ):
+            held.append((route, route.fetch()))
+        else:
+            route.continue_()
+
+    page.route("**/_dash-update-component*", delay_group)
+    edit(page, group + "-B1 Score-input", 3)
+    for _ in range(50):
+        if held:
+            break
+        page.wait_for_timeout(100)
+    assert held
+    edit(page, "B1-table-M1-input", 3)
+    stored_score(page, group, 0.5625)
+    route, response = held[0]
+    route.fulfill(response=response)
+    page.unroute("**/_dash-update-component*", delay_group)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
+    stored_score(page, group, 0.5625)
+    score(page, group, 0.5625)
+
+
+def test_settings_survive_interrupted_score_requests(ready_page, app_url):
+    """A failed calculation response cannot lose edits, and reload recomputes them."""
+    from conftest import wait_for_app_ready
+
+    page = ready_page
+    visit(page, "/category/alpha")
+    score(page, "B1-table", 0.5)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
+    page.route("**/_dash-update-component*", lambda route: route.abort("failed"))
+    edit(page, "B1-table-M1-input", 3)
+    edit(page, "B1-table-M1-bad-threshold", 20)
+    page.wait_for_function("""() =>
+        JSON.parse(sessionStorage.getItem('B1-table-weight-store')).M1 === 3 &&
+        JSON.parse(sessionStorage.getItem('B1-table-thresholds-store')).M1.bad === 20
+    """)
+    page.unroute("**/_dash-update-component*")
+    page.reload()
+    wait_for_app_ready(page)
+    chain(page, 0.725, 0.5125, 0.70625)
+
+
+def test_consecutive_threshold_corrections_keep_the_previous_correction(
+    ready_page, page_errors
+):
+    """Consecutive edits retain earlier corrections of the other bound."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    edit(page, "B1-table-M1-good-threshold", 12)
+    expect(page.locator('[id="B1-table-M1-bad-threshold"]')).to_have_value("12.0001")
+    edit(page, "B1-table-M1-good-threshold", 8)
+    expect(page.locator('[id="B1-table-M1-bad-threshold"]')).to_have_value("12.0001")
+    edit(page, "B1-table-M1-bad-threshold", 7)
+    expect(page.locator('[id="B1-table-M1-good-threshold"]')).to_have_value("6.9999")
+    chain(page, 0.6, 0.45, 0.675)
+
+
+@pytest.mark.parametrize("seed", [101, 102, 103])
+def test_rapid_edits_preserve_full_precision(ready_page, page_errors, seed):
+    """Rapid edits and an obsolete response converge for visible and hidden models."""
+    import random
+
+    page = ready_page
+    rng = random.Random(seed)
+    if seed == 102:
+        set_model_visible(page, B, False)
+    visit(page, "/category/alpha")
+    score(page, "B1-table", 0.5)
+    held = []
+
+    def hold_first_score(route):
+        """Retain the first score result while later setting changes continue."""
+        payload = route.request.post_data_json
+        if (
+            not held
+            and "B1-table-weight-store.data" in payload.get("changedPropIds", [])
+            and "B1-table-computed-store.data" in payload["output"]
+        ):
+            held.append((route, route.fetch()))
+        else:
+            route.continue_()
+
+    page.route("**/_dash-update-component*", hold_first_score)
+    weights, bounds = [3, 1], [10, 10]
+    edit(page, "B1-table-M1-input", 3)
+    for _ in range(50):
+        if held:
+            break
+        page.wait_for_timeout(100)
+    assert held
+    for _ in range(20):
+        metric = rng.randrange(2)
+        if rng.randrange(2):
+            weights[metric] = rng.randrange(5)
+            edit(page, f"B1-table-M{metric + 1}-input", weights[metric])
+        else:
+            bounds[metric] = rng.choice([5, 10, 20, 30])
+            edit(page, f"B1-table-M{metric + 1}-bad-threshold", bounds[metric])
+    if sum(weights) == 0:
+        weights[0] = 1
+        edit(page, "B1-table-M1-input", 1)
+    expected_a = sum(
+        weight * max(0, min(1, 1 - value / bound))
+        for weight, value, bound in zip(weights, [2, 8], bounds, strict=True)
+    ) / sum(weights)
+    stored_score(page, "B1-table", expected_a)
+    route, response = held[0]
+    route.fulfill(response=response)
+    page.unroute("**/_dash-update-component*", hold_first_score)
+    page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
+        .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+            (Array.isArray(value) && value.length === 0))""")
+    # Independent arithmetic from the fixture's raw values, with no scorer import.
+    for model, raw, b2, beta in [(A, [2, 8], 0.3, 0.9), (B, [6, 4], 0.5, 0.7)]:
+        normalized = [
+            max(0, min(1, 1 - value / bound))
+            for value, bound in zip(raw, bounds, strict=True)
+        ]
+        expected = sum(
+            weight * value for weight, value in zip(weights, normalized, strict=True)
+        ) / sum(weights)
+        alpha = (expected + b2) / 2
+        stored_score(page, "B1-table", expected, model)
+        stored_score(page, "Alpha-summary-table", alpha, model)
+        stored_score(page, "mace-multihead-framework-summary-table", alpha, model)
+        stored_score(page, "summary-table", (alpha + beta) / 2, model)
+        stored_score(
+            page, "framework-summary-table", (expected + alpha + beta) / 3, model
+        )
+    for index in range(2):
+        expect(page.locator(f'[id="B1-table-M{index + 1}-input"]')).to_have_value(
+            str(weights[index])
+        )
+        expect(
+            page.locator(f'[id="B1-table-M{index + 1}-bad-threshold"]')
+        ).to_have_value(str(bounds[index]))
+
+
+@pytest.mark.parametrize("commit", ["Enter", "Tab"])
+@pytest.mark.parametrize("source", ["correction", "restoration"])
+def test_threshold_can_return_to_pre_sync_value(
+    ready_page, page_errors, commit, source
+):
+    """One commit must accept the old default after programmatic bound restoration."""
+    page = ready_page
+    visit(page, "/category/alpha")
+    if source == "correction":
+        edit(page, "B1-table-M1-good-threshold", 15)
+        expect(page.locator('[id="B1-table-M1-bad-threshold"]')).to_have_value(
+            "15.0001"
+        )
+        expected_good = "9.9999"
+    else:
+        edit(page, "B1-table-M1-bad-threshold", 20)
+        stored_score(page, "B1-table", 0.55)
+        visit(page, "/")
+        visit(page, "/category/alpha")
+        expect(page.locator('[id="B1-table-M1-bad-threshold"]')).to_have_value("20")
+        expected_good = "0"
+    control = page.locator('[id="B1-table-M1-bad-threshold"]')
+    control.fill("10")
+    control.press(commit)
+    page.wait_for_function(
+        """() =>
+        JSON.parse(sessionStorage.getItem('B1-table-thresholds-store')).M1.bad === 10
+    """,
+        timeout=5000,
+    )
+    expect(page.locator('[id="B1-table-M1-good-threshold"]')).to_have_value(
+        expected_good
+    )
+
+
+@pytest.mark.parametrize("kind", ["weight", "threshold", "global"])
+def test_first_edit_commits_on_blur(ready_page, page_errors, kind):
+    """The first edit on a fresh control must commit when the user clicks away."""
+    page = ready_page
+    if kind == "global":
+        page.locator("#global-weights > summary").click()
+        field, value, table, expected = (
+            "global-summary-table-Alpha Score-input",
+            "3",
+            "summary-table",
+            0.525,
+        )
+    else:
+        visit(page, "/category/alpha")
+        if kind == "weight":
+            field, value, table, expected = "B1-table-M1-input", "3", "B1-table", 0.65
+        else:
+            field, value, table, expected = (
+                "B1-table-M1-bad-threshold",
+                "20",
+                "B1-table",
+                0.55,
+            )
+    page.locator(f'[id="{field}"]').fill(value)
+    page.locator("#page-content h1").first.click()
+    score(page, table, expected)

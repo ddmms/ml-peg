@@ -29,8 +29,20 @@ class SyntheticBenchmark(BaseApp):
         """Scoring callbacks are registered by the production layout builder."""
 
 
-def serve(root: Path):
-    """Build the fixed fixture under root and publish its ephemeral port."""
+def build_synthetic_app(root: Path) -> Dash:
+    """
+    Build the deterministic app for development or multi-worker WSGI tests.
+
+    Parameters
+    ----------
+    root
+        Directory in which to create the fixture assets.
+
+    Returns
+    -------
+    Dash
+        App using the production layout, stores and callbacks.
+    """
     assets = root / "assets"
     shutil.copytree(APP_ROOT / "data" / "ui", assets / "ui")
     app = Dash(
@@ -105,6 +117,19 @@ def serve(root: Path):
     )
     weight_presets.WEIGHT_PRESETS["Test Beta"] = ["Beta"]
     build_app.build_full_app(app)
+    return app
+
+
+def serve(root: Path) -> None:
+    """
+    Serve the fixed fixture and publish its ephemeral port.
+
+    Parameters
+    ----------
+    root
+        Directory for fixture assets and the server URL file.
+    """
+    app = build_synthetic_app(root)
     server = make_server("127.0.0.1", 0, app.server, threaded=True)
     url_tmp = root / "url.tmp"
     url_tmp.write_text(f"http://127.0.0.1:{server.server_port}")

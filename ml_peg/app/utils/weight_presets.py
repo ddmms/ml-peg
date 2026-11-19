@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import random
+import json
 
-from dash import ALL, Input, Output, State, callback, ctx
+from dash import ALL, Input, Output, State, callback, clientside_callback
 from dash.dash_table import DataTable
 from dash.dcc import Store
-from dash.exceptions import PreventUpdate
 from dash.html import Button, Details, Div, Summary
 from yaml import safe_load
 
@@ -164,39 +163,21 @@ def register_weight_preset_callbacks(
     default_weights
         Default summary weights restored by the reset button.
     """
-
-    @callback(
+    clientside_callback(
+        """function(clicks, pending) {
+            const trigger = window.dash_clientside.callback_context.triggered[0];
+            if (!trigger) return window.dash_clientside.no_update;
+            const id = JSON.parse(trigger.prop_id.slice(
+                0, trigger.prop_id.lastIndexOf('.')));
+            const selected = [...(pending || [])];
+            return selected.includes(id.index)
+                ? selected.filter(name => name !== id.index) : [...selected, id.index];
+        }""",
         Output("weight-preset-pending", "data", allow_duplicate=True),
         Input({"type": "weight-preset-btn", "index": ALL}, "n_clicks"),
         State("weight-preset-pending", "data"),
         prevent_initial_call=True,
     )
-    def toggle_weight_preset(_n_clicks: list[int], pending: list[str]) -> list[str]:
-        """
-        Toggle the clicked preset in the pending selection.
-
-        Parameters
-        ----------
-        _n_clicks
-            Click counts for all preset buttons.
-        pending
-            Currently pending preset selection.
-
-        Returns
-        -------
-        list[str]
-            Updated pending preset selection.
-        """
-        trigger = ctx.triggered_id
-        if not isinstance(trigger, dict):
-            raise PreventUpdate
-        name = trigger["index"]
-        pending = list(pending or [])
-        if name in pending:
-            pending.remove(name)
-        else:
-            pending.append(name)
-        return pending
 
     @callback(
         Output({"type": "weight-preset-btn", "index": ALL}, "style"),
@@ -225,74 +206,20 @@ def register_weight_preset_callbacks(
         selected = set(pending or [])
         return [_preset_btn_style(button["index"] in selected) for button in ids]
 
-    @callback(
+    config = {
+        "columns": _weight_columns(summary_table),
+        "presets": WEIGHT_PRESETS,
+        "defaults": default_weights,
+    }
+    clientside_callback(
+        f"""function(applyClicks, resetClicks, pending) {{
+            return window.dash_clientside.settingsEditors.presets(
+                {json.dumps(config)}, applyClicks, resetClicks, pending);
+        }}""",
         Output("summary-table-weight-store", "data", allow_duplicate=True),
+        Output("weight-preset-pending", "data", allow_duplicate=True),
         Input("weight-preset-apply", "n_clicks"),
+        Input("weight-preset-reset", "n_clicks"),
         State("weight-preset-pending", "data"),
         prevent_initial_call=True,
     )
-    def apply_weight_presets(n_clicks: int, pending: list[str]) -> dict[str, float]:
-        """
-        Apply the union of the selected presets to the summary weights.
-
-        A category is weighted 1.0 if it appears in any selected preset, else 0.0
-        (the union of the selected presets). "Random" instead gives every category
-        an independent random weight in [0, 1].
-
-        Parameters
-        ----------
-        n_clicks
-            Apply-button click count.
-        pending
-            Currently selected presets.
-
-        Returns
-        -------
-        dict[str, float]
-            Category-column weights written to the summary weight store.
-        """
-        if not n_clicks or not pending:
-            raise PreventUpdate
-
-        weight_columns = _weight_columns(summary_table)
-        weights = dict.fromkeys(weight_columns, 0.0)
-        for name in pending:
-            if name == "Random":
-                contribution = {
-                    column: round(random.random(), 2) for column in weight_columns
-                }
-            else:
-                relevant = {f"{title} Score" for title in WEIGHT_PRESETS[name]}
-                contribution = {
-                    column: (1.0 if column in relevant else 0.0)
-                    for column in weight_columns
-                }
-            weights = {
-                column: max(weights[column], contribution[column])
-                for column in weight_columns
-            }
-        return weights
-
-    @callback(
-        Output("summary-table-weight-store", "data", allow_duplicate=True),
-        Output("weight-preset-pending", "data", allow_duplicate=True),
-        Input("weight-preset-reset", "n_clicks"),
-        prevent_initial_call=True,
-    )
-    def reset_weight_presets(n_clicks: int) -> tuple[dict[str, float], list[str]]:
-        """
-        Restore the category yml default weights and clear the selection.
-
-        Parameters
-        ----------
-        n_clicks
-            Reset-button click count.
-
-        Returns
-        -------
-        tuple[dict[str, float], list[str]]
-            Default category weights and an empty pending selection.
-        """
-        if not n_clicks:
-            raise PreventUpdate
-        return default_weights, []
