@@ -42,6 +42,9 @@ ml_peg/app/data/*
 !ml_peg/app/data/ui/
 !ml_peg/app/data/ui/**
 certs/
+*.out
+*.err
+outputs/logs/
 data.tar.gz
 scratchpad/
 *.bz2

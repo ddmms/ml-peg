@@ -1,0 +1,9 @@
+implementers:
+  - name: "Matilde Benassi"
+    github: "matildebenassi"
+
+citations:
+  - bibtex_key: Taylor1979FeldsparGlasses
+    role: reference_data
+  - bibtex_key: MLIPsAluminosilicates
+    role: inspired_by
