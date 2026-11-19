@@ -208,7 +208,7 @@ def _path_frames(data_dir: Path, molecule: _Molecule) -> list[Atoms]:
 
 def _evaluate(calc, frames: list[Atoms], description: str) -> list[Atoms]:
     """
-    Run single points over a set of frames, recording failures as NaN.
+    Run single points over a set of frames.
 
     Parameters
     ----------
@@ -236,18 +236,10 @@ def _evaluate(calc, frames: list[Atoms], description: str) -> list[Atoms]:
         predicted.info["spin"] = SPIN
 
         out_atoms = atoms.copy()
-        try:
-            out_atoms.info["mlip_energy_ev"] = float(predicted.get_potential_energy())
-            out_atoms.arrays["mlip_forces"] = np.asarray(
-                predicted.get_forces(), dtype=float
-            )
-        except Exception as exc:
-            warn(
-                f"{description}: failed on {atoms.info['label']}: {exc}",
-                stacklevel=2,
-            )
-            out_atoms.info["mlip_energy_ev"] = np.nan
-            out_atoms.arrays["mlip_forces"] = np.full((len(atoms), 3), np.nan)
+        out_atoms.info["mlip_energy_ev"] = float(predicted.get_potential_energy())
+        out_atoms.arrays["mlip_forces"] = np.asarray(
+            predicted.get_forces(), dtype=float
+        )
         results.append(out_atoms)
     return results
 
@@ -980,16 +972,7 @@ def test_hessians(mlip: tuple[str, Any]) -> None:
                 kind=atoms.info["kind"],
                 label=atoms.info["label"],
             )
-            try:
-                predicted = _model_hessian(calc, symbols, positions)
-            except Exception as exc:
-                warn(f"Hessian failed on {atoms.info['label']}: {exc}", stacklevel=2)
-                out_atoms.info.update(
-                    mode_overlap_median=np.nan,
-                    reaction_coordinate_overlap=np.nan,
-                )
-                results.append(out_atoms)
-                continue
+            predicted = _model_hessian(calc, symbols, positions)
 
             basis = _internal_basis(positions, symbols)
             ref_values, ref_vectors = np.linalg.eigh(basis.T @ reference @ basis)
