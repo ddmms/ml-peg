@@ -27,6 +27,7 @@ import pytest
 
 from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
     eigenvalue_scaling,
+    ratio_agreement,
     reaction_curvature,
     reaction_overlap,
     soft_mode_error,
@@ -832,11 +833,13 @@ def get_soft_mode_error(soft_mode_errors: dict[str, list]) -> dict[str, float]:
 @pytest.fixture
 def get_reaction_curvature(reaction_curvatures: dict[str, list]) -> dict[str, float]:
     """
-    Get the median curvature ratio along the reaction coordinate.
+    Get the median agreement of the curvature along the reaction coordinate.
 
     Over the saddles where the model has an imaginary mode. How many it has one
     for is ``Saddles converged``, so the two are read together: this says how
-    wrong the barrier shape is where the model sees a barrier at all.
+    wrong the barrier shape is where the model sees a barrier at all. Each
+    ratio is folded by ``ratio_agreement`` before the median; the violin plot
+    keeps the raw ratios, which show whether a model errs sharp or flat.
 
     Parameters
     ----------
@@ -846,9 +849,13 @@ def get_reaction_curvature(reaction_curvatures: dict[str, list]) -> dict[str, fl
     Returns
     -------
     dict[str, float]
-        Median ratio, 1 meaning agreement.
+        Median of ``min(r, 1/r)``, 1 meaning agreement.
     """
-    return _summarise_over_reached(reaction_curvatures, np.median)
+    agreements = {
+        model_name: [ratio_agreement(ratio) for ratio in ratios]
+        for model_name, ratios in reaction_curvatures.items()
+    }
+    return _summarise_over_reached(agreements, np.median)
 
 
 @pytest.fixture
@@ -1019,7 +1026,7 @@ def metrics(
     get_soft_mode_error
         Median curvature error on the soft modes.
     get_reaction_curvature
-        Median curvature ratio along the reaction coordinate.
+        Median curvature agreement along the reaction coordinate.
 
     Returns
     -------

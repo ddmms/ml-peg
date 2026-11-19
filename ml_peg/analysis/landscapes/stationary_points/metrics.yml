@@ -87,7 +87,7 @@ metrics:
     good: 1.0
     bad: 0.3
     unit: ratio
-    tooltip: "The model's imaginary eigenvalue over DFT's: the curvature along the reaction coordinate, which sets the tunnelling correction and the TST prefactor."
+    tooltip: "The model's imaginary eigenvalue over DFT's, folded as min(r, 1/r) at each transition state, so a barrier top twice too sharp or twice too flat both read 0.5. Click for the unfolded ratios: above 1 is too sharp, below 1 too flat. Sets the tunnelling correction and the TST prefactor."
     level_of_theory: ωB97X/6-31G(d)
 
 # Pending. Each of these moves into `metrics` above when its calculation lands

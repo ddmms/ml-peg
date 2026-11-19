@@ -153,3 +153,27 @@ def reaction_curvature(atoms: Atoms) -> float:
     if reference[0] >= 0 or model[0] >= 0:
         return np.nan
     return float(model[0] / reference[0])
+
+
+def ratio_agreement(ratio: float) -> float:
+    """
+    Get how close a model-over-DFT ratio is to 1, whichever way it errs.
+
+    The fold ``min(r, 1/r)``, so a barrier top a factor of 2 too sharp and one
+    a factor of 2 too flat both read 0.5. The raw ratio could not be scored
+    directly: a score treats higher as better, which credited any curvature
+    sharper than DFT's with full marks -- MACE-MP-0a, 2.3 times too sharp,
+    scored 1.0. Applied to each structure before the median, so a model that
+    errs both ways cannot average out to look right.
+
+    Parameters
+    ----------
+    ratio
+        Model value over the reference value, positive or NaN.
+
+    Returns
+    -------
+    float
+        Between 0 and 1, 1 meaning agreement; NaN where the ratio is.
+    """
+    return min(ratio, 1.0 / ratio) if np.isfinite(ratio) else np.nan

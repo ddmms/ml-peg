@@ -77,4 +77,6 @@ Metrics
    scaled. It also reports the curvature error over the softest third of the
    modes, where a landscape lives, and the ratio of the model's imaginary
    eigenvalue to DFT's, which sets the tunnelling correction and the
-   transition state theory prefactor.
+   transition state theory prefactor. That ratio is scored as
+   ``min(r, 1/r)``, so a barrier top too sharp counts against a model as much
+   as one too flat by the same factor.
