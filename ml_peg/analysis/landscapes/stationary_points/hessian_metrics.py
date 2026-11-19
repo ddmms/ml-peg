@@ -14,6 +14,27 @@ from ase import Atoms
 import numpy as np
 
 
+def hessian_failed(atoms: Atoms) -> bool:
+    """
+    Get whether the calculation recorded the model's Hessian here as failed.
+
+    ``calc_stationary_points.py`` writes such a structure with its labels and
+    NaN overlaps but no eigenvalues. The metrics below return NaN for it rather
+    than raising, and the analysis voids that model's Hessian metrics.
+
+    Parameters
+    ----------
+    atoms
+        A structure read from the Hessian outputs.
+
+    Returns
+    -------
+    bool
+        True if the structure carries no model eigenvalues.
+    """
+    return "model_eigenvalues" not in atoms.info
+
+
 def reaction_overlap(atoms: Atoms) -> float:
     """
     Get the overlap with the DFT reaction coordinate, where the model has one.
@@ -34,8 +55,11 @@ def reaction_overlap(atoms: Atoms) -> float:
     Returns
     -------
     float
-        The overlap, or NaN where the model has no imaginary mode.
+        The overlap, or NaN where the model has no imaginary mode or its
+        Hessian failed.
     """
+    if hessian_failed(atoms):
+        return np.nan
     overlap = atoms.info.get("reaction_coordinate_overlap", np.nan)
     if not np.isfinite(overlap):
         return np.nan
@@ -71,8 +95,10 @@ def stiffness_vs_dft(atoms: Atoms) -> float:
     -------
     float
         The slope's distance from 1, in percent: 0 is agreement, and -6.5
-        means 6.5% softer than DFT.
+        means 6.5% softer than DFT. NaN where the model's Hessian failed.
     """
+    if hessian_failed(atoms):
+        return np.nan
     reference = np.asarray(atoms.info["reference_eigenvalues"], dtype=float)
     model = np.asarray(atoms.info["model_eigenvalues"], dtype=float)
     # Real modes only. At a saddle the negative eigenvalue is the reaction
@@ -111,7 +137,10 @@ def soft_mode_error(atoms: Atoms) -> float:
     -------
     float
         Median absolute eigenvalue error over the softest third, in eV/A^2.
+        NaN where the model's Hessian failed.
     """
+    if hessian_failed(atoms):
+        return np.nan
     reference = np.asarray(atoms.info["reference_eigenvalues"], dtype=float)
     model = np.asarray(atoms.info["model_eigenvalues"], dtype=float)
     positive = reference > 0
@@ -147,9 +176,9 @@ def reaction_curvature(atoms: Atoms) -> float:
     -------
     float
         Model imaginary eigenvalue over the reference one, 1 meaning
-        agreement.
+        agreement. NaN where the model's Hessian failed.
     """
-    if atoms.info["kind"] != "transition_state":
+    if atoms.info["kind"] != "transition_state" or hessian_failed(atoms):
         return np.nan
     reference = np.asarray(atoms.info["reference_eigenvalues"], dtype=float)
     model = np.asarray(atoms.info["model_eigenvalues"], dtype=float)

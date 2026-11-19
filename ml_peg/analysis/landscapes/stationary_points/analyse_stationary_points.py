@@ -26,6 +26,7 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
+    hessian_failed,
     ratio_agreement,
     reaction_curvature,
     reaction_overlap,
@@ -808,7 +809,54 @@ def reaction_curvatures() -> dict[str, list]:
 
 
 @pytest.fixture
-def get_soft_mode_error(soft_mode_errors: dict[str, list]) -> dict[str, float]:
+def failed_hessians() -> dict[str, bool]:
+    """
+    Get whether each model's Hessian failed on any structure.
+
+    A failure voids all five Hessian metrics for that model, rather than leaving
+    the structure out and scoring the model on the rest.
+
+    Returns
+    -------
+    dict[str, bool]
+        True for a model with a Hessian the calculation recorded as failed.
+    """
+    return {
+        model_name: any(
+            hessian_failed(a) for a in _read_frames(model_name, HESSIANS_GLOB)
+        )
+        for model_name in MODELS
+    }
+
+
+def _void_failed(
+    summary: dict[str, float], failed_hessians: dict[str, bool]
+) -> dict[str, float]:
+    """
+    Set a Hessian metric to NaN for every model whose Hessian failed anywhere.
+
+    Parameters
+    ----------
+    summary
+        One number per model.
+    failed_hessians
+        Whether each model's Hessian failed on any structure.
+
+    Returns
+    -------
+    dict[str, float]
+        ``summary``, with NaN for those models.
+    """
+    return {
+        model_name: np.nan if failed_hessians[model_name] else value
+        for model_name, value in summary.items()
+    }
+
+
+@pytest.fixture
+def get_soft_mode_error(
+    soft_mode_errors: dict[str, list], failed_hessians: dict[str, bool]
+) -> dict[str, float]:
     """
     Get the median curvature error on the soft modes.
 
@@ -816,17 +864,23 @@ def get_soft_mode_error(soft_mode_errors: dict[str, list]) -> dict[str, float]:
     ----------
     soft_mode_errors
         Per-structure soft mode error.
+    failed_hessians
+        Whether each model's Hessian failed on any structure.
 
     Returns
     -------
     dict[str, float]
-        Median over structures, in eV/A^2.
+        Median over structures, in eV/A^2; NaN for a model whose
+        Hessian failed anywhere.
     """
-    return _summarise_over_reached(soft_mode_errors, np.median)
+    summary = _summarise_over_reached(soft_mode_errors, np.median)
+    return _void_failed(summary, failed_hessians)
 
 
 @pytest.fixture
-def get_reaction_curvature(reaction_curvatures: dict[str, list]) -> dict[str, float]:
+def get_reaction_curvature(
+    reaction_curvatures: dict[str, list], failed_hessians: dict[str, bool]
+) -> dict[str, float]:
     """
     Get the median agreement of the curvature along the reaction coordinate.
 
@@ -840,17 +894,20 @@ def get_reaction_curvature(reaction_curvatures: dict[str, list]) -> dict[str, fl
     ----------
     reaction_curvatures
         Per-structure ratio.
+    failed_hessians
+        Whether each model's Hessian failed on any structure.
 
     Returns
     -------
     dict[str, float]
-        Median of ``min(r, 1/r)``, 1 meaning agreement.
+        Median of ``min(r, 1/r)``, 1 meaning agreement; NaN for a model whose
+        Hessian failed anywhere.
     """
     agreements = {
         model_name: [ratio_agreement(ratio) for ratio in ratios]
         for model_name, ratios in reaction_curvatures.items()
     }
-    return _summarise_over_reached(agreements, np.median)
+    return _void_failed(_summarise_over_reached(agreements, np.median), failed_hessians)
 
 
 @pytest.fixture
@@ -888,7 +945,9 @@ def stiffness() -> dict[str, list]:
 
 
 @pytest.fixture
-def get_mode_overlap(mode_overlaps: dict[str, list]) -> dict[str, float]:
+def get_mode_overlap(
+    mode_overlaps: dict[str, list], failed_hessians: dict[str, bool]
+) -> dict[str, float]:
     """
     Get the median agreement with the DFT normal modes.
 
@@ -896,18 +955,22 @@ def get_mode_overlap(mode_overlaps: dict[str, list]) -> dict[str, float]:
     ----------
     mode_overlaps
         Per-structure median mode overlap.
+    failed_hessians
+        Whether each model's Hessian failed on any structure.
 
     Returns
     -------
     dict[str, float]
-        Median over structures, from 0 to 1.
+        Median over structures, from 0 to 1; NaN for a model whose
+        Hessian failed anywhere.
     """
-    return _summarise_over_all(mode_overlaps, np.median)
+    return _void_failed(_summarise_over_all(mode_overlaps, np.median), failed_hessians)
 
 
 @pytest.fixture
 def get_reaction_coordinate_overlap(
     reaction_coordinate_overlaps: dict[str, list],
+    failed_hessians: dict[str, bool],
 ) -> dict[str, float]:
     """
     Get the median agreement with the DFT reaction coordinates.
@@ -918,17 +981,23 @@ def get_reaction_coordinate_overlap(
     ----------
     reaction_coordinate_overlaps
         Per-structure imaginary mode overlap, NaN at minima.
+    failed_hessians
+        Whether each model's Hessian failed on any structure.
 
     Returns
     -------
     dict[str, float]
-        Median over transition states, from 0 to 1.
+        Median over transition states, from 0 to 1; NaN for a model whose
+        Hessian failed anywhere.
     """
-    return _summarise_over_reached(reaction_coordinate_overlaps, np.median)
+    summary = _summarise_over_reached(reaction_coordinate_overlaps, np.median)
+    return _void_failed(summary, failed_hessians)
 
 
 @pytest.fixture
-def get_stiffness_error(stiffness: dict[str, list]) -> dict[str, float]:
+def get_stiffness_error(
+    stiffness: dict[str, list], failed_hessians: dict[str, bool]
+) -> dict[str, float]:
     """
     Get how far the model's overall stiffness is from DFT's.
 
@@ -943,11 +1012,14 @@ def get_stiffness_error(stiffness: dict[str, list]) -> dict[str, float]:
     ----------
     stiffness
         Per-structure stiffness against DFT, in percent.
+    failed_hessians
+        Whether each model's Hessian failed on any structure.
 
     Returns
     -------
     dict[str, float]
-        Median absolute stiffness against DFT, in percent.
+        Median absolute stiffness against DFT, in percent; NaN for a model whose
+        Hessian failed anywhere.
     """
     results = {}
     for model_name in MODELS:
@@ -955,7 +1027,7 @@ def get_stiffness_error(stiffness: dict[str, list]) -> dict[str, float]:
         results[model_name] = (
             float(np.median(np.abs(values))) if values.size else np.nan
         )
-    return results
+    return _void_failed(results, failed_hessians)
 
 
 @pytest.fixture

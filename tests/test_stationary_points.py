@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from ase import Atoms
 import numpy as np
 import pytest
 
 from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
+    hessian_failed,
     ratio_agreement,
+    reaction_curvature,
+    reaction_overlap,
+    soft_mode_error,
     stiffness_vs_dft,
 )
 
@@ -82,3 +88,49 @@ def test_stiffness_ignores_the_reaction_mode() -> None:
     reference = (-1.0, *REFERENCE_EIGENVALUES)
     model = (-5.0, *REFERENCE_EIGENVALUES)
     assert stiffness_vs_dft(_structure(reference, model)) == pytest.approx(0.0)
+
+
+def _failed_structure() -> Atoms:
+    """
+    Build a saddle as the calculation records one whose model Hessian failed.
+
+    Labels and NaN overlaps with no eigenvalues at all, as written by
+    ``calc_stationary_points.py``.
+
+    Returns
+    -------
+    ase.atoms.Atoms
+        A one-atom stand-in; only its info is read.
+    """
+    failed = Atoms("H")
+    failed.info.update(
+        molecule="ethanol",
+        kind="transition_state",
+        label="ts0_1_0",
+        mode_overlap_median=np.nan,
+        reaction_coordinate_overlap=np.nan,
+    )
+    return failed
+
+
+def test_only_a_structure_without_eigenvalues_counts_as_failed() -> None:
+    """A failed record is flagged, and one carrying eigenvalues is not."""
+    assert hessian_failed(_failed_structure())
+    assert not hessian_failed(_structure(REFERENCE_EIGENVALUES, REFERENCE_EIGENVALUES))
+
+
+@pytest.mark.parametrize(
+    "metric", [stiffness_vs_dft, soft_mode_error, reaction_curvature, reaction_overlap]
+)
+def test_failed_hessian_gives_nan_not_an_error(
+    metric: Callable[[Atoms], float],
+) -> None:
+    """
+    A failed Hessian gives a missing value rather than stopping the analysis.
+
+    Parameters
+    ----------
+    metric
+        One of the per-structure Hessian metrics.
+    """
+    assert np.isnan(metric(_failed_structure()))
