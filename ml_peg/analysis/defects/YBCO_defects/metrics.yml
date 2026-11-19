@@ -1,0 +1,29 @@
+metrics:
+    RMSD vacancy:
+        good: 0.1
+        bad: 0.6
+        unit: eV
+        tooltip: "RMSD of YBCO vacancy formation energies vs CP2K PBE (good = DFT finite-size floor; bad ~ error above which defect concentrations are unreliable)"
+        level_of_theory: PBE
+        weight: 1
+    RMSD antisite:
+        good: 0.1
+        bad: 0.6
+        unit: eV
+        tooltip: "RMSD of YBCO antisite formation energies vs CP2K PBE (good = DFT finite-size floor; bad ~ error above which defect concentrations are unreliable)"
+        level_of_theory: PBE
+        weight: 1
+    RMSD interstitial:
+        good: 0.1
+        bad: 0.8
+        unit: eV
+        tooltip: "RMSD of YBCO oxygen-interstitial formation energies vs CP2K PBE (bad loosened)"
+        level_of_theory: PBE
+        weight: 1
+    RMSD reactions:
+        good: 0.1
+        bad: 0.6
+        unit: eV
+        tooltip: "RMSD of the mu-independent YBCO antisite exchange-reaction energies vs CP2K PBE (chemical potentials cancel, so this isolates the intrinsic antisite energetics)"
+        level_of_theory: PBE
+        weight: 1
