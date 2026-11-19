@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import pickle
+from warnings import warn
 
 from ase import Atoms
 from ase.io import read
@@ -53,6 +54,34 @@ def get_surface_z(
         Mean z position of the top-layer atoms.
     """
     return float(np.mean(atoms.get_positions()[surface_idx_1:surface_idx_2, 2]))
+
+
+def read_production_frames(model_dir: Path, expected_frames: int) -> list[Atoms]:
+    """
+    Read a model's copper–water production trajectory.
+
+    Parameters
+    ----------
+    model_dir
+        Directory containing the model's MD output.
+    expected_frames
+        Minimum number of frames required for analysis.
+
+    Returns
+    -------
+    list[Atoms]
+        Production frames, or an empty list if the run is marked failed or its
+        trajectory is missing, unreadable, or incomplete.
+    """
+    trajectory = model_dir / "md-traj.extxyz"
+    if (model_dir / "md-failed").exists() or not trajectory.is_file():
+        return []
+    try:
+        frames = read(trajectory, ":")
+    except Exception as exc:
+        warn(f"Unable to read {trajectory}: {exc}", stacklevel=2)
+        return []
+    return frames if len(frames) >= expected_frames else []
 
 
 def compute_density_profiles(
@@ -157,19 +186,12 @@ def create_density_profiles(
     for model_name in models:
         model_dir = calc_path / model_name
 
-        traj_file = model_dir / "md-traj.extxyz"
-        if (model_dir / "md-failed").exists() or not traj_file.is_file():
+        frames = read_production_frames(model_dir, expected_frames)
+        if not frames:
             profiles[model_name] = md.FAILED
             continue
 
-        if not (curve_path / model_name).exists():
-            (curve_path / model_name).mkdir(parents=True, exist_ok=True)
-
-        frames = read(traj_file, ":")
-        if len(frames) < expected_frames:
-            profiles[model_name] = md.FAILED
-            continue
-
+        (curve_path / model_name).mkdir(parents=True, exist_ok=True)
         profiles[model_name] = compute_density_profiles(frames, elements=elements)
 
         # Write density curves to file for app use

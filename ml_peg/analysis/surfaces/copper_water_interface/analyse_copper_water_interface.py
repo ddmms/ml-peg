@@ -5,13 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 import pickle
 
-from ase.io import read
 import numpy as np
 import plotly.graph_objects as go
 import pytest
 
 from ml_peg.analysis.surfaces.copper_water_interface.density_profile import (
     create_density_profiles,
+    read_production_frames,
 )
 from ml_peg.analysis.utils import aml_md_analysis as aml
 from ml_peg.analysis.utils import md_water_analysis as md
@@ -314,15 +314,8 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
     dipole_results["ref"] = ref_dipole_stdev
 
     for model_name in MODELS:
-        model_traj = CALC_PATH / model_name / "md-traj.extxyz"
-        if (model_traj.parent / "md-failed").exists() or not model_traj.is_file():
-            dipole_results[model_name] = np.nan
-            continue
-
-        # Compute the per-frame total z-dipole per unit area from the trajectory,
-        # the same way as the water_slab_dipoles benchmark.
-        frames = read(model_traj, ":")
-        if len(frames) < RUN_STEPS // TRAJ_EVERY:
+        frames = read_production_frames(CALC_PATH / model_name, RUN_STEPS // TRAJ_EVERY)
+        if not frames:
             dipole_results[model_name] = np.nan
             continue
 
@@ -693,13 +686,8 @@ def created_dipole_profile() -> dict[str, dict]:
         profiles["ref"] = pickle.load(f_in)
 
     for model_name in MODELS:
-        model_traj = CALC_PATH / model_name / "md-traj.extxyz"
-        if (model_traj.parent / "md-failed").exists() or not model_traj.is_file():
-            profiles[model_name] = md.FAILED
-            continue
-
-        frames = read(model_traj, ":")
-        if len(frames) < RUN_STEPS // TRAJ_EVERY:
+        frames = read_production_frames(CALC_PATH / model_name, RUN_STEPS // TRAJ_EVERY)
+        if not frames:
             profiles[model_name] = md.FAILED
             continue
 
