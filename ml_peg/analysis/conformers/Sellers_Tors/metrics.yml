@@ -1,0 +1,19 @@
+metrics:
+  MAE:
+    good: 0.2
+    bad: 1.5
+    unit: kcal/mol
+    tooltip: Mean absolute error of relative energies over all torsion scan points
+    level_of_theory: CCSD(T)/CBS
+  RMSE:
+    good: 0.3
+    bad: 2.0
+    unit: kcal/mol
+    tooltip: Root mean squared error of relative energies over all torsion scan points
+    level_of_theory: CCSD(T)/CBS
+  Barrier MAE:
+    good: 0.3
+    bad: 2.0
+    unit: kcal/mol
+    tooltip: Mean absolute error of the torsional barrier (maximum minus minimum energy of each scan)
+    level_of_theory: CCSD(T)/CBS

@@ -1,0 +1,17 @@
+implementers:
+  - name: "João Morado"
+    github: "JMorado"
+
+contributors: []
+
+citations:
+  - key: "sellers-2017-torsions"
+    role: benchmark_method
+    title: "A Comparison of Quantum and Molecular Mechanical Methods to Estimate Strain Energy in Druglike Fragments"
+    authors:
+      - "Benjamin D. Sellers"
+      - "Natalie C. James"
+      - "Alberto Gobbi"
+    year: 2017
+    doi: "10.1021/acs.jcim.6b00614"
+    url: null
