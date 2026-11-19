@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.utils.water_md import water_md_restart
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -84,10 +85,10 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     start_config.info["spin"] = 1
     start_config.calc = calc
 
-    # Run MD. equil_steps run first (not recorded); the trajectory is written
-    # every step from traj_start onwards so velocities are available for VACF/VDOS.
     md = NVT(
-        struct=start_config,
+        **water_md_restart(
+            start_config, write_dir, EQUIL_STEPS, EQUIL_STEPS + RUN_STEPS
+        ),
         temp=TEMPERATURE,
         steps=EQUIL_STEPS + RUN_STEPS,
         equil_steps=EQUIL_STEPS,
@@ -95,7 +96,6 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
         friction=FRICTION,
         stats_every=100,
         traj_every=TRAJ_EVERY,
-        traj_start=EQUIL_STEPS,
         file_prefix=write_dir / "md",
         write_kwargs={"columns": ["symbols", "positions", "momenta", "masses"]},
     )

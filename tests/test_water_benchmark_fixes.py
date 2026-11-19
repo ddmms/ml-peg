@@ -237,3 +237,57 @@ def test_incremental_bar_preserves_other_model(tmp_path, monkeypatch):
     saved = json.loads(filename.read_text())["models"]
     assert saved["b"] == saved_b
     assert saved["a"]["figures"]["rdf"]["data"][0]["y"] == [30]
+
+
+@pytest.mark.parametrize(("stop_step", "damage"), [(6, False), (14, False), (14, True)])
+def test_resume_water_md_across_walltime(tmp_path, stop_step, damage):
+    """Resume before or after equilibration with continuous production sampling."""
+    from ase.calculators.emt import EMT
+    from ase.io import read
+    from janus_core.calculations.md import NVT
+
+    from ml_peg.calcs.utils.water_md import water_md_restart
+
+    def dynamics(directory, target):
+        directory.mkdir(exist_ok=True)
+        atoms = Atoms("Cu2", positions=[[0, 0, 0], [2.5, 0, 0]], cell=[10] * 3)
+        atoms.calc = EMT()
+        return NVT(
+            **water_md_restart(atoms, directory, 8, target),
+            steps=target,
+            temp=330,
+            timestep=0.5,
+            stats_every=1,
+            traj_every=2,
+            restart_every=4,
+            file_prefix=directory / "md",
+            track_carbon=False,
+        )
+
+    complete, resumed = tmp_path / "complete", tmp_path / "resumed"
+    dynamics(complete, 20).run()
+    dynamics(resumed, stop_step).run()
+    # Also exercise recovery from a partially written next frame.
+    if stop_step >= 8:
+        with (resumed / "md-traj.extxyz").open("a") as stream:
+            stream.write("2\n")
+    if damage:
+        broken = resumed / "md-res-12.extxyz"
+        broken.write_bytes(broken.read_bytes()[:200])
+        with pytest.warns(UserWarning, match="Skipping unreadable checkpoint"):
+            replay = dynamics(resumed, stop_step)
+        assert replay.offset == 8
+        replay.run()
+        assert read(broken).info["step"] == 12
+
+    restart = dynamics(resumed, 20)
+    assert restart.offset == stop_step - 2
+    checkpoint = read(resumed / f"md-res-{restart.offset}.extxyz")
+    np.testing.assert_allclose(restart.struct.get_momenta(), checkpoint.get_momenta())
+    restart.run()
+
+    def saved_steps(directory):
+        return [frame.info["step"] for frame in read(directory / "md-traj.extxyz", ":")]
+
+    assert saved_steps(resumed) == saved_steps(complete) == list(range(8, 21, 2))
+    assert np.loadtxt(resumed / "md-stats.dat")[:, 0].tolist() == list(range(21))
