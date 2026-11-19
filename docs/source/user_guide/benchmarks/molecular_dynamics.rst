@@ -2,6 +2,73 @@
 Molecular dynamics
 ==================
 
+Metal self-diffusion
+====================
+
+Summary
+-------
+
+Performance in predicting self-diffusion in liquid metals compared to experimental
+measurements. Ideal crystal structures of about 1000 atoms are heated to 1.5 times
+the measurement temperature in kelvin. After NPT equilibration at the measurement
+temperature, sampled states start 50 separate short NVE trajectories. The diffusion
+coefficient is computed by integrating the velocity autocorrelation function
+(VACF) using the Green–Kubo relation
+described by Tuckerman [tuckerman2015]_. Sensitivity to the cosine-taper onset
+is checked with 11 tapers starting over 0.45–0.60 ps and all ending at 1.0 ps,
+taking the median diffusion coefficient.
+A spread above 5% of the absolute median triggers a warning and leaves the
+model unscored.
+
+Metrics
+-------
+
+1. Diffusion coefficient log error
+
+For each element, the absolute natural logarithm of the model/reference diffusion
+ratio is averaged over temperatures, then equally over elements.
+
+The good target is set to :math:`\ln(1.05)`, corresponding to a 5% multiplicative
+deviation, comparable to typical experimental uncertainties except Al.
+The bad target is set to :math:`\ln(1.25)`, corresponding to a 25% multiplicative
+deviation and a factor-1.25 difference in the diffusion timescale.
+
+Arrhenius fits are shown for reference, with their prefactor :math:`D_0` and
+activation energy :math:`E_0` shown on hover.
+
+Benchmark speed
+---------------
+
+Very slow: tests are expected to take 10 hours to a day on GPU, depending on the model.
+
+As reference: The ``dpa-4-nano-omat`` and ``grace-2l-omat`` models take about 8 and 18 hours on an RTX6000 GPU for the full benchmark.
+
+Data availability
+-----------------
+
+Input structures:
+
+Prepared with ASE using crystallographic data from the Crystallography Open Database:
+
+* Al: COD 9008460
+* Cu: COD 9008468
+* Fe: COD 2300200
+* Ni: COD 2100652
+* Ti: COD 9008554
+
+Reference data (DOI):
+
+* Al: 10.1088/1742-6596/340/1/012077
+* Cu: 10.1103/PhysRevB.81.012102
+* Fe: 10.1088/1361-648X/ab2855
+* Ni: 10.1103/PhysRevB.77.092201
+* Ti: 10.1103/PhysRevB.80.212203
+
+.. [tuckerman2015] Mark E. Tuckerman, *Statistical Mechanics: Theory and Molecular
+   Simulation*. Oxford University Press (2015).
+   ISBN 978-0-19-852526-4.
+
+
 Liquid densities
 ================
 
