@@ -478,7 +478,8 @@ Input data:
 
 Reference data:
 
-* Ab initio molecular dynamics of the same system, run with CP2K at the PBE-D3 level. See [1] for details.
+* Ab initio molecular dynamics of the same system, run with CP2K at the PBE-D3 level.
+  Section S1.0.1 of [1] does not specify the D3 damping variant.
 * The dipole window used for breakdown candidates, and the point-charge model, follow:
 
   * [1] I. J. Parker, M. J. Hoffmann, W. J. Baldwin, S. Han, S. Gupta, K. D. Fong,
