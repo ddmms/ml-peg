@@ -48,7 +48,6 @@ from ml_peg.app.utils.build_frameworks import (
     build_framework_summary_tables,
     build_framework_views,
 )
-from ml_peg.app.utils.global_weights import build_global_weights
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     register_onboarding_callbacks,
@@ -907,9 +906,6 @@ def build_nav(
                                     [
                                         get_model_filter(MODELS),
                                         weight_preset_selector,
-                                        build_global_weights(
-                                            summary_table, category_views
-                                        ),
                                         get_element_filter(),
                                     ],
                                     className="mlpeg-controls-toolbar",

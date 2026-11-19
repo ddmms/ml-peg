@@ -305,42 +305,19 @@ def test_reset_pending_edit(ready_page, page_errors, field, button, default):
     score(page, "B1-table", 0.5)
 
 
-def test_global_weights_sync_and_propagate(ready_page, page_errors):
-    """Central edits reach hidden pages, local edits sync back, and resets agree."""
+def test_global_weights_are_not_registered(ready_page, page_errors, app_url):
+    """The temporary removal excludes both the panel and its server callbacks."""
     page = ready_page
-    score(page, "summary-table", 0.65)
-    page.locator("#global-weights > summary").click()
-    category = page.locator(".mlpeg-global-weight-category").filter(
-        has=page.locator('label[for="global-summary-table-Alpha Score-input"]')
-    )
-    category.locator("summary").click()
-    edit(page, "global-Alpha-summary-table-B1 Score-input", 3)
-    stored_score(page, "Alpha-summary-table", 0.45)
-    score(page, "summary-table", 0.675)
-    edit(page, "global-summary-table-Alpha Score-input", 3)
-    score(page, "summary-table", 0.5625)
-    expect(page.locator('[id="summary-table-Alpha Score-input"]')).to_have_value("3")
-    visit(page, "/category/alpha")
-    expect(page.locator('[id="Alpha-summary-table-B1 Score-input"]')).to_have_value("3")
-    score(page, "Alpha-summary-table", 0.45)
-    edit(page, "Alpha-summary-table-B1 Score-input", 1)
-    stored_score(page, "Alpha-summary-table", 0.4)
-    expect(
-        page.locator('[id="global-Alpha-summary-table-B1 Score-input"]')
-    ).to_have_value("1")
-    stored_score(page, "Alpha-summary-table", 0.4)
-    edit(page, "global-Alpha-summary-table-B1 Score-input", 0)
-    stored_score(page, "Alpha-summary-table", 0.3)
-    page.locator('[id="global-Alpha-summary-table-reset"]').click()
-    expect(page.locator('[id="Alpha-summary-table-B1 Score-input"]')).to_have_value("1")
-    stored_score(page, "Alpha-summary-table", 0.4)
-    page.locator("#global-category-weights-reset").click()
-    visit(page, "/")
-    score(page, "summary-table", 0.65)
+    expect(page.locator("#global-weights")).to_have_count(0)
+    dependencies = page.request.get(f"{app_url}/_dash-dependencies").json()
+    for dependency in dependencies:
+        assert "global-" not in dependency["output"]
+        for item in dependency["inputs"] + dependency["state"]:
+            assert not item["id"].startswith("global-")
 
 
-def test_global_weights_presets_and_reload(ready_page, page_errors):
-    """Presets and persisted weights populate both central and local controls."""
+def test_weight_presets_and_reload(ready_page, page_errors):
+    """Presets and persisted weights populate the summary controls."""
     page = ready_page
     score(page, "summary-table", 0.65)
     page.get_by_text("Weight presets", exact=True).click()
@@ -355,41 +332,27 @@ def test_global_weights_presets_and_reload(ready_page, page_errors):
     )
     assert weights == {"Alpha Score": 0, "Beta Score": 1}
     value = "0"
-    expect(page.locator('[id="global-summary-table-Alpha Score-input"]')).to_have_value(
-        value
-    )
+    expect(page.locator('[id="summary-table-Alpha Score-input"]')).to_have_value(value)
     page.reload()
-    expect(page.locator('[id="global-summary-table-Alpha Score-input"]')).to_have_value(
-        value
-    )
     expect(page.locator('[id="summary-table-Alpha Score-input"]')).to_have_value(value)
     page.get_by_text("Weight presets", exact=True).click()
     page.locator("#weight-preset-reset").click()
-    expect(page.locator('[id="global-summary-table-Alpha Score-input"]')).to_have_value(
-        "1"
-    )
+    expect(page.locator('[id="summary-table-Alpha Score-input"]')).to_have_value("1")
     score(page, "summary-table", 0.65)
 
 
-@pytest.mark.parametrize("central", [False, True])
 @pytest.mark.parametrize("commit", ["Enter", "Tab"])
-def test_empty_weight_restores_stored_value(ready_page, page_errors, central, commit):
+def test_empty_weight_restores_stored_value(ready_page, page_errors, commit):
     """Empty edits restore the displayed weight without changing stored scores."""
     page = ready_page
     score(page, "summary-table", 0.65)
-    page.locator("#global-weights > summary").click()
-    prefix = "global-" if central else ""
-    field = f"{prefix}summary-table-Alpha Score-input"
+    field = "summary-table-Alpha Score-input"
     edit(page, field, 3)
     score(page, "summary-table", 0.525)
     control = page.locator(f'[id="{field}"]')
     control.fill("")
     control.press(commit)
     expect(control).to_have_value("3")
-    for other in ["", "global-"]:
-        expect(
-            page.locator(f'[id="{other}summary-table-Alpha Score-input"]')
-        ).to_have_value("3")
     assert (
         page.evaluate(
             "JSON.parse(sessionStorage.getItem('summary-table-weight-store'))"
@@ -398,32 +361,3 @@ def test_empty_weight_restores_stored_value(ready_page, page_errors, central, co
         == 3
     )
     score(page, "summary-table", 0.525)
-
-
-@pytest.mark.parametrize("panel_width", [320, 480])
-def test_global_reset_remains_accessible_when_scrolled(ready_page, panel_width):
-    """The category reset stays inside a scrolled panel and resets its weights."""
-    page = ready_page
-    page.locator("#global-weights > summary").click()
-    edit(page, "global-summary-table-Alpha Score-input", 3)
-    score(page, "summary-table", 0.525)
-    panel = page.locator(".mlpeg-global-weights-body")
-    # Constrain the fixture's short list to exercise overflow at both widths.
-    panel.evaluate(
-        """(el, width) => {
-            el.style.width = width + 'px';
-            el.style.maxHeight = '150px';
-            el.scrollTop = el.scrollHeight;
-        }""",
-        panel_width,
-    )
-    assert panel.evaluate("el => el.scrollTop") > 0
-    reset = page.locator("#global-category-weights-reset")
-    bounds = panel.bounding_box()
-    button = reset.bounding_box()
-    assert bounds["y"] <= button["y"]
-    assert button["y"] + button["height"] <= bounds["y"] + bounds["height"]
-    assert bounds["x"] <= button["x"]
-    assert button["x"] + button["width"] <= bounds["x"] + bounds["width"]
-    reset.click()
-    score(page, "summary-table", 0.65)
