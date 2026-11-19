@@ -44,11 +44,12 @@ def reaction_overlap(atoms: Atoms) -> float:
     return overlap if reference[0] < 0 and model[0] < 0 else np.nan
 
 
-def eigenvalue_scaling(atoms: Atoms) -> float:
+def stiffness_vs_dft(atoms: Atoms) -> float:
     """
-    Fit one factor relating the model's curvature to the reference's.
+    Get how much stiffer than DFT the model's curvature is overall, in percent.
 
-    The least-squares slope through the origin, which weights each mode by the
+    From one factor relating the model's eigenvalues to the reference's: the
+    least-squares slope through the origin, which weights each mode by the
     square of its reference eigenvalue and so is a statement about the stiff
     modes: on this reference the eigenvalues span four orders of magnitude, and
     the ten stiffest modes of aspirin carry 76% of the fit.
@@ -69,7 +70,8 @@ def eigenvalue_scaling(atoms: Atoms) -> float:
     Returns
     -------
     float
-        The scaling, 1 meaning agreement.
+        The slope's distance from 1, in percent: 0 is agreement, and -6.5
+        means 6.5% softer than DFT.
     """
     reference = np.asarray(atoms.info["reference_eigenvalues"], dtype=float)
     model = np.asarray(atoms.info["model_eigenvalues"], dtype=float)
@@ -80,7 +82,8 @@ def eigenvalue_scaling(atoms: Atoms) -> float:
     # so this is about the metrics not overlapping, not about the number.
     real = reference > 0
     reference, model = reference[real], model[real]
-    return float(np.dot(reference, model) / np.dot(reference, reference))
+    slope = np.dot(reference, model) / np.dot(reference, reference)
+    return float(100.0 * (slope - 1.0))
 
 
 def soft_mode_error(atoms: Atoms) -> float:

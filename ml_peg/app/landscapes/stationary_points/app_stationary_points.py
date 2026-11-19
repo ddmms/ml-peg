@@ -44,7 +44,7 @@ FIGURES = {
     "Reconverged saddle RMSD (90th pct)": "figure_saddle_drift.json",
     "Normal mode overlap": "figure_mode_overlaps.json",
     "Reaction mode overlap": "figure_reaction_coordinates.json",
-    "Curvature scaling error": "figure_curvature_scaling.json",
+    "Stiffness error": "figure_stiffness.json",
     "Soft mode curvature error": "figure_soft_mode_error.json",
     "Reaction mode curvature": "figure_reaction_curvature.json",
 }

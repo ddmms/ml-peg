@@ -26,11 +26,11 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
-    eigenvalue_scaling,
     ratio_agreement,
     reaction_curvature,
     reaction_overlap,
     soft_mode_error,
+    stiffness_vs_dft,
 )
 from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_violin
 from ml_peg.analysis.utils.utils import (
@@ -860,32 +860,33 @@ def get_reaction_curvature(reaction_curvatures: dict[str, list]) -> dict[str, fl
 
 @pytest.fixture
 @plot_violin(
-    filename=OUT_PATH / "figure_curvature_scaling.json",
-    title="Curvature relative to DFT",
-    y_label="Eigenvalue scaling (1 = agreement)",
+    filename=OUT_PATH / "figure_stiffness.json",
+    title="Stiffness relative to DFT",
+    y_label="Stiffness vs DFT / % (negative = softer)",
     hoverdata={
         "Molecule": HESSIAN_INFO["molecule"],
         "Kind": HESSIAN_INFO["kind"],
         "Label": HESSIAN_INFO["label"],
     },
 )
-def curvature_scaling() -> dict[str, list]:
+def stiffness() -> dict[str, list]:
     """
-    Get the slope of the model's eigenvalues against the DFT ones.
+    Get how much stiffer than DFT each structure's curvature is.
 
-    Plotted as the raw scaling rather than its deviation from 1, because the
-    direction matters: every model measured so far is soft, not stiff --
-    MACE-OFF by 6 to 8%, GFN2-xTB by 15% -- and a plot of the absolute
-    deviation would hide that they all err the same way.
+    Plotted signed rather than as its size, because the direction matters:
+    every model measured so far is soft, not stiff -- MACE-OFF by 6 to 8%,
+    GFN2-xTB by 15% -- and a plot of the size alone would hide that they all
+    err the same way.
 
     Returns
     -------
     dict[str, list]
-        Per-structure eigenvalue scaling, 1 meaning agreement.
+        Per-structure stiffness against DFT, in percent, negative meaning
+        softer.
     """
     return {
         model_name: [
-            eigenvalue_scaling(a) for a in _read_frames(model_name, HESSIANS_GLOB)
+            stiffness_vs_dft(a) for a in _read_frames(model_name, HESSIANS_GLOB)
         ]
         for model_name in MODELS
     }
@@ -932,14 +933,12 @@ def get_reaction_coordinate_overlap(
 
 
 @pytest.fixture
-def get_curvature_scaling_error(
-    curvature_scaling: dict[str, list],
-) -> dict[str, float]:
+def get_stiffness_error(stiffness: dict[str, list]) -> dict[str, float]:
     """
-    Get how far the model's curvature is from the DFT curvature.
+    Get how far the model's overall stiffness is from DFT's.
 
-    The median of the per-structure distance from a scaling of 1, so a model
-    uniformly 6% soft scores 0.06 whichever way it errs. Reported apart from
+    The median of the per-structure stiffness's size, so a model uniformly 6%
+    soft scores 6 whichever way it errs; the plot keeps the sign. Reported apart from
     the mode overlaps on purpose: a model can have every mode direction right
     and still be systematically soft, and those are different failures.
     Matching modes by overlap rather than by eigenvalue is what keeps the two
@@ -947,19 +946,19 @@ def get_curvature_scaling_error(
 
     Parameters
     ----------
-    curvature_scaling
-        Per-structure eigenvalue scaling.
+    stiffness
+        Per-structure stiffness against DFT, in percent.
 
     Returns
     -------
     dict[str, float]
-        Median absolute deviation from 1.
+        Median absolute stiffness against DFT, in percent.
     """
     results = {}
     for model_name in MODELS:
-        values = np.asarray(curvature_scaling[model_name], dtype=float)
+        values = np.asarray(stiffness[model_name], dtype=float)
         results[model_name] = (
-            float(np.median(np.abs(values - 1.0))) if values.size else np.nan
+            float(np.median(np.abs(values))) if values.size else np.nan
         )
     return results
 
@@ -985,7 +984,7 @@ def metrics(
     get_connectivity: dict[str, float],
     get_mode_overlap: dict[str, float],
     get_reaction_coordinate_overlap: dict[str, float],
-    get_curvature_scaling_error: dict[str, float],
+    get_stiffness_error: dict[str, float],
     get_soft_mode_error: dict[str, float],
     get_reaction_curvature: dict[str, float],
 ) -> dict[str, dict]:
@@ -1021,8 +1020,8 @@ def metrics(
         Median agreement with the DFT normal modes.
     get_reaction_coordinate_overlap
         Median agreement with the DFT reaction coordinates.
-    get_curvature_scaling_error
-        Median distance of the curvature from the DFT curvature.
+    get_stiffness_error
+        Median distance of the overall stiffness from DFT's, in percent.
     get_soft_mode_error
         Median curvature error on the soft modes.
     get_reaction_curvature
@@ -1046,7 +1045,7 @@ def metrics(
         "Connectivity preserved": get_connectivity,
         "Normal mode overlap": get_mode_overlap,
         "Reaction mode overlap": get_reaction_coordinate_overlap,
-        "Curvature scaling error": get_curvature_scaling_error,
+        "Stiffness error": get_stiffness_error,
         "Soft mode curvature error": get_soft_mode_error,
         "Reaction mode curvature": get_reaction_curvature,
     }

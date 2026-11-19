@@ -71,11 +71,11 @@ metrics:
     unit: cosine
     tooltip: "Agreement with the DFT imaginary mode, over the saddles where the model has one at all. Read with Saddles converged."
     level_of_theory: ωB97X/6-31G(d)
-  Curvature scaling error:
-    good: 0.02
-    bad: 0.2
-    unit: fraction
-    tooltip: "Distance from 1 of the least-squares slope of model against DFT eigenvalues. Weighted by eigenvalue, so it describes the stiff modes."
+  Stiffness error:
+    good: 2.0
+    bad: 20.0
+    unit: "%"
+    tooltip: "How far the model's overall stiffness is from DFT's, from the least-squares slope of model against DFT eigenvalues; median over structures. Weighted by eigenvalue, so it describes the stiff modes. Click for the signed values: negative is softer than DFT."
     level_of_theory: ωB97X/6-31G(d)
   Soft mode curvature error:
     good: 0.02

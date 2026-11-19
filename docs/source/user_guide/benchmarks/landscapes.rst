@@ -73,10 +73,10 @@ Metrics
 5. Hessian comparison
 
    Normal mode overlaps against the DFT Hessian, the overlap of the reaction
-   mode at saddles, and whether the model's curvature is systematically
-   scaled. It also reports the curvature error over the softest third of the
-   modes, where a landscape lives, and the ratio of the model's imaginary
-   eigenvalue to DFT's, which sets the tunnelling correction and the
+   mode at saddles, and how much softer or stiffer than DFT the model is
+   overall, in percent. It also reports the curvature error over the softest
+   third of the modes, where a landscape lives, and the ratio of the model's
+   imaginary eigenvalue to DFT's, which sets the tunnelling correction and the
    transition state theory prefactor. That ratio is scored as
    ``min(r, 1/r)``, so a barrier top too sharp counts against a model as much
    as one too flat by the same factor.
