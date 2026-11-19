@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import functools
+from typing import Any
+from unittest.mock import patch
+from warnings import warn
 
 from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
     ConformerSelectionBenchmark,
     FoldingStabilityBenchmark,
     InferenceSpeedBenchmark,
+    NVEEnergyConservationBenchmark,
     ReactivityBenchmark,
     RingPlanarityBenchmark,
     StabilityBenchmark,
@@ -17,6 +21,33 @@ from mlipaudit.benchmarks import (
 from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import (
     NudgedElasticBandBenchmark,
 )
+from mlipaudit.benchmarks.nve_energy_conservation import nve_energy_conservation
+from mlipaudit.utils import run_simulation
+
+
+def _run_simulation_or_none(*args: Any, **kwargs: Any) -> Any:
+    """
+    Run an mlipaudit simulation, returning ``None`` if it raises.
+
+    ``run_model`` already treats ``None`` as a failed system, so the rest still run.
+
+    Parameters
+    ----------
+    *args
+        Positional arguments for ``run_simulation``.
+    **kwargs
+        Keyword arguments for ``run_simulation``.
+
+    Returns
+    -------
+    Any
+        Final simulation state, or ``None`` if the simulation raised.
+    """
+    try:
+        return run_simulation(*args, **kwargs)
+    except Exception as exc:
+        warn(f"Simulation failed: {exc}", stacklevel=2)
+        return None
 
 
 class MlPegAuditBenchmark:
@@ -87,3 +118,31 @@ class MlPegStabilityBenchmark(MlPegAuditBenchmark, StabilityBenchmark):
 
 class MlPegGrambowOrganicsBenchmark(MlPegAuditBenchmark, NudgedElasticBandBenchmark):
     """``NudgedElasticBandBenchmark`` wired up for ml-peg."""
+
+
+class MlPegNVEEnergyConservationBenchmark(
+    MlPegAuditBenchmark, NVEEnergyConservationBenchmark
+):
+    """
+    ``NVEEnergyConservationBenchmark`` wired up for ml-peg.
+
+    ``run_model`` is patched to avoid two upstream bugs: ``skip_unallowed_elements``
+    raises for ASE ``Calculator`` objects, and an unguarded ``run_simulation`` lets
+    one failing system discard the systems already simulated.
+    """
+
+    def run_model(self) -> None:
+        """Run the benchmark, tolerating per-system simulation failures."""
+        with (
+            patch.object(
+                nve_energy_conservation,
+                "skip_unallowed_elements",
+                lambda force_field, structure_tuples: [],
+            ),
+            patch.object(
+                nve_energy_conservation,
+                "run_simulation",
+                _run_simulation_or_none,
+            ),
+        ):
+            super().run_model()

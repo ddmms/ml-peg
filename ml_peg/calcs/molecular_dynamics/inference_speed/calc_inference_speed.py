@@ -33,6 +33,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
+@pytest.mark.framework("mlip_audit")
 def test_inference_speed(mlip: tuple[str, Any]) -> None:
     """
     Benchmark model inference speed.
