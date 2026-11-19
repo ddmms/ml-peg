@@ -1,0 +1,13 @@
+metrics:
+  Interaction energy MAE:
+    good: 0.5
+    bad: 2.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error of interaction energies for all base pairs, at the reference geometries with the bases not relaxed
+    level_of_theory: MP2/CBS
+  Binding energy MAE:
+    good: 0.5
+    bad: 2.0
+    unit: kcal/mol
+    tooltip: Mean Absolute Error of binding energies for all base pairs, with all structures relaxed by the model
+    level_of_theory: MP2/CBS

@@ -155,6 +155,7 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``DLPNO-CCSD(T)/cc-pVTZ``
 - ``PNO-LCCSD(T)-F12/AVQZ``
 - ``DMC``
+- ``MP2/CBS``
 - ``ph-AFQMC``
 - ``wb97md3 + 1b CCSD(T)``
 - ``Experimental`` (see :ref:`special values <special-values>`)
