@@ -146,18 +146,3 @@ metrics:
     unit: ratio
     tooltip: "The model's imaginary eigenvalue over DFT's, folded as min(r, 1/r) at each transition state, so a barrier top twice too sharp or twice too flat both read 0.5. Click for the unfolded ratios: above 1 is too sharp, below 1 too flat. Sets the tunnelling correction and the TST prefactor. A single constant predicted for every saddle scores 0.44, so a model at or below that shows no skill here."
     level_of_theory: ωB97X/6-31G(d)
-#
-#
-# Mean first passage time between a chosen pair of minima, derived from the
-# reconverged network and compared with the same quantity from the DFT
-# landscape. This is the first metric here that tests the kinetics the
-# landscape implies rather than its geometry, so a model can reproduce every
-# structure and still fail it. Thresholds to be set once the spread across
-# models is known: an order of magnitude is the obvious scale, but that should
-# be justified rather than assumed.
-#  MFPT error (log10):
-#    good:
-#    bad:
-#    unit: log10 ratio
-#    tooltip: ""
-#    level_of_theory: ωB97X/6-31G(d)
