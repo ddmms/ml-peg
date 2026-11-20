@@ -619,26 +619,38 @@ def test_reconverge_minima(mlip: tuple[str, Any]) -> None:
             unit="min",
             disable=not sys.stderr.isatty(),
         ):
+            label = f"min{index:02d}"
             start = network.get_minimum_coords(index)
             coords = MolecularCoordinates(symbols, start.copy())
-            position, energy, info = lbfgs.minimise(
-                func_grad=potential.function_gradient,
-                initial_position=coords.position,
-                bounds=coords.bounds,
-                conv_crit=MINIMISE_CONV_CRIT,
-                n_steps=MINIMISE_STEPS,
-            )
-            position = np.asarray(position, dtype=float)
-            coords.position = start.copy()
-            drift = float(comparer.closest_distance(coords, position.copy()))
-            coords.position = position.copy()
+            try:
+                position, energy, info = lbfgs.minimise(
+                    func_grad=potential.function_gradient,
+                    initial_position=coords.position,
+                    bounds=coords.bounds,
+                    conv_crit=MINIMISE_CONV_CRIT,
+                    n_steps=MINIMISE_STEPS,
+                )
+                position = np.asarray(position, dtype=float)
+                coords.position = start.copy()
+                drift = float(comparer.closest_distance(coords, position.copy()))
+                coords.position = position.copy()
+                valid_minimum = bool(potential.check_valid_minimum(coords))
+            except Exception as exc:
+                warn(
+                    f"{model_name} {molecule.key} minima: failed on {label}: {exc}",
+                    stacklevel=2,
+                )
+                # The reference geometry is kept, as for a failed saddle search,
+                # and the NaN drift voids the model's minima metrics.
+                position = np.asarray(start, dtype=float)
+                energy, info, drift, valid_minimum = np.nan, {}, np.nan, False
             hit_budget = info.get("warnflag", 0) == 1
 
             atoms = Atoms(symbols, position.reshape(-1, 3))
             atoms.info.update(
                 molecule=molecule.key,
                 kind="minimum",
-                label=f"min{index:02d}",
+                label=label,
                 ref_energy_ev=float(network.get_minimum_energy(index)),
                 mlip_energy_ev=float(energy),
                 # A minimum that stopped on the iteration limit has not
@@ -648,7 +660,7 @@ def test_reconverge_minima(mlip: tuple[str, Any]) -> None:
                 # of 200 this happened to every structure and the drift still
                 # looked entirely reasonable.
                 drift=drift if not hit_budget else np.nan,
-                valid_minimum=bool(potential.check_valid_minimum(coords)),
+                valid_minimum=valid_minimum,
                 # scipy reports warnflag 1 when it stopped on the iteration
                 # limit, which is a protocol result rather than a model one.
                 iterations=int(info.get("nit", -1)),
@@ -712,31 +724,43 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
                 steepest_descent_conv_crit=STEEPEST_DESCENT_CONV_CRIT,
                 eigenvalue_conv_crit=EIGENVALUE_CONV_CRIT,
             )
-            found, energy, plus_min, _, minus_min, _, _ = searcher.run(
-                MolecularCoordinates(symbols, start.copy())
-            )
+            label = f"ts{plus}_{minus}_{edge}"
+            try:
+                found, energy, plus_min, _, minus_min, _, _ = searcher.run(
+                    MolecularCoordinates(symbols, start.copy())
+                )
+                failure = searcher.failure or "none"
+                if found is not None:
+                    settled = [
+                        _settle(potential, end, symbols)
+                        for end in (plus_min, minus_min)
+                    ]
+            except Exception as exc:
+                warn(
+                    f"{model_name} {molecule.key} saddles: failed on {label}: {exc}",
+                    stacklevel=2,
+                )
+                # Recorded below exactly as a search that found no saddle.
+                found, failure = None, "error"
 
             atoms = Atoms(symbols, np.asarray(start).reshape(-1, 3))
             atoms.info.update(
                 molecule=molecule.key,
                 kind="transition_state",
-                label=f"ts{plus}_{minus}_{edge}",
+                label=label,
                 connects=f"{plus},{minus}",
                 ref_energy_ev=float(network.get_ts_energy(plus, minus, edge)),
                 converged=found is not None,
                 # Never an empty string: extxyz writes that as a bare
                 # "key=" and the reader then takes the NEXT key as its
                 # value, silently losing that key.
-                failure=searcher.failure or "none",
+                failure=failure,
                 steps=int(searcher.n_steps),
                 hit_budget=bool(searcher.n_steps >= TS_STEPS),
             )
             if found is not None:
                 found = np.asarray(found, dtype=float)
                 coords = MolecularCoordinates(symbols, start.copy())
-                settled = [
-                    _settle(potential, end, symbols) for end in (plus_min, minus_min)
-                ]
                 reached = sorted(_identify(end, minima, symbols) for end in settled)
                 # The endpoints are the evidence for the connectivity result --
                 # an endpoint identified as -1 is a basin the reference does not
@@ -746,7 +770,7 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
                     endpoint.info.update(
                         molecule=molecule.key,
                         kind="saddle_endpoint",
-                        label=f"ts{plus}_{minus}_{edge}",
+                        label=label,
                         reference_minimum=index,
                     )
                     endpoints.append(endpoint)
@@ -983,7 +1007,11 @@ def test_hessians(mlip: tuple[str, Any]) -> None:
             try:
                 predicted = _model_hessian(calc, symbols, positions)
             except Exception as exc:
-                warn(f"Hessian failed on {atoms.info['label']}: {exc}", stacklevel=2)
+                warn(
+                    f"{model_name} {molecule.key} hessians: failed on "
+                    f"{atoms.info['label']}: {exc}",
+                    stacklevel=2,
+                )
                 out_atoms.info.update(
                     mode_overlap_median=np.nan,
                     reaction_coordinate_overlap=np.nan,
