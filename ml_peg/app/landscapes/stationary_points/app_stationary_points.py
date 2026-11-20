@@ -11,10 +11,7 @@ from ml_peg.app.utils.build_callbacks import (
     struct_from_scatter,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Landscape17-stationary-points"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/landscapes.html"
@@ -50,14 +47,18 @@ FIGURES = {
 }
 
 
-# Figures whose points are individual structures, and the directory the
-# analysis staged those structures into. The files are named by position, so
-# sorting them reproduces the order the points appear in.
-STRUCTURES = {
-    "figure_stationary_energies.json": "points",
-    "figure_minima_drift.json": "minima",
-    "figure_saddle_drift.json": "saddles",
-}
+# Figures whose points are individual structures. Each point carries its
+# structure's id as the last entry of its hover data, and a click opens the DFT
+# geometry the analysis wrote under that id: the same file for every model,
+# since the energies are evaluated at these geometries and the drift plots
+# start from them. By id rather than by position, because the drift violins
+# leave out the structures a model never reached.
+STRUCTURE_FIGURES = (
+    "figure_stationary_energies.json",
+    "figure_minima_drift.json",
+    "figure_saddle_drift.json",
+)
+STRUCT_TEMPLATE = "/assets/landscapes/stationary_points/structures/{id}.xyz"
 
 
 class StationaryPointsApp(BaseApp):
@@ -65,19 +66,13 @@ class StationaryPointsApp(BaseApp):
 
     def register_callbacks(self) -> None:
         """Register callbacks to app."""
-        for filename, subdirectory in STRUCTURES.items():
-            staged = DATA_PATH / MODELS[0] / subdirectory
-            if not staged.exists():
+        for filename in STRUCTURE_FIGURES:
+            if not (DATA_PATH / filename).exists():
                 continue
             struct_from_scatter(
                 scatter_id=f"{BENCHMARK_NAME}-{filename.removesuffix('.json')}",
                 struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-                structs=[
-                    f"/assets/landscapes/stationary_points/{MODELS[0]}"
-                    f"/{subdirectory}/{path.name}"
-                    for path in sorted(staged.glob("*.xyz"))
-                ],
-                mode="struct",
+                struct_template=STRUCT_TEMPLATE,
             )
 
         plot_from_table_column(

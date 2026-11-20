@@ -104,39 +104,48 @@ SADDLE_INFO = get_struct_info(
 )
 
 
-def _stage_structures(model_name: str, pattern: str, subdirectory: str) -> None:
+def _structure_ids(info: dict[str, list]) -> list[str]:
     """
-    Write one file per structure so the app can show the one that was clicked.
+    Get each structure's id: its molecule and label, joined.
 
-    ``get_struct_info`` can stage structures, but it writes one file per input
-    file -- six, one per molecule -- while the plots have one point per
-    structure. Its ``struct_name_key`` option writes one file per structure
-    instead, named by an info key, and no key here is unique: ``min00`` exists
-    once per molecule and the files would overwrite each other.
-
-    Naming by position rather than by label avoids inventing a unique key and
-    guarantees the ordering the app depends on: it globs this directory and
-    sorts, so zero-padded indices put the files in exactly the order the
-    points appear in the figure. The structure's identity is on the point's
-    hover text.
+    The label alone is not unique, since ``min00`` exists once per molecule.
+    The id is the last hover entry of every figure whose points are structures,
+    and the app opens the file ``structures`` wrote under it, so a click finds
+    its structure however the plot filtered or ordered the points.
 
     Parameters
     ----------
-    model_name
-        Model whose outputs to stage.
-    pattern
-        Glob matching the output files, which fixes the order.
-    subdirectory
-        Directory under the model's app data, one per figure.
+    info
+        Struct info carrying ``molecule`` and ``label``.
+
+    Returns
+    -------
+    list[str]
+        One id per structure, in the order of ``info``.
     """
-    frames = _read_frames(model_name, pattern)
-    if not frames:
-        return
-    out_dir = OUT_PATH / model_name / subdirectory
+    return [
+        f"{molecule}_{label}"
+        for molecule, label in zip(info["molecule"], info["label"], strict=True)
+    ]
+
+
+@pytest.fixture
+def structures() -> None:
+    """
+    Write each DFT stationary point to its own file for the app, named by its id.
+
+    One copy serves every model and every figure whose points are structures:
+    the energies are evaluated at these DFT geometries, and the minima and
+    saddles in the drift plots are these structures before the model moved
+    them. Read from the mock outputs, as for any structure that is the same for
+    all models. ``get_struct_info`` can write one file per structure, but only
+    named by an info key, and no key here is unique.
+    """
+    out_dir = OUT_PATH / "structures"
     out_dir.mkdir(parents=True, exist_ok=True)
-    width = len(str(len(frames) - 1))
-    for index, atoms in enumerate(frames):
-        write(out_dir / f"{index:0{width}d}.xyz", atoms)
+    frames = _read_frames("mock", POINTS_GLOB)
+    for structure_id, atoms in zip(_structure_ids(INFO), frames, strict=True):
+        write(out_dir / f"{structure_id}.xyz", atoms)
 
 
 def _read_frames(model_name: str, pattern: str) -> list:
@@ -212,6 +221,7 @@ def _relative_energies(frames: list) -> tuple[np.ndarray, np.ndarray]:
         "Molecule": INFO["molecule"],
         "Kind": INFO["kind"],
         "Label": INFO["label"],
+        "Structure": _structure_ids(INFO),
     },
 )
 def stationary_energies() -> dict[str, list]:
@@ -226,9 +236,6 @@ def stationary_energies() -> dict[str, list]:
     dict[str, list]
         Reference and predicted relative energies in meV/atom.
     """
-    for model_name in MODELS:
-        _stage_structures(model_name, POINTS_GLOB, "points")
-
     results: dict[str, list] = {"ref": []}
     for model_name in MODELS:
         frames = _read_frames(model_name, POINTS_GLOB)
@@ -419,6 +426,7 @@ def get_path_force_rmse(path_force_errors: dict[str, list]) -> dict[str, float]:
     hoverdata={
         "Molecule": MINIMA_INFO["molecule"],
         "Label": MINIMA_INFO["label"],
+        "Structure": _structure_ids(MINIMA_INFO),
     },
 )
 def minima_drift() -> dict[str, list]:
@@ -434,9 +442,6 @@ def minima_drift() -> dict[str, list]:
     dict[str, list]
         Per-structure drift in Å.
     """
-    for model_name in MODELS:
-        _stage_structures(model_name, MINIMA_GLOB, "minima")
-
     return {
         model_name: [a.info["drift"] for a in _read_frames(model_name, MINIMA_GLOB)]
         for model_name in MODELS
@@ -452,6 +457,7 @@ def minima_drift() -> dict[str, list]:
         "Molecule": SADDLE_INFO["molecule"],
         "Label": SADDLE_INFO["label"],
         "Connects": SADDLE_INFO["connects"],
+        "Structure": _structure_ids(SADDLE_INFO),
     },
 )
 def saddle_drift() -> dict[str, list]:
@@ -474,9 +480,6 @@ def saddle_drift() -> dict[str, list]:
     dict[str, list]
         Per-structure drift in Å, NaN where the search did not converge.
     """
-    for model_name in MODELS:
-        _stage_structures(model_name, SADDLES_GLOB, "saddles")
-
     return {
         model_name: [a.info["drift"] for a in _read_frames(model_name, SADDLES_GLOB)]
         for model_name in MODELS
@@ -1054,6 +1057,7 @@ def metrics(
     get_stiffness_error: dict[str, float],
     get_soft_mode_error: dict[str, float],
     get_reaction_curvature: dict[str, float],
+    structures: None,
 ) -> dict[str, dict]:
     """
     Collect all metrics.
@@ -1093,6 +1097,8 @@ def metrics(
         Median curvature error on the soft modes.
     get_reaction_curvature
         Median curvature agreement along the reaction coordinate.
+    structures
+        Writes the structures the app opens when a point is clicked.
 
     Returns
     -------
