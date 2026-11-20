@@ -147,6 +147,7 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``PBE+D3``
 - ``r2SCAN``
 - ``r2SCAN-3c``
+- ``ωB97X/6-31G(d)``
 - ``CCSD(T)``
 - ``CCSD(T)/CBS``
 - ``CCSD(T)-F12/cc-pVDZ-F12``
