@@ -43,6 +43,7 @@ from ml_peg.app.utils.utils import (
     get_threshold_colours,
     load_model_registry_configs,
     row_has_no_results,
+    table_has_no_scores,
     weight_input_style,
 )
 from ml_peg.models import current_models
@@ -241,7 +242,9 @@ def build_summary_table(
 
     # Set weight to 0 if benchmark has no results, so it does not NaN every row's score.
     empty_columns = [
-        f"{name} Score" for name, summarised in tables.items() if not summarised.data
+        f"{name} Score"
+        for name, summarised in tables.items()
+        if table_has_no_scores(summarised)
     ]
     if empty_columns:
         weights = dict(weights or {})
@@ -279,7 +282,7 @@ def build_summary_table(
     tooltip_header = {}
     for header, summarised in tables.items():
         tooltip = summarised.description
-        if not summarised.data:
+        if table_has_no_scores(summarised):
             no_results = (
                 "Data is still being collected for this benchmark, so it is weighted 0."
             )
