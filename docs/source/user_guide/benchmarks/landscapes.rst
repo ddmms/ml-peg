@@ -80,3 +80,100 @@ Metrics
    transition state theory prefactor. That ratio is scored as
    ``min(r, 1/r)``, so a barrier top too sharp counts against a model as much
    as one too flat by the same factor.
+
+   The model's Hessian is taken by central finite differences of its forces,
+   with a 1e-3 Å step, at the DFT geometry. Both Hessians are compared with
+   translations and rotations projected out, and modes are matched one to one
+   by overlap.
+
+Scoring
+-------
+
+Path energy RMSE, Path force RMSE and the stationary-point Force RMSE are
+reported but not scored. The path errors track the stationary-point ones almost
+exactly, so scoring both would count the same thing twice. Force RMSE mostly
+measures the gap between levels of theory rather than the model: the reference
+geometries are not stationary at other levels, and ωB97M-V/def2-TZVPD, the
+OMol25 level of theory, itself has an RMS force of 129 meV/Å at them.
+
+The thresholds come from the reference wherever it supplies one:
+
+* **Energies.** *Bad* is what a model that knows nothing scores -- the same
+  energy for every structure of a molecule -- which is the spread of the
+  reference's own relative energies: 13.8 meV/atom at the stationary points and
+  11.6 along the paths. *Good* is the reference uncertainty: scored against this
+  reference, ωB97M-V/def2-TZVPD gets 1.98 meV/atom at the stationary points and
+  1.51 on a 300-frame sample of the paths, so the thresholds are 2.0 and 1.5.
+* **Forces** (unscored, so the thresholds only colour the columns). *Good* is
+  the same measured gap, 129 meV/Å at the stationary points and 123 along the
+  paths. *Bad* is 153 meV/Å, what predicting zero force along the paths scores.
+* **Drift** (minima and saddle RMSD, median and 90th percentile). *Bad* is
+  0.34 Å, the separation of the closest two distinct reference minima: past it,
+  a structure that drifted cannot be told from one that landed on another
+  minimum. *Good* is 0.01 Å, about the run-to-run noise of the saddle search on
+  GPU, which leaves room for small geometry differences between functionals.
+* **Coverage** (saddles converged, connectivity preserved). A perfect model of
+  the reference scores 1 by construction, since every search starts at its own
+  saddle. *Good* is 0.95 and 0.9, a judgement call leaving room for a model
+  trained on another functional, whose surface may have lost or moved a few of
+  these saddles. *Bad* is 0, what a model that finds nothing scores.
+* **Mode overlaps.** 0.99 and 0.8, an 8° and a 37° misalignment, well above the
+  0.32 that randomly oriented modes score.
+* **Stiffness.** 2% and 20%, about 1% and 10% in frequency; 10% is the error of
+  uncorrected Hartree-Fock frequencies.
+* **Soft mode curvature.** 0.02 and 0.2 eV/Å², about 1% and 7% of the median
+  curvature of the softest third of the reference modes, 2.7 eV/Å².
+* **Reaction mode curvature.** *Good* is 1. *Bad* is 0.44, what a single
+  imaginary eigenvalue predicted for every saddle scores, so a model at or
+  below it shows no skill there.
+
+The ωB97M-V/def2-TZVPD figures are energies and analytic forces at the
+reference geometries (gpu4pyscf, direct SCF, (99, 590) grid, (50, 194) VV10
+grid), scored exactly as a model is.
+
+Protocol
+--------
+
+The settings are fixed in ``calc_stationary_points.py``:
+
+* Minima are relaxed with L-BFGS until the largest gradient component falls
+  below 1e-6 eV/Å, within 1000 iterations. A relaxation that stops on the
+  iteration limit has not arrived, and contributes NaN.
+* Transition states are refined by hybrid eigenvector following (topsearch)
+  within 150 steps, with a gradient criterion of 1e-2 eV/Å. Each endpoint of
+  its steepest-descent paths is identified with the nearest reference minimum
+  within 0.3 Å. A saddle not reached within the budget counts against Saddles
+  converged and Connectivity preserved; some reference saddles never converge
+  even given 3000 steps.
+* Every structure is a neutral singlet.
+
+A model error on a structure is warned about and recorded rather than stopping
+the run: it voids that model's metrics that depend on the structure, or, for a
+saddle, counts as one not reached.
+
+Benchmark speed
+---------------
+
+Slow: about 2.5 to 5 hours per model on one NVIDIA H200 for the MACE models
+tested, almost all of it the saddle reconvergence (mace-mp-0a: 4.6 hours for the
+saddles, half an hour for everything else).
+
+Data availability
+-----------------
+
+Input structures:
+
+* The 28 minima, 67 transition states and 11,173 steepest-descent path frames
+  of Landscape17: Cărare, V. et al. Global properties of the energy landscape:
+  a testing and training arena for machine learned potentials. npj Comput.
+  Mater. (2025). https://doi.org/10.1038/s41524-025-01878-x
+
+Reference data:
+
+* Energies at the stationary points, and energies and forces along the paths:
+  Landscape17, ωB97X/6-31G(d) in Psi4.
+* Hessians at the 95 stationary points: computed for this benchmark in PySCF at
+  the same level -- ωB97X/6-31G(d) with Cartesian d functions, restricted
+  Kohn-Sham, (100, 770) grid, SCF converged to 1e-11. They are analytic,
+  agree with finite differences (0.005 Å step) to within 0.4% on ethanol and
+  malonaldehyde, and reproduce each Landscape17 energy to within 0.05 kJ/mol.

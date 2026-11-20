@@ -252,6 +252,7 @@ def _evaluate(calc, frames: list[Atoms], description: str) -> list[Atoms]:
     return results
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_stationary_points(mlip: tuple[str, Any]) -> None:
     """
@@ -279,6 +280,7 @@ def test_stationary_points(mlip: tuple[str, Any]) -> None:
         write(out_dir / f"{molecule.key}_stationary_points.extxyz", results)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_paths(mlip: tuple[str, Any]) -> None:
     """
@@ -585,6 +587,7 @@ def _settle(
     return np.asarray(settled, dtype=float)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_reconverge_minima(mlip: tuple[str, Any]) -> None:
     """
@@ -671,6 +674,7 @@ def test_reconverge_minima(mlip: tuple[str, Any]) -> None:
         write(out_dir / f"{molecule.key}_reconverged_minima.extxyz", results)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
     """
@@ -965,6 +969,7 @@ def _match_modes(
     return matched, partner
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_hessians(mlip: tuple[str, Any]) -> None:
     """

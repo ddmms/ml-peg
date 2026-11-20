@@ -157,9 +157,11 @@ def reaction_curvature(atoms: Atoms) -> float:
 
     The imaginary eigenvalue sets the curvature along the reaction coordinate,
     which fixes the tunnelling correction and the transition state theory
-    prefactor. A ratio is sound here where it is not for the soft modes: the
-    reference imaginary eigenvalue is never near zero, ranging from -0.08 to
-    -9.18 eV/A^2 across this reference.
+    prefactor. A ratio is usable here, unlike for the soft modes, because the
+    reference imaginary eigenvalue is rarely near zero: it ranges from -0.0034
+    to -9.18 eV/A^2 (median -0.16), and only one barrier top, paracetamol
+    ts2_3_2, is almost flat. The median over saddles does not follow a single
+    extreme ratio.
 
     NaN unless both are negative. Where the model has no imaginary mode at the
     DFT geometry there is no curvature to compare, and that is not a small
