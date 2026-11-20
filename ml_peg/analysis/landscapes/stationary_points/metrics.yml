@@ -1,27 +1,44 @@
 metrics:
+  # good: 1 meV/atom is 0.2-0.5 kcal/mol per molecule for these 9-21 atom molecules,
+  # well inside chemical accuracy. bad: 13.8 meV/atom is what a model that knows
+  # nothing scores -- one giving every structure of a molecule the same energy --
+  # which is the spread of the reference's own relative energies over the 95
+  # structures. A model there has captured none of the energy differences.
   Energy RMSE:
     good: 1.0
-    bad: 10.0
+    bad: 13.8
     unit: meV/atom
     tooltip: "Energy error at the 95 DFT minima and transition states, each method measured from its own per-molecule mean so a constant offset cancels."
     level_of_theory: ωB97X/6-31G(d)
+  # Not scored, so good and bad only colour the column. The reference geometries
+  # were optimised at ωB97X/6-31G(d); a model trained at another level of theory
+  # feels a residual force there even if it reproduces its own training level
+  # exactly, so the number mostly measures the gap between the two levels.
   Force RMSE:
     good: 130.0
     bad: 400.0
     unit: meV/Å
-    tooltip: "Force error at the 95 DFT minima and transition states, where DFT's force is zero, so this is the RMS of the model's own force over every component. A floor of about 130 meV/Å applies: these are ωB97X/6-31G(d) geometries and no current model is trained on that functional."
+    weight: 0
+    tooltip: "Force error at the 95 DFT minima and transition states, where DFT's force is zero, so this is the RMS of the model's own force over every component. Not scored: these are ωB97X/6-31G(d) geometries, and a model trained at another level of theory feels a residual force here even if it reproduces its own training level exactly, so this mostly measures the gap between the two levels."
     level_of_theory: ωB97X/6-31G(d)
+  # Same basis as Energy RMSE: the know-nothing level over the 11,173 path frames
+  # is 11.6 meV/atom. Not scored: it tracks Energy RMSE almost exactly (Pearson
+  # 1.00 over the models measured), so scoring both would count it twice.
   Path energy RMSE:
     good: 1.0
-    bad: 10.0
+    bad: 11.6
     unit: meV/atom
-    tooltip: "The same energy error along the 11,173 steepest-descent frames joining the stationary points: the shape of the surface between them."
+    weight: 0
+    tooltip: "The same energy error along the 11,173 steepest-descent frames joining the stationary points: the shape of the surface between them. Not scored: it tracks Energy RMSE almost exactly, so scoring both would count it twice."
     level_of_theory: ωB97X/6-31G(d)
+  # Not scored, for both reasons above: it tracks Force RMSE almost exactly, and
+  # the same level-of-theory gap dominates it.
   Path force RMSE:
     good: 130.0
     bad: 400.0
     unit: meV/Å
-    tooltip: "Force error along the paths, where DFT forces are non-zero. Subject to the same ~130 meV/Å functional floor as Force RMSE."
+    weight: 0
+    tooltip: "Force error along the paths, where DFT forces are non-zero. Not scored: it tracks Force RMSE almost exactly, and the same gap between levels of theory dominates it."
     level_of_theory: ωB97X/6-31G(d)
   Reconverged minima RMSD (median):
     good: 0.02
