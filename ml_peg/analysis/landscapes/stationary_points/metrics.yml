@@ -146,24 +146,6 @@ metrics:
     unit: ratio
     tooltip: "The model's imaginary eigenvalue over DFT's, folded as min(r, 1/r) at each transition state, so a barrier top twice too sharp or twice too flat both read 0.5. Click for the unfolded ratios: above 1 is too sharp, below 1 too flat. Sets the tunnelling correction and the TST prefactor. A single constant predicted for every saddle scores 0.44, so a model at or below that shows no skill here."
     level_of_theory: ωB97X/6-31G(d)
-
-# Pending. Each of these moves into `metrics` above when its calculation lands
-# in `calc_stationary_points.py`. Thresholds are kept here so the reasoning is
-# not lost, not because they are settled.
-#
-# None of these binarise a distance. An earlier design counted a structure as
-# "held" if it stayed within 0.3 A, which cut straight through a populated part
-# of the measured distribution: on MACE-OFF the drifts run continuously from
-# 0.010 to 0.303 A and only then jump to 0.458. One aspirin saddle was measured
-# twice, 0.2991 and 0.3031 A, and the threshold put the two measurements of the
-# same structure on opposite sides. Reporting the distribution instead removes
-# that cliff. 0.3 A survives only inside the endpoint identification, where
-# some cutoff is unavoidable.
-#
-# Median and 90th percentile are both reported, as in the landscape search: the
-# median says where the typical structure sits, and the 90th percentile whether
-# there is a tail of structures the model moved a long way. Both read directly
-# in Å, where a mean would mix the bulk and the tail into one number.
 #
 #
 # Mean first passage time between a chosen pair of minima, derived from the
