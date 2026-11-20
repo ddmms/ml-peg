@@ -67,9 +67,19 @@ metrics:
     unit: Å
     tooltip: "90th percentile of the same distribution, distinguishing a model that holds most minima well but loses a few from one that is uniformly imprecise."
     level_of_theory: ωB97X/6-31G(d)
+  # The two coverage fractions. A perfect model of the reference scores 1 by
+  # construction: every search starts at its own saddle, so it converges at once
+  # and joins the same two minima. good sits a little below that as a judgement
+  # call, 0.95 and 0.9, leaving room for a model trained on another functional,
+  # whose surface may have lost or moved a few of these saddles; it is not
+  # measured. bad: 0, what a model that finds nothing scores; joining the right
+  # two minima by chance is negligible. Saddles converged is also the coverage
+  # penalty that lets the saddle drift metrics leave out the saddles never
+  # reached. Under the 150-step budget even good is hard to reach: some reference
+  # saddles never converge given 3000 steps.
   Saddles converged:
     good: 0.95
-    bad: 0.3
+    bad: 0.0
     unit: fraction
     tooltip: "Fraction of all 67 reference transition states where eigenvector following reaches a saddle within the step budget."
     level_of_theory: ωB97X/6-31G(d)
@@ -87,7 +97,7 @@ metrics:
     level_of_theory: ωB97X/6-31G(d)
   Connectivity preserved:
     good: 0.9
-    bad: 0.4
+    bad: 0.0
     unit: fraction
     tooltip: "Fraction of all 67 reference transition states whose steepest-descent paths reach the same two minima as DFT. A saddle can sit in the right place and still rewire the network."
     level_of_theory: ωB97X/6-31G(d)
