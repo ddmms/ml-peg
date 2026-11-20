@@ -761,11 +761,14 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
             if found is not None:
                 found = np.asarray(found, dtype=float)
                 coords = MolecularCoordinates(symbols, start.copy())
-                reached = sorted(_identify(end, minima, symbols) for end in settled)
+                identified = [_identify(end, minima, symbols) for end in settled]
+                # Sorted only to compare with the reference pair, whose order
+                # means nothing; each endpoint keeps its own identification.
+                reached = sorted(identified)
                 # The endpoints are the evidence for the connectivity result --
                 # an endpoint identified as -1 is a basin the reference does not
                 # contain, and that claim should be inspectable as a structure.
-                for end, index in zip(settled, reached, strict=True):
+                for end, index in zip(settled, identified, strict=True):
                     endpoint = Atoms(symbols, end.reshape(-1, 3))
                     endpoint.info.update(
                         molecule=molecule.key,
