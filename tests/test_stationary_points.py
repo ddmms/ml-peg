@@ -9,7 +9,10 @@ import numpy as np
 import pytest
 
 from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
+    compare_hessians,
     hessian_failed,
+    internal_basis,
+    match_modes,
     ratio_agreement,
     reaction_curvature,
     reaction_overlap,
@@ -146,3 +149,97 @@ def test_tied_softest_modes_still_give_a_soft_mode_error() -> None:
     reference = (1.0, 1.0, 1.0, 1.0, 2.0, 3.0)
     model = tuple(value + 0.1 for value in reference)
     assert soft_mode_error(_structure(reference, model)) == pytest.approx(0.1)
+
+
+def _tetrahedron() -> Atoms:
+    """
+    Build four atoms at the corners of a tetrahedron, with unequal masses.
+
+    Returns
+    -------
+    ase.atoms.Atoms
+        A non-linear structure with no symmetry-related zero rotations.
+    """
+    corners = np.array([[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]], dtype=float)
+    atoms = Atoms("HCNO", positions=0.8 * corners + [0.1, -0.2, 0.3])
+    atoms.info["kind"] = "minimum"
+    return atoms
+
+
+def _random_hessian(size: int) -> np.ndarray:
+    """
+    Build a random symmetric positive definite matrix.
+
+    Parameters
+    ----------
+    size
+        Matrix dimension.
+
+    Returns
+    -------
+    numpy.ndarray
+        A stand-in Hessian, in eV/Å^2.
+    """
+    random = np.random.default_rng(1).normal(size=(size, size))
+    return random @ random.T + size * np.eye(size)
+
+
+def test_internal_basis_excludes_rigid_body_motion() -> None:
+    """Internal motion: 3N-6 orthonormal directions, none moving the whole molecule."""
+    atoms = _tetrahedron()
+    basis = internal_basis(atoms)
+    assert basis.shape == (12, 6)
+    assert np.allclose(basis.T @ basis, np.eye(6))
+    centred = atoms.get_positions() - atoms.get_center_of_mass()
+    for axis in np.eye(3):
+        translation = np.tile(axis, 4)
+        rotation = np.cross(axis, centred).ravel()
+        assert np.allclose(basis.T @ translation, 0.0, atol=1e-10)
+        assert np.allclose(basis.T @ rotation, 0.0, atol=1e-10)
+
+
+def test_match_modes_recovers_shuffled_flipped_modes() -> None:
+    """Each reference mode pairs with the model mode pointing its way, sign aside."""
+    reference, _ = np.linalg.qr(np.random.default_rng(0).normal(size=(6, 6)))
+    order = [2, 0, 1, 5, 3, 4]
+    overlap, partner = match_modes(reference, -reference[:, order])
+    assert np.allclose(overlap, 1.0)
+    assert list(partner) == [order.index(i) for i in range(6)]
+
+
+def test_compare_hessians_of_identical_hessians() -> None:
+    """The same Hessian twice gives full overlap and the same eigenvalues."""
+    atoms = _tetrahedron()
+    hessian = _random_hessian(12)
+    comparison = compare_hessians(hessian, hessian, atoms)
+    assert comparison["mode_overlap_median"] == pytest.approx(1.0)
+    assert np.allclose(
+        comparison["model_eigenvalues"], comparison["reference_eigenvalues"]
+    )
+    assert np.isnan(comparison["reaction_coordinate_overlap"])
+    atoms.info["kind"] = "transition_state"
+    comparison = compare_hessians(hessian, hessian, atoms)
+    assert comparison["reaction_coordinate_overlap"] == pytest.approx(1.0)
+
+
+def test_compare_hessians_feeds_the_stiffness() -> None:
+    """A model Hessian 6% softer everywhere reads -6% stiffness."""
+    atoms = _tetrahedron()
+    hessian = _random_hessian(12)
+    atoms.info.update(compare_hessians(hessian, 0.94 * hessian, atoms))
+    assert not hessian_failed(atoms)
+    assert stiffness_vs_dft(atoms) == pytest.approx(-6.0)
+
+
+def test_compare_hessians_pairs_eigenvalues_by_mode() -> None:
+    """A model that swaps two modes' stiffness is compared mode by mode, not sorted."""
+    atoms = _tetrahedron()
+    basis = internal_basis(atoms)
+    modes, _ = np.linalg.qr(np.random.default_rng(2).normal(size=(6, 6)))
+    stiffness = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+    swapped = stiffness[[0, 1, 4, 3, 2, 5]]
+    reference = basis @ modes @ np.diag(stiffness) @ modes.T @ basis.T
+    model = basis @ modes @ np.diag(swapped) @ modes.T @ basis.T
+    comparison = compare_hessians(reference, model, atoms)
+    assert np.allclose(comparison["reference_eigenvalues"], stiffness)
+    assert np.allclose(comparison["model_eigenvalues"], swapped)

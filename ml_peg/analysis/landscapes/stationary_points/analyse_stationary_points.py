@@ -19,13 +19,16 @@ land, so the file never declares a metric that nothing produces.
 
 from __future__ import annotations
 
+from functools import cache
 from pathlib import Path
+from warnings import warn
 
 from ase.io import read, write
 import numpy as np
 import pytest
 
 from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
+    compare_hessians,
     hessian_failed,
     ratio_agreement,
     reaction_curvature,
@@ -166,6 +169,67 @@ def _read_frames(model_name: str, pattern: str) -> list:
     for file in sorted((CALC_PATH / model_name).glob(pattern)):
         frames.extend(read(file, index=":"))
     return frames
+
+
+def _load_hessians(path: Path) -> dict[str, np.ndarray]:
+    """
+    Read one molecule's saved Hessians, keyed by structure label.
+
+    Parameters
+    ----------
+    path
+        A ``*_hessians.npz`` file written by the calculation.
+
+    Returns
+    -------
+    dict[str, numpy.ndarray]
+        The matrices by label; empty if the file is missing or unreadable, so
+        every structure in it counts as failed rather than stopping the analysis.
+    """
+    if not path.exists():
+        return {}
+    try:
+        with np.load(path) as archive:
+            return {label: archive[label] for label in archive.files}
+    except Exception as exc:
+        warn(f"Could not read {path}: {exc}", stacklevel=2)
+        return {}
+
+
+@cache
+def _hessian_records(model_name: str) -> tuple:
+    """
+    Get one model's Hessian comparison at each reference structure.
+
+    The calculation saves the raw Cartesian Hessians, the model's and the
+    reference's, by structure label; the comparison is made here, so that it can
+    change without rerunning the calculation. A structure without both matrices
+    keeps no eigenvalues, which ``hessian_failed`` reports as a failure.
+
+    Parameters
+    ----------
+    model_name
+        Model whose outputs to read.
+
+    Returns
+    -------
+    tuple
+        One structure per reference stationary point, in the order
+        ``get_struct_info`` used, carrying the comparison in its info.
+    """
+    records = []
+    for path in sorted((CALC_PATH / model_name).glob(HESSIANS_GLOB)):
+        stem = path.name.removesuffix("_hessians.extxyz")
+        model = _load_hessians(path.with_name(f"{stem}_model_hessians.npz"))
+        reference = _load_hessians(path.with_name(f"{stem}_reference_hessians.npz"))
+        for atoms in read(path, index=":"):
+            label = atoms.info["label"]
+            if label in model and label in reference:
+                atoms.info.update(
+                    compare_hessians(reference[label], model[label], atoms)
+                )
+            records.append(atoms)
+    return tuple(records)
 
 
 def _relative_energies(frames: list) -> tuple[np.ndarray, np.ndarray]:
@@ -713,8 +777,8 @@ def mode_overlaps() -> dict[str, list]:
     """
     return {
         model_name: [
-            a.info["mode_overlap_median"]
-            for a in _read_frames(model_name, HESSIANS_GLOB)
+            a.info.get("mode_overlap_median", np.nan)
+            for a in _hessian_records(model_name)
         ]
         for model_name in MODELS
     }
@@ -746,9 +810,7 @@ def reaction_coordinate_overlaps() -> dict[str, list]:
         Per-structure imaginary mode overlap, NaN at minima.
     """
     return {
-        model_name: [
-            reaction_overlap(a) for a in _read_frames(model_name, HESSIANS_GLOB)
-        ]
+        model_name: [reaction_overlap(a) for a in _hessian_records(model_name)]
         for model_name in MODELS
     }
 
@@ -774,9 +836,7 @@ def soft_mode_errors() -> dict[str, list]:
         Per-structure median absolute error over the softest third, eV/A^2.
     """
     return {
-        model_name: [
-            soft_mode_error(a) for a in _read_frames(model_name, HESSIANS_GLOB)
-        ]
+        model_name: [soft_mode_error(a) for a in _hessian_records(model_name)]
         for model_name in MODELS
     }
 
@@ -802,9 +862,7 @@ def reaction_curvatures() -> dict[str, list]:
         Per-structure ratio, NaN where the model has no imaginary mode.
     """
     return {
-        model_name: [
-            reaction_curvature(a) for a in _read_frames(model_name, HESSIANS_GLOB)
-        ]
+        model_name: [reaction_curvature(a) for a in _hessian_records(model_name)]
         for model_name in MODELS
     }
 
@@ -823,9 +881,7 @@ def failed_hessians() -> dict[str, bool]:
         True for a model with a Hessian the calculation recorded as failed.
     """
     return {
-        model_name: any(
-            hessian_failed(a) for a in _read_frames(model_name, HESSIANS_GLOB)
-        )
+        model_name: any(hessian_failed(a) for a in _hessian_records(model_name))
         for model_name in MODELS
     }
 
@@ -938,9 +994,7 @@ def stiffness() -> dict[str, list]:
         softer.
     """
     return {
-        model_name: [
-            stiffness_vs_dft(a) for a in _read_frames(model_name, HESSIANS_GLOB)
-        ]
+        model_name: [stiffness_vs_dft(a) for a in _hessian_records(model_name)]
         for model_name in MODELS
     }
 

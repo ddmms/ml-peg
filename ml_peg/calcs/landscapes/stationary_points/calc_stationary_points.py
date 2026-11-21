@@ -28,11 +28,9 @@ from typing import Any
 from warnings import warn
 
 from ase.atoms import Atoms
-from ase.data import atomic_masses, atomic_numbers
 from ase.io import read, write
 import numpy as np
 import pytest
-from scipy.optimize import linear_sum_assignment
 from tqdm.auto import tqdm
 
 from ml_peg.calcs.utils.utils import download_github_data
@@ -865,47 +863,6 @@ def _reference_hessian(folder: Path, atoms: Atoms) -> np.ndarray:
     return np.load(folder / "hessian_eV_per_A2.npy")
 
 
-def _internal_basis(positions: np.ndarray, symbols: list[str]) -> np.ndarray:
-    """
-    Build a basis spanning internal motion, excluding translation and rotation.
-
-    Six modes sit at essentially zero curvature, and within that near-degenerate
-    subspace the individual eigenvectors are arbitrary: comparing them one to
-    one produces cosines near zero that look like total disagreement and mean
-    nothing. Both Hessians are projected into this basis first, leaving 3N-6
-    real modes. The same basis serves both because they share a geometry.
-
-    Parameters
-    ----------
-    positions
-        Atomic positions, N by 3.
-    symbols
-        Chemical symbols.
-
-    Returns
-    -------
-    numpy.ndarray
-        Columns spanning internal motion.
-    """
-    masses = np.array([atomic_masses[atomic_numbers[s]] for s in symbols])
-    shifted = positions - np.average(positions, axis=0, weights=masses)
-
-    rigid = []
-    for axis in range(3):
-        translation = np.zeros_like(positions)
-        translation[:, axis] = 1.0
-        rigid.append(translation.flatten())
-    for axis in range(3):
-        unit = np.zeros(3)
-        unit[axis] = 1.0
-        rigid.append(np.cross(unit, shifted).flatten())
-
-    basis, upper = np.linalg.qr(np.array(rigid).T)
-    independent = basis[:, np.abs(np.diag(upper)) > 1e-8]
-    left, singular, _ = np.linalg.svd(independent, full_matrices=True)
-    return left[:, (singular > 1e-8).sum() :]
-
-
 def _model_hessian(calc, symbols: list[str], positions: np.ndarray) -> np.ndarray:
     """
     Compute the model's Hessian by central differences of its forces.
@@ -941,44 +898,23 @@ def _model_hessian(calc, symbols: list[str], positions: np.ndarray) -> np.ndarra
     return 0.5 * (hessian + hessian.T)
 
 
-def _match_modes(
-    reference: np.ndarray, model: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Pair every reference mode with a model mode, one to one, by overlap.
-
-    Parameters
-    ----------
-    reference
-        Reference eigenvectors as columns.
-    model
-        Model eigenvectors as columns.
-
-    Returns
-    -------
-    tuple[numpy.ndarray, numpy.ndarray]
-        The matched overlap for each reference mode, and the model mode index
-        it was matched to.
-    """
-    overlap = np.abs(reference.T @ model)
-    rows, columns = linear_sum_assignment(-overlap)
-    matched = np.zeros(reference.shape[1])
-    partner = np.zeros(reference.shape[1], dtype=int)
-    matched[rows] = overlap[rows, columns]
-    partner[rows] = columns
-    return matched, partner
-
-
 @pytest.mark.slow
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_hessians(mlip: tuple[str, Any]) -> None:
     """
-    Compare the model's curvature with DFT at each reference stationary point.
+    Save the model's Hessian at each reference stationary point, beside DFT's.
 
-    Both Hessians are evaluated at the same DFT geometry, so this measures the
-    curvature the model assigns to the reference structure rather than
-    curvature at some nearby structure the model happened to find. That keeps
-    it a test of the potential and not of the search.
+    Both Hessians are taken at the same DFT geometry, so the comparison is of
+    the curvature the model assigns to the reference structure rather than at
+    some nearby structure the model happened to find. That keeps it a test of
+    the potential and not of the search.
+
+    The raw Cartesian matrices are saved, in eV/A^2 and keyed by structure
+    label, in ``<molecule>_model_hessians.npz`` and, as a copy of the verified
+    reference, ``<molecule>_reference_hessians.npz``. Projection, eigenvalues and
+    mode matching all happen in the analysis, so they can change without
+    rerunning this. A structure whose matrices could not be produced is
+    recorded with its failure and saved without them.
 
     Parameters
     ----------
@@ -993,7 +929,9 @@ def test_hessians(mlip: tuple[str, Any]) -> None:
     data_dir = _data_dir()
 
     for molecule in MOLECULES:
-        results: list[Atoms] = []
+        records: list[Atoms] = []
+        model_hessians: dict[str, np.ndarray] = {}
+        reference_hessians: dict[str, np.ndarray] = {}
         frames = _stationary_points(data_dir, molecule)
         for atoms in tqdm(
             frames,
@@ -1001,53 +939,35 @@ def test_hessians(mlip: tuple[str, Any]) -> None:
             unit="pt",
             disable=not sys.stderr.isatty(),
         ):
-            folder = hessian_dir / molecule.key / atoms.info["label"]
+            label = atoms.info["label"]
             symbols = atoms.get_chemical_symbols()
             positions = atoms.get_positions()
-            reference = _reference_hessian(folder, atoms)
 
-            out_atoms = Atoms(symbols, positions)
-            out_atoms.info.update(
+            record = Atoms(symbols, positions)
+            record.info.update(
                 molecule=molecule.key,
                 kind=atoms.info["kind"],
-                label=atoms.info["label"],
+                label=label,
+                failure="none",
             )
             try:
+                reference = _reference_hessian(
+                    hessian_dir / molecule.key / label, atoms
+                )
                 predicted = _model_hessian(calc, symbols, positions)
             except Exception as exc:
                 warn(
-                    f"{model_name} {molecule.key} hessians: failed on "
-                    f"{atoms.info['label']}: {exc}",
+                    f"{model_name} {molecule.key} hessians: failed on {label}: {exc}",
                     stacklevel=2,
                 )
-                out_atoms.info.update(
-                    mode_overlap_median=np.nan,
-                    reaction_coordinate_overlap=np.nan,
-                )
-                results.append(out_atoms)
-                continue
+                record.info["failure"] = type(exc).__name__
+            else:
+                reference_hessians[label] = reference
+                model_hessians[label] = predicted
+            records.append(record)
 
-            basis = _internal_basis(positions, symbols)
-            ref_values, ref_vectors = np.linalg.eigh(basis.T @ reference @ basis)
-            model_values, model_vectors = np.linalg.eigh(basis.T @ predicted @ basis)
-            matched, partner = _match_modes(ref_vectors, model_vectors)
-
-            paired = model_values[partner]
-
-            out_atoms.info.update(
-                mode_overlap_median=float(np.median(matched)),
-                mode_overlap_min=float(matched.min()),
-                reference_eigenvalues=ref_values,
-                model_eigenvalues=paired,
-                n_negative_reference=int((ref_values < 0).sum()),
-                n_negative_model=int((model_values < 0).sum()),
-                reaction_coordinate_overlap=(
-                    float(matched[0])
-                    if atoms.info["kind"] == "transition_state"
-                    else np.nan
-                ),
-            )
-            results.append(out_atoms)
-
-        if results:
-            write(out_dir / f"{molecule.key}_hessians.extxyz", results)
+        write(out_dir / f"{molecule.key}_hessians.extxyz", records)
+        np.savez(out_dir / f"{molecule.key}_model_hessians.npz", **model_hessians)
+        np.savez(
+            out_dir / f"{molecule.key}_reference_hessians.npz", **reference_hessians
+        )

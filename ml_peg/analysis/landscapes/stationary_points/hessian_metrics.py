@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from ase import Atoms
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 
 def hessian_failed(atoms: Atoms) -> bool:
@@ -218,3 +219,115 @@ def ratio_agreement(ratio: float) -> float:
         Between 0 and 1, 1 meaning agreement; NaN where the ratio is.
     """
     return min(ratio, 1.0 / ratio) if np.isfinite(ratio) else np.nan
+
+
+def internal_basis(atoms: Atoms) -> np.ndarray:
+    """
+    Build a basis spanning internal motion, excluding translation and rotation.
+
+    Six modes sit at essentially zero curvature, and within that near-degenerate
+    subspace the individual eigenvectors are arbitrary: comparing them one to
+    one produces cosines near zero that look like total disagreement and mean
+    nothing. Both Hessians are projected into this basis first, leaving 3N-6
+    real modes. The same basis serves both because they share a geometry.
+
+    Parameters
+    ----------
+    atoms
+        The structure, whose masses place the centre of rotation.
+
+    Returns
+    -------
+    numpy.ndarray
+        Columns spanning internal motion.
+    """
+    positions = atoms.get_positions()
+    shifted = positions - np.average(positions, axis=0, weights=atoms.get_masses())
+
+    rigid = []
+    for axis in range(3):
+        translation = np.zeros_like(positions)
+        translation[:, axis] = 1.0
+        rigid.append(translation.flatten())
+    for axis in range(3):
+        unit = np.zeros(3)
+        unit[axis] = 1.0
+        rigid.append(np.cross(unit, shifted).flatten())
+
+    basis, upper = np.linalg.qr(np.array(rigid).T)
+    independent = basis[:, np.abs(np.diag(upper)) > 1e-8]
+    left, singular, _ = np.linalg.svd(independent, full_matrices=True)
+    return left[:, (singular > 1e-8).sum() :]
+
+
+def match_modes(
+    reference: np.ndarray, model: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Pair every reference mode with a model mode, one to one, by overlap.
+
+    Parameters
+    ----------
+    reference
+        Reference eigenvectors as columns.
+    model
+        Model eigenvectors as columns.
+
+    Returns
+    -------
+    tuple[numpy.ndarray, numpy.ndarray]
+        The matched overlap for each reference mode, and the model mode index
+        it was matched to.
+    """
+    overlap = np.abs(reference.T @ model)
+    rows, columns = linear_sum_assignment(-overlap)
+    matched = np.zeros(reference.shape[1])
+    partner = np.zeros(reference.shape[1], dtype=int)
+    matched[rows] = overlap[rows, columns]
+    partner[rows] = columns
+    return matched, partner
+
+
+def compare_hessians(
+    reference_hessian: np.ndarray, model_hessian: np.ndarray, atoms: Atoms
+) -> dict:
+    """
+    Compare a model's Hessian with the reference one at the same structure.
+
+    Both are projected onto internal motion and diagonalised, and each reference
+    mode is paired with the model mode pointing most nearly the same way. The
+    model's eigenvalues are reported in that pairing, so the per-structure
+    metrics compare like with like.
+
+    Parameters
+    ----------
+    reference_hessian
+        The reference Cartesian Hessian, in eV/A^2.
+    model_hessian
+        The model's Cartesian Hessian at the same geometry, in eV/A^2.
+    atoms
+        The structure, with ``kind`` in its info.
+
+    Returns
+    -------
+    dict
+        The median and smallest matched overlaps, the reference eigenvalues and
+        the model's paired with them, how many of each are negative, and the
+        overlap of the reference's lowest mode with its match at a transition
+        state (NaN at a minimum).
+    """
+    basis = internal_basis(atoms)
+    ref_values, ref_vectors = np.linalg.eigh(basis.T @ reference_hessian @ basis)
+    model_values, model_vectors = np.linalg.eigh(basis.T @ model_hessian @ basis)
+    matched, partner = match_modes(ref_vectors, model_vectors)
+    return {
+        "mode_overlap_median": float(np.median(matched)),
+        "mode_overlap_min": float(matched.min()),
+        "reference_eigenvalues": ref_values,
+        "model_eigenvalues": model_values[partner],
+        "n_negative_reference": int((ref_values < 0).sum()),
+        "n_negative_model": int((model_values < 0).sum()),
+        "reaction_coordinate_overlap": (
+            float(matched[0]) if atoms.info["kind"] == "transition_state" else np.nan
+        ),
+    }
