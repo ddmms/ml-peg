@@ -35,7 +35,6 @@ from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
 )
 from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_violin
 from ml_peg.analysis.utils.utils import (
-    build_dispersion_name_map,
     get_struct_info,
     load_metrics_config,
     rmse,
@@ -46,7 +45,6 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
 MODELS = load_models(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map()
 
 EV_TO_MEV = 1000.0
 
@@ -1039,7 +1037,6 @@ def get_stiffness_error(
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
-    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     get_energy_rmse: dict[str, float],

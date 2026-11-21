@@ -680,8 +680,8 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
     """
     Reconverge each reference saddle and record where it lands and what it joins.
 
-    Harder than the minima: a saddle is stationary in only one direction, and
-    the model may have no saddle nearby at all. Eigenvector following returns
+    Harder than the minima: a saddle has one direction of negative curvature,
+    and the model may have no saddle nearby at all. Eigenvector following returns
     the two minima its steepest-descent paths reach, so connectivity is
     recorded here rather than in a separate search -- a model can place a
     saddle correctly and still rewire the network, which changes the kinetics

@@ -117,9 +117,10 @@ metrics:
     unit: cosine
     tooltip: "Agreement with the DFT imaginary mode, over the saddles where the model has one at all. Read with Saddles converged."
     level_of_theory: ωB97X/6-31G(d)
-  # A frequency goes as the square root of its curvature, so 2% and 20% in
-  # stiffness are about 1% and 10% in frequency. 10% is how far uncorrected
-  # Hartree-Fock frequencies are off, which is why they are only used scaled.
+  # An error that scales the whole Hessian scales every frequency by its square
+  # root, so 2% and 20% in stiffness are about 1% and 10% in frequency. 10% is
+  # how far uncorrected Hartree-Fock frequencies are off, which is why they are
+  # only used scaled.
   Stiffness error:
     good: 2.0
     bad: 20.0
@@ -144,5 +145,5 @@ metrics:
     good: 1.0
     bad: 0.44
     unit: ratio
-    tooltip: "The model's imaginary eigenvalue over DFT's, folded as min(r, 1/r) at each transition state, so a barrier top twice too sharp or twice too flat both read 0.5. Click for the unfolded ratios: above 1 is too sharp, below 1 too flat. Sets the tunnelling correction and the TST prefactor. A single constant predicted for every saddle scores 0.44, so a model at or below that shows no skill here."
+    tooltip: "The model's imaginary eigenvalue over DFT's, folded as min(r, 1/r) at each transition state, so a barrier top twice too sharp or twice too flat both read 0.5. Click for the unfolded ratios: above 1 is too sharp, below 1 too flat. The curvature along the reaction coordinate, a proxy for the imaginary frequency that enters the tunnelling correction and the TST prefactor (these Hessians are Cartesian, not mass-weighted). A single constant predicted for every saddle scores 0.44, so a model at or below that shows no skill here."
     level_of_theory: ωB97X/6-31G(d)

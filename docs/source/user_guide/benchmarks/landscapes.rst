@@ -55,7 +55,7 @@ Metrics
    Each reference minimum is relaxed under the model and each transition state
    refined by eigenvector following. A good model leaves the structure where it
    is; the distance it travels is the metric. Saddles are the harder case,
-   being stationary in only one direction, and a model may have no saddle
+   having one direction of negative curvature, and a model may have no saddle
    nearby at all. Saddles converged is the fraction of the 67 for which
    eigenvector following reaches a saddle within its step budget, and the
    saddle distances are taken over those alone.
@@ -76,15 +76,17 @@ Metrics
    mode at saddles, and how much softer or stiffer than DFT the model is
    overall, in percent. It also reports the curvature error over the softest
    third of the modes, where a landscape lives, and the ratio of the model's
-   imaginary eigenvalue to DFT's, which sets the tunnelling correction and the
-   transition state theory prefactor. That ratio is scored as
+   negative eigenvalue at a saddle to DFT's: the curvature along the reaction
+   coordinate, a proxy for the imaginary frequency that enters the tunnelling
+   correction and the transition state theory prefactor. That ratio is scored as
    ``min(r, 1/r)``, so a barrier top too sharp counts against a model as much
    as one too flat by the same factor.
 
    The model's Hessian is taken by central finite differences of its forces,
    with a 1e-3 Å step, at the DFT geometry. Both Hessians are compared with
    translations and rotations projected out, and modes are matched one to one
-   by overlap.
+   by overlap. The Hessians are Cartesian, not mass-weighted, so their
+   eigenvalues are curvatures rather than squared vibrational frequencies.
 
 Scoring
 -------
@@ -119,8 +121,9 @@ The thresholds come from the reference wherever it supplies one:
   these saddles. *Bad* is 0, what a model that finds nothing scores.
 * **Mode overlaps.** 0.99 and 0.8, an 8° and a 37° misalignment, well above the
   0.32 that randomly oriented modes score.
-* **Stiffness.** 2% and 20%, about 1% and 10% in frequency; 10% is the error of
-  uncorrected Hartree-Fock frequencies.
+* **Stiffness.** 2% and 20%. An error that scales the whole Hessian scales every
+  frequency by its square root, so these are about 1% and 10% in frequency;
+  10% is the error of uncorrected Hartree-Fock frequencies.
 * **Soft mode curvature.** 0.02 and 0.2 eV/Å², about 1% and 7% of the median
   curvature of the softest third of the reference modes, 2.7 eV/Å².
 * **Reaction mode curvature.** *Good* is 1. *Bad* is 0.44, what a single
@@ -146,6 +149,8 @@ The settings are fixed in ``calc_stationary_points.py``:
   converged and Connectivity preserved; some reference saddles never converge
   even given 3000 steps.
 * Every structure is a neutral singlet.
+* No dispersion correction is added, as the reference, ωB97X/6-31G(d), has
+  none.
 
 A model error on a structure is warned about and recorded rather than stopping
 the run: it voids that model's metrics that depend on the structure, or, for a

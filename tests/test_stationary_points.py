@@ -134,3 +134,15 @@ def test_failed_hessian_gives_nan_not_an_error(
         One of the per-structure Hessian metrics.
     """
     assert np.isnan(metric(_failed_structure()))
+
+
+def test_tied_softest_modes_still_give_a_soft_mode_error() -> None:
+    """
+    Ties at the bottom must not empty the softest third.
+
+    With the four softest modes tied, the 33rd percentile falls on their value,
+    so a strict comparison selects nothing.
+    """
+    reference = (1.0, 1.0, 1.0, 1.0, 2.0, 3.0)
+    model = tuple(value + 0.1 for value in reference)
+    assert soft_mode_error(_structure(reference, model)) == pytest.approx(0.1)

@@ -23,3 +23,11 @@ citations:
       - "Luke Dicks"
     year: 2025
     doi: "10.1038/s41524-025-01878-x"
+  - key: "dicks-2024-topsearch"
+    role: upstream_framework
+    title: "TopSearch: a Python package for topographical analysis of machine learning models and physical systems"
+    authors:
+      - "Luke Dicks"
+      - "Edward O. Pyzer-Knapp"
+    year: 2024
+    doi: "10.21105/joss.06711"

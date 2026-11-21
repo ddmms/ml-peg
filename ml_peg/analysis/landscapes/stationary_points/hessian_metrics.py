@@ -147,7 +147,12 @@ def soft_mode_error(atoms: Atoms) -> float:
     reference, model = reference[positive], model[positive]
     if reference.size < 3:
         return np.nan
-    softest = reference < np.percentile(reference, 33)
+    cutoff = np.percentile(reference, 33)
+    softest = reference < cutoff
+    if not softest.any():
+        # Ties at the bottom put the 33rd percentile on the lowest value, so
+        # the strict comparison selects nothing; take the tied modes instead.
+        softest = reference <= cutoff
     return float(np.median(np.abs(model - reference)[softest]))
 
 
@@ -155,9 +160,11 @@ def reaction_curvature(atoms: Atoms) -> float:
     """
     Get how steeply the model falls away from the barrier top, against DFT.
 
-    The imaginary eigenvalue sets the curvature along the reaction coordinate,
-    which fixes the tunnelling correction and the transition state theory
-    prefactor. A ratio is usable here, unlike for the soft modes, because the
+    The negative eigenvalue is the curvature along the reaction coordinate.
+    The Hessians are Cartesian, not mass-weighted, so it is a proxy for the
+    imaginary frequency that enters the tunnelling correction and the
+    transition state theory prefactor, not that frequency itself. A ratio is
+    usable here, unlike for the soft modes, because the
     reference imaginary eigenvalue is rarely near zero: it ranges from -0.0034
     to -9.18 eV/A^2 (median -0.16), and only one barrier top, paracetamol
     ts2_3_2, is almost flat. The median over saddles does not follow a single
