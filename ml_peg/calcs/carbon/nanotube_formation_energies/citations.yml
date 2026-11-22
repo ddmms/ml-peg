@@ -1,0 +1,12 @@
+implementers:
+  - name: "Patrick Rowe"
+    github: "patrickwrowe"
+
+contributors:
+  - name: "Joseph Hart"
+    github: "joehart2001"
+
+citations:
+  - bibtex_key: rowe-2020-gap20-carbon
+    role: benchmark_method
+    detail: optB88-vdW

@@ -145,6 +145,7 @@ please add it to this table when making a pull request for your benchmark or mod
 
 - ``PBE``
 - ``PBE+D3``
+- ``optB88-vdW``
 - ``r2SCAN``
 - ``r2SCAN-3c``
 - ``CCSD(T)``
