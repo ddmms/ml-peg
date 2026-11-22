@@ -330,6 +330,17 @@ MINIMISE_CONV_CRIT = 1e-6
 # from an optimisation that never converged. Raising it to 5000 changes the
 # drift by nothing, so 1000 is the budget rather than the ceiling.
 MINIMISE_STEPS = 1000
+# A saddle endpoint has settled into a minimum when the largest force left on
+# any atom is at most this, in eV/A, and topsearch's curvature check accepts it
+# as one. The relaxation still aims for MINIMISE_CONV_CRIT; this only decides
+# whether one that stopped short of it is at a minimum, and identification then
+# decides which. A minimum's drift needs the relaxation to finish travelling;
+# identifying an endpoint needs only that it lies in a real basin. It is the
+# tolerance the saddle search accepts a saddle at (TS_CONV_CRIT). On the MACE
+# models an endpoint at the right minimum that runs out of steps creeping along
+# a soft torsion has ended with up to 4e-4 eV/A left, varying tenfold between
+# runs, while one whose atoms collapse onto each other carries more than 1 eV/A.
+SETTLED_FORCE = 1e-2
 # A fixed protocol rather than a safe cutoff. Measured on MACE-OFF across the
 # full reference, the step count does NOT separate outcomes: a saddle can take
 # 541 steps and land 0.26 A from the DFT one, or 22 steps and land 0.30 A away.
@@ -547,27 +558,31 @@ def _identify(
 
 def _settle(
     potential: Potential, position: np.ndarray, symbols: list[str]
-) -> tuple[np.ndarray, bool]:
+) -> tuple[np.ndarray, float, bool]:
     """
-    Finish an endpoint to the same criterion the minima test uses.
+    Relax a saddle endpoint as the minima are, and check that it reached one.
 
     Eigenvector following descends to its own ``steepest_descent_conv_crit``,
     which is looser than ``MINIMISE_CONV_CRIT`` and has to stay that way: the
     same setting governs the subspace minimisation inside every search step, so
     tightening it there would make the whole search far more expensive. The
-    endpoints are therefore finished here instead, so that "a minimum" means
-    the same thing in this test as in the minima one.
+    endpoints are therefore relaxed here as far as the minima are; whether
+    they arrived is judged differently (see ``SETTLED_FORCE``).
 
     Measured on malonaldehyde, this moves the endpoints by 80 to 175 further
     iterations and does not change which reference minimum they identify as,
     so it buys consistency rather than a different answer.
 
-    Whether it got there is checked the same way too, rather than assumed. A
-    model can send an endpoint where it has no minimum at all: on MACE-OFF23-L
-    some descents run into a region where atoms collapse onto one another and
-    the optimiser gives up, with forces of up to 1e13 eV/A, yet such a
-    structure can still lie within ``SAME_STRUCTURE`` of a reference minimum
-    and so credit a connection the model does not make.
+    Whether it got there is checked rather than assumed, and from where the
+    relaxation ended rather than from scipy's report, which is wrong both ways
+    here. A model can send an endpoint where it has no minimum at all: on
+    MACE-OFF23-L, and less often on other MACE models, some descents run into a
+    region where atoms collapse onto one another, with forces of up to
+    1e14 eV/A, and L-BFGS-B has reported convergence on such a structure. It
+    can still lie within ``SAME_STRUCTURE`` of a reference minimum and so
+    credit a connection the model does not make. And an endpoint at the right
+    minimum can run out of steps creeping along a soft torsion, which would
+    deny a connection the model does make.
 
     Parameters
     ----------
@@ -580,13 +595,13 @@ def _settle(
 
     Returns
     -------
-    tuple[numpy.ndarray, bool]
-        The settled position, and whether it is a minimum by the minima test's
-        standard: scipy reports convergence and topsearch finds no negative
-        curvature there.
+    tuple[numpy.ndarray, float, bool]
+        The settled position; the largest force left on any atom, in eV/A; and
+        whether it is a minimum: at most ``SETTLED_FORCE`` of force left, and
+        accepted as one by topsearch's curvature check.
     """
     coords = MolecularCoordinates(symbols, np.asarray(position, dtype=float).copy())
-    settled, _, info = lbfgs.minimise(
+    settled, _, _ = lbfgs.minimise(
         func_grad=potential.function_gradient,
         initial_position=coords.position,
         bounds=coords.bounds,
@@ -594,10 +609,12 @@ def _settle(
         n_steps=MINIMISE_STEPS,
     )
     coords.position = np.asarray(settled, dtype=float)
-    # The curvature check costs a Hessian, so it is made only once scipy
-    # reports convergence.
-    converged = info["warnflag"] == 0 and bool(potential.check_valid_minimum(coords))
-    return coords.position, converged
+    gradient = np.reshape(potential.gradient(coords.position), (-1, 3))
+    force = float(np.linalg.norm(gradient, axis=1).max())
+    # The curvature check costs a Hessian, so it is made only once the force
+    # passes.
+    converged = force <= SETTLED_FORCE and bool(potential.check_valid_minimum(coords))
+    return coords.position, force, converged
 
 
 @pytest.mark.slow
@@ -761,7 +778,9 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
                         _settle(potential, end, symbols)
                         for end in (plus_min, minus_min)
                     ]
-                    identified = [_identify(end, minima, symbols) for end, _ in settled]
+                    identified = [
+                        _identify(end, minima, symbols) for end, _, _ in settled
+                    ]
                     drift = float(
                         comparer.closest_distance(
                             MolecularCoordinates(symbols, start.copy()), found.copy()
@@ -796,11 +815,13 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
                 # Sorted only to compare with the reference pair, whose order
                 # means nothing; each endpoint keeps its own identification.
                 reached = sorted(identified)
-                both_settled = all(converged for _, converged in settled)
+                both_settled = all(converged for _, _, converged in settled)
                 # The endpoints are the evidence for the connectivity result --
                 # an endpoint identified as -1 is a basin the reference does not
                 # contain, and that claim should be inspectable as a structure.
-                for (end, converged), index in zip(settled, identified, strict=True):
+                for (end, force, converged), index in zip(
+                    settled, identified, strict=True
+                ):
                     endpoint = Atoms(symbols, end.reshape(-1, 3))
                     endpoint.info.update(
                         molecule=molecule.key,
@@ -808,6 +829,7 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
                         label=label,
                         reference_minimum=index,
                         settled=converged,
+                        residual_force=force,
                     )
                     endpoints.append(endpoint)
                 atoms.set_positions(found.reshape(-1, 3))

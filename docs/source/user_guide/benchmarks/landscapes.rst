@@ -142,16 +142,18 @@ The settings are fixed in ``calc_stationary_points.py``:
 * Minima are relaxed with L-BFGS-B to a gradient criterion of 1e-6 eV/Å,
   within 1000 iterations; it usually stops just short of that, once the
   energy no longer decreases at machine precision, leaving forces of at most
-  3e-5 eV/Å. A relaxation that scipy does not report as converged, or that
-  ends where the model has negative curvature, has not arrived, and
-  contributes NaN.
+  3e-5 eV/Å. A relaxation that scipy does not report as converged, or whose
+  end point topsearch's curvature check does not accept as a minimum, has
+  not arrived, and contributes NaN.
 * Transition states are refined by hybrid eigenvector following (topsearch)
   within 150 steps, with a gradient criterion of 1e-2 eV/Å. Each endpoint of
-  its steepest-descent paths is relaxed as the minima are and identified with
-  the nearest reference minimum within 0.3 Å; connectivity is credited only
-  when both endpoints relax into minima. A saddle not reached within the budget counts against Saddles
-  converged and Connectivity preserved; some reference saddles never converge
-  even given 3000 steps.
+  its steepest-descent paths is relaxed as the minima are, and has reached a
+  minimum when no atom has more than 1e-2 eV/Å of force left and topsearch's
+  curvature check accepts it as one; it is identified with the nearest
+  reference minimum within 0.3 Å, and connectivity is credited only when both
+  endpoints reach minima. A saddle not reached within the budget counts against
+  Saddles converged and Connectivity preserved; some reference saddles never
+  converge even given 3000 steps.
 * Every structure is a neutral singlet.
 * No dispersion correction is added, as the reference, ωB97X/6-31G(d), has
   none.
