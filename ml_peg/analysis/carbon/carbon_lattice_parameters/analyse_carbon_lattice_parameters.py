@@ -20,7 +20,7 @@ from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_scat
 from ml_peg.analysis.utils.utils import get_struct_info, load_metrics_config, mae, mape
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.carbon.lattice_parameters.calc_lattice_parameters import (
+from ml_peg.calcs.carbon.carbon_lattice_parameters.calc_carbon_lattice_parameters import (  # noqa: E501
     MOLECULES,
     REPEAT_FACTORS,
 )
@@ -28,8 +28,8 @@ from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
-CALC_PATH = CALCS_ROOT / "carbon" / "lattice_parameters" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "carbon" / "lattice_parameters"
+CALC_PATH = CALCS_ROOT / "carbon" / "carbon_lattice_parameters" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "carbon" / "carbon_lattice_parameters"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -160,14 +160,15 @@ def get_convergence_rate(model_name: str) -> float:
     Returns
     -------
     float
-        Percentage of structures with `converged=True`, or `np.nan` if none exist.
+        Percentage of structures with `converged=True`, or `np.nan` if any structure
+        file is missing.
     """
     model_dir = CALC_PATH / model_name
     flags = []
     for system in SYSTEMS:
         struct_file = model_dir / f"{system}.extxyz"
         if not struct_file.is_file():
-            continue
+            return np.nan
         converged = read(struct_file).info.get("converged", True)
         if not converged:
             warn(
@@ -176,7 +177,7 @@ def get_convergence_rate(model_name: str) -> float:
                 stacklevel=2,
             )
         flags.append(converged)
-    return 100 * sum(flags) / len(flags) if flags else np.nan
+    return 100 * sum(flags) / len(flags)
 
 
 @pytest.fixture
@@ -349,7 +350,7 @@ def metrics(
 
 
 @pytest.mark.framework("gap-20")
-def test_lattice_parameters(metrics: dict[str, dict]) -> None:
+def test_carbon_lattice_parameters(metrics: dict[str, dict]) -> None:
     """
     Run lattice parameters test.
 

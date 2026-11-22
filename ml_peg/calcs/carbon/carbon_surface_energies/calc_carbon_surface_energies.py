@@ -232,7 +232,7 @@ def evaluate_amorphous(
 @pytest.mark.framework("gap-20")
 @pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_surface_energies(mlip: tuple[str, Any]) -> None:
+def test_carbon_surface_energies(mlip: tuple[str, Any]) -> None:
     """
     Run diamond, graphite and amorphous carbon surface energy benchmark.
 

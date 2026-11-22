@@ -12,7 +12,7 @@ from ase.calculators.lj import LennardJones
 import numpy as np
 import pytest
 
-from ml_peg.calcs.carbon.lattice_parameters import calc_lattice_parameters
+from ml_peg.calcs.carbon.carbon_lattice_parameters import calc_carbon_lattice_parameters
 
 FMAX_EV_PER_ANGSTROM = 1e-3
 
@@ -51,7 +51,7 @@ def test_converged_flag_matches_optimiser(
 ) -> None:
     """The converged flag and residual force follow the optimiser, cell included."""
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(calc_lattice_parameters, "MAX_STEPS", steps)
+    monkeypatch.setattr(calc_carbon_lattice_parameters, "MAX_STEPS", steps)
     atoms = make()
     ref = {
         "is_molecule": is_molecule,
@@ -60,7 +60,7 @@ def test_converged_flag_matches_optimiser(
         "shell_1": 1.4,
         "shell_2": 2.4,
     }
-    calc_lattice_parameters.relax_system(atoms, calc(), system, ref)
+    calc_carbon_lattice_parameters.relax_system(atoms, calc(), system, ref)
     assert atoms.info["converged"] is converged
     ratio = atoms.info["max_force_ev_per_angstrom"] / atoms.info["fmax_ev_per_angstrom"]
     assert (ratio < 1) is converged

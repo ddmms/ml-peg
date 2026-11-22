@@ -6,16 +6,16 @@ import json
 
 import pytest
 
-from ml_peg.app.carbon.lattice_parameters import app_lattice_parameters
-from ml_peg.app.carbon.surface_energies import app_surface_energies
+from ml_peg.app.carbon.carbon_lattice_parameters import app_carbon_lattice_parameters
+from ml_peg.app.carbon.carbon_surface_energies import app_carbon_surface_energies
 from ml_peg.app.utils.load import read_plot
 
 
 @pytest.mark.parametrize(
     ("app", "benchmark"),
     [
-        (app_lattice_parameters, "lattice_parameters"),
-        (app_surface_energies, "surface_energies"),
+        (app_carbon_lattice_parameters, "carbon_lattice_parameters"),
+        (app_carbon_surface_energies, "carbon_surface_energies"),
     ],
 )
 def test_mock_structs_from_saved_figure(tmp_path, app, benchmark):

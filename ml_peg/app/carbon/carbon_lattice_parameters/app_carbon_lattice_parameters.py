@@ -13,9 +13,9 @@ from ml_peg.app.utils.build_callbacks import (
 )
 from ml_peg.app.utils.load import read_plot
 
-BENCHMARK_NAME = "Lattice Parameters"
+BENCHMARK_NAME = "Carbon Lattice Parameters"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/carbon.html#lattice-parameters"
-DATA_PATH = APP_ROOT / "data" / "carbon" / "lattice_parameters"
+DATA_PATH = APP_ROOT / "data" / "carbon" / "carbon_lattice_parameters"
 INFO_PATH = DATA_PATH / "info.json"
 
 # Table column, figure JSON suffix
@@ -45,7 +45,7 @@ def get_mock_structs(scatter: Graph) -> list[str]:
     if not traces or traces[0].get("customdata") is None:
         return []
     return [
-        f"/assets/carbon/lattice_parameters/mock/{point[0]}.extxyz"
+        f"/assets/carbon/carbon_lattice_parameters/mock/{point[0]}.extxyz"
         for point in traces[0]["customdata"]
     ]
 

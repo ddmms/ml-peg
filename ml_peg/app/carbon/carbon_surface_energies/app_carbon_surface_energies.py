@@ -13,11 +13,11 @@ from ml_peg.app.utils.build_callbacks import (
 )
 from ml_peg.app.utils.load import read_plot
 
-BENCHMARK_NAME = "Surface Energies"
+BENCHMARK_NAME = "Carbon Surface Energies"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/carbon.html#surface-energies"
 )
-DATA_PATH = APP_ROOT / "data" / "carbon" / "surface_energies"
+DATA_PATH = APP_ROOT / "data" / "carbon" / "carbon_surface_energies"
 INFO_PATH = DATA_PATH / "info.json"
 
 # Table column, figure JSON suffix
@@ -45,7 +45,7 @@ def get_mock_structs(scatter: Graph) -> list[str]:
     if not traces or traces[0].get("customdata") is None:
         return []
     return [
-        f"/assets/carbon/surface_energies/mock/{point[0]}.extxyz"
+        f"/assets/carbon/carbon_surface_energies/mock/{point[0]}.extxyz"
         for point in traces[0]["customdata"]
     ]
 

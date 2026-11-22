@@ -173,7 +173,7 @@ def relax_system(
 @pytest.mark.framework("gap-20")
 @pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
+def test_carbon_lattice_parameters(mlip: tuple[str, Any]) -> None:
     """
     Run lattice parameter, bond length, and energy above graphite benchmark.
 
@@ -202,8 +202,6 @@ def test_lattice_parameters(mlip: tuple[str, Any]) -> None:
         frames[system] = atoms
 
     graphite_energy = energy_per_atom["Graphite"]
-    if not frames["Graphite"].info["converged"]:
-        graphite_energy = np.nan
     for system, atoms in frames.items():
         atoms.info["energy_above_graphite_ev_per_atom"] = (
             energy_per_atom[system] - graphite_energy

@@ -58,6 +58,9 @@ excluded; the other six systems contribute. Reference values span 72-450 meV/ato
 a percentage error would be dominated by the smallest denominator and this is
 reported as a mean absolute error in meV/atom.
 
+If graphite's relaxation does not converge, energies are measured from its final step
+and the failure is penalised by the Convergence metric.
+
 4. Convergence
 
 Percentage of the seven relaxations whose largest residual force, cell included, falls
