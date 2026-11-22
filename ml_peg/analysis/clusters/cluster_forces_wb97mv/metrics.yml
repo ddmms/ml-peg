@@ -1,0 +1,43 @@
+metrics:
+  Force MAE (3 atoms):
+    good: 0.232
+    bad: 0.547
+    unit: eV/Å
+    tooltip: "Component-wise force MAE on neutral 3-atom clusters, compared to ωB97M-V reference forces calculated with ORCA, using settings consistent with the OMol25 dataset. Models not trained on dispersion-corrected data include a D3 correction."
+    level_of_theory: ωB97M-V/def2-TZVPD
+    weight: 1
+  Force MAE (4 atoms):
+    good: 0.283
+    bad: 0.616
+    unit: eV/Å
+    tooltip: "Component-wise force MAE on neutral 4-atom clusters, compared to ωB97M-V reference forces calculated with ORCA, using settings consistent with the OMol25 dataset. Models not trained on dispersion-corrected data include a D3 correction."
+    level_of_theory: ωB97M-V/def2-TZVPD
+    weight: 1
+  Force MAE (5 atoms):
+    good: 0.299
+    bad: 0.633
+    unit: eV/Å
+    tooltip: "Component-wise force MAE on neutral 5-atom clusters, compared to ωB97M-V reference forces calculated with ORCA, using settings consistent with the OMol25 dataset. Models not trained on dispersion-corrected data include a D3 correction."
+    level_of_theory: ωB97M-V/def2-TZVPD
+    weight: 1
+  Force MAE (6 atoms):
+    good: 0.315
+    bad: 0.642
+    unit: eV/Å
+    tooltip: "Component-wise force MAE on neutral 6-atom clusters, compared to ωB97M-V reference forces calculated with ORCA, using settings consistent with the OMol25 dataset. Models not trained on dispersion-corrected data include a D3 correction."
+    level_of_theory: ωB97M-V/def2-TZVPD
+    weight: 1
+  Force MAE (7 atoms):
+    good: 0.319
+    bad: 0.658
+    unit: eV/Å
+    tooltip: "Component-wise force MAE on neutral 7-atom clusters, compared to ωB97M-V reference forces calculated with ORCA, using settings consistent with the OMol25 dataset. Models not trained on dispersion-corrected data include a D3 correction."
+    level_of_theory: ωB97M-V/def2-TZVPD
+    weight: 1
+  Force MAE (8 atoms):
+    good: 0.325
+    bad: 0.679
+    unit: eV/Å
+    tooltip: "Component-wise force MAE on neutral 8-atom clusters, compared to ωB97M-V reference forces calculated with ORCA, using settings consistent with the OMol25 dataset. Models not trained on dispersion-corrected data include a D3 correction."
+    level_of_theory: ωB97M-V/def2-TZVPD
+    weight: 1
