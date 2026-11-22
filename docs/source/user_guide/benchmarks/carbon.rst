@@ -114,8 +114,7 @@ A single point at the shipped relaxed geometry for diamond {100} and graphite (0
 The provenances differ: every diamond reference INCAR has ``NSW = 0``, so its
 "relaxed" reference is a single point at a distinct GAP-20 geometry, whereas
 graphite's is a genuine DFT ionic relaxation (``NSW = 1000``, atoms moving up to
-0.104 Å). The benchmark relaxes nothing either way. Amorphous carbon is excluded: its
-DFT reference used only unrelaxed cuts, so no relaxed reference exists.
+0.104 Å). The benchmark relaxes nothing either way.
 
 Computational cost
 ------------------

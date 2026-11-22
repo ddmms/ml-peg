@@ -91,8 +91,8 @@ def get_app() -> SurfaceEnergiesApp:
         name=BENCHMARK_NAME,
         description=(
             "Single-point as-cut and relaxed surface energies for diamond {100} and"
-            " graphite (0001), plus as-cut only for amorphous carbon, which has no"
-            " relaxed reference. Reference data is optB88-vdW."
+            " graphite (0001), plus as-cut only for amorphous carbon."
+            " Reference data is optB88-vdW."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "surface_energies_metrics_table.json",

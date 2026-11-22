@@ -1,26 +1,14 @@
 """
 Run calculations for carbon nanotube formation energies benchmark.
 
-The 2021 ``nanotubes_formation_energy/test.py`` scores each tube against a
-hardcoded isolated-atom reference (``single_atom_energy = 0.94664775`` eV, the
-spin-unpolarised carbon atom) on the reference side, and the model's own
-isolated-atom energy on the model side. That convention was self-consistent for
-GAP-20, the model it was built around: the same offset appeared on both sides.
-It does not generalise to an arbitrary model under test, whose own isolated-atom
-energy carries whatever spin convention that model was trained on rather than
-the reference's spin-unpolarised one. The published archive also no longer
-ships an isolated atom to compute either side from.
-
-This benchmark instead reports strain energy relative to graphene, with each
+This benchmark reports strain energy relative to graphene, with each
 side using its own graphene energy (the model's graphene for the model series,
-the DFT graphene for the reference series), exactly as ``defect_energies`` uses
-each side's own pristine host:
+the DFT graphene for the reference series):
 
 ``strain_energy_ev_per_atom = E_tube / n_tube - E_graphene / n_graphene``
 
-The isolated-atom term cancels within each side and never appears. Graphene is
-a fixed reference value, not a scored system, and no output structure is
-written for it.
+Graphene is a fixed reference value, not a scored system, and no output structure
+is written for it.
 
 Every reference geometry is a single-point DFT calculation (``NSW = 1`` in all
 20 shipped INCARs); the model is evaluated as a single point at each shipped

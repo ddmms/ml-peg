@@ -10,6 +10,6 @@ metrics:
     good: 5
     bad: 30
     unit: "%"
-    tooltip: "Mean absolute percentage error in relaxed surface energy across diamond {100} and graphite (0001); amorphous carbon has no relaxed reference and is excluded from this metric"
+    tooltip: "Mean absolute percentage error in relaxed surface energy across diamond {100} and graphite (0001)"
     level_of_theory: optB88-vdW
     weight: 1

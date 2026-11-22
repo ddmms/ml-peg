@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
-from warnings import warn
 
 from ase import Atoms, units
 from ase.calculators.calculator import Calculator
@@ -20,7 +19,6 @@ MODELS = load_models(current_models)
 OUT_PATH = Path(__file__).parent / "outputs"
 
 AMORPHOUS_SYSTEM = "Amorphous_Bulk_Unrelaxed_2"
-EXCLUDED_SYSTEMS = ("Diamond_110",)
 
 EV_ANGSTROM2_TO_J_M2 = units.m**2 / units.J
 
@@ -85,19 +83,13 @@ def amorphous_reference_surface_energy(by_config: dict[int, dict[str, Any]]) -> 
     energies = []
     for entry in by_config.values():
         bulk = entry["bulk"]
-        if bulk is None or not entry["slabs"]:
-            warn(
-                "Skipping amorphous config with missing bulk or slab frames",
-                stacklevel=2,
-            )
-            continue
         e_bulk = bulk.info["REF_energy"]
         area = surface_area(bulk)
         for slab in entry["slabs"]:
             energies.append(
                 0.5 * (slab.info["REF_energy"] - e_bulk) / area * EV_ANGSTROM2_TO_J_M2
             )
-    return float(np.mean(energies)) if energies else np.nan
+    return float(np.mean(energies))
 
 
 def prepare_reference(data_dir: Path, system: str) -> dict[str, Any]:
@@ -206,13 +198,6 @@ def evaluate_amorphous(
     for entry in by_config.values():
         bulk_reference = entry["bulk"]
         slab_references = entry["slabs"]
-        if bulk_reference is None or not slab_references:
-            warn(
-                "Skipping amorphous config with missing bulk or slab frames",
-                stacklevel=2,
-            )
-            continue
-
         area = surface_area(bulk_reference)
         e_bulk = energy_at(bulk_reference, calc, "amorphous bulk")
         for slab_reference in slab_references:
@@ -221,11 +206,7 @@ def evaluate_amorphous(
             e_slab = energy_at(slab_reference, calc, "amorphous slab")
             energies.append(0.5 * (e_slab - e_bulk) / area * EV_ANGSTROM2_TO_J_M2)
 
-    if representative is None:
-        representative = Atoms(
-            "C", positions=[[0.0, 0.0, 0.0]], cell=[10.0, 10.0, 10.0], pbc=True
-        )
-    as_cut_j_m2 = float(np.mean(energies)) if energies else np.nan
+    as_cut_j_m2 = float(np.mean(energies))
     return representative, as_cut_j_m2
 
 
@@ -245,8 +226,7 @@ def test_carbon_surface_energies(mlip: tuple[str, Any]) -> None:
     calc = model.get_calculator(precision="high")
     calc = model.add_d3_calculator(calc)
 
-    data_dir, all_systems = load_carbon_systems("surface_energies")
-    systems = [system for system in all_systems if system not in EXCLUDED_SYSTEMS]
+    data_dir, systems = load_carbon_systems("surface_energies")
 
     references = {system: prepare_reference(data_dir, system) for system in systems}
 
