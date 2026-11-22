@@ -94,7 +94,7 @@ mlipaudit = [
 nequip = [
     "nequip == 0.19.1",
     # GPU kernels, used automatically on CUDA:
-    "openequivariance == 0.7.0; sys_platform == 'linux'",
+    "openequivariance == 0.8.1; sys_platform == 'linux'",
     "cuequivariance-torch == 0.8.1; sys_platform == 'linux'",
     # This must match torch's CUDA build, which is CUDA 13 for the torch locked on Linux:
     "cuequivariance-ops-torch-cu13 == 0.8.1; sys_platform == 'linux'",

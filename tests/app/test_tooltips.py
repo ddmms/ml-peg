@@ -115,3 +115,56 @@ def test_moving_between_cells_never_shows_the_previous_tooltip(
     assert text_a not in over_b, (
         "the previous cell's tooltip was painted against the new anchor"
     )
+
+
+def test_close_over_another_cell_stays_closed_until_pointer_moves(page: Page):
+    """Removing a pinned card must not immediately hover the cell underneath it."""
+    from pathlib import Path
+
+    from playwright.sync_api import expect
+
+    page.set_viewport_size({"width": 800, "height": 800})
+    page.set_content(
+        """<style>
+        td {width: 500px; height: 180px;}
+        .dash-tooltip {display: none;}
+        .mlpeg-tooltip-portal {display: none; position: fixed;
+            width: 250px; height: 100px; background: white; z-index: 10;}
+        .mlpeg-tooltip-portal.is-visible {display: block;}
+        .mlpeg-tooltip-close {position: absolute; right: 0; top: 0;}
+        </style>
+        <div class="dash-table-container"><table><tbody>
+        <tr><td data-dash-column="MLIP" id="first">First model</td></tr>
+        <tr><td data-dash-column="MLIP" id="second">Second model</td></tr>
+        </tbody></table>
+        <div class="dash-tooltip"><div class="dash-table-tooltip">
+        Model information</div></div></div>"""
+    )
+    page.add_script_tag(
+        path=str(Path(__file__).parents[2] / "ml_peg/app/data/ui/tooltip_portal.js")
+    )
+    page.locator("#first").hover()
+    expect(page.locator(".mlpeg-tooltip-portal.is-visible")).to_be_visible()
+    # Mimic Dash clearing its source when the portal overlaps the hovered cell.
+    page.locator(".dash-tooltip .dash-table-tooltip").evaluate(
+        "node => node.innerHTML = ''"
+    )
+    page.locator("#first").evaluate("cell => cell.click()")
+    expect(page.locator(".mlpeg-tooltip-portal.is-pinned")).to_be_visible()
+    close = page.locator(".mlpeg-tooltip-close").bounding_box()
+    x, y = close["x"] + close["width"] / 2, close["y"] + close["height"] / 2
+    # Prove the close button lies over a different tooltip-enabled cell.
+    assert page.locator("#second").evaluate(
+        """(cell, [x, y]) => { const r = cell.getBoundingClientRect();
+        return x > r.left && x < r.right && y > r.top && y < r.bottom; }""",
+        [x, y],
+    )
+    page.locator(".mlpeg-tooltip-close").click()
+    # Allow browser boundary events and the portal's animation loop to run.
+    page.wait_for_timeout(300)
+    expect(page.locator(".mlpeg-tooltip-portal.is-visible")).to_have_count(0)
+    page.locator(".dash-tooltip .dash-table-tooltip").evaluate(
+        "node => node.innerHTML = 'Second model information'"
+    )
+    page.mouse.move(x + 5, y + 5)
+    expect(page.locator(".mlpeg-tooltip-portal.is-visible")).to_be_visible()

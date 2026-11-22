@@ -48,6 +48,7 @@ from ml_peg.app.utils.build_frameworks import (
     build_framework_summary_tables,
     build_framework_views,
 )
+from ml_peg.app.utils.global_weights import build_global_weights
 from ml_peg.app.utils.onboarding import (
     build_onboarding_modal,
     register_onboarding_callbacks,
@@ -70,6 +71,7 @@ from ml_peg.app.utils.storage import (
 )
 from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
+    default_weight_store_data,
     framework_sort_key,
     get_framework_config,
     get_mlip_column_width,
@@ -160,40 +162,6 @@ def _framework_to_path(framework_id: str) -> str:
     if not slug:
         raise ValueError(f"Unable to construct path for framework {framework_id}")
     return f"/framework/{slug}"
-
-
-def _default_weight_store_data(table: DataTable) -> dict[str, float]:
-    """
-    Build initial weight-store data for globally mounted summary tables.
-
-    Parameters
-    ----------
-    table
-        Category-summary or overall-summary table whose configurable columns need
-        explicit stored weights when the page controls are rendered elsewhere.
-
-    Returns
-    -------
-    dict[str, float]
-        Weight mapping containing one entry for every non-reserved table column
-        (i.e. not Score etc).
-        This is used when the category and overall summary weight stores are
-        kept at the top level of the app, rather than inside an individual
-        page, so updates made from framework pages can still propagate even if
-        the corresponding category page is not open. For example, if a user
-        changes benchmark weights from the MLIP Arena page, the category
-        summary still needs a complete set of weights available so it can be
-        recomputed immediately. Missing values are filled with ``1.0`` so reset
-        and input-sync callbacks always see a complete dictionary in the
-        backing ``dcc.Store``.
-    """
-    reserved = {"MLIP", "Score", "id", "link"}
-    weights = dict(getattr(table, "weights", None) or {})
-    for column in table.columns:
-        column_id = column.get("id")
-        if column_id not in reserved:
-            weights.setdefault(column_id, 1.0)
-    return weights
 
 
 def _framework_sidebar_label(framework_id: str, label: str) -> Div:
@@ -365,6 +333,7 @@ def get_all_tests(
     dict[str, dict[str, list[Div]]],
     dict[str, dict[str, DataTable]],
     dict[str, dict[str, str]],
+    dict[str, dict[str, str]],
 ]:
     """
     Get layout and register callbacks for all categories.
@@ -379,7 +348,8 @@ def get_all_tests(
     Returns
     -------
     tuple
-        Apps by test name, and layouts, tables, and framework IDs for all categories.
+        Apps by test name, and layouts, tables, framework IDs, and display names
+        for all categories.
     """
     # Find Python files e.g. app_OC157.py in mlip_tesing.app module.
     # We will get the category from the parent's parent directory
@@ -389,6 +359,8 @@ def get_all_tests(
     layouts = {}
     tables = {}
     frameworks = {}
+    # Benchmark directory name -> app display name, which keys the summary columns
+    names: dict[str, dict[str, str]] = {}
 
     # Build all layouts, and register all callbacks to main app.
     for test in tests:
@@ -407,10 +379,12 @@ def get_all_tests(
                 layouts[category_name] = {}
                 tables[category_name] = {}
                 frameworks[category_name] = {}
+                names[category_name] = {}
 
             layouts[category_name][test_app.name] = test_app.layout
             tables[category_name][test_app.name] = test_app.table
             frameworks[category_name][test_app.name] = test_app.framework_ids
+            names[category_name][test_name] = test_app.name
 
         except FileNotFoundError as err:
             warnings.warn(
@@ -431,7 +405,7 @@ def get_all_tests(
             )
             continue
 
-    return apps, layouts, tables, frameworks
+    return apps, layouts, tables, frameworks, names
 
 
 def _collect_benchmark_speeds(
@@ -461,6 +435,7 @@ def build_category(
     all_layouts: dict[str, dict[str, list[Div]]],
     all_tables: dict[str, dict[str, DataTable]],
     all_frameworks: dict[str, dict[str, str]],
+    all_names: dict[str, dict[str, str]],
 ) -> tuple[
     dict[str, dict[str, object]],
     dict[str, DataTable],
@@ -478,6 +453,8 @@ def build_category(
         Tables for all tests, grouped by category.
     all_frameworks
         Framework IDs for all tests, grouped by category.
+    all_names
+        Display name of each benchmark directory, grouped by category.
 
     Returns
     -------
@@ -510,13 +487,29 @@ def build_category(
 
         category_to_title[category] = category_title
 
+        # Summary columns are keyed by display name, `benchmark_weights` by directory
+        display_names = all_names.get(category, {})
+        summary_weights = {
+            f"{display_names[key]} Score": value
+            for key, value in benchmark_weights.items()
+            if key in display_names
+        }
+
         # Build category summary table
         summary_table = build_summary_table(
             dict(sorted(all_tables[category].items())),
             table_id=f"{category_title}-summary-table",
             description=category_descrip,
-            weights={f"{key} Score": value for key, value in benchmark_weights.items()},
+            weights=summary_weights,
         )
+
+        # A category whose benchmarks are all zero-weighted has no score of its own,
+        # so it must not block the total score either.
+        benchmark_columns = {f"{name} Score" for name in all_tables[category]}
+        if benchmark_columns and all(
+            summary_weights.get(column, 1.0) == 0 for column in benchmark_columns
+        ):
+            category_weight = 0
 
         # Store category weight for overall summary
         category_weights[f"{category_title} Score"] = category_weight
@@ -751,7 +744,7 @@ def build_nav(
                 Store(
                     id=f"{summary_table_component.id}-weight-store",
                     storage_type="session",
-                    data=_default_weight_store_data(summary_table_component),
+                    data=default_weight_store_data(summary_table_component),
                 ),
             ]
         )
@@ -772,7 +765,7 @@ def build_nav(
                 Store(
                     id=f"{fw_table.id}-weight-store",
                     storage_type="session",
-                    data=_default_weight_store_data(fw_table),
+                    data=default_weight_store_data(fw_table),
                 ),
             ]
         )
@@ -785,7 +778,7 @@ def build_nav(
         Store(
             id="summary-table-weight-store",
             storage_type="session",
-            data=_default_weight_store_data(summary_table),
+            data=default_weight_store_data(summary_table),
         ),
         Store(id="cmap-store", storage_type="local", data=DEFAULT_COLORMAP),
         # NOTE: the no-flash script in run_app.py reads this store's value
@@ -807,7 +800,7 @@ def build_nav(
             Store(
                 id="framework-summary-table-weight-store",
                 storage_type="session",
-                data=_default_weight_store_data(combined_framework_table),
+                data=default_weight_store_data(combined_framework_table),
             )
         )
 
@@ -914,6 +907,9 @@ def build_nav(
                                     [
                                         get_model_filter(MODELS),
                                         weight_preset_selector,
+                                        build_global_weights(
+                                            summary_table, category_views
+                                        ),
                                         get_element_filter(),
                                     ],
                                     className="mlpeg-controls-toolbar",
@@ -1072,7 +1068,7 @@ def build_nav(
         raise PreventUpdate
 
     register_weight_preset_callbacks(
-        summary_table, _default_weight_store_data(summary_table)
+        summary_table, default_weight_store_data(summary_table)
     )
 
     @callback(
@@ -1136,6 +1132,68 @@ def build_nav(
             "mlpeg-bench-header mlpeg-bench-header--open",
             "true",
         )
+
+    @callback(
+        Output({"type": "bench-body", "index": ALL}, "children", allow_duplicate=True),
+        Output(
+            {"type": "bench-toggle", "index": ALL}, "className", allow_duplicate=True
+        ),
+        Output(
+            {"type": "bench-toggle", "index": ALL},
+            "aria-expanded",
+            allow_duplicate=True,
+        ),
+        Input("bench-open-request", "data"),
+        State({"type": "bench-toggle", "index": ALL}, "id"),
+        State({"type": "bench-toggle", "index": ALL}, "aria-expanded"),
+        prevent_initial_call=True,
+    )
+    def open_benchmark_from_search(
+        request: dict[str, object] | None,
+        toggle_ids: list[dict[str, str]],
+        expanded: list[str],
+    ) -> tuple[list[object], list[str], list[str]]:
+        """
+        Expand the benchmark card named by a search-result jump.
+
+        Unlike the per-card toggle this states a desired outcome rather than
+        flipping the current one, so repeated requests for the same card are
+        harmless: a single selection can trigger the jump more than once.
+
+        Parameters
+        ----------
+        request
+            Jump request holding the target card's display ``name``.
+        toggle_ids
+            Pattern-matching ids of every card header on the page.
+        expanded
+            Each header's current ``aria-expanded`` value.
+
+        Returns
+        -------
+        tuple[list[object], list[str], list[str]]
+            Body children, header classNames and ``aria-expanded`` values, left
+            unchanged for every card except the requested one.
+
+        Raises
+        ------
+        PreventUpdate
+            If no card matches, or the requested card is already open.
+        """
+        name = (request or {}).get("name")
+        bodies: list[object] = [no_update] * len(toggle_ids)
+        classes: list[str] = [no_update] * len(toggle_ids)
+        aria: list[str] = [no_update] * len(toggle_ids)
+
+        for index, toggle_id in enumerate(toggle_ids):
+            if toggle_id["index"] != name or expanded[index] == "true":
+                continue
+            bodies[index] = benchmark_layouts.get(toggle_id["index"])
+            classes[index] = "mlpeg-bench-header mlpeg-bench-header--open"
+            aria[index] = "true"
+            return bodies, classes, aria
+
+        raise PreventUpdate
 
     @callback(
         Output({"type": "bench-body", "index": ALL}, "children", allow_duplicate=True),
@@ -1340,7 +1398,7 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
         Test to build app for. Default is `*`, corresponding to all tests.
     """
     # Get layouts and tables for each test, grouped by categories
-    all_apps, all_layouts, all_tables, all_frameworks = get_all_tests(
+    all_apps, all_layouts, all_tables, all_frameworks, all_names = get_all_tests(
         category=category, test=test
     )
 
@@ -1353,7 +1411,7 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
 
     # Combine tests into categories and create category summary
     cat_views, cat_tables, cat_weights, framework_ids = build_category(
-        all_layouts, all_tables, all_frameworks
+        all_layouts, all_tables, all_frameworks, all_names
     )
     framework_views = build_framework_views(cat_views, framework_ids)
     # Build per-framework summary tables and the combined framework summary

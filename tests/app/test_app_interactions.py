@@ -459,13 +459,8 @@ def test_click_pins_info_card(ready_page: Page) -> None:
 
     # Pin, retrying the hover/click pair rather than sleeping between them.
     #
-    # tooltip_portal.js `pin()` reads its content from Dash's own single
-    # `.dash-tooltip .dash-table-tooltip` node and returns silently when that node
-    # is missing or empty. Dash renders it in response to the hover and tears it
-    # down again on re-render, so on a loaded runner it can vanish in the gap
-    # between "the card is showing" and the click — `pin()` then no-ops and the
-    # card is never pinned. No fixed wait closes that window; re-doing the pair
-    # does, and it is what a user does when a click appears to do nothing.
+    # Dash can re-render between hover and click. Retry the pair if neither
+    # its native tooltip nor the portal's same-cell content is available yet.
     #
     # The click itself is dispatched directly rather than via a real pointer
     # click: once the card is on screen it can land over its own anchor (a tall
@@ -479,15 +474,8 @@ def test_click_pins_info_card(ready_page: Page) -> None:
         ready_page.wait_for_selector(
             ".mlpeg-tooltip-portal.is-visible", timeout=TIMEOUT
         )
-        # The node `pin()` actually reads — wait for it, not just for our portal.
-        # It must be present with content, NOT visible: Dash keeps the node
-        # attached but hidden, so a visibility wait here never resolves.
-        ready_page.wait_for_function(
-            "() => { const n = document.querySelector("
-            "'.dash-tooltip .dash-table-tooltip'); "
-            "return !!n && !!n.innerHTML.trim(); }",
-            timeout=TIMEOUT,
-        )
+        # A visible portal can cover its anchor and make Dash clear the native
+        # tooltip. Pin the displayed content without waiting on that hidden node.
         cell.evaluate("cell => cell.click()")
         if pinned.count() and pinned.is_visible():
             break

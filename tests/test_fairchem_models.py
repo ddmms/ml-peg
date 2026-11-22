@@ -16,6 +16,7 @@ FAIRCHEM_MODELS = tuple(
 )
 
 NITRO_MODELS = (
+    "uma-s-1p2p1-omc",
     "uma-s-1p2p1-omol",
     "uma-s-1p2p1-omat",
     "uma-s-1p2p1-ft-d4rev",
@@ -123,3 +124,22 @@ def test_inference_settings_are_valid_presets(name):
     # Entries without inference_settings use the wrapper's "batch" default.
     settings = (REGISTRY[name].get("kwargs") or {}).get("inference_settings", "batch")
     assert isinstance(guess_inference_settings(settings), InferenceSettings)
+
+
+@pytest.mark.parametrize("precision", ["high", "low"])
+@pytest.mark.parametrize("name", ["uma-s-1p1-omc", "uma-s-1p2p1-omc"])
+def test_omc_task_and_dispersion(fake_fairchem, precision, name):
+    """Route the OMC head without adding dispersion a second time."""
+    model = load_models((name,))[name]
+    calc = model.get_calculator(precision=precision)
+    assert calc.task_name == "omc"
+    assert fake_fairchem["model_name"] == name.removesuffix("-omc")
+    assert model.add_d3_calculator(calc) is calc
+    assert REGISTRY[name]["level_of_theory"] == "PBE+D3"
+    assert (
+        REGISTRY[name]["datasets"]
+        == REGISTRY[name.replace("-omc", "-omol")]["datasets"]
+    )
+    if name == "uma-s-1p1-omc":
+        dtype = "float64" if precision == "high" else "float32"
+        assert fake_fairchem["inference_settings"] == _preset("batch", dtype)

@@ -292,7 +292,7 @@ def app_url(benchmark_data: Path) -> Iterator[str]:
     discover = build_app.get_all_tests
 
     def fixture_tests(**kwargs):
-        result = ({}, {}, {}, {})
+        result = ({}, {}, {}, {}, {})
         for category, benchmark in FIXTURE_BENCHMARKS:
             selected = discover(category=category, test=benchmark)
             result[0].update(selected[0])
