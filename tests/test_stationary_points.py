@@ -1,10 +1,12 @@
-"""Unit tests for the Landscape17 stationary points Hessian metrics."""
+"""Unit tests for the Landscape17 stationary points metrics and output reading."""
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 
 from ase import Atoms
+from ase.io import write
 import numpy as np
 import pytest
 
@@ -18,6 +20,10 @@ from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
     reaction_overlap,
     soft_mode_error,
     stiffness_vs_dft,
+)
+from ml_peg.analysis.landscapes.stationary_points.records import (
+    complete_records,
+    read_by_id,
 )
 
 # DFT eigenvalues spanning soft to stiff modes, in eV/Å^2.
@@ -243,3 +249,112 @@ def test_compare_hessians_pairs_eigenvalues_by_mode() -> None:
     comparison = compare_hessians(reference, model, atoms)
     assert np.allclose(comparison["reference_eigenvalues"], stiffness)
     assert np.allclose(comparison["model_eigenvalues"], swapped)
+
+
+def _write_records(path: Path, molecule: str, labels: list[str]) -> None:
+    """
+    Write one-atom records as the calculation labels them.
+
+    Parameters
+    ----------
+    path
+        File to write.
+    molecule
+        Molecule key every record carries.
+    labels
+        One label per record.
+    """
+    frames = [
+        Atoms("H", info={"molecule": molecule, "label": label}) for label in labels
+    ]
+    write(path, frames)
+
+
+def test_records_are_read_by_structure_id(tmp_path: Path) -> None:
+    """
+    Records are keyed by molecule and label, in file order.
+
+    Parameters
+    ----------
+    tmp_path
+        Directory standing in for a model's outputs.
+    """
+    _write_records(tmp_path / "b_points.extxyz", "b", ["min00"])
+    _write_records(tmp_path / "a_points.extxyz", "a", ["min00", "ts0_1_0"])
+    records = read_by_id(tmp_path, "*_points.extxyz")
+    assert list(records) == ["a_min00", "a_ts0_1_0", "b_min00"]
+
+
+def test_truncated_file_gives_none_not_an_error(tmp_path: Path) -> None:
+    """
+    A file cut off mid-record leaves the model's records unread, with a warning.
+
+    Parameters
+    ----------
+    tmp_path
+        Directory standing in for a model's outputs.
+    """
+    path = tmp_path / "a_points.extxyz"
+    _write_records(path, "a", ["min00", "min01"])
+    lines = path.read_text().splitlines(keepends=True)
+    path.write_text("".join(lines[:-1]))
+    with pytest.warns(UserWarning, match="Could not read"):
+        assert read_by_id(tmp_path, "*_points.extxyz") is None
+
+
+def test_a_repeated_structure_gives_none_not_an_error(tmp_path: Path) -> None:
+    """
+    A structure written twice, here across two files, leaves the records unread.
+
+    Parameters
+    ----------
+    tmp_path
+        Directory standing in for a model's outputs.
+    """
+    _write_records(tmp_path / "a_points.extxyz", "a", ["min00"])
+    _write_records(tmp_path / "b_points.extxyz", "a", ["min00"])
+    with pytest.warns(UserWarning, match="appears twice"):
+        assert read_by_id(tmp_path, "*_points.extxyz") is None
+
+
+def test_complete_records_follow_the_reference_order() -> None:
+    """The model's records come back in the reference's order, not file order."""
+    hydrogen, helium = Atoms("H"), Atoms("He")
+    found = {"b_min00": hydrogen, "a_min00": helium}
+    records = complete_records(found, ["a_min00", "b_min00"], "model")
+    assert len(records) == 2
+    assert records[0] is helium
+    assert records[1] is hydrogen
+
+
+def test_a_structure_outside_the_reference_voids_the_records() -> None:
+    """A record the reference lacks means the reference is short, so nothing scores."""
+    found = {"a_min00": Atoms("H"), "a_min01": Atoms("H")}
+    with pytest.warns(UserWarning, match="1 not in the reference"):
+        assert complete_records(found, ["a_min00"], "model") is None
+
+
+def test_a_missing_structure_voids_the_records() -> None:
+    """One structure absent means no records, so nothing is scored on the rest."""
+    found = {"a_min00": Atoms("H")}
+    with pytest.warns(UserWarning, match="1 of 2 structures missing"):
+        assert complete_records(found, ["a_min00", "a_min01"], "model") is None
+
+
+def test_unread_records_stay_unread() -> None:
+    """Records that could not be read are passed on as missing."""
+    assert complete_records(None, ["a_min00"], "model") is None
+
+
+def test_a_missing_output_directory_voids_the_records(tmp_path: Path) -> None:
+    """
+    A model that wrote no outputs at all has no records, rather than an error.
+
+    Parameters
+    ----------
+    tmp_path
+        Parent of the absent directory.
+    """
+    found = read_by_id(tmp_path / "absent", "*_points.extxyz")
+    with pytest.warns(UserWarning, match="2 of 2 structures missing"):
+        assert complete_records(found, ["a_min00", "a_min01"], "model") is None

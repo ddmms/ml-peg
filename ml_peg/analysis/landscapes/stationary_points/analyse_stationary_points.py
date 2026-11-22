@@ -11,19 +11,22 @@ a threshold; see the calculation module's docstring for why.
 
 Notes
 -----
-Only the energy and force metrics are implemented, because only the energy and
-force calculations exist. The drift, connectivity and Hessian metrics are held
-in ``metrics.yml`` as a commented block and move into it as their calculations
-land, so the file never declares a metric that nothing produces.
+The mock outputs define the reference: which structures there are, their
+order in every plot, and the DFT energies at the stationary points. Each
+model's outputs are matched to them by structure id, and a model missing any
+structure of a kind, or with a file that cannot be read, scores NaN on every
+metric built on that kind (see ``records.py``).
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from functools import cache
 from pathlib import Path
 from warnings import warn
 
-from ase.io import read, write
+from ase import Atoms
+from ase.io import write
 import numpy as np
 import pytest
 
@@ -35,6 +38,11 @@ from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
     reaction_overlap,
     soft_mode_error,
     stiffness_vs_dft,
+)
+from ml_peg.analysis.landscapes.stationary_points.records import (
+    complete_records,
+    read_by_id,
+    structure_id,
 )
 from ml_peg.analysis.utils.decorators import build_table, plot_parity, plot_violin
 from ml_peg.analysis.utils.utils import (
@@ -65,44 +73,48 @@ MINIMA_GLOB = "*_reconverged_minima.extxyz"
 SADDLES_GLOB = "*_reconverged_saddles.extxyz"
 HESSIANS_GLOB = "*_hessians.extxyz"
 
+
+def _mock_info(pattern: str, info_keys: list[str], write_out: bool = False) -> dict:
+    """
+    Get labels from the mock outputs.
+
+    ``get_struct_info`` skips the analysis when they are missing. An unreadable
+    mock file raises instead: it is a broken reference, not a model's failure.
+
+    Parameters
+    ----------
+    pattern
+        Glob matching the mock's files.
+    info_keys
+        Info keys to collect.
+    write_out
+        Whether to write the info and structures out for the app.
+
+    Returns
+    -------
+    dict
+        Struct info, one entry per structure under each key.
+    """
+    return get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern=pattern,
+        info_keys=info_keys,
+        write_info=write_out,
+        write_structs=write_out,
+        out_path=OUT_PATH,
+    )
+
+
 # Labels for the stationary points, read from the mock outputs so that hover
 # data lines up with the per-structure value lists. The path frames are
 # deliberately not read this way: there are 11,173 of them, and writing them
 # all out for the app would cost far more than the plot is worth.
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern=POINTS_GLOB,
-    info_keys=["molecule", "kind", "label"],
-    write_info=True,
-    write_structs=True,
-    out_path=OUT_PATH,
-)
+INFO = _mock_info(POINTS_GLOB, ["molecule", "kind", "label"], write_out=True)
 # The reconverged structures are separate sets of 28 and 67, so they need their
 # own labels rather than reusing the 95 above.
-MINIMA_INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern=MINIMA_GLOB,
-    info_keys=["molecule", "label"],
-    write_info=False,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
-HESSIAN_INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern=HESSIANS_GLOB,
-    info_keys=["molecule", "kind", "label"],
-    write_info=False,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
-SADDLE_INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern=SADDLES_GLOB,
-    info_keys=["molecule", "label", "connects"],
-    write_info=False,
-    write_structs=False,
-    out_path=OUT_PATH,
-)
+MINIMA_INFO = _mock_info(MINIMA_GLOB, ["molecule", "label"])
+HESSIAN_INFO = _mock_info(HESSIANS_GLOB, ["molecule", "kind", "label"])
+SADDLE_INFO = _mock_info(SADDLES_GLOB, ["molecule", "label", "connects"])
 
 
 def _structure_ids(info: dict[str, list]) -> list[str]:
@@ -125,7 +137,7 @@ def _structure_ids(info: dict[str, list]) -> list[str]:
         One id per structure, in the order of ``info``.
     """
     return [
-        f"{molecule}_{label}"
+        structure_id(molecule, label)
         for molecule, label in zip(info["molecule"], info["label"], strict=True)
     ]
 
@@ -144,14 +156,48 @@ def structures() -> None:
     """
     out_dir = OUT_PATH / "structures"
     out_dir.mkdir(parents=True, exist_ok=True)
-    frames = _read_frames("mock", POINTS_GLOB)
-    for structure_id, atoms in zip(_structure_ids(INFO), frames, strict=True):
-        write(out_dir / f"{structure_id}.xyz", atoms)
+    for key, atoms in _reference(POINTS_GLOB).items():
+        write(out_dir / f"{key}.xyz", atoms)
 
 
-def _read_frames(model_name: str, pattern: str) -> list:
+@cache
+def _reference(pattern: str) -> dict[str, Atoms]:
     """
-    Read one model's outputs, in the order ``get_struct_info`` used.
+    Get the mock's records of one kind, which define the reference set.
+
+    In the order ``get_struct_info`` read them, so values listed in this order
+    line up with the hover data. Shared between callers, so never modified.
+
+    Parameters
+    ----------
+    pattern
+        Glob matching the output files.
+
+    Returns
+    -------
+    dict[str, ase.atoms.Atoms]
+        The records by structure id.
+
+    Raises
+    ------
+    RuntimeError
+        If a mock file cannot be read: that is a broken reference, not a
+        model's failure. Missing mock outputs skip the analysis instead.
+    """
+    records = read_by_id(CALC_PATH / "mock", pattern)
+    if records is None:
+        raise RuntimeError(f"The mock outputs matching {pattern} cannot be read")
+    if not records:
+        pytest.skip(f"No mock outputs match {pattern}. Please run mock calculation.")
+    return records
+
+
+@cache
+def _records(model_name: str, pattern: str) -> tuple[Atoms, ...] | None:
+    """
+    Get one model's records of one kind, in the reference's order.
+
+    Shared between callers, so never modified.
 
     Parameters
     ----------
@@ -162,13 +208,92 @@ def _read_frames(model_name: str, pattern: str) -> list:
 
     Returns
     -------
-    list
-        Frames concatenated across molecules.
+    tuple[ase.atoms.Atoms, ...] | None
+        One record per reference structure; None if any is missing or a file
+        cannot be read.
     """
-    frames = []
-    for file in sorted((CALC_PATH / model_name).glob(pattern)):
-        frames.extend(read(file, index=":"))
-    return frames
+    return complete_records(
+        read_by_id(CALC_PATH / model_name, pattern),
+        list(_reference(pattern)),
+        f"{model_name} {pattern}",
+    )
+
+
+def _values(
+    records: tuple[Atoms, ...] | None, pattern: str, value: Callable[[Atoms], float]
+) -> list[float]:
+    """
+    Get one value per reference structure.
+
+    Parameters
+    ----------
+    records
+        A model's records, or None if they are incomplete.
+    pattern
+        Glob matching the output files, giving the number of reference
+        structures.
+    value
+        Takes a record to its value.
+
+    Returns
+    -------
+    list[float]
+        One value per record; NaN for every structure if ``records`` is None.
+    """
+    if records is None:
+        return [np.nan] * len(_reference(pattern))
+    return [value(atoms) for atoms in records]
+
+
+def _pooled_force_rmse(records: Sequence[Atoms], reference_key: str | None) -> float:
+    """
+    Get the force RMSE over every component of a set of records.
+
+    Parameters
+    ----------
+    records
+        Records carrying the model's forces in ``mlip_forces``.
+    reference_key
+        Array holding the reference forces, or None where they are zero, as at
+        a DFT stationary point.
+
+    Returns
+    -------
+    float
+        RMSE in meV/Å.
+    """
+    predicted = np.concatenate([a.arrays["mlip_forces"].ravel() for a in records])
+    reference = (
+        np.zeros_like(predicted)
+        if reference_key is None
+        else np.concatenate([a.arrays[reference_key].ravel() for a in records])
+    )
+    return rmse(reference, predicted) * EV_TO_MEV
+
+
+def _per_model(
+    pattern: str, summarise: Callable[[tuple[Atoms, ...]], float]
+) -> dict[str, float]:
+    """
+    Get one number per model from its records of one kind.
+
+    Parameters
+    ----------
+    pattern
+        Glob matching the output files.
+    summarise
+        Takes a model's complete records to its number.
+
+    Returns
+    -------
+    dict[str, float]
+        The number for each model; NaN for one whose records are incomplete.
+    """
+    results = {}
+    for model_name in MODELS:
+        records = _records(model_name, pattern)
+        results[model_name] = np.nan if records is None else summarise(records)
+    return results
 
 
 def _load_hessians(path: Path) -> dict[str, np.ndarray]:
@@ -183,10 +308,12 @@ def _load_hessians(path: Path) -> dict[str, np.ndarray]:
     Returns
     -------
     dict[str, numpy.ndarray]
-        The matrices by label; empty if the file is missing or unreadable, so
-        every structure in it counts as failed rather than stopping the analysis.
+        The matrices by label; empty, with a warning, if the file is missing or
+        unreadable, so every structure in it counts as failed rather than
+        stopping the analysis.
     """
     if not path.exists():
+        warn(f"{path} is missing", stacklevel=2)
         return {}
     try:
         with np.load(path) as archive:
@@ -197,7 +324,7 @@ def _load_hessians(path: Path) -> dict[str, np.ndarray]:
 
 
 @cache
-def _hessian_records(model_name: str) -> tuple:
+def _hessian_records(model_name: str) -> tuple[Atoms, ...] | None:
     """
     Get one model's Hessian comparison at each reference structure.
 
@@ -214,35 +341,44 @@ def _hessian_records(model_name: str) -> tuple:
 
     Returns
     -------
-    tuple
-        One structure per reference stationary point, in the order
-        ``get_struct_info`` used, carrying the comparison in its info.
+    tuple[ase.atoms.Atoms, ...] | None
+        One structure per reference stationary point, in the reference's order,
+        carrying the comparison in its info; None if any record is missing or
+        unreadable.
     """
-    records = []
-    for path in sorted((CALC_PATH / model_name).glob(HESSIANS_GLOB)):
-        stem = path.name.removesuffix("_hessians.extxyz")
-        model = _load_hessians(path.with_name(f"{stem}_model_hessians.npz"))
-        reference = _load_hessians(path.with_name(f"{stem}_reference_hessians.npz"))
-        for atoms in read(path, index=":"):
-            label = atoms.info["label"]
-            if label in model and label in reference:
-                try:
-                    comparison = compare_hessians(reference[label], model[label], atoms)
-                except Exception as exc:
-                    # A matrix with a NaN in it, say: the structure then counts
-                    # as failed, like one whose matrices were never saved.
-                    warn(
-                        f"{model_name} {stem} {label}: "
-                        f"could not compare Hessians: {exc}",
-                        stacklevel=2,
-                    )
-                else:
-                    atoms.info.update(comparison)
-            records.append(atoms)
-    return tuple(records)
+    records = _records(model_name, HESSIANS_GLOB)
+    if records is None:
+        return None
+    directory = CALC_PATH / model_name
+    matrices: dict[str, tuple[dict, dict]] = {}
+    compared = []
+    for record in records:
+        molecule, label = record.info["molecule"], record.info["label"]
+        if molecule not in matrices:
+            matrices[molecule] = (
+                _load_hessians(directory / f"{molecule}_model_hessians.npz"),
+                _load_hessians(directory / f"{molecule}_reference_hessians.npz"),
+            )
+        model, reference = matrices[molecule]
+        atoms = record.copy()
+        if label in model and label in reference:
+            try:
+                comparison = compare_hessians(reference[label], model[label], atoms)
+            except Exception as exc:
+                # A matrix with a NaN in it, say: the structure then counts
+                # as failed, like one whose matrices were never saved.
+                warn(
+                    f"{model_name} {molecule} {label}: "
+                    f"could not compare Hessians: {exc}",
+                    stacklevel=2,
+                )
+            else:
+                atoms.info.update(comparison)
+        compared.append(atoms)
+    return tuple(compared)
 
 
-def _relative_energies(frames: list) -> tuple[np.ndarray, np.ndarray]:
+def _relative_energies(frames: Sequence[Atoms]) -> tuple[np.ndarray, np.ndarray]:
     """
     Get the energies per atom within each molecule, measured from its mean.
 
@@ -300,21 +436,24 @@ def stationary_energies() -> dict[str, list]:
     """
     Get relative energies at the DFT minima and transition states.
 
-    Every model's output carries the same DFT energies for the same structures,
-    so the reference is read from the first.
+    The DFT energies are read from the mock outputs, so a model with missing
+    structures cannot change the reference the others are scored against.
 
     Returns
     -------
     dict[str, list]
-        Reference and predicted relative energies in meV/atom.
+        Reference and predicted relative energies in meV/atom; NaN throughout
+        for a model whose records are incomplete.
     """
-    results: dict[str, list] = {"ref": []}
+    reference, _ = _relative_energies(tuple(_reference(POINTS_GLOB).values()))
+    results: dict[str, list] = {"ref": list(reference)}
     for model_name in MODELS:
-        frames = _read_frames(model_name, POINTS_GLOB)
-        ref_rel, pred_rel = _relative_energies(frames)
-        results[model_name] = list(pred_rel)
-        if not results["ref"]:
-            results["ref"] = list(ref_rel)
+        records = _records(model_name, POINTS_GLOB)
+        results[model_name] = (
+            [np.nan] * len(reference)
+            if records is None
+            else list(_relative_energies(records)[1])
+        )
     return results
 
 
@@ -351,10 +490,11 @@ def residual_forces() -> dict[str, list]:
         Per-structure RMS force in meV/Å.
     """
     return {
-        model_name: [
-            float(np.sqrt(np.mean(a.arrays["mlip_forces"] ** 2)) * EV_TO_MEV)
-            for a in _read_frames(model_name, POINTS_GLOB)
-        ]
+        model_name: _values(
+            _records(model_name, POINTS_GLOB),
+            POINTS_GLOB,
+            lambda a: float(np.sqrt(np.mean(a.arrays["mlip_forces"] ** 2))) * EV_TO_MEV,
+        )
         for model_name in MODELS
     }
 
@@ -375,11 +515,14 @@ def path_force_errors() -> dict[str, list]:
         Per-frame force RMSE in meV/Å.
     """
     return {
-        model_name: [
-            rmse(a.arrays["ref_forces"].ravel(), a.arrays["mlip_forces"].ravel())
-            * EV_TO_MEV
-            for a in _read_frames(model_name, PATHS_GLOB)
-        ]
+        model_name: _values(
+            _records(model_name, PATHS_GLOB),
+            PATHS_GLOB,
+            lambda a: (
+                rmse(a.arrays["ref_forces"].ravel(), a.arrays["mlip_forces"].ravel())
+                * EV_TO_MEV
+            ),
+        )
         for model_name in MODELS
     }
 
@@ -427,12 +570,7 @@ def get_force_rmse(residual_forces: dict[str, list]) -> dict[str, float]:
     dict[str, float]
         RMSE in meV/Å for each model.
     """
-    results = {}
-    for model_name in MODELS:
-        frames = _read_frames(model_name, POINTS_GLOB)
-        predicted = np.concatenate([a.arrays["mlip_forces"].ravel() for a in frames])
-        results[model_name] = rmse(np.zeros_like(predicted), predicted) * EV_TO_MEV
-    return results
+    return _per_model(POINTS_GLOB, lambda records: _pooled_force_rmse(records, None))
 
 
 @pytest.fixture
@@ -450,11 +588,7 @@ def get_path_energy_rmse() -> dict[str, float]:
     dict[str, float]
         RMSE in meV/atom for each model.
     """
-    results = {}
-    for model_name in MODELS:
-        ref_rel, pred_rel = _relative_energies(_read_frames(model_name, PATHS_GLOB))
-        results[model_name] = rmse(ref_rel, pred_rel)
-    return results
+    return _per_model(PATHS_GLOB, lambda records: rmse(*_relative_energies(records)))
 
 
 @pytest.fixture
@@ -481,13 +615,9 @@ def get_path_force_rmse(path_force_errors: dict[str, list]) -> dict[str, float]:
     dict[str, float]
         RMSE in meV/Å for each model.
     """
-    results = {}
-    for model_name in MODELS:
-        frames = _read_frames(model_name, PATHS_GLOB)
-        reference = np.concatenate([a.arrays["ref_forces"].ravel() for a in frames])
-        predicted = np.concatenate([a.arrays["mlip_forces"].ravel() for a in frames])
-        results[model_name] = rmse(reference, predicted) * EV_TO_MEV
-    return results
+    return _per_model(
+        PATHS_GLOB, lambda records: _pooled_force_rmse(records, "ref_forces")
+    )
 
 
 @pytest.fixture
@@ -515,7 +645,9 @@ def minima_drift() -> dict[str, list]:
         Per-structure drift in Å.
     """
     return {
-        model_name: [a.info["drift"] for a in _read_frames(model_name, MINIMA_GLOB)]
+        model_name: _values(
+            _records(model_name, MINIMA_GLOB), MINIMA_GLOB, lambda a: a.info["drift"]
+        )
         for model_name in MODELS
     }
 
@@ -553,7 +685,9 @@ def saddle_drift() -> dict[str, list]:
         Per-structure drift in Å, NaN where the search did not converge.
     """
     return {
-        model_name: [a.info["drift"] for a in _read_frames(model_name, SADDLES_GLOB)]
+        model_name: _values(
+            _records(model_name, SADDLES_GLOB), SADDLES_GLOB, lambda a: a.info["drift"]
+        )
         for model_name in MODELS
     }
 
@@ -580,8 +714,6 @@ def _summarise_over_all(values: dict[str, list], statistic) -> dict[str, float]:
     """
     return {
         model_name: float(statistic(np.asarray(values[model_name], dtype=float)))
-        if values[model_name]
-        else np.nan
         for model_name in MODELS
     }
 
@@ -683,15 +815,10 @@ def get_saddles_converged() -> dict[str, float]:
     dict[str, float]
         Fraction for each model.
     """
-    results = {}
-    for model_name in MODELS:
-        frames = _read_frames(model_name, SADDLES_GLOB)
-        results[model_name] = (
-            float(np.mean([bool(a.info["converged"]) for a in frames]))
-            if frames
-            else np.nan
-        )
-    return results
+    return _per_model(
+        SADDLES_GLOB,
+        lambda records: float(np.mean([bool(a.info["converged"]) for a in records])),
+    )
 
 
 @pytest.fixture
@@ -749,15 +876,12 @@ def get_connectivity() -> dict[str, float]:
     dict[str, float]
         Fraction for each model.
     """
-    results = {}
-    for model_name in MODELS:
-        frames = _read_frames(model_name, SADDLES_GLOB)
-        results[model_name] = (
-            float(np.mean([bool(a.info["connectivity_preserved"]) for a in frames]))
-            if frames
-            else np.nan
-        )
-    return results
+    return _per_model(
+        SADDLES_GLOB,
+        lambda records: float(
+            np.mean([bool(a.info["connectivity_preserved"]) for a in records])
+        ),
+    )
 
 
 @pytest.fixture
@@ -786,10 +910,11 @@ def mode_overlaps() -> dict[str, list]:
         Per-structure median mode overlap, from 0 to 1.
     """
     return {
-        model_name: [
-            a.info.get("mode_overlap_median", np.nan)
-            for a in _hessian_records(model_name)
-        ]
+        model_name: _values(
+            _hessian_records(model_name),
+            HESSIANS_GLOB,
+            lambda a: a.info.get("mode_overlap_median", np.nan),
+        )
         for model_name in MODELS
     }
 
@@ -820,7 +945,9 @@ def reaction_coordinate_overlaps() -> dict[str, list]:
         Per-structure imaginary mode overlap, NaN at minima.
     """
     return {
-        model_name: [reaction_overlap(a) for a in _hessian_records(model_name)]
+        model_name: _values(
+            _hessian_records(model_name), HESSIANS_GLOB, reaction_overlap
+        )
         for model_name in MODELS
     }
 
@@ -846,7 +973,9 @@ def soft_mode_errors() -> dict[str, list]:
         Per-structure median absolute error over the softest third, eV/A^2.
     """
     return {
-        model_name: [soft_mode_error(a) for a in _hessian_records(model_name)]
+        model_name: _values(
+            _hessian_records(model_name), HESSIANS_GLOB, soft_mode_error
+        )
         for model_name in MODELS
     }
 
@@ -872,7 +1001,9 @@ def reaction_curvatures() -> dict[str, list]:
         Per-structure ratio, NaN where the model has no imaginary mode.
     """
     return {
-        model_name: [reaction_curvature(a) for a in _hessian_records(model_name)]
+        model_name: _values(
+            _hessian_records(model_name), HESSIANS_GLOB, reaction_curvature
+        )
         for model_name in MODELS
     }
 
@@ -883,17 +1014,20 @@ def failed_hessians() -> dict[str, bool]:
     Get whether each model's Hessian failed on any structure.
 
     A failure voids all five Hessian metrics for that model, rather than leaving
-    the structure out and scoring the model on the rest.
+    the structure out and scoring the model on the rest. A missing record counts
+    as a failure.
 
     Returns
     -------
     dict[str, bool]
-        True for a model with a Hessian the calculation recorded as failed.
+        True for a model with a Hessian the calculation recorded as failed, or
+        with incomplete records.
     """
-    return {
-        model_name: any(hessian_failed(a) for a in _hessian_records(model_name))
-        for model_name in MODELS
-    }
+    results = {}
+    for model_name in MODELS:
+        records = _hessian_records(model_name)
+        results[model_name] = records is None or any(hessian_failed(a) for a in records)
+    return results
 
 
 def _void_failed(
@@ -1004,7 +1138,9 @@ def stiffness() -> dict[str, list]:
         softer.
     """
     return {
-        model_name: [stiffness_vs_dft(a) for a in _hessian_records(model_name)]
+        model_name: _values(
+            _hessian_records(model_name), HESSIANS_GLOB, stiffness_vs_dft
+        )
         for model_name in MODELS
     }
 
@@ -1086,12 +1222,10 @@ def get_stiffness_error(
         Median absolute stiffness against DFT, in percent; NaN for a model whose
         Hessian failed anywhere.
     """
-    results = {}
-    for model_name in MODELS:
-        values = np.asarray(stiffness[model_name], dtype=float)
-        results[model_name] = (
-            float(np.median(np.abs(values))) if values.size else np.nan
-        )
+    results = {
+        model_name: float(np.median(np.abs(np.asarray(values, dtype=float))))
+        for model_name, values in stiffness.items()
+    }
     return _void_failed(results, failed_hessians)
 
 

@@ -101,6 +101,10 @@ measures the gap between levels of theory rather than the model: the reference
 geometries are not stationary at other levels, and ωB97M-V/def2-TZVPD, the
 OMol25 level of theory, itself has an RMS force of 129 meV/Å at them.
 
+A model whose outputs of one kind are incomplete -- a structure missing, or a
+file that cannot be read -- scores NaN on every metric built on them, rather
+than being scored on the structures it has.
+
 The thresholds come from the reference wherever it supplies one:
 
 * **Energies.** *Bad* is what a model that knows nothing scores -- the same
