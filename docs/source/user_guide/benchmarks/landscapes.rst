@@ -15,6 +15,9 @@ Every benchmark here runs the model in float64. That is a requirement rather tha
 preference: eigenvector following takes its curvature from finite differences of
 forces, which in float32 is noise-dominated, and the search wanders.
 
+Every benchmark here needs topsearch, from the ``topsearch`` extra
+(``uv sync --extra topsearch``), and is skipped without it.
+
 .. _stationary-points:
 
 Stationary points

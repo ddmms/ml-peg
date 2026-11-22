@@ -16480,7 +16480,7 @@ requires-dist = [
     { name = "simpoly", extras = ["vivace", "cuda13"], marker = "sys_platform == 'linux' and extra == 'vivace'", git = "https://github.com/microsoft/simpoly.git?rev=da100ad32d971214cf9343d9d853e8ce61604dc0" },
     { name = "tace", extras = ["eqx"], marker = "extra == 'tace'", specifier = "==0.2.4" },
     { name = "tensorpotential", marker = "extra == 'grace'", specifier = "==0.6.0" },
-    { name = "topsearch", marker = "extra == 'topsearch'", git = "https://github.com/VladCarare/topography-searcher?rev=v0.1.7" },
+    { name = "topsearch", marker = "extra == 'topsearch'", git = "https://github.com/VladCarare/topography-searcher?rev=v0.1.8" },
     { name = "torch", marker = "sys_platform == 'linux' and extra == 'mace-cueq'", specifier = "==2.14.1" },
     { name = "torch", marker = "extra == 'tace'", specifier = ">=2.13" },
     { name = "torch-dftd", marker = "extra == 'd3'", specifier = "==0.5.1" },
@@ -31183,7 +31183,7 @@ wheels = [
 [[package]]
 name = "topsearch"
 version = "0.1.0"
-source = { git = "https://github.com/VladCarare/topography-searcher?rev=v0.1.7#84f139fbcc7639004894d77f7a483d8a7e9e55f1" }
+source = { git = "https://github.com/VladCarare/topography-searcher?rev=v0.1.8#53f3f5497d458f63efce29d09dbeae8bd136abb7" }
 dependencies = [
     { name = "ase" },
     { name = "matplotlib" },
