@@ -197,6 +197,15 @@ C-GAP-17 (a-C), [#gap17]_ SiOx-ACE-24 (a-SiO2), [#am26-silica]_ and the Li-P-S
 model of Fragapane and Deringer (a-LiPS). [#am26-lips]_ These structure-generation
 sources are distinct from the common AM26 PBE energy/force reference labels.
 
+Benchmark speed
+---------------
+
+Fast: fixed-structure single-point energy and force evaluations. During development
+validation, structure evaluation for all 934 frames with MACE-MP-0b3 took approximately
+705.5 s (11.8 min) on an Apple M3 Pro CPU using ``precision="high"`` (float64), as
+requested by ``test_am26``. This CPU timing is not representative of GPU execution;
+no GPU runtime has been measured.
+
 Running and local development
 -----------------------------
 
