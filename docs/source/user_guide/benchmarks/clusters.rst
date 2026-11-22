@@ -73,7 +73,8 @@ Summary
 
 Performance in predicting forces on random neutral clusters of three to eight atoms,
 compared to r2SCAN reference forces. The reference forces were calculated with
-FHI-aims, using settings consistent with the MAD-1.5 dataset.
+FHI-aims, using settings consistent with the MAD-1.5 dataset: all-electron and
+spin-unpolarised, with FHI-aims "tight" basis sets and numerical settings.
 
 Metrics
 -------
@@ -93,8 +94,8 @@ reported errors.
 Benchmark speed
 ---------------
 
-Medium: these tests evaluate 60,000 small clusters per model. They are expected to take
-on the order of minutes on a GPU.
+Medium: these tests evaluate 60,000 small clusters per model. They take around
+16 minutes on CPU for mace-mp-0b3, and are expected to take minutes on a GPU.
 
 Data availability
 -----------------
@@ -124,7 +125,8 @@ Summary
 
 Performance in predicting forces on random neutral clusters of three to eight atoms,
 compared to ωB97M-V reference forces. The reference forces were calculated
-with ORCA, using settings consistent with the OMol25 dataset.
+with ORCA, using settings consistent with the OMol25 dataset: the def2-TZVPD basis
+set, with RIJCOSX and the DEFGRID3 integration grid.
 
 Metrics
 -------
@@ -143,8 +145,9 @@ dispersion-corrected data. These models are labelled with a ``-D3`` suffix.
 Benchmark speed
 ---------------
 
-Medium: these tests evaluate 60,000 small clusters per model. They are expected to take
-on the order of minutes on a GPU.
+Medium: these tests evaluate 60,000 small clusters per model. They take around
+16 minutes on CPU for mace-mp-0b3, excluding the D3 correction, and are expected to
+take minutes on a GPU.
 
 Data availability
 -----------------

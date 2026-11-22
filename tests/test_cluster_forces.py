@@ -182,6 +182,40 @@ def test_analysis(tmp_path, monkeypatch, clusters):
     assert info["elements"][:3] == [["H"], ["Be", "H"], ["H", "Li"]]
 
 
+def test_unusable_outputs_give_nan(tmp_path, clusters):
+    """Score a truncated output as failed, without stopping other models."""
+    calc_path = tmp_path / "calcs"
+    _write_outputs(calc_path / "mock" / calc.OUTPUT_FILENAME, clusters, 0.0)
+    _write_outputs(calc_path / MODEL / calc.OUTPUT_FILENAME, clusters, 0.5)
+    _write_outputs(calc_path / "truncated" / calc.OUTPUT_FILENAME, clusters[:1], 0.0)
+    reference_structs, by_size = analysis.load_reference(calc_path)
+
+    with pytest.warns(UserWarning, match="truncated: could not use"):
+        force_data = analysis.get_force_data(
+            calc_path, [MODEL, "truncated"], reference_structs, by_size
+        )
+
+    assert force_data[MODEL][3].mae == pytest.approx(0.5)
+    truncated = force_data["truncated"][3]
+    assert np.isnan(truncated.mae)
+    assert truncated.n_failed == truncated.n_clusters == 2
+
+
+def test_infinite_prediction_gives_nan():
+    """Report NaN rather than raising when a model returns infinite forces."""
+    data = analysis.SizeResults(
+        ref=np.zeros(3),
+        pred=np.array([0.0, np.inf, 1.0]),
+        frames=np.zeros(3, dtype=int),
+        labels=["", "", ""],
+        n_clusters=1,
+        n_failed=1,
+    )
+
+    assert np.isnan(data.mae)
+    assert data.finite.tolist() == [True, False, True]
+
+
 def test_frame_groups_load_compactly(tmp_path):
     """Return the same frames as the JSON file, one point at a time."""
     groups = [[3, 0, 1], [5], [2, 4]]

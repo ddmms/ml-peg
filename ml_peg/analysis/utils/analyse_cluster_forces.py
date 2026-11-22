@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
+from warnings import warn
 
 from ase.atoms import Atoms
 from ase.io import read, write
@@ -139,6 +140,9 @@ class SizeResults:
         float
             Component-wise mean absolute error.
         """
+        # Infinite predictions would otherwise raise in the MAE calculation
+        if not self.finite.all():
+            return np.nan
         return float(mae(self.ref, self.pred))
 
     @property
@@ -307,12 +311,27 @@ def get_force_data(
 
     results: dict[str, dict[int, SizeResults]] = {}
     for model in models:
-        structs = _read_outputs(calc_path / model / OUTPUT_FILENAME, reference_structs)
+        path = calc_path / model / OUTPUT_FILENAME
+        try:
+            structs = _read_outputs(path, reference_structs)
+        except Exception as exc:
+            # Treat every cluster as failed, rather than scoring a partial output
+            warn(
+                f"{model}: could not use {path} ({exc}). All of its cluster force "
+                "MAEs are set to NaN.",
+                stacklevel=2,
+            )
+            structs = []
         if structs is None:
             continue
         results[model] = {}
         for size in ref:
-            pred = [structs[i].arrays[PRED_FORCES_KEY].ravel() for i in by_size[size]]
+            pred = [
+                structs[i].arrays[PRED_FORCES_KEY].ravel()
+                if structs
+                else np.full(3 * size, np.nan)
+                for i in by_size[size]
+            ]
             results[model][size] = SizeResults(
                 ref=ref[size],
                 pred=np.concatenate(pred).astype(float),
