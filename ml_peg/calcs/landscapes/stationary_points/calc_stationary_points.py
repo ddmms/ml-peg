@@ -320,7 +320,9 @@ SEED = 0
 # finished travelling, which flatters the model: measured on MACE-OFF, relaxing
 # this to 1e-3 cuts paracetamol's median drift from 0.065 to 0.020 A, because
 # the last third of the journey happens along soft torsions at gradients below
-# 1e-3.
+# 1e-3. In practice L-BFGS-B usually stops just short of it, once the energy
+# no longer decreases at machine precision, which scipy also reports as
+# convergence; on the MACE models that leaves forces of at most 3e-5 eV/A.
 MINIMISE_CONV_CRIT = 1e-6
 # topsearch defaults this to 200, which is not enough: on MACE-OFF these minima
 # need 460 to 670 iterations to reach the criterion above, and at 200 every one
@@ -545,7 +547,7 @@ def _identify(
 
 def _settle(
     potential: Potential, position: np.ndarray, symbols: list[str]
-) -> np.ndarray:
+) -> tuple[np.ndarray, bool]:
     """
     Finish an endpoint to the same criterion the minima test uses.
 
@@ -560,6 +562,13 @@ def _settle(
     iterations and does not change which reference minimum they identify as,
     so it buys consistency rather than a different answer.
 
+    Whether it got there is checked the same way too, rather than assumed. A
+    model can send an endpoint where it has no minimum at all: on MACE-OFF23-L
+    some descents run into a region where atoms collapse onto one another and
+    the optimiser gives up, with forces of up to 1e13 eV/A, yet such a
+    structure can still lie within ``SAME_STRUCTURE`` of a reference minimum
+    and so credit a connection the model does not make.
+
     Parameters
     ----------
     potential
@@ -571,18 +580,24 @@ def _settle(
 
     Returns
     -------
-    numpy.ndarray
-        The settled position.
+    tuple[numpy.ndarray, bool]
+        The settled position, and whether it is a minimum by the minima test's
+        standard: scipy reports convergence and topsearch finds no negative
+        curvature there.
     """
     coords = MolecularCoordinates(symbols, np.asarray(position, dtype=float).copy())
-    settled, _, _ = lbfgs.minimise(
+    settled, _, info = lbfgs.minimise(
         func_grad=potential.function_gradient,
         initial_position=coords.position,
         bounds=coords.bounds,
         conv_crit=MINIMISE_CONV_CRIT,
         n_steps=MINIMISE_STEPS,
     )
-    return np.asarray(settled, dtype=float)
+    coords.position = np.asarray(settled, dtype=float)
+    # The curvature check costs a Hessian, so it is made only once scipy
+    # reports convergence.
+    converged = info["warnflag"] == 0 and bool(potential.check_valid_minimum(coords))
+    return coords.position, converged
 
 
 @pytest.mark.slow
@@ -645,7 +660,11 @@ def test_reconverge_minima(mlip: tuple[str, Any]) -> None:
                 # and the NaN drift voids the model's minima metrics.
                 position = np.asarray(start, dtype=float)
                 energy, info, drift, valid_minimum = np.nan, {}, np.nan, False
-            hit_budget = info.get("warnflag", 0) == 1
+            # scipy's warnflag is 0 when L-BFGS-B converged, 1 when it stopped
+            # on the iteration limit and 2 when it stopped for any other reason,
+            # such as a line search that could go no further.
+            warnflag = int(info.get("warnflag", -1))
+            finished = warnflag == 0 and valid_minimum
 
             atoms = Atoms(symbols, position.reshape(-1, 3))
             atoms.info.update(
@@ -654,18 +673,20 @@ def test_reconverge_minima(mlip: tuple[str, Any]) -> None:
                 label=label,
                 ref_energy_ev=float(network.get_minimum_energy(index)),
                 mlip_energy_ev=float(energy),
-                # A minimum that stopped on the iteration limit has not
-                # arrived, so how far it travelled is not a measurement of
-                # anything. NaN here propagates to the metric and to the
-                # model's score, which is the intended behaviour: at a budget
-                # of 200 this happened to every structure and the drift still
-                # looked entirely reasonable.
-                drift=drift if not hit_budget else np.nan,
+                # A relaxation that did not finish at a minimum -- scipy did not
+                # report convergence, or it ended where topsearch finds negative
+                # curvature -- has not arrived, so how far it travelled is not
+                # a measurement of anything. NaN here propagates to the metric
+                # and to the model's score, which is the intended behaviour: at
+                # a budget of 200 the iteration limit stopped every structure
+                # and the drift still looked entirely reasonable.
+                drift=drift if finished else np.nan,
                 valid_minimum=valid_minimum,
-                # scipy reports warnflag 1 when it stopped on the iteration
-                # limit, which is a protocol result rather than a model one.
+                # -1 when the relaxation raised. The iteration limit is kept
+                # apart, being a protocol result rather than a model one.
+                warnflag=warnflag,
                 iterations=int(info.get("nit", -1)),
-                hit_budget=bool(hit_budget),
+                hit_budget=warnflag == 1,
             )
             results.append(atoms)
 
@@ -687,7 +708,9 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
 
     Where the reference records a saddle joining a minimum to itself, a
     degenerate rearrangement between symmetry-equivalent copies, the model is
-    counted correct when both of its endpoints match that minimum.
+    counted correct when both of its endpoints match that minimum. Either way
+    both endpoints must settle into minima: one the model sends where it has
+    no minimum identifies nothing (see ``_settle``).
 
     Parameters
     ----------
@@ -733,16 +756,25 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
                 )
                 failure = searcher.failure or "none"
                 if found is not None:
+                    found = np.asarray(found, dtype=float)
                     settled = [
                         _settle(potential, end, symbols)
                         for end in (plus_min, minus_min)
                     ]
+                    identified = [_identify(end, minima, symbols) for end, _ in settled]
+                    drift = float(
+                        comparer.closest_distance(
+                            MolecularCoordinates(symbols, start.copy()), found.copy()
+                        )
+                    )
             except Exception as exc:
                 warn(
                     f"{model_name} {molecule.key} saddles: failed on {label}: {exc}",
                     stacklevel=2,
                 )
-                # Recorded below exactly as a search that found no saddle.
+                # Recorded below exactly as a search that found no saddle,
+                # whichever step failed: the search, settling the endpoints, or
+                # identifying them.
                 found, failure = None, "error"
 
             atoms = Atoms(symbols, np.asarray(start).reshape(-1, 3))
@@ -761,30 +793,32 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
                 hit_budget=bool(searcher.n_steps >= TS_STEPS),
             )
             if found is not None:
-                found = np.asarray(found, dtype=float)
-                coords = MolecularCoordinates(symbols, start.copy())
-                identified = [_identify(end, minima, symbols) for end in settled]
                 # Sorted only to compare with the reference pair, whose order
                 # means nothing; each endpoint keeps its own identification.
                 reached = sorted(identified)
+                both_settled = all(converged for _, converged in settled)
                 # The endpoints are the evidence for the connectivity result --
                 # an endpoint identified as -1 is a basin the reference does not
                 # contain, and that claim should be inspectable as a structure.
-                for end, index in zip(settled, identified, strict=True):
+                for (end, converged), index in zip(settled, identified, strict=True):
                     endpoint = Atoms(symbols, end.reshape(-1, 3))
                     endpoint.info.update(
                         molecule=molecule.key,
                         kind="saddle_endpoint",
                         label=label,
                         reference_minimum=index,
+                        settled=converged,
                     )
                     endpoints.append(endpoint)
                 atoms.set_positions(found.reshape(-1, 3))
                 atoms.info.update(
                     mlip_energy_ev=float(energy),
-                    drift=float(comparer.closest_distance(coords, found.copy())),
+                    drift=drift,
                     model_connects=f"{reached[0]},{reached[1]}",
-                    connectivity_preserved=reached == sorted((plus, minus)),
+                    endpoints_settled=both_settled,
+                    connectivity_preserved=(
+                        both_settled and reached == sorted((plus, minus))
+                    ),
                 )
             else:
                 # The reference geometry is kept so that a failed search still
@@ -793,6 +827,7 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
                     mlip_energy_ev=np.nan,
                     drift=np.nan,
                     model_connects="none",
+                    endpoints_settled=False,
                     connectivity_preserved=False,
                 )
             results.append(atoms)

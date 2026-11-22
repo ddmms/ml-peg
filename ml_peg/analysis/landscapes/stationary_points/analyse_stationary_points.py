@@ -203,8 +203,9 @@ def _hessian_records(model_name: str) -> tuple:
 
     The calculation saves the raw Cartesian Hessians, the model's and the
     reference's, by structure label; the comparison is made here, so that it can
-    change without rerunning the calculation. A structure without both matrices
-    keeps no eigenvalues, which ``hessian_failed`` reports as a failure.
+    change without rerunning the calculation. A structure without both matrices,
+    or whose matrices cannot be compared, keeps no eigenvalues, which
+    ``hessian_failed`` reports as a failure.
 
     Parameters
     ----------
@@ -225,9 +226,18 @@ def _hessian_records(model_name: str) -> tuple:
         for atoms in read(path, index=":"):
             label = atoms.info["label"]
             if label in model and label in reference:
-                atoms.info.update(
-                    compare_hessians(reference[label], model[label], atoms)
-                )
+                try:
+                    comparison = compare_hessians(reference[label], model[label], atoms)
+                except Exception as exc:
+                    # A matrix with a NaN in it, say: the structure then counts
+                    # as failed, like one whose matrices were never saved.
+                    warn(
+                        f"{model_name} {stem} {label}: "
+                        f"could not compare Hessians: {exc}",
+                        stacklevel=2,
+                    )
+                else:
+                    atoms.info.update(comparison)
             records.append(atoms)
     return tuple(records)
 

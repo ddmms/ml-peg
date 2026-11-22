@@ -99,7 +99,7 @@ metrics:
     good: 0.9
     bad: 0.0
     unit: fraction
-    tooltip: "Fraction of all 67 reference transition states whose steepest-descent paths reach the same two minima as DFT. A saddle can sit in the right place and still rewire the network."
+    tooltip: "Fraction of all 67 reference transition states whose steepest-descent paths reach the same two minima as DFT, both relaxing into true minima. A saddle can sit in the right place and still rewire the network."
     level_of_theory: ωB97X/6-31G(d)
   # Both overlaps are cosines between matched modes. good: 0.99, an 8° misalignment,
   # the same mode for any practical purpose. bad: 0.8, a 37° misalignment, where a
