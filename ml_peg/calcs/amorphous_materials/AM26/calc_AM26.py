@@ -144,6 +144,7 @@ def evaluate_structures(
         # Isolate the input/output geometry and metadata from backend mutations.
         evaluated = atoms.copy()
         evaluated.info = deepcopy(atoms.info)
+        evaluated.info["charge"] = 0
         evaluated.calc = copy(calculator)
         evaluated.calc.reset()
 

@@ -111,6 +111,7 @@ def test_mock_outputs_preserve_all_frames_and_references(references):
     for index, (output, original) in enumerate(zip(outputs, references, strict=True)):
         assert_reference_preserved(output, original, index)
         assert original.calc is original_calculators[index]
+        assert "charge" not in original.info
         assert "ref_energy" not in original.info
         assert "ref_forces" not in original.arrays
         assert output.get_potential_energy() == 0.0
@@ -141,7 +142,8 @@ def test_raw_predictions_survive_cache_clearing_without_stress(references):
     assert all(calc is not calculator for calc in calculator.instances)
     assert calculator.results == {}
     for _, _, info in calculator.calls:
-        assert "charge" not in info
+        assert info["charge"] == 0
+        assert type(info["charge"]) is int
         assert "spin" not in info
     for output in outputs:
         assert output.get_potential_energy() == 17.25
