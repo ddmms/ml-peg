@@ -1086,8 +1086,8 @@ def get_reaction_curvature(
     Get the median agreement of the curvature along the reaction coordinate.
 
     Over the saddles where the model has an imaginary mode. How many it has one
-    for is ``Saddles converged``, so the two are read together: this says how
-    wrong the barrier shape is where the model sees a barrier at all. Each
+    for is ``Reaction modes present``, so the two are read together: this says
+    how wrong the barrier shape is where the model sees a barrier at all. Each
     ratio is folded by ``ratio_agreement`` before the median; the violin plot
     keeps the raw ratios, which show whether a model errs sharp or flat.
 
@@ -1109,6 +1109,42 @@ def get_reaction_curvature(
         for model_name, ratios in reaction_curvatures.items()
     }
     return _void_failed(_summarise_over_reached(agreements, np.median), failed_hessians)
+
+
+@pytest.fixture
+def get_reaction_modes_present(
+    reaction_curvatures: dict[str, list], failed_hessians: dict[str, bool]
+) -> dict[str, float]:
+    """
+    Get the fraction of reference saddles where the model has a reaction mode.
+
+    That is, negative curvature at the DFT geometry along the mode matched to
+    DFT's reaction mode: the saddles the two reaction mode metrics are taken
+    over, so this says how many they describe. It is a snapshot, unlike
+    ``Saddles converged``, which counts searches that walk from the DFT
+    geometry to a saddle of the model's own, and the two can differ widely: on
+    the reference runs mace-mp-0a has a reaction mode at every reference saddle
+    but converges about two thirds of them.
+
+    Parameters
+    ----------
+    reaction_curvatures
+        Per-structure ratio, finite exactly where the model has a reaction mode.
+    failed_hessians
+        Whether each model's Hessian failed on any structure.
+
+    Returns
+    -------
+    dict[str, float]
+        Fraction of the reference transition states; NaN for a model whose
+        Hessian failed anywhere.
+    """
+    saddles = HESSIAN_INFO["kind"].count("transition_state")
+    results = {
+        model_name: float(np.isfinite(np.asarray(ratios, dtype=float)).sum() / saddles)
+        for model_name, ratios in reaction_curvatures.items()
+    }
+    return _void_failed(results, failed_hessians)
 
 
 @pytest.fixture
@@ -1248,6 +1284,7 @@ def metrics(
     get_saddle_drift_p90: dict[str, float],
     get_connectivity: dict[str, float],
     get_mode_overlap: dict[str, float],
+    get_reaction_modes_present: dict[str, float],
     get_reaction_coordinate_overlap: dict[str, float],
     get_stiffness_error: dict[str, float],
     get_soft_mode_error: dict[str, float],
@@ -1284,6 +1321,8 @@ def metrics(
         Fraction of reference saddles joining the same two minima.
     get_mode_overlap
         Median agreement with the DFT normal modes.
+    get_reaction_modes_present
+        Fraction of reference saddles where the model has a reaction mode.
     get_reaction_coordinate_overlap
         Median agreement with the DFT reaction coordinates.
     get_stiffness_error
@@ -1312,6 +1351,7 @@ def metrics(
         "Reconverged saddle RMSD (90th pct)": get_saddle_drift_p90,
         "Connectivity preserved": get_connectivity,
         "Normal mode overlap": get_mode_overlap,
+        "Reaction modes present": get_reaction_modes_present,
         "Reaction mode overlap": get_reaction_coordinate_overlap,
         "Stiffness error": get_stiffness_error,
         "Soft mode curvature error": get_soft_mode_error,

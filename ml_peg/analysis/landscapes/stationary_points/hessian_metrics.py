@@ -174,8 +174,7 @@ def reaction_curvature(atoms: Atoms) -> float:
     NaN unless both are negative. Where the model has no imaginary mode at the
     DFT geometry there is no curvature to compare, and that is not a small
     disagreement but a statement that the model does not see a barrier top
-    here at all -- counted by ``Saddles converged``, which agrees with this
-    condition on 65 of 67 structures.
+    here at all -- counted by ``Reaction modes present``.
 
     Parameters
     ----------

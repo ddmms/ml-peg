@@ -115,7 +115,19 @@ metrics:
     good: 0.99
     bad: 0.8
     unit: cosine
-    tooltip: "Agreement with the DFT imaginary mode, over the saddles where the model has one at all. Read with Saddles converged."
+    tooltip: "Agreement with the DFT imaginary mode, over the saddles where the model has one at all. Read with Reaction modes present."
+    level_of_theory: ωB97X/6-31G(d)
+  # How many saddles the two reaction mode metrics are taken over. Not scored, so
+  # good and bad only colour the column: Saddles converged is the scored coverage,
+  # and the two count the same saddles on most models. They are the thresholds of
+  # Saddles converged, for the same reason: DFT has a reaction mode at all 67, so
+  # a perfect model scores 1, and one with none scores 0.
+  Reaction modes present:
+    good: 0.95
+    bad: 0.0
+    unit: fraction
+    weight: 0
+    tooltip: "Fraction of the 67 reference transition states where the model, at the DFT geometry, curves downhill along the mode matched to DFT's reaction mode. Reaction mode overlap and Reaction mode curvature are taken over these saddles only. A snapshot, unlike Saddles converged, which counts searches walking to the model's own saddle. Not scored."
     level_of_theory: ωB97X/6-31G(d)
   # An error that scales the whole Hessian scales every frequency by its square
   # root, so 2% and 20% in stiffness are about 1% and 10% in frequency. 10% is
@@ -145,5 +157,5 @@ metrics:
     good: 1.0
     bad: 0.44
     unit: ratio
-    tooltip: "The model's imaginary eigenvalue over DFT's, folded as min(r, 1/r) at each transition state, so a barrier top twice too sharp or twice too flat both read 0.5. Click for the unfolded ratios: above 1 is too sharp, below 1 too flat. The curvature along the reaction coordinate, a proxy for the imaginary frequency that enters the tunnelling correction and the TST prefactor (these Hessians are Cartesian, not mass-weighted). A single constant predicted for every saddle scores 0.44, so a model at or below that shows no skill here."
+    tooltip: "The model's imaginary eigenvalue over DFT's, folded as min(r, 1/r) at each transition state where the model has one (see Reaction modes present), so a barrier top twice too sharp or twice too flat both read 0.5. Click for the unfolded ratios: above 1 is too sharp, below 1 too flat. The curvature along the reaction coordinate, a proxy for the imaginary frequency that enters the tunnelling correction and the TST prefactor (these Hessians are Cartesian, not mass-weighted). A single constant predicted for every saddle scores 0.44, so a model at or below that shows no skill here."
     level_of_theory: ωB97X/6-31G(d)

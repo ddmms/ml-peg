@@ -83,7 +83,12 @@ Metrics
    coordinate, a proxy for the imaginary frequency that enters the tunnelling
    correction and the transition state theory prefactor. That ratio is scored as
    ``min(r, 1/r)``, so a barrier top too sharp counts against a model as much
-   as one too flat by the same factor.
+   as one too flat by the same factor. Reaction modes present is the fraction of
+   the 67 saddles where the model, at the DFT geometry, has negative curvature
+   along the mode matched to DFT's reaction mode; the reaction mode overlap and
+   curvature are taken over those saddles alone. It is a snapshot at the DFT
+   geometry, unlike Saddles converged, which counts searches that walk to a
+   saddle of the model's own, and the two can differ widely.
 
    The model's Hessian is taken by central finite differences of its forces,
    with a 1e-3 Å step, at the DFT geometry. Both Hessians are compared with
@@ -94,12 +99,14 @@ Metrics
 Scoring
 -------
 
-Path energy RMSE, Path force RMSE and the stationary-point Force RMSE are
-reported but not scored. The path errors track the stationary-point ones almost
-exactly, so scoring both would count the same thing twice. Force RMSE mostly
-measures the gap between levels of theory rather than the model: the reference
-geometries are not stationary at other levels, and ωB97M-V/def2-TZVPD, the
-OMol25 level of theory, itself has an RMS force of 129 meV/Å at them.
+Path energy RMSE, Path force RMSE, the stationary-point Force RMSE and
+Reaction modes present are reported but not scored. The path errors track the
+stationary-point ones almost exactly, so scoring both would count the same
+thing twice. Force RMSE mostly measures the gap between levels of theory rather
+than the model: the reference geometries are not stationary at other levels,
+and ωB97M-V/def2-TZVPD, the OMol25 level of theory, itself has an RMS force of
+129 meV/Å at them. Reaction modes present says how many saddles the two
+reaction mode metrics describe; the scored coverage is Saddles converged.
 
 A model whose outputs of one kind are incomplete -- a structure missing, or a
 file that cannot be read -- scores NaN on every metric built on them, rather
@@ -126,6 +133,9 @@ The thresholds come from the reference wherever it supplies one:
   saddle. *Good* is 0.95 and 0.9, a judgement call leaving room for a model
   trained on another functional, whose surface may have lost or moved a few of
   these saddles. *Bad* is 0, what a model that finds nothing scores.
+* **Reaction modes present** (unscored). The thresholds of Saddles converged:
+  DFT has a reaction mode at all 67 saddles, so a perfect model scores 1, and
+  one with none scores 0.
 * **Mode overlaps.** 0.99 and 0.8, an 8° and a 37° misalignment, well above the
   0.32 that randomly oriented modes score.
 * **Stiffness.** 2% and 20%. An error that scales the whole Hessian scales every
