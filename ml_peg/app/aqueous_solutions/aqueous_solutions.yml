@@ -1,0 +1,8 @@
+title: Aqueous Solutions
+description: >-
+  Structure and dynamics of bulk liquid water and hexagonal ice Ih from
+  molecular dynamics, compared to ab initio reference trajectories.
+weight: 1
+benchmark_weights:
+  bulk_water: 0
+  ice_ih: 0
