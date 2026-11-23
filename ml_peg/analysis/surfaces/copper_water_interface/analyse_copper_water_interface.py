@@ -304,7 +304,8 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
         Scored per-model dipole standard-deviation deviations plus the raw
         per-model dipole arrays used to render the distribution histogram.
     """
-    dipole_results = {"ref": None} | dict.fromkeys(MODELS)
+    # Models are scored on |sigma - sigma_ref|, so the reference has no row here.
+    dipole_results = dict.fromkeys(MODELS)
     raw_dipoles = {}
 
     # Load reference dipole data.
@@ -312,7 +313,6 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
     # (DIPOLE_CHARGE) used below for the deviation to be on a consistent scale.
     ref_dipoles = np.load(REF_DIPOLE_PATH)
     ref_dipole_stdev = np.std(ref_dipoles)
-    dipole_results["ref"] = ref_dipole_stdev
 
     for model_name in MODELS:
         frames = read_production_frames(CALC_PATH / model_name, RUN_STEPS // TRAJ_EVERY)
