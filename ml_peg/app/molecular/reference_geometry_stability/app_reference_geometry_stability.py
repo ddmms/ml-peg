@@ -36,9 +36,10 @@ class ReferenceGeometryStabilityApp(BaseApp):
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
             column_to_plot={
                 "Avg RMSD": molecules,
-                "Avg RMSD (stable only)": molecules,
+                "Avg RMSD (relaxed only)": molecules,
                 "Geometry Score": histogram,
                 "Geometry Score (MLIP Audit)": histogram,
+                "Convergence Rate": histogram,
             },
         )
         # A structure selection belongs to the plot that produced it.

@@ -48,6 +48,30 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
+FORCE_THRESHOLD = rgs.SIMULATION_CONFIG["max_force_convergence_threshold"]
+
+
+def converged(state) -> bool:
+    """
+    Check whether a minimization reached the force convergence threshold.
+
+    The saved forces correspond to the saved geometry, so this also catches a state
+    that never recorded the frame its minimization finished on.
+
+    Parameters
+    ----------
+    state
+        Simulation state saved for one molecule.
+
+    Returns
+    -------
+    bool
+        Whether the maximum force on the final saved frame is within the threshold.
+    """
+    if state.forces is None:
+        return False
+    return bool(np.linalg.norm(state.forces[-1], axis=1).max() <= FORCE_THRESHOLD)
+
 
 @pytest.fixture
 def reference_datasets() -> dict:
@@ -88,10 +112,14 @@ def analyze_model(model, model_output, datasets) -> tuple[dict, go.Scatter]:
     tuple[dict, go.Scatter]
         Locally calculated metrics and the per-molecule RMSD plot trace.
     """
-    labels, rmsds, assets = [], [], []
-    subset_means = []
+    labels, plotted, points, symbols = [], [], [], []
+    rmsds = []
+    subset_means, relaxed_means = [], []
     score_inputs = []
+    audit_inputs = []
     complete = True
+    total = sum(len(dataset) for dataset in datasets.values())
+    n_converged = 0
     directory = OUT_PATH / "structures" / model
     directory.mkdir(parents=True, exist_ok=True)
     for subset, dataset in datasets.items():
@@ -100,11 +128,12 @@ def analyze_model(model, model_output, datasets) -> tuple[dict, go.Scatter]:
         if len(names) != len(outputs) or not names.issubset(dataset):
             raise ValueError(f"Invalid molecule identifiers in {subset}")
         complete = complete and names == dataset.keys()
-        subset_rmsds = []
+        subset_rmsds, relaxed_rmsds = [], []
         for index, output in enumerate(outputs):
             state = output.simulation_state
             if output.failed or state is None or not is_simulation_stable(state):
                 score_inputs.append(None)
+                audit_inputs.append(None)
                 complete = False
                 continue
             molecule = dataset[output.molecule_name]
@@ -123,10 +152,21 @@ def analyze_model(model, model_output, datasets) -> tuple[dict, go.Scatter]:
             )
             if not np.isfinite(value):
                 score_inputs.append(None)
+                audit_inputs.append(None)
                 complete = False
                 continue
+            audit_inputs.append(value)
             subset_rmsds.append(value)
-            score_inputs.append(value)
+            is_converged = converged(state)
+            if is_converged:
+                n_converged += 1
+                relaxed_rmsds.append(value)
+                score_inputs.append(value)
+                rmsds.append(value)
+            else:
+                # An unrelaxed geometry stays near the reference, so score it zero
+                # rather than rewarding the stalled minimization.
+                score_inputs.append(None)
             heavy = reference.numbers != 1
             reference.translate(-reference.positions[heavy].mean(axis=0))
             centered = positions - positions[heavy].mean(axis=0)
@@ -137,29 +177,42 @@ def analyze_model(model, model_output, datasets) -> tuple[dict, go.Scatter]:
             asset = f"{subset}_{index}"
             write(directory / f"{asset}.xyz", [reference, relaxed], format="xyz")
             labels.append(f"{subset.removeprefix('openff_')} / {output.molecule_name}")
-            rmsds.append(value)
-            assets.append(f"{model}/{asset}")
+            plotted.append(value)
+            status = "Relaxed" if is_converged else "Unconverged (scored zero)"
+            symbols.append("circle" if is_converged else "circle-open")
+            # ``struct_from_scatter`` reads the asset from the last customdata entry.
+            points.append([status, f"{model}/{asset}"])
         subset_means.append(np.mean(subset_rmsds) if subset_rmsds else np.nan)
-    stable_mean = float(np.mean(subset_means))
-    audit_score = (
+        relaxed_means.append(np.mean(relaxed_rmsds) if relaxed_rmsds else np.nan)
+    mean_rmsd = float(np.mean(subset_means))
+    relaxed_mean = float(np.mean(relaxed_means))
+    score = (
         compute_benchmark_score([score_inputs], [rgs.RMSD_SCORE_THRESHOLD])
-        if np.isfinite(stable_mean)
+        if score_inputs
+        else np.nan
+    )
+    # MLIP Audit applies no convergence criterion, so scores the geometry as saved.
+    audit_score = (
+        compute_benchmark_score([audit_inputs], [rgs.RMSD_SCORE_THRESHOLD])
+        if audit_inputs
         else np.nan
     )
     row = {
         "rmsds": rmsds,
-        "Avg RMSD": stable_mean if complete else np.nan,
-        "Avg RMSD (stable only)": stable_mean,
-        "Geometry Score": audit_score if complete else np.nan,
+        "Avg RMSD": mean_rmsd if complete else np.nan,
+        "Avg RMSD (relaxed only)": relaxed_mean,
+        "Geometry Score": score if complete else np.nan,
         "Geometry Score (MLIP Audit)": audit_score,
+        "Convergence Rate": n_converged / total if total else np.nan,
     }
     return row, go.Scatter(
         name=model,
         x=labels,
-        y=rmsds,
-        customdata=assets,
+        y=plotted,
+        customdata=points,
         mode="markers",
-        hovertemplate="%{x}<br>Heavy-atom RMSD: %{y:.4g} Å",
+        marker={"symbol": symbols},
+        hovertemplate=("%{x}<br>Heavy-atom RMSD: %{y:.4g} Å<br>%{customdata[0]}"),
     )
 
 

@@ -4,26 +4,33 @@ metrics:
     bad: 0.3
     unit: Å
     weight: 0
-    tooltip: Mean of the neutral and charged subset average heavy-atom RMSDs. NaN if any reference molecule lacks a valid RMSD.
+    tooltip: Mean of the neutral and charged subset average heavy-atom RMSDs, over all 220 molecules, including those that did not relax to the force threshold. NaN if any molecule is missing from the calculation output, failed, or came apart.
     level_of_theory: B3LYP-D3(BJ)/DZVP
-  Avg RMSD (stable only):
+  Avg RMSD (relaxed only):
     good: 0.0
     bad: 0.3
     unit: Å
     weight: 0
-    tooltip: MLIP Audit average over successful molecules, giving the neutral and charged subset means equal weight.
+    tooltip: As Avg RMSD, but averaged only over the molecules that relaxed to the force threshold.
     level_of_theory: B3LYP-D3(BJ)/DZVP
   Geometry Score:
     good: 1.0
     bad: 0.0
     unit: null
     weight: 1
-    tooltip: Mean soft-threshold score across all 220 reference molecules. NaN if any molecule lacks a valid RMSD.
+    tooltip: Mean soft-threshold score across all 220 reference molecules. Molecules that did not relax to the force threshold score zero. NaN if any molecule is missing from the calculation output, failed, or came apart.
     level_of_theory: B3LYP-D3(BJ)/DZVP
   Geometry Score (MLIP Audit):
     good: 1.0
     bad: 0.0
     unit: null
     weight: 0
-    tooltip: MLIP Audit score over recorded molecules. Recorded failures contribute zero and omitted molecules are excluded. Requires a valid RMSD in both subsets.
+    tooltip: MLIP Audit score over recorded molecules, which applies no convergence criterion. Recorded failures contribute zero and omitted molecules are excluded.
     level_of_theory: B3LYP-D3(BJ)/DZVP
+  Convergence Rate:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 0
+    tooltip: Fraction of the 220 reference molecules that reached the maximum force threshold of 0.01 eV/Å within 1,000 minimization steps.
+    level_of_theory: null

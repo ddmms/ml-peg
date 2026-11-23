@@ -194,27 +194,38 @@ Metrics
 
 ASE BFGS relaxes each molecule for up to 1,000 steps with a maximum force
 threshold of 0.01 eV/Å. Analysis reads the two OpenFF reference sets and each model’s raw minimization
-output from the calculation directory. It aligns the heavy atoms of the last saved frame
-to the reference, then computes the mean RMSD within each subset. Avg RMSD
-gives the neutral and charged subset means equal weight and requires valid RMSDs
-for all 200 neutral and 20 charged molecules. An incomplete run gives NaN.
-**Avg RMSD (stable only)** averages the successful molecules within each subset
-and gives the two subset means equal weight. Both subsets need a valid RMSD. Both RMSD columns have zero weight by default.
+output from the calculation directory. It aligns the heavy atoms of the final
+geometry to the reference, then computes the mean RMSD within each subset.
+**Avg RMSD** gives the neutral and charged subset means equal weight, over all 200
+neutral and 20 charged molecules, including any that did not reach the force
+threshold. **Avg RMSD (relaxed only)** averages just the molecules that did reach
+it. Both RMSD columns have zero weight by default.
 
 2. Geometry Score
 
 MLIP Audit gives each molecule a score of one up to 0.075 Å RMSD and applies
 its exponential decay above this threshold.
-**Geometry Score** averages all 220 contributions. Any missing or failed
-molecule makes this metric and the default leaderboard score NaN.
+**Geometry Score** averages all 220 contributions, scoring a molecule that did not
+reach the force threshold within 1,000 steps as zero rather than scoring its
+unrelaxed geometry.
+
+Avg RMSD and Geometry Score are NaN where the model produced no geometry: a
+molecule missing from the calculation output, a minimization that raised an error,
+or a molecule that came apart. For Geometry Score this also makes the default
+leaderboard score NaN.
+
+**Convergence Rate** reports the fraction of the 220 molecules that reached the
+force threshold. It has zero default weight.
 
 **Geometry Score (MLIP Audit)** averages over the molecules recorded in the
-archive. Recorded failures contribute zero and omitted molecules are excluded
-from the denominator. This diagnostic has zero default weight and requires at
-least one valid RMSD in each subset. Select either geometry score column to
-see the RMSD histogram for successful molecules.
+archive, applying no convergence criterion, so it is directly comparable with
+MLIP Audit's own score. Recorded failures contribute zero and omitted
+molecules are excluded from the denominator. This diagnostic has zero default
+weight. Select any score column to see the RMSD histogram, which covers the
+relaxed molecules only.
 Select either RMSD column to open the per-molecule plot, then click a point to compare the OpenFF reference
-geometry (first frame) with the final saved model geometry (second frame).
+geometry (first frame) with the relaxed model geometry (second frame). Molecules
+that did not reach the force threshold are plotted as open markers.
 The viewer aligns the heavy atoms and displays all atoms in both frames.
 
 Computational cost

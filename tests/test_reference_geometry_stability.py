@@ -76,7 +76,7 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
     )
     assert np.linalg.norm(state.forces[-1], axis=1).max() < 0.01
     table = analysis.metrics.__wrapped__.__wrapped__(None, values)
-    for metric in ("Avg RMSD", "Avg RMSD (stable only)"):
+    for metric in ("Avg RMSD", "Avg RMSD (relaxed only)"):
         assert table[metric]["test-model"] == pytest.approx(expected.avg_rmsd)
         assert np.isnan(table[metric]["corrupt"])
         assert analysis.DEFAULT_WEIGHTS[metric] == 0
@@ -85,14 +85,18 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
         assert np.isnan(table[metric]["corrupt"])
     assert analysis.DEFAULT_WEIGHTS["Geometry Score"] == 1
     assert analysis.DEFAULT_WEIGHTS["Geometry Score (MLIP Audit)"] == 0
+    assert table["Convergence Rate"]["test-model"] == 1.0
+    assert analysis.DEFAULT_WEIGHTS["Convergence Rate"] == 0
 
     plot = json.loads((analysis.OUT_PATH / "figure_molecule_rmsd.json").read_text())
     (trace,) = plot["data"]
     assert trace["name"] == "test-model"
     assert trace["x"] == ["neutral / mol_0", "charged / mol_0"]
-    for subset, asset, value in zip(
+    for subset, point, value in zip(
         analysis.rgs.DATASET_PREFIXES, trace["customdata"], trace["y"], strict=True
     ):
+        status, asset = point
+        assert status == "Relaxed"
         frames = read(analysis.OUT_PATH / "structures" / f"{asset}.xyz", index=":")
         assert len(frames) == 2
         np.testing.assert_allclose(frames[0].positions.mean(axis=0), 0, atol=1e-8)
@@ -108,6 +112,25 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
             )
         assert value == getattr(expected, subset).rmsd_values[0]
 
+    # A molecule that never reaches the force threshold scores zero, but still scores.
+    with monkeypatch.context() as unreachable_threshold:
+        unreachable_threshold.setattr(analysis, "FORCE_THRESHOLD", 1e-9)
+        row, stalled = analysis.analyze_model(
+            "stalled", upstream.model_output, reference
+        )
+    # Unconverged molecules stay on the plot, marked and scored zero.
+    assert [point[0] for point in stalled.customdata] == [
+        "Unconverged (scored zero)"
+    ] * 2
+    assert len(stalled.y) == 2
+    assert row["rmsds"] == []
+    assert row["Convergence Rate"] == 0.0
+    assert row["Geometry Score"] == 0.0
+    # Nothing failed, so the unweighted average still reports a value.
+    assert row["Avg RMSD"] == pytest.approx(expected.avg_rmsd)
+    assert np.isnan(row["Avg RMSD (relaxed only)"])
+    assert row["Geometry Score (MLIP Audit)"] == pytest.approx(expected.score)
+
     # A missing output and a recorded failure both invalidate the weighted score.
     reference["openff_neutral"]["mol_1"] = reference["openff_neutral"]["mol_0"]
     for recorded_failure in (False, True):
@@ -119,7 +142,7 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
         partial = upstream.analyze()
         row, _ = analysis.analyze_model("partial", upstream.model_output, reference)
         assert np.isnan(row["Avg RMSD"])
-        assert row["Avg RMSD (stable only)"] == pytest.approx(partial.avg_rmsd)
+        assert row["Avg RMSD (relaxed only)"] == pytest.approx(partial.avg_rmsd)
         assert np.isnan(row["Geometry Score"])
         assert row["Geometry Score (MLIP Audit)"] == pytest.approx(partial.score)
         if recorded_failure:
