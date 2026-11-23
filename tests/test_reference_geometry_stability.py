@@ -145,6 +145,8 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
         assert row["Avg RMSD (relaxed only)"] == pytest.approx(partial.avg_rmsd)
         assert np.isnan(row["Geometry Score"])
         assert row["Geometry Score (MLIP Audit)"] == pytest.approx(partial.score)
+        # A rate over a partial dataset is not comparable, so is not reported.
+        assert np.isnan(row["Convergence Rate"])
         if recorded_failure:
             assert partial.score < expected.score
         else:

@@ -209,13 +209,14 @@ its exponential decay above this threshold.
 reach the force threshold within 1,000 steps as zero rather than scoring its
 unrelaxed geometry.
 
-Avg RMSD and Geometry Score are NaN where the model produced no geometry: a
-molecule missing from the calculation output, a minimization that raised an error,
-or a molecule that came apart. For Geometry Score this also makes the default
-leaderboard score NaN.
-
 **Convergence Rate** reports the fraction of the 220 molecules that reached the
 force threshold. It has zero default weight.
+
+These three metrics are NaN unless the model produced a geometry for every
+molecule, since a partial dataset gives neither an average nor a rate comparable
+with a full run. A molecule missing from the calculation output, a minimization
+that raised an error, or a molecule that came apart all make the run partial. For
+Geometry Score this also makes the default leaderboard score NaN.
 
 **Geometry Score (MLIP Audit)** averages over the molecules recorded in the
 archive, applying no convergence criterion, so it is directly comparable with

@@ -32,5 +32,5 @@ metrics:
     bad: 0.0
     unit: null
     weight: 0
-    tooltip: Fraction of the 220 reference molecules that reached the maximum force threshold of 0.01 eV/Å within 1,000 minimization steps.
+    tooltip: Fraction of the 220 reference molecules that reached the maximum force threshold of 0.01 eV/Å within 1,000 minimization steps. NaN for a partial run, whose rate would not be comparable with one over the full dataset.
     level_of_theory: null

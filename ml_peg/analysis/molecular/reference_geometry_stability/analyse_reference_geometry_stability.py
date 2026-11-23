@@ -203,7 +203,9 @@ def analyze_model(model, model_output, datasets) -> tuple[dict, go.Scatter]:
         "Avg RMSD (relaxed only)": relaxed_mean,
         "Geometry Score": score if complete else np.nan,
         "Geometry Score (MLIP Audit)": audit_score,
-        "Convergence Rate": n_converged / total if total else np.nan,
+        # A rate over the molecules that happened to run is not comparable with one
+        # over the full dataset, so a partial run reports nothing.
+        "Convergence Rate": n_converged / total if complete and total else np.nan,
     }
     return row, go.Scatter(
         name=model,
