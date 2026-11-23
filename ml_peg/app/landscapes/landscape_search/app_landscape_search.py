@@ -78,5 +78,6 @@ def get_app() -> LandscapeSearchApp:
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "landscape_search_metrics_table.json",
+        info_path=DATA_PATH / "info.json",
         extra_components=[Div(id=f"{BENCHMARK_NAME}-figure-placeholder")],
     )
