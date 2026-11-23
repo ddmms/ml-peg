@@ -1,4 +1,4 @@
-"""Analysis of ice benchmark."""
+"""Analysis of ice Ih benchmark."""
 
 from __future__ import annotations
 
@@ -16,15 +16,19 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.aqueous_solutions.ice.calc_ice import RUN_STEPS, TIMESTEP, TRAJ_EVERY
+from ml_peg.calcs.aqueous_solutions.ice_ih.calc_ice_ih import (
+    RUN_STEPS,
+    TIMESTEP,
+    TRAJ_EVERY,
+)
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
 MODELS = get_model_names(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map(MODELS)
-CALC_PATH = CALCS_ROOT / "aqueous_solutions" / "ice" / "outputs"
-OUT_PATH = APP_ROOT / "data" / "aqueous_solutions" / "ice"
+CALC_PATH = CALCS_ROOT / "aqueous_solutions" / "ice_ih" / "outputs"
+OUT_PATH = APP_ROOT / "data" / "aqueous_solutions" / "ice_ih"
 RDF_CURVE_PATH = OUT_PATH / "rdf_curves"
 VDOS_CURVE_PATH = OUT_PATH / "vdos_curves"
 VACF_CURVE_PATH = OUT_PATH / "vacf_curves"
@@ -42,10 +46,10 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 DATA_PATH = (
     download_s3_data(
-        filename="ice.zip",
-        key="inputs/aqueous_solutions/ice/ice.zip",
+        filename="ice_ih.zip",
+        key="inputs/aqueous_solutions/ice_ih/ice_ih.zip",
     )
-    / "ice"
+    / "ice_ih"
 )
 
 
@@ -360,7 +364,7 @@ def build_vacf_interactive_data(
 
 @pytest.fixture
 @build_table(
-    filename=OUT_PATH / "ice_metrics_table.json",
+    filename=OUT_PATH / "ice_ih_metrics_table.json",
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     mlip_name_map=DISPERSION_NAME_MAP,
@@ -394,19 +398,19 @@ def metrics(
     }
 
 
-def test_ice(
+def test_ice_ih(
     metrics: dict[str, dict],
     build_rdf_interactive_data: dict,
     build_vdos_interactive_data: dict,
     build_vacf_interactive_data: dict,
 ) -> None:
     """
-    Run ice tests.
+    Run ice Ih tests.
 
     Parameters
     ----------
     metrics
-        All ice metrics.
+        All ice Ih metrics.
     build_rdf_interactive_data
         Interactive data for RDF bar plot.
     build_vdos_interactive_data

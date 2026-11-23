@@ -16,7 +16,7 @@ from ml_peg.analysis.utils.utils import (
 )
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.aqueous_solutions.bulk_water.calc_water import (
+from ml_peg.calcs.aqueous_solutions.bulk_water.calc_bulk_water import (
     RUN_STEPS,
     TIMESTEP,
     TRAJ_EVERY,

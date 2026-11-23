@@ -129,7 +129,7 @@ def test_molecular_dipole_profile_with_periodic_bond():
     "module_name",
     [
         "ml_peg.app.aqueous_solutions.bulk_water.app_bulk_water",
-        "ml_peg.app.aqueous_solutions.ice.app_ice",
+        "ml_peg.app.aqueous_solutions.ice_ih.app_ice_ih",
         "ml_peg.app.surfaces.copper_water_interface.app_copper_water_interface",
     ],
 )
@@ -155,8 +155,8 @@ def test_restored_comparison_renderers(module_name):
 @pytest.mark.parametrize(
     ("module_name", "benchmark"),
     [
-        ("aqueous_solutions.bulk_water.calc_water", "bulk_water"),
-        ("aqueous_solutions.ice.calc_ice", "ice"),
+        ("aqueous_solutions.bulk_water.calc_bulk_water", "bulk_water"),
+        ("aqueous_solutions.ice_ih.calc_ice_ih", "ice_ih"),
         (
             "surfaces.copper_water_interface.calc_copper_water_interface",
             "copper_water_interface",

@@ -1,4 +1,4 @@
-"""Analysis of ice benchmark."""
+"""Analysis of ice Ih benchmark."""
 
 from __future__ import annotations
 
@@ -20,11 +20,11 @@ from ml_peg.models.get_models import get_model_names
 
 # Get all models
 MODELS = get_model_names(current_models)
-BENCHMARK_NAME = "Ice"
+BENCHMARK_NAME = "Ice Ih"
 DOCS_URL = (
-    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/aqueous_solutions/ice.html"
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/aqueous_solutions.html#ice-ih"
 )
-DATA_PATH = APP_ROOT / "data" / "aqueous_solutions" / "ice"
+DATA_PATH = APP_ROOT / "data" / "aqueous_solutions" / "ice_ih"
 INFO_PATH = DATA_PATH / "info.json"
 METRICS = ["rdf_score", "vdos_score", "vacf_score"]
 
@@ -185,7 +185,7 @@ def get_app() -> IceApp:
         name=BENCHMARK_NAME,
         description="Ice score.",
         docs_url=DOCS_URL,
-        table_path=DATA_PATH / "ice_metrics_table.json",
+        table_path=DATA_PATH / "ice_ih_metrics_table.json",
         info_path=INFO_PATH,
         extra_components=extra_components,
     )

@@ -70,8 +70,8 @@ Reference data:
     https://doi.org/10.1073/pnas.2110077118
 
 
-Ice
-===
+Ice Ih
+======
 
 Summary
 -------

@@ -22,7 +22,10 @@ from ml_peg.models.get_models import get_model_names
 # Get all models
 MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "Copper Water Interface"
-DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/surfaces/copper_water_interface.html"
+DOCS_URL = (
+    "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
+    "surfaces.html#copper-water-interface"
+)
 DATA_PATH = APP_ROOT / "data" / "surfaces" / "copper_water_interface"
 INFO_PATH = DATA_PATH / "info.json"
 METRICS = ["rdf_score", "vdos_score", "vacf_score", "density_score"]

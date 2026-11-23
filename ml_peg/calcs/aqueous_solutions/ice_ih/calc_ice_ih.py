@@ -1,4 +1,4 @@
-"""Run calculations for ice benchmark."""
+"""Run calculations for ice Ih benchmark."""
 
 from __future__ import annotations
 
@@ -33,11 +33,11 @@ RUN_STEPS = 600000  # production steps (recorded)
 
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
-def test_ice(mlip: tuple[str, Any]) -> None:
+def test_ice_ih(mlip: tuple[str, Any]) -> None:
     """
-    Run Ice test.
+    Run Ice Ih test.
 
-    Runs Langevin MD (via janus-core) on ice, writing the trajectory
+    Runs Langevin MD (via janus-core) on hexagonal ice Ih, writing the trajectory
     (positions and momenta) to ``md-traj.extxyz`` for analysis.
 
     Parameters
@@ -55,13 +55,13 @@ def test_ice(mlip: tuple[str, Any]) -> None:
     calc = model.get_calculator(precision="low")
     calc = model.add_d3_calculator(calc)
 
-    # Get ice benchmark data
+    # Get ice Ih benchmark data
     data_dir = (
         download_s3_data(
-            filename="ice.zip",
-            key="inputs/aqueous_solutions/ice/ice.zip",
+            filename="ice_ih.zip",
+            key="inputs/aqueous_solutions/ice_ih/ice_ih.zip",
         )
-        / "ice"
+        / "ice_ih"
     )
 
     # Load initial structure
