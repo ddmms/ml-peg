@@ -205,3 +205,78 @@ Reference data:
   Kohn-Sham, (100, 770) grid, SCF converged to 1e-11. They are analytic,
   agree with finite differences (0.005 Å step) to within 0.4% on ethanol and
   malonaldehyde, and reproduce each Landscape17 energy to within 0.05 kJ/mol.
+
+.. _landscape-search:
+
+Landscape search
+================
+
+Summary
+-------
+
+The harder question: given one conformer and no further reference
+information, how much of the landscape does the model find on its own, and how
+accurately?
+
+A model can hold every stationary point it is handed and still fail to locate
+them unaided, and it can also invent minima the reference does not contain.
+
+This tests the model and the search together, which is the point -- a potential
+is only useful for exploring a surface if a search can traverse it -- but it
+means the search settings form part of the benchmark and are reported with the
+results rather than left as defaults. All models use the same settings.
+
+Metrics
+-------
+
+1. Minima and transition states recovered
+
+   The fraction of reference stationary points the search locates, matched
+   one-to-one by permutation-aware RMSD.
+
+2. RMSD to the matched reference structure
+
+   How accurately the recovered structures are placed, over the matched pairs
+   only and so always within the 0.3 Å matching radius.
+
+3. Connectivity preserved
+
+   The fraction of all 67 reference transition states that the search both
+   recovered and found joining the same pair of minima as in the reference.
+   Taken over every reference rather than the recovered ones, so a model that
+   finds few cannot score well on the few it finds.
+
+4. Off-reference minima
+
+   Minima whose bonding differs from the molecule's. The search only sets out
+   to change conformation, with basin-hopping steps that rotate dihedral
+   angles, so in an ideal case the bonding framework never changes. These are
+   not automatically wrong -- a model may find a genuine isomer and only place
+   it at the wrong energy -- but a model producing many of them lets bonds
+   break or form where only the conformation should change. A correctly bonded
+   minimum that matches no reference minimum is unmatched, not off-reference.
+
+5. Distorted minima
+
+   Minima holding one of the molecule's own bonds more than 20% away from its
+   length in the reference. The off-reference test compares bonding graphs
+   and cannot see these: a bond crushed to two thirds of its length is still
+   a bond, so the structure reads as the right molecule at an impossible
+   geometry. The flagged structures are written out beside the model's
+   results.
+
+6. RMSD to the nearest found structure
+
+   For every reference minimum and transition state, the distance to the
+   closest structure the model found, matched or not. Unlike item 2 this does
+   not condition on success, so it does not flatter a model that found two
+   structures precisely and missed the rest.
+
+7. Minima near-missed
+
+   Reference minima whose closest found structure lies between the 0.3 Å
+   matching radius and 0.45 Å. Recovery is a pass rate over a hard radius, so
+   a reference missed by 0.31 Å scores the same as one missed by 3 Å; this
+   separates the two. Low recovery with many near misses means the model is
+   systematically displaced rather than failing to find the structures, which
+   is a correctable offset.

@@ -3,3 +3,4 @@ description: Benchmarks on the Landscape17 conformational landscapes of six smal
 weight: 0
 benchmark_weights:
   stationary_points: 0
+  landscape_search: 0
