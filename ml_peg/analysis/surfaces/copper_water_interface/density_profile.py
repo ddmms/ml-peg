@@ -23,6 +23,8 @@ from ase import Atoms
 from ase.io import read
 import numpy as np
 
+from ml_peg.analysis.utils import md_water_analysis as md
+
 # Default z-binning relative to the surface, as a single (start, stop, step) tuple in
 # Å. Passed straight to ``np.arange`` to build the histogram edges. The water band sits
 # a couple of Å above z = 0 and decays by ~30 Å, so this spans it with a small margin.
@@ -172,6 +174,7 @@ def create_density_profiles(
     dict[str, dict]
         Dictionary of density profiles for the reference ("ref") and all models.
     """
+    md.require_reference_data(data_path)
     profiles = {"ref": None} | dict.fromkeys(models)
 
     # Load reference density profile
@@ -180,8 +183,6 @@ def create_density_profiles(
 
     if not curve_path.exists():
         curve_path.mkdir(parents=True, exist_ok=True)
-
-    from ml_peg.analysis.utils import md_water_analysis as md
 
     for model_name in models:
         model_dir = calc_path / model_name

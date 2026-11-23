@@ -11,7 +11,7 @@ from janus_core.calculations.md import NVT
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
-from ml_peg.calcs.utils.water_md import water_md_restart
+from ml_peg.calcs.utils.water_md import stage_reference_data, water_md_restart
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -65,6 +65,9 @@ def test_ice_ih(mlip: tuple[str, Any]) -> None:
     )
 
     # Load initial structure
+    # Staged here so the analysis never downloads anything.
+    stage_reference_data(data_dir, OUT_PATH / "references")
+
     start_config = read(data_dir / "init.xyz")
     start_config.pbc = [True, True, True]
     start_config.calc = calc

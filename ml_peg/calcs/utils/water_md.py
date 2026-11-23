@@ -1,14 +1,46 @@
-"""Resume Janus water MD from the last saved positions and momenta."""
+"""Shared helpers for the water MD benchmark calculations."""
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from mmap import ACCESS_READ, mmap
 from pathlib import Path
+import shutil
 from warnings import warn
 
 from ase import Atoms
 from ase.io import read
+from ase.io.extxyz import XYZError
 import numpy as np
+
+# Reference files the analyses read, staged into the calculation outputs.
+REFERENCE_FILES = (
+    "init.xyz",
+    "init.pdb",
+    "rdf_reference.pkl",
+    "vdos_reference.pkl",
+    "vacf_reference.pkl",
+)
+
+
+def stage_reference_data(
+    source: Path, destination: Path, filenames: Iterable[str] = REFERENCE_FILES
+) -> None:
+    """
+    Copy the analysis reference files out of the downloaded input data.
+
+    Parameters
+    ----------
+    source
+        Extracted benchmark input directory.
+    destination
+        Directory to copy the reference files into, shared by all models.
+    filenames
+        Reference files to copy. Default is `REFERENCE_FILES`.
+    """
+    destination.mkdir(parents=True, exist_ok=True)
+    for name in filenames:
+        shutil.copyfile(source / name, destination / name)
 
 
 def _trajectory_end(path: Path, step: int, atom_count: int) -> int:
@@ -89,9 +121,11 @@ def water_md_restart(
                 or not np.isfinite(saved.get_momenta()).all()
             ):
                 raise ValueError("non-finite checkpoint positions or momenta")
-        except OSError:
-            raise
         except Exception as exc:
+            # XYZError (an OSError) means a truncated frame, so quarantine rather
+            # than abort as for a genuine filesystem fault.
+            if isinstance(exc, OSError) and not isinstance(exc, XYZError):
+                raise
             # Janus may append to an existing restart file when replaying this
             # step. Keep the damaged copy outside its checkpoint filename.
             checkpoint.rename(checkpoint.with_suffix(".extxyz.invalid"))

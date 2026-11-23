@@ -21,7 +21,6 @@ from ml_peg.calcs.aqueous_solutions.ice_ih.calc_ice_ih import (
     TIMESTEP,
     TRAJ_EVERY,
 )
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -44,13 +43,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-DATA_PATH = (
-    download_s3_data(
-        filename="ice_ih.zip",
-        key="inputs/aqueous_solutions/ice_ih/ice_ih.zip",
-    )
-    / "ice_ih"
-)
+# Staged by the calc.
+DATA_PATH = CALC_PATH / "references"
 
 
 # ----------------------+----------------------+---------------------- #

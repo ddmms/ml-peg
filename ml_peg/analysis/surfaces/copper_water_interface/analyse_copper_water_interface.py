@@ -34,7 +34,6 @@ from ml_peg.calcs.surfaces.copper_water_interface.calc_copper_water_interface im
     TIMESTEP,
     TRAJ_EVERY,
 )
-from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
 
@@ -61,13 +60,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
 
-DATA_PATH = (
-    download_s3_data(
-        filename="copper_water_interface.zip",
-        key="inputs/surfaces/copper_water_interface/copper_water_interface.zip",
-    )
-    / "copper_water_interface"
-)
+# Staged by the calc.
+DATA_PATH = CALC_PATH / "references"
 REF_DIPOLE_PATH = DATA_PATH / "ref_dipole_data.npy"
 
 # Dipole histogram binning (e/Å). Tune the range and bar width here: "start"/"end"
@@ -304,6 +298,7 @@ def stdev_dipole_z_deviation() -> dict[str, dict]:
         Scored per-model dipole standard-deviation deviations plus the raw
         per-model dipole arrays used to render the distribution histogram.
     """
+    md.require_reference_data(DATA_PATH)
     # Models are scored on |sigma - sigma_ref|, so the reference has no row here.
     dipole_results = dict.fromkeys(MODELS)
     raw_dipoles = {}
@@ -687,6 +682,7 @@ def created_dipole_profile() -> dict[str, dict]:
     dict[str, dict]
         Dictionary of ``{"dipole": (z, profile)}`` for the reference and all models.
     """
+    md.require_reference_data(DATA_PATH)
     profiles = {"ref": None} | dict.fromkeys(MODELS)
 
     with open(DATA_PATH / "dipole_profile_reference.pkl", "rb") as f_in:

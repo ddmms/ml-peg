@@ -19,6 +19,7 @@ from warnings import warn
 from ase.io import read
 import mdtraj as mdt
 import numpy as np
+import pytest
 
 from ml_peg.analysis.utils import aml_md_analysis as aml
 
@@ -27,6 +28,19 @@ ANG_TO_NM = 0.1
 
 # Marks a model whose MD raised, so it scores as NaN instead of being dropped.
 FAILED = "failed"
+
+
+def require_reference_data(data_path: Path) -> None:
+    """
+    Skip the benchmark when the calculation has not staged its reference data.
+
+    Parameters
+    ----------
+    data_path
+        Directory the calculation copies the reference files into.
+    """
+    if not data_path.is_dir():
+        pytest.skip(f"No reference data in {data_path}. Run the calculation first.")
 
 
 def _load_positions(traj_file: Path, topology: str) -> mdt.Trajectory:
@@ -170,6 +184,7 @@ def create_rdfs(
     dict[str, dict]
         Dictionary of RDFs for all models.
     """
+    require_reference_data(data_path)
     rdfs = {"ref": None} | dict.fromkeys(models)
 
     # Load reference RDF
@@ -266,6 +281,7 @@ def create_vdos(
     dict[str, dict]
         Dictionary of VDOS for all models.
     """
+    require_reference_data(data_path)
     vdos = {"ref": None} | dict.fromkeys(models)
 
     # Load reference RDF
@@ -353,6 +369,7 @@ def create_vacf(
     dict[str, dict]
         Dictionary of VACF for all models.
     """
+    require_reference_data(data_path)
     vacf = {"ref": None} | dict.fromkeys(models)
 
     # Load reference VACF

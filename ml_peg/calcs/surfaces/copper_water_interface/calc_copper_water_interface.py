@@ -13,7 +13,11 @@ import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
-from ml_peg.calcs.utils.water_md import water_md_restart
+from ml_peg.calcs.utils.water_md import (
+    REFERENCE_FILES,
+    stage_reference_data,
+    water_md_restart,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -31,6 +35,13 @@ TIMESTEP = 1  # fs, MD integration step
 TRAJ_EVERY = 1
 EQUIL_STEPS = 50000  # equilibration steps (not recorded)
 RUN_STEPS = 300000  # 300 ps production (recorded)
+
+# Dipole and density references, in addition to the shared set.
+DIPOLE_REFERENCE_FILES = (
+    "ref_dipole_data.npy",
+    "dipole_profile_reference.pkl",
+    "density_profile_reference.pkl",
+)
 
 
 @pytest.mark.very_slow
@@ -68,6 +79,11 @@ def test_copper_water_interface(mlip: tuple[str, Any]) -> None:
     )
 
     # Load initial structure
+    # Staged here so the analysis never downloads anything.
+    stage_reference_data(
+        data_dir, OUT_PATH / "references", REFERENCE_FILES + DIPOLE_REFERENCE_FILES
+    )
+
     start_config = read(data_dir / "init.xyz")
 
     # Set deuterium mass for H atoms

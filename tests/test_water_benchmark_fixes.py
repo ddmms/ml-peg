@@ -173,6 +173,7 @@ def test_failed_md_then_successful_retry(module_name, benchmark, tmp_path, monke
     atoms = Atoms("CuOH", info={"fix_indices": [0]})
     monkeypatch.setattr(calc, "OUT_PATH", tmp_path)
     monkeypatch.setattr(calc, "download_s3_data", lambda **kwargs: tmp_path)
+    monkeypatch.setattr(calc, "stage_reference_data", lambda *args, **kwargs: None)
     monkeypatch.setattr(calc, "read", lambda path: atoms.copy())
     dynamics = Mock()
     monkeypatch.setattr(calc, "NVT", lambda **kwargs: dynamics)
@@ -191,6 +192,49 @@ def test_failed_md_then_successful_retry(module_name, benchmark, tmp_path, monke
     assert marker.exists()
     calculate(mlip)
     assert not marker.exists()
+
+
+def test_staged_references_cover_what_the_analyses_read(tmp_path):
+    """The calc stages every reference file the analyses open."""
+    from ml_peg.calcs.surfaces.copper_water_interface.calc_copper_water_interface import (  # noqa: E501
+        DIPOLE_REFERENCE_FILES,
+    )
+    from ml_peg.calcs.utils.water_md import REFERENCE_FILES, stage_reference_data
+
+    # Files opened by md_water_analysis, analyse_copper_water_interface and
+    # density_profile. Keep in step with those modules.
+    read_by_analyses = {
+        "init.xyz",
+        "init.pdb",
+        "rdf_reference.pkl",
+        "vdos_reference.pkl",
+        "vacf_reference.pkl",
+        "ref_dipole_data.npy",
+        "dipole_profile_reference.pkl",
+        "density_profile_reference.pkl",
+    }
+    staged = set(REFERENCE_FILES) | set(DIPOLE_REFERENCE_FILES)
+    assert read_by_analyses <= staged
+
+    source = tmp_path / "input"
+    source.mkdir()
+    for name in staged:
+        (source / name).write_text(name)
+    destination = tmp_path / "outputs" / "references"
+    stage_reference_data(source, destination, staged)
+    assert {path.name for path in destination.iterdir()} == staged
+    # Re-running for the next model must not fail.
+    stage_reference_data(source, destination, staged)
+
+
+def test_analysis_skips_without_staged_references(tmp_path):
+    """Analysis skips rather than raising when no calculation has run."""
+    from ml_peg.analysis.utils.md_water_analysis import require_reference_data
+
+    with pytest.raises(pytest.skip.Exception):
+        require_reference_data(tmp_path / "missing")
+    (tmp_path / "present").mkdir()
+    require_reference_data(tmp_path / "present")
 
 
 def test_corrupt_and_valid_production_frames(tmp_path):
@@ -293,23 +337,64 @@ def test_resume_water_md_across_walltime(tmp_path, stop_step, damage):
     assert np.loadtxt(resumed / "md-stats.dat")[:, 0].tolist() == list(range(21))
 
 
-def test_dipole_extraction_failure_is_per_model(tmp_path, monkeypatch):
+def test_restart_quarantines_checkpoint_truncated_mid_frame(tmp_path):
+    """A checkpoint cut mid-frame falls back instead of aborting the run."""
+    from ase.calculators.emt import EMT
+    from ase.io import read
+    from ase.io.extxyz import XYZError
+    from janus_core.calculations.md import NVT
+
+    from ml_peg.calcs.utils.water_md import water_md_restart
+
+    def dynamics(directory, target):
+        directory.mkdir(exist_ok=True)
+        atoms = Atoms("Cu2", positions=[[0, 0, 0], [2.5, 0, 0]], cell=[10] * 3)
+        atoms.calc = EMT()
+        return NVT(
+            **water_md_restart(atoms, directory, 8, target),
+            steps=target,
+            temp=330,
+            timestep=0.5,
+            stats_every=1,
+            traj_every=2,
+            restart_every=4,
+            file_prefix=directory / "md",
+            track_carbon=False,
+        )
+
+    directory = tmp_path / "resumed"
+    dynamics(directory, 14).run()
+
+    # Drop the final atom record, as a job killed part way through a write would.
+    broken = directory / "md-res-12.extxyz"
+    lines = broken.read_text().splitlines(keepends=True)
+    broken.write_text("".join(lines[:-1]))
+
+    # ase reports this as XYZError, which is an OSError subclass.
+    with pytest.raises(XYZError):
+        read(broken)
+
+    with pytest.warns(UserWarning, match="Skipping unreadable checkpoint"):
+        replay = dynamics(directory, 14)
+    assert replay.offset == 8
+
+
+def test_dipole_extraction_failure_is_per_model(tmp_path):
     """A model can fail dipole extraction even when its trajectory is readable."""
     import pickle
     from runpy import run_module
 
     from ase.io import write
 
-    from ml_peg.calcs.utils import utils
-
-    data = tmp_path / "copper_water_interface"
+    # Reference data as the calc stages it, rather than downloaded by the analysis.
+    data = tmp_path / "references"
     data.mkdir()
     np.save(data / "ref_dipole_data.npy", [0.0])
     (data / "dipole_profile_reference.pkl").write_bytes(pickle.dumps({}))
-    monkeypatch.setattr(utils, "download_s3_data", lambda **kwargs: tmp_path)
     module = run_module(
         "ml_peg.analysis.surfaces.copper_water_interface.analyse_copper_water_interface"
     )
+    # No cell, so "bad" fails on the zero surface area rather than missing water.
     slab = Atoms("Cu120", positions=np.indices((6, 5, 4)).reshape(3, -1).T * 3)
     water = Atoms("OH2", positions=[[1, 1, 13], [1.8, 1, 13.4], [1, 1.8, 13.4]])
     good = slab + water
@@ -321,7 +406,12 @@ def test_dipole_extraction_failure_is_per_model(tmp_path, monkeypatch):
     stdev = module["stdev_dipole_z_deviation"].__wrapped__
     profile = module["created_dipole_profile"].__wrapped__
     stdev.__globals__.update(
-        MODELS=["bad", "good"], CALC_PATH=tmp_path, RUN_STEPS=1, TRAJ_EVERY=1
+        MODELS=["bad", "good"],
+        CALC_PATH=tmp_path,
+        DATA_PATH=data,
+        REF_DIPOLE_PATH=data / "ref_dipole_data.npy",
+        RUN_STEPS=1,
+        TRAJ_EVERY=1,
     )
     with pytest.warns(UserWarning, match="z-dipoles for bad"):
         result = stdev()
