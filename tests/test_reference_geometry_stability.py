@@ -64,16 +64,17 @@ def test_transferred_model_output_matches_upstream(tmp_path, monkeypatch):
     with pytest.warns(UserWarning, match="Cannot score corrupt"):
         values = analysis.analyze_results.__wrapped__(reference)
     assert values["corrupt"] is None
-    monkeypatch.setattr(
-        analysis.rgs.ReferenceGeometryStabilityBenchmark,
-        "skip_if_elements_missing",
-        False,
-    )
-    upstream = analysis.rgs.ReferenceGeometryStabilityBenchmark(
+    upstream = analysis.MlPegReferenceGeometryStabilityBenchmark(
         force_field=LennardJones(), data_input_dir=cache, run_mode="standard"
     )
     upstream.run_model()
     expected = upstream.analyze()
+    # The saved frame must be the one the minimization converged to.
+    state = upstream.model_output.openff_neutral[0].simulation_state
+    assert np.linalg.norm(np.diff(state.positions[-1], axis=0)) == pytest.approx(
+        2 ** (1 / 6), abs=1e-3
+    )
+    assert np.linalg.norm(state.forces[-1], axis=1).max() < 0.01
     table = analysis.metrics.__wrapped__.__wrapped__(None, values)
     for metric in ("Avg RMSD", "Avg RMSD (stable only)"):
         assert table[metric]["test-model"] == pytest.approx(expected.avg_rmsd)
