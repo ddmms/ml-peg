@@ -95,7 +95,8 @@ Benchmark speed
 ---------------
 
 Medium: these tests evaluate 60,000 small clusters per model. They take around
-16 minutes on CPU for mace-mp-0b3, and are expected to take minutes on a GPU.
+20 minutes for mace-mp-0b3 on an AMD Ryzen 9 9950X CPU (16 cores), including
+calculator initialisation but excluding the one-off download of the input data.
 
 Data availability
 -----------------
@@ -146,8 +147,9 @@ Benchmark speed
 ---------------
 
 Medium: these tests evaluate 60,000 small clusters per model. They take around
-16 minutes on CPU for mace-mp-0b3, excluding the D3 correction, and are expected to
-take minutes on a GPU.
+25 minutes for mace-mp-0b3 with the D3 correction on an AMD Ryzen 9 9950X CPU
+(16 cores), including calculator initialisation but excluding the one-off download
+of the input data.
 
 Data availability
 -----------------
