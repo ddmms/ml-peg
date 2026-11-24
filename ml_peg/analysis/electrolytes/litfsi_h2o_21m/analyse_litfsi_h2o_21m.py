@@ -56,19 +56,31 @@ MIN_RDF_FRAMES = 490
 # Experimental references
 RHO_EXP = 1.7126  # g/cm³ — Gilbert et al., JCED 62, 2056 (2017)
 
-# Coordination number references.
-# The total CN is anchored to theory at 21 m: r2SCAN AIMD (Li128, 20 ps) gives
-# 4.31, and two independent MACE potentials trained on the same r2SCAN dataset
-# (fine-tuned and from-scratch) converge to 4.25-4.26 over >2 ns; the neutron
-# diffraction experiment (Watanabe et al., JPCB 125, 7477, 2021) gives 4.21 at
-# the nearby composition x_LiTFSA=0.25 (~18.5 m). The water/TFSI partitioning
-# is anchored to theory only: the experimental split (1.93/2.28) is at a
-# different concentration and shows a systematic inversion vs all MD methods,
-# so it is not used. AIMD (20 ps): 2.23/2.02; converged r2SCAN-trained MACE
-# (>2 ns): 2.31-2.38 (water) and 1.87-1.94 (TFSI).
-CN_REF_WATER = 2.4  # r2SCAN AIMD + converged r2SCAN-trained MACE potentials
-CN_REF_TFSI = 1.9  # r2SCAN AIMD + converged r2SCAN-trained MACE potentials
-CN_REF_TOTAL = 4.3  # theory at 21 m; exp. 4.21 at ~18.5 m (Watanabe 2021)
+# Coordination number references at 21 m. All values below are computed with
+# the definitions used in this benchmark: water and TFSI oxygens assigned from
+# the first frame (d_OH < 1.25 A, d_OS < 1.75 A), partial Li-O g(r) integrated
+# up to R_cut = 2.83 A.
+#
+#   source                                            water   TFSI  total
+#   r2SCAN AIMD, Li128 cell (3068 atoms), 0-20 ps     2.347  1.985  4.332
+#   MACE fine-tuned from mace-matpes-r2scan, 0-17 ns  2.296  1.977  4.273
+#   MACE trained from scratch, 0-2.7 ns               2.341  1.938  4.279
+#
+# Both MACE models are trained on r2SCAN calculations of this electrolyte
+# (Brugnoli et al., J. Chem. Theory Comput. 22, 9927 (2026)); the one trained
+# from scratch shares no weights with the benchmarked models. They are only
+# used to check that the AIMD water/TFSI split holds over nanoseconds.
+# With a spread of 0.05-0.06 between the three estimates of each coordination
+# number, the references are given to one decimal; 2.3/2.0/4.3 are within
+# 0.05 of the AIMD values and within 0.07 of those of both MACE runs.
+# The total measured by neutron diffraction (Watanabe et al., JPCB 125, 7477,
+# 2021) is 4.21 at the nearby composition x_LiTFSA = 0.25 (~18.5 m). The
+# water/TFSI split of the same measurement (1.93/2.28) is inverted with
+# respect to all MD partitionings and is not used for the per-species
+# references.
+CN_REF_WATER = 2.3  # r2SCAN AIMD 2.347; r2SCAN-trained MACE 2.296-2.341
+CN_REF_TFSI = 2.0  # r2SCAN AIMD 1.985; r2SCAN-trained MACE 1.938-1.977
+CN_REF_TOTAL = 4.3  # r2SCAN AIMD 4.332; exp. 4.21 at ~18.5 m (Watanabe 2021)
 
 # The S(q) R-factor is computed on the experimental grid from the first bin of
 # the calculated S(q) (0.51 A^-1, bins of 0.02 A^-1) to the last experimental
@@ -179,6 +191,10 @@ def build_density_bar_chart(data: dict[str, dict]) -> go.Figure:
     """
     Build bar chart of density per model.
 
+    The error bars show ``rho_std``, the RMS fluctuation of the instantaneous
+    density over the averaging window, as computed by
+    ``litfsi_utils.write_density_json``.
+
     Parameters
     ----------
     data : dict[str, dict]
@@ -214,7 +230,10 @@ def build_density_bar_chart(data: dict[str, dict]) -> go.Figure:
         annotation_text=f"Exp. ({RHO_EXP} g/cm\u00b3, Gilbert 2017)",
     )
     fig.update_layout(
-        title="Electrolyte Density (LiTFSI/H2O, 21 m)",
+        title=(
+            "Electrolyte Density (LiTFSI/H2O, 21 m)<br><sub>Error bars show the "
+            "RMS density fluctuation over the last 150 ps of NPT</sub>"
+        ),
         yaxis_title="Density / g cm⁻³",
         showlegend=False,
     )
@@ -360,7 +379,7 @@ def load_rdf_results() -> dict[str, dict]:
 
 def build_cn_bar_chart(data: dict[str, dict]) -> go.Figure:
     """
-    Bar chart of CN_water and CN_TFSI per model with experimental reference.
+    Bar chart of CN_water and CN_TFSI per model with the r2SCAN references.
 
     Parameters
     ----------
@@ -370,7 +389,7 @@ def build_cn_bar_chart(data: dict[str, dict]) -> go.Figure:
     Returns
     -------
     go.Figure
-        Plotly figure with grouped bars and experimental reference lines.
+        Plotly figure with grouped bars and r2SCAN reference lines.
     """
     fig = go.Figure()
 

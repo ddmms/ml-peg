@@ -367,6 +367,13 @@ def write_density_json(
     Only the density itself is written: the error against experiment is a
     metric, computed by the analysis.
 
+    ``rho_std`` is the RMS fluctuation of the instantaneous density over the
+    window and is used only for the error bars of the density plot. It is not
+    the standard error of the mean. Because the samples are correlated in
+    time, the standard error has to be estimated from their statistical
+    inefficiency; for the benchmarked models within 15% of experiment it is
+    2.5-13 times smaller than ``rho_std``.
+
     Parameters
     ----------
     model_name : str
@@ -402,7 +409,7 @@ def write_density_json(
         "model": model_name,
         "cell": cell,
         "rho_mean": float(window.mean()),
-        "rho_std": float(window.std()),
+        "rho_std": float(window.std()),  # RMS fluctuation (see docstring)
         "n_samples": int(window.size),
         "time_range_ps": [lo, hi],
         "time_full": time_ps.tolist(),

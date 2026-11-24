@@ -64,36 +64,54 @@ Metrics
    integrating the Li-O_water radial distribution function (bin 0.02 A) up to
    the first minimum of the total Li-O g(r) (R_cut = 2.83 A, from r2SCAN AIMD).
    Water oxygens are identified from the first frame as those bonded to a
-   hydrogen (d_OH < 1.25 A). Reference value: 2.4, anchored to theory at 21 m
-   (r2SCAN AIMD, Li128, 20 ps: 2.23; MACE potentials trained on the same
-   r2SCAN dataset, converged over >2 ns: 2.31-2.38). The experimental
-   partitioning of Watanabe et al., *J. Phys. Chem. B* 125, 7477 (2021)
-   (1.93 water / 2.28 TFSI, neutron diffraction with isotopic substitution)
-   is measured at a different composition (~18.5 m) and disagrees
-   systematically with all MD-based partitionings (classical, AIMD, and
-   MLIP), so it is not used for the per-species references. "Good": 0.20,
-   wide enough to contain the AIMD value and both converged potentials.
-   "Bad": 0.5, half an oxygen: beyond it the predicted first shell is closer
-   to one with an oxygen more or less than to the reference. Over the 50 ps
-   NVT the total coordination number is stable, but the water/TFSI split
-   partly keeps memory of the starting cell; the wider "good" range and the
-   low weight account for this.
+   hydrogen (d_OH < 1.25 A). Reference value: 2.3. The r2SCAN AIMD at 21 m
+   gives 2.347 over 0-20 ps (Li128 cell, computed with the definitions
+   above). Two MACE models trained on r2SCAN calculations of this electrolyte
+   (Brugnoli et al., *J. Chem. Theory Comput.* 22, 9927 (2026)) were used to
+   check that the split holds over nanoseconds, with 2.296 over 17 ns for the
+   model fine-tuned from mace-matpes-r2scan and 2.341 over 2.7 ns for the
+   model trained from scratch, which shares no weights with the benchmarked
+   models. The three estimates of each coordination number differ by
+   0.05-0.06, and for this reason the references are given to one decimal;
+   they are within 0.05 of the AIMD and within 0.07 of both MACE runs. The
+   experimental partitioning of Watanabe et al., *J. Phys. Chem. B* 125, 7477
+   (2021) (1.93 water / 2.28 TFSI, neutron diffraction with isotopic
+   substitution) was measured at a different composition (~18.5 m) and
+   disagrees systematically with all MD-based partitionings (classical, AIMD,
+   and MLIP); it is not used for the per-species references.
+
+   All models start from the same pre-equilibrated cell, and within the
+   100 ps of NVT (50 ps equilibration and 50 ps production) the water/TFSI
+   split partly retains the memory of the starting configuration. Seven
+   models were also run from a packmol cell: the water and TFSI coordination
+   numbers moved in opposite directions, by 0.25 and 0.20 on average
+   (0.01-0.42 depending on the model), while the total changed by 0.05 on
+   average (0.12 for the worst model) and the S(q) R-factor by less than
+   0.02. Converging the split would require nanoseconds of MD per model.
+   The "good" threshold (0.20) is about the average shift between the two
+   starting cells; the two partial coordination numbers together weigh 0.5
+   out of 2 in the score. The "bad" threshold (0.5) is half an oxygen.
+   With a larger error, the predicted first shell is closer to a shell with
+   one oxygen more (or one fewer) than to the reference.
 
 3. Li-O_TFSI coordination number error (weight 0.25)
 
    Same definition, restricted to TFSI oxygens (those bonded to a sulfur,
-   d_OS < 1.75 A). Reference value: 1.9 (r2SCAN AIMD: 2.02; converged
-   r2SCAN-trained MACE: 1.87-1.94). "Good": 0.20 and "bad": 0.5, as for water.
+   d_OS < 1.75 A). Reference value: 2.0, with 1.985 from r2SCAN AIMD
+   (0-20 ps), and 1.977 and 1.938 from the fine-tuned and the from-scratch
+   MACE models, respectively. Thresholds as for water ("good" 0.20, "bad"
+   0.5).
 
 4. Li-O_total coordination number error (weight 0)
 
    Absolute error in the total Li-O coordination number (water + TFSI).
-   Reference value: 4.3 (r2SCAN AIMD: 4.31; converged r2SCAN-trained MACE:
-   4.25-4.26), consistent with the experimental total of 4.21 +/- 0.03 at
-   ~18.5 m (Watanabe et al. 2021). Reported and colour-coded ("good" 0.10,
-   the theory-experiment spread; "bad" 0.5, half an oxygen) but not scored: it is the sum of
-   the two partial coordination numbers, and would reward models that miss
-   water and TFSI in opposite directions.
+   Reference value: 4.3 (4.332 in r2SCAN AIMD over 0-20 ps, 4.273 and 4.279
+   for the two r2SCAN-trained MACE models), close to the experimental total
+   of 4.21 +/- 0.03 at ~18.5 m (Watanabe et al. 2021). Reported and
+   colour-coded ("good" 0.10, about the gap between the reference and
+   experiment; "bad" 0.5, half an oxygen) but not scored, since scoring the
+   sum of the two partial coordination numbers would reward models whose
+   water and TFSI errors cancel.
 
 5. S(q) R-factor (weight 0.5)
 
@@ -116,12 +134,17 @@ Score
 
 The score is the weighted mean of the normalised metrics (linear between the
 "good" and "bad" thresholds, clipped to [0, 1]) with nominal weights 2:1:1 for
-density, S(q) and coordination (water 0.25 + TFSI 0.25). The density is the
-only observable that is both experimental and measured at this composition;
-the R-factor is compressed by the finite-size floor, and the coordination
-references are theoretical. The ranking is insensitive to the choice: the
-Spearman correlation between the schemes tried, including density alone, is
-above 0.97.
+density, S(q) and coordination (water 0.25 + TFSI 0.25). The density has the
+largest weight because its reference is an experimental value at 21 m, while
+the R-factor is compressed by the finite-size floor and the coordination
+references are theoretical. For the 23 models in the first version of this
+benchmark, varying the two coordination weights independently between half
+and 1.5 times their nominal value changes the ranking little (Spearman
+correlation with the default ranking of 0.93 or above, same first model).
+Without the coordination numbers the correlation is 0.92 and the first
+model does not change. With the density as the only metric the correlation
+is 0.87, and four models, all within the 2% "good" threshold, share the top
+score.
 
 A model gets a score only if all its metrics are available. If the MD fails on
 one cell, the calculation records it in ``failed_<cell>.json`` and still runs
@@ -164,11 +187,11 @@ Reference data:
 
 * Density: Gilbert et al., *J. Chem. Eng. Data* 62, 2056 (2017),
   DOI: 10.1021/acs.jced.7b00135.
-* Li-O coordination numbers: theoretical references at 21 m (r2SCAN AIMD and
-  r2SCAN-trained MACE potentials, Brugnoli et al., *J. Chem. Theory Comput.*
-  22, 9927 (2026));
-  experimental total CN at ~18.5 m: Watanabe et al., *J. Phys. Chem. B* 125,
-  7477 (2021), DOI: 10.1021/acs.jpcb.1c04693.
+* Li-O coordination numbers: r2SCAN AIMD at 21 m, checked over nanoseconds
+  with two r2SCAN-trained MACE potentials (Brugnoli et al.,
+  *J. Chem. Theory Comput.* 22, 9927 (2026)); experimental total CN at
+  ~18.5 m: Watanabe et al., *J. Phys. Chem. B* 125, 7477 (2021),
+  DOI: 10.1021/acs.jpcb.1c04693.
 * X-ray S(q): Zhang et al., *J. Phys. Chem. B* 125, 4501 (2021),
   DOI: 10.1021/acs.jpcb.1c02189.
 

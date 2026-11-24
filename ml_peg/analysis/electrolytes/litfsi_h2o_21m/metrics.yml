@@ -3,7 +3,7 @@ metrics:
     good: 0.034
     bad: 0.257
     unit: "g/cm3"
-    tooltip: "Absolute error in the NPT density (p16_w42 cell, 200 ps, mean over the last 150 ps) vs experiment (1.7126 g/cm3, Gilbert et al. JCED 2017). Good: 0.034 g/cm3 (2%), the RMS density fluctuation of the 382-atom cell (1.0-3.0% of rho_exp across the models within 15% of experiment, median 1.6%; the statistical uncertainty on the 150 ps mean is 4x smaller). Bad: 0.257 g/cm3 (15%), as in the aluminosilicate glass density benchmark."
+    tooltip: "Absolute error in the NPT density (p16_w42 cell, 200 ps, mean over the last 150 ps) compared to experiment (1.7126 g/cm3, Gilbert et al. JCED 2017). Good: 0.034 g/cm3 (2%), comparable with the RMS density fluctuation of the 382-atom cell (1.0-2.5% of the experimental density for the models within 15% of experiment, median 1.5%). The standard error of the mean, estimated from the statistical inefficiency of the correlated samples, is below 1% for these models. Bad: 0.257 g/cm3 (15%), as in the aluminosilicate glass density benchmark."
     level_of_theory: Experimental
     weight: 1.0
   Density Error (%):
@@ -17,21 +17,21 @@ metrics:
     good: 0.20
     bad: 0.5
     unit: "-"
-    tooltip: "Absolute error in the Li-O_water coordination number (Li-O g(r) integrated to its first minimum, 2.83 A, on the p64_w170 NVT trajectory) vs the theoretical reference at 21 m (CN=2.4: r2SCAN AIMD 2.23 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 2.31-2.38 over >2 ns). Good: 0.20, wide enough to contain the AIMD value and both converged potentials; over the 50 ps NVT the water/TFSI split partly keeps memory of the starting cell. Bad: 0.5, half an oxygen: beyond it the predicted first shell is closer to one with an oxygen more or less than to the reference. The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and is not used for the partitioning."
+    tooltip: "Absolute error in the Li-O_water coordination number (computed on the p64_w170 NVT trajectory by integrating the Li-O_water g(r) up to 2.83 A, the first minimum of the total Li-O g(r) in r2SCAN AIMD), relative to the reference CN=2.3 at 21 m, which is within 0.05 of r2SCAN AIMD (2.347 over 0-20 ps) and of two MACE models trained on r2SCAN calculations of this electrolyte and run over nanoseconds (2.296-2.341). Good: 0.20, about the average shift of the water/TFSI split when the NVT starts from a packmol cell instead of the pre-equilibrated one. Bad: 0.5, half an oxygen. The experimental split (Watanabe et al. JPCB 2021) was measured at ~18.5 m and is not used."
     level_of_theory: r2SCAN
     weight: 0.25
   CN Li-O_TFSI Error:
     good: 0.20
     bad: 0.5
     unit: "-"
-    tooltip: "Absolute error in the Li-O_TFSI coordination number vs the theoretical reference at 21 m (CN=1.9: r2SCAN AIMD 2.02 at 20 ps; MACE potentials trained on the r2SCAN dataset converge to 1.87-1.94 over >2 ns). Good: 0.20, as for water. Bad: 0.5, half an oxygen, as for water. The experimental split (Watanabe et al. JPCB 2021) is at ~18.5 m and is not used for the partitioning."
+    tooltip: "Absolute error in the Li-O_TFSI coordination number (TFSI oxygens, same cutoff as for water) compared to the reference CN=2.0 at 21 m, taken from r2SCAN AIMD (1.985 over 0-20 ps) and checked over nanoseconds with two r2SCAN-trained MACE models (1.938-1.977). Thresholds as for water (good 0.20, bad 0.5). The experimental split (Watanabe et al. JPCB 2021) was measured at ~18.5 m and is not used."
     level_of_theory: r2SCAN
     weight: 0.25
   CN Li-O_total Error:
     good: 0.10
     bad: 0.5
     unit: "-"
-    tooltip: "Absolute error in the total Li-O coordination number vs the reference CN=4.3 (r2SCAN AIMD 4.31; converged r2SCAN-trained MACE 4.25-4.26; consistent with the experimental 4.21 at ~18.5 m, Watanabe et al. JPCB 2021, neutron diffraction with isotopic substitution). Good: 0.10, the theory-experiment spread. Bad: 0.5, half an oxygen. Reported and colour-coded but not scored (weight 0): it is the sum of the two partial coordination numbers, and would reward models that miss water and TFSI in opposite directions."
+    tooltip: "Absolute error in the total Li-O coordination number with respect to the reference CN=4.3 (r2SCAN AIMD 4.332 over 0-20 ps; 4.273 and 4.279 for two r2SCAN-trained MACE models). The experimental total is 4.21 at ~18.5 m (Watanabe et al. JPCB 2021, neutron diffraction with isotopic substitution). Good: 0.10, about the gap between the reference and experiment. Bad: 0.5, half an oxygen. Reported and colour-coded but not scored (weight 0), since scoring the sum of the two partial coordination numbers would reward models whose water and TFSI errors cancel."
     level_of_theory: r2SCAN
     weight: 0
   S(q) R-factor:

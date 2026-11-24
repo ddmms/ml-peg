@@ -48,14 +48,16 @@ Reference values:
 
 * Density: 1.7126 g/cm3 (experimental; Gilbert et al., J. Chem. Eng. Data
   62, 2056, 2017).
-* Li-O CN: 2.4 (water), 1.9 (TFSI), 4.3 (total). Theoretical references at
-  21 m: r2SCAN AIMD (Li128, 20 ps) gives 2.23/2.02/4.31; MACE potentials
-  trained on the same r2SCAN dataset converge to 2.31-2.38/1.87-1.94/
-  4.25-4.26 over >2 ns. The total is consistent with the experimental 4.21
-  at ~18.5 m (Watanabe et al., JPCB 125, 7477, 2021, neutron diffraction
-  with isotopic substitution); the experimental water/TFSI split at that
-  concentration is not used, as it disagrees systematically with all MD
-  partitionings and is measured at a different composition.
+* Li-O CN: 2.3 (water), 2.0 (TFSI), 4.3 (total), within 0.05 of the r2SCAN
+  AIMD values at 21 m (Li128, 2.347/1.985/4.332 over 0-20 ps) computed with
+  the definitions used here. Two MACE models trained on r2SCAN calculations
+  of this electrolyte (Brugnoli et al., J. Chem. Theory Comput. 22, 9927
+  (2026)) are within 0.07 of the three references over 17 ns (fine-tuned)
+  and 2.7 ns (trained from scratch). The total is close to the experimental
+  4.21 at ~18.5 m (Watanabe et al., JPCB 125, 7477, 2021, neutron
+  diffraction with isotopic substitution); the experimental water/TFSI split
+  is not used, as it was measured at a different composition and disagrees
+  systematically with all MD partitionings.
 * S(q): SAXS (Zhang et al., J. Phys. Chem. B 125, 4501, 2021).
 
 The MD stage handling and the observables are implemented in
@@ -86,8 +88,6 @@ from ml_peg.calcs.electrolytes.litfsi_h2o_21m.litfsi_utils import (
 from ml_peg.calcs.utils.utils import download_s3_data
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
-
-warnings.filterwarnings("ignore")
 
 MODELS = load_models(current_models)
 
