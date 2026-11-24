@@ -21,6 +21,7 @@ from yaml import safe_load
 
 from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
+    RESERVED_TABLE_COLUMNS,
     ThresholdEntry,
     Thresholds,
     clean_thresholds,
@@ -823,6 +824,8 @@ def _compute_table_style(
         if col not in data[0]:
             raise ValueError(f"Column '{col}' not found in data.")
 
+    unscored_columns: set[str] = set()
+
     for col in cols:
         numeric_entries: list[tuple[object, float, float]] = []
         none_row_indices: list[int] = []  # Track rows with None values
@@ -906,6 +909,10 @@ def _compute_table_style(
             )
 
         if not numeric_entries:
+            # Scored for nobody, so excluded from every score: dim it like a
+            # zero weight, whether it is unrun or emptied by an element filter.
+            if col not in RESERVED_TABLE_COLUMNS:
+                unscored_columns.add(col)
             continue
 
         numeric_values = [numeric for _, numeric, _ in numeric_entries]
@@ -933,12 +940,14 @@ def _compute_table_style(
                 }
             )
 
-    # Dim any column switched off with a zero weight
-    for column, weight in (weights or {}).items():
-        if weight == 0:
-            style_data_conditional.append(
-                {"if": {"column_id": column}, "opacity": ZERO_WEIGHT_OPACITY}
-            )
+    # Dim any column switched off, by a zero weight or by holding no value
+    dimmed = unscored_columns.union(
+        column for column, weight in (weights or {}).items() if weight == 0
+    )
+    for column in sorted(dimmed):
+        style_data_conditional.append(
+            {"if": {"column_id": column}, "opacity": ZERO_WEIGHT_OPACITY}
+        )
 
     return style_data_conditional
 

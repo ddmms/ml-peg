@@ -131,8 +131,15 @@ metrics. Scores stay comparable between models, which is the point of the leader
 
 ``build_summary_table`` (``ml_peg/app/utils/build_components.py``) applies the same rule to
 the weights themselves: a summarised benchmark or category that scores nothing for anyone
-has its weight overridden to 0, so the discarded column is dimmed, documented in its
-tooltip, and visibly weighted 0 rather than silently ignored.
+has its default weight overridden to 0, so it is visibly weighted 0 and says so in its
+header tooltip, rather than being silently ignored.
+
+A column dropped by an element filter is not treated this way, because overwriting the
+stored weight would discard the user's own setting once the filter is lifted. Instead
+``get_table_style`` dims any column holding no value for any model, exactly as it dims a
+zero-weighted one, so a column that stops counting always looks switched off whether it
+was weighted out, never run, or filtered away. Dimming is display only and reverses with
+the filter.
 
 Scoring and normalisation
 -------------------------

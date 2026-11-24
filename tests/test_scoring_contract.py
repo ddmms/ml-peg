@@ -10,7 +10,12 @@ from dash.dash_table import DataTable
 import numpy as np
 import pytest
 
-from ml_peg.analysis.utils.utils import calc_table_scores, normalize_metric
+from ml_peg.analysis.utils.utils import (
+    ZERO_WEIGHT_OPACITY,
+    calc_table_scores,
+    get_table_style,
+    normalize_metric,
+)
 from ml_peg.app.utils import register_callbacks
 
 
@@ -136,6 +141,34 @@ def test_column_with_data_for_no_model_is_discarded(absent):
     scored = calc_table_scores(rows, weights={"x": 1, "y": 1})
     assert scored[0]["Score"] == pytest.approx(0.8)
     assert scored[1]["Score"] == pytest.approx(0.6)
+
+
+def _dimmed_columns(style: list[dict]) -> set[str]:
+    """Collect the columns a style dims as switched off."""
+    return {
+        rule["if"]["column_id"]
+        for rule in style
+        if rule.get("opacity") == ZERO_WEIGHT_OPACITY
+    }
+
+
+def test_columns_scored_for_nobody_are_dimmed():
+    """A column excluded from every score looks switched off, however it got there."""
+    rows = [
+        {"MLIP": "A", "kept": 0.8, "off": 0.1, "unrun": None, "filtered": None},
+        {"MLIP": "B", "kept": 0.6, "off": 0.9, "unrun": "NaN", "filtered": None},
+    ]
+    style = get_table_style(rows, weights={"kept": 1, "off": 0, "unrun": 1})
+    assert _dimmed_columns(style) == {"off", "unrun", "filtered"}
+
+
+def test_reserved_columns_are_never_dimmed():
+    """``Score`` and ``link`` are not scored columns, so they stay fully opaque."""
+    rows = [
+        {"MLIP": "A", "x": 0.8, "Score": None, "link": "[](https://example.com)"},
+        {"MLIP": "B", "x": 0.6, "Score": None, "link": "[](https://example.com)"},
+    ]
+    assert not _dimmed_columns(get_table_style(rows))
 
 
 def test_every_model_scores_the_same_columns():

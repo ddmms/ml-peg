@@ -295,7 +295,9 @@ def build_summary_table(
             column["type"] = "numeric"
     columns = apply_column_decimals(columns, data)
 
-    style = get_table_style(data)
+    # Pass the weights so zero-weighted columns are dimmed in the first paint,
+    # rather than only once the sync callback re-styles the table on mount.
+    style = get_table_style(data, weights=weights)
     registry_configs = load_model_registry_configs()
     row_models: list[str] = []
     for row in data:
