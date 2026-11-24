@@ -1250,6 +1250,41 @@ def plot_violin(
     return plot_violin_decorator
 
 
+def label_colours(
+    values: np.ndarray, colorscale: str, zmin: float, zmax: float
+) -> list[str]:
+    """
+    Get a label colour that stays readable on each heatmap cell.
+
+    Parameters
+    ----------
+    values
+        Plotted values of the cells, ``nan`` for cells without a value.
+    colorscale
+        Plotly colourscale name of the heatmap.
+    zmin, zmax
+        Colour scale limits.
+
+    Returns
+    -------
+    list[str]
+        ``"white"`` on dark cells, ``"black"`` otherwise.
+    """
+    scale = pc.get_colorscale(colorscale)
+    span = zmax - zmin if zmax > zmin else 1.0
+    colours = []
+    for value in values:
+        if not np.isfinite(value):
+            colours.append("black")
+            continue
+        fraction = float(np.clip((value - zmin) / span, 0, 1))
+        red, green, blue = pc.unlabel_rgb(pc.sample_colorscale(scale, fraction)[0])
+        # Relative luminance of the cell colour (ITU-R BT.709 weights)
+        luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255
+        colours.append("white" if luminance < 0.45 else "black")
+    return colours
+
+
 def plot_periodic_table(
     title: str | None = None,
     colorbar_title: str | None = None,
@@ -1415,13 +1450,21 @@ def plot_periodic_table(
                 ys.append(row)
                 labels.append(text_grid[row, col] or element)
 
+            # Without limits, Plotly spans the colour scale over the finite values
+            finite = grid[np.isfinite(grid)]
+            colour_min = plot_min if plot_min is not None else finite.min(initial=0)
+            colour_max = plot_max if plot_max is not None else finite.max(initial=1)
+            colours = label_colours(
+                grid[ys, xs], colorscale, float(colour_min), float(colour_max)
+            )
+
             fig.add_trace(
                 go.Scatter(
                     x=xs,
                     y=ys,
                     mode="text",
                     text=labels,
-                    textfont={"size": 12, "color": "black"},
+                    textfont={"size": 12, "color": colours},
                     hoverinfo="skip",
                 )
             )

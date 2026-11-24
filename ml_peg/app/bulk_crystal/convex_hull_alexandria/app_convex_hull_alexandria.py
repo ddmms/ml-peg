@@ -5,15 +5,19 @@ from __future__ import annotations
 from functools import lru_cache
 import json
 
-from dash import Input, Output, State, callback
-from dash.dcc import Dropdown, Graph
+from dash import ALL, Input, Output, State, callback, clientside_callback, ctx
+from dash.dcc import Dropdown, Graph, Store
 from dash.exceptions import PreventUpdate
 from dash.html import H3, Div, P
 from plotly.io import read_json
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_cell
+from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_cell,
+    plot_with_download_controls,
+    struct_from_scatter,
+)
 from ml_peg.app.utils.load import read_density_plot_for_model
 from ml_peg.models import current_models
 from ml_peg.models.get_models import get_model_names
@@ -30,6 +34,13 @@ INFO_PATH = DATA_PATH / "info.json"
 HULL_MODEL_ID = f"{BENCHMARK_NAME}-hull-model"
 HULL_SYSTEM_ID = f"{BENCHMARK_NAME}-hull-system"
 HULL_FIGURE_ID = f"{BENCHMARK_NAME}-hull-figure"
+HULL_GRAPH_ID = f"{BENCHMARK_NAME}-hull-graph"
+HULL_STRUCT_ID = f"{BENCHMARK_NAME}-hull-struct"
+# Element clicked on a periodic table, and the model of that table
+HULL_ELEMENT_ID = f"{BENCHMARK_NAME}-hull-element"
+PERIODIC_TABLE_TYPE = f"{BENCHMARK_NAME}-periodic-table"
+# Structure of each point of the hulls, named by its ``mat_id``
+STRUCT_TEMPLATE = "/assets/bulk_crystal/convex_hull_alexandria/structures/{id}.xyz"
 
 # Metric column: density-scatter, violin and periodic-table files (None if not shown)
 PLOTS = {
@@ -81,7 +92,50 @@ def system_options(model: str) -> list[dict[str, str]]:
     return options
 
 
-def hull_view(model: str, system: str | None) -> Graph | P:
+def clicked_element(click_data: dict | None) -> str | None:
+    """
+    Get the element clicked on a periodic table.
+
+    Parameters
+    ----------
+    click_data
+        Clicked data of the periodic table.
+
+    Returns
+    -------
+    str | None
+        Symbol of the element, or ``None`` if an empty cell was clicked.
+    """
+    if not click_data:
+        return None
+    # Each cell's text starts with the symbol of its element, such as ``H<br>...``
+    element = click_data["points"][0].get("text", "").split("<br>")[0]
+    return element or None
+
+
+def element_system(model: str, element: str) -> str | None:
+    """
+    Get the system with the largest MAE that contains an element.
+
+    Parameters
+    ----------
+    model
+        Name of the model.
+    element
+        Chemical symbol.
+
+    Returns
+    -------
+    str | None
+        System, or ``None`` if no successful system of the model contains it.
+    """
+    for option in system_options(model):
+        if element in option["value"].split("-"):
+            return option["value"]
+    return None
+
+
+def hull_view(model: str, system: str | None) -> Div | P:
     """
     Load the PBE and model hulls of a system, as written by the analysis.
 
@@ -94,16 +148,16 @@ def hull_view(model: str, system: str | None) -> Graph | P:
 
     Returns
     -------
-    Graph | P
-        Side-by-side hull figure, or a message naming the model, and the system if
-        its figure is missing.
+    Div | P
+        Side-by-side hull figure with download controls, or a message naming the
+        model, and the system if its figure is missing.
     """
     if not system:
         return P(f"No successful systems for {model}.")
     path = DATA_PATH / model / "hulls" / f"{system}.json"
     if not path.exists():
         return P(f"No hull figure for {system} with {model}.")
-    return Graph(figure=read_json(path))
+    return plot_with_download_controls(Graph(id=HULL_GRAPH_ID, figure=read_json(path)))
 
 
 class ConvexHullAlexandriaApp(BaseApp):
@@ -139,7 +193,16 @@ class ConvexHullAlexandriaApp(BaseApp):
                 if table_stem is not None:
                     table_path = DATA_PATH / model / f"{table_stem}.json"
                     if table_path.exists():
-                        components.append(Graph(figure=read_json(table_path)))
+                        # Clicking an element shows the hulls of its worst system
+                        table = Graph(
+                            id={
+                                "type": PERIODIC_TABLE_TYPE,
+                                "model": model,
+                                "table": table_stem,
+                            },
+                            figure=read_json(table_path),
+                        )
+                        components.append(table)
                 if components:
                     plots[column_id] = Div(components)
             if plots:
@@ -152,11 +215,39 @@ class ConvexHullAlexandriaApp(BaseApp):
         )
 
         @callback(
+            Output(HULL_MODEL_ID, "value"),
+            Output(HULL_ELEMENT_ID, "data"),
+            Input(
+                {"type": PERIODIC_TABLE_TYPE, "model": ALL, "table": ALL}, "clickData"
+            ),
+            prevent_initial_call=True,
+        )
+        def select_element(click_data):
+            """
+            Select the model of the periodic table on which an element was clicked.
+
+            Parameters
+            ----------
+            click_data : list[dict | None]
+                Clicked data of each periodic table shown.
+
+            Returns
+            -------
+            tuple[str, str]
+                Model of the clicked table, and the clicked element.
+            """
+            element = clicked_element(ctx.triggered[0]["value"])
+            if not element or not isinstance(ctx.triggered_id, dict):
+                raise PreventUpdate
+            return ctx.triggered_id["model"], element
+
+        @callback(
             Output(HULL_SYSTEM_ID, "options"),
             Output(HULL_SYSTEM_ID, "value"),
             Input(HULL_MODEL_ID, "value"),
+            Input(HULL_ELEMENT_ID, "data"),
         )
-        def update_systems(model):
+        def update_systems(model, element):
             """
             List the systems of the selected model, worst first.
 
@@ -164,16 +255,23 @@ class ConvexHullAlexandriaApp(BaseApp):
             ----------
             model : str | None
                 Selected model.
+            element : str | None
+                Element last clicked on a periodic table.
 
             Returns
             -------
             tuple[list[dict[str, str]], str]
-                Dropdown options, and the system with the largest MAE.
+                Dropdown options, and the system with the largest MAE, containing the
+                element if one was just clicked.
             """
             if not model:
                 raise PreventUpdate
             options = system_options(model)
-            return options, options[0]["value"] if options else None
+            system = options[0]["value"] if options else None
+            # Only when an element was just clicked, not on a later change of model
+            if element and HULL_ELEMENT_ID in ctx.triggered_prop_ids.values():
+                system = element_system(model, element) or system
+            return options, system
 
         # Triggered by the system only, which is set again whenever the model changes,
         # so that the model and system always match
@@ -195,12 +293,23 @@ class ConvexHullAlexandriaApp(BaseApp):
 
             Returns
             -------
-            Graph | P
+            Div | P
                 Side-by-side hull figure, or a message if there is none.
             """
             if not model:
                 raise PreventUpdate
             return hull_view(model, system)
+
+        # A structure belongs to the hulls it was clicked on
+        clientside_callback(
+            "() => null",
+            Output(HULL_STRUCT_ID, "children", allow_duplicate=True),
+            Input(HULL_FIGURE_ID, "children"),
+            prevent_initial_call=True,
+        )
+        struct_from_scatter(
+            HULL_GRAPH_ID, HULL_STRUCT_ID, struct_template=STRUCT_TEMPLATE
+        )
 
 
 def get_app() -> ConvexHullAlexandriaApp:
@@ -220,7 +329,9 @@ def get_app() -> ConvexHullAlexandriaApp:
             "Alexandria PBE database (single points on the PBE structures), with "
             "the hull of each system built from the model energies. Click a metric "
             "to show the parity plot, error distributions and per-element errors. "
-            "Below, compare the PBE and model hulls of any system."
+            "Below, compare the PBE and model hulls of any system (or click an "
+            "element on a periodic table to show its worst system), and click a "
+            "point to show its structure."
         ),
         docs_url=DOCS_URL,
         table_path=DATA_PATH / "convex_hull_alexandria_metrics_table.json",
@@ -248,7 +359,9 @@ def get_app() -> ConvexHullAlexandriaApp:
                 ],
                 style={"display": "flex", "gap": "10px"},
             ),
+            Store(id=HULL_ELEMENT_ID),
             Div(id=HULL_FIGURE_ID),
+            Div(id=HULL_STRUCT_ID),
         ],
         info_path=INFO_PATH,
     )

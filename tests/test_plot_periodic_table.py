@@ -41,3 +41,21 @@ def test_plot_periodic_table_labels(tmp_path):
     assert labels["Fe"] == "Fe<br><span style='font-size:9px'>12.3</span>"
     # Missing values and elements without data are not printed
     assert (labels["O"], labels["Cu"]) == ("O", "Cu")
+
+
+def test_plot_periodic_table_label_colours(tmp_path):
+    """Test that labels are white on dark cells and black elsewhere."""
+    # With Viridis_r from 0 to 100, low values are light yellow, high ones dark purple
+    values = {"Fe": 5.0, "O": 95.0, "Cu": np.nan}
+    filename = tmp_path / "colours.json"
+    plot_periodic_table(
+        filename=str(filename), colorscale="Viridis_r", zmin=0, zmax=100
+    )(lambda: values)()
+    labels = read_json(filename).data[1]
+    colours = dict(zip(labels.text, labels.textfont.color, strict=True))
+    assert (colours["Fe"], colours["O"], colours["Cu"], colours["H"]) == (
+        "black",
+        "white",
+        "black",
+        "black",
+    )

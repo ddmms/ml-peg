@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
+
 from ase import Atoms
-from ase.io import write
+from ase.io import read, write
 from dash.dcc import Graph
 from dash.html import P
 import numpy as np
@@ -146,10 +148,12 @@ def test_signed_errors_and_hull_rows():
     assert signed_errors(comparison, "e_hull") == pytest.approx([50.0, -100.0, -50.0])
 
     rows = {row["mat_id"]: row for row in hull_rows(STRUCTURES, comparison)["Cu-Zn"]}
-    assert set(rows) == {"cuzn", "cuzn-2", "cu3zn", "Cu", "Zn"}
+    # The elements are identified by their ground states, to show them on click
+    assert set(rows) == {"cuzn", "cuzn-2", "cu3zn", "cu", "zn"}
     assert rows["cu3zn"]["x"] == 0.25
     assert rows["cu3zn"]["formula"] == "Cu3Zn"
-    assert (rows["Cu"]["x"], rows["Zn"]["x"]) == (0, 1)
+    assert (rows["cu"]["x"], rows["zn"]["x"]) == (0, 1)
+    assert (rows["cu"]["formula"], rows["zn"]["formula"]) == ("Cu", "Zn")
     assert rows["cuzn"]["e_form_pred"] == pytest.approx(-350.0)
     assert (rows["cuzn"]["stable_ref"], rows["cuzn"]["stable_pred"]) == (True, False)
     assert (rows["cu3zn"]["stable_ref"], rows["cu3zn"]["stable_pred"]) == (False, True)
@@ -167,6 +171,10 @@ def test_signed_errors_and_hull_rows():
     # model
     assert list(fig.data[0].x) == [0, 0.5, 1]
     assert list(fig.data[3].x) == [0, 0.25, 0.5, 1]
+    # Clicked points identify their structures: unstable then stable, per hull
+    assert set(fig.data[1].customdata) == {"cuzn-2", "cu3zn"}
+    assert set(fig.data[2].customdata) == {"cu", "zn", "cuzn"}
+    assert set(fig.data[5].customdata) == {"cu", "zn", "cuzn-2", "cu3zn"}
 
     failed = compare_model(STRUCTURES, REFERENCE_HULL, REFERENCE | {"zn": np.nan})
     assert signed_errors(failed, "e_hull") == []
@@ -242,7 +250,44 @@ def test_hull_view(tmp_path, monkeypatch):
     go.Figure(layout={"title": "Cu-Zn"}).write_json(
         tmp_path / "model" / "hulls" / "Cu-Zn.json"
     )
-    assert isinstance(hull_view("model", "Cu-Zn"), Graph)
+    view = hull_view("model", "Cu-Zn")
+    # The figure comes with the download controls, and an id for the viewer
+    graph = view.children[-1]
+    assert isinstance(graph, Graph)
+    assert graph.id == app_convex_hull_alexandria.HULL_GRAPH_ID
+
+
+def test_periodic_table_link(tmp_path, monkeypatch):
+    """Test choosing the worst system of an element clicked on a periodic table."""
+    monkeypatch.setattr(app_convex_hull_alexandria, "DATA_PATH", tmp_path)
+    app_convex_hull_alexandria.system_options.cache_clear()
+    (tmp_path / "model").mkdir()
+    with open(tmp_path / "model" / "hull_systems.json", "w", encoding="utf8") as f:
+        json.dump({"Ar-C": 700.0, "Cu-Zn": 30.0, "Fe-O": 20.0, "Cu-O": 10.0}, f)
+
+    clicked_element = app_convex_hull_alexandria.clicked_element
+    assert clicked_element({"points": [{"text": "Cu<br>Value: 12.3"}]}) == "Cu"
+    assert clicked_element({"points": [{"text": ""}]}) is None
+    assert clicked_element(None) is None
+
+    element_system = app_convex_hull_alexandria.element_system
+    assert element_system("model", "O") == "Fe-O"
+    assert element_system("model", "Cu") == "Cu-Zn"
+    # Matching whole symbols, so C does not match Cu
+    assert element_system("model", "C") == "Ar-C"
+    assert element_system("model", "Si") is None
+    app_convex_hull_alexandria.system_options.cache_clear()
+
+
+def test_structure_files(tmp_path, monkeypatch):
+    """Test writing one structure file per ``mat_id``, without the reference data."""
+    monkeypatch.setattr(analyse_convex_hull_alexandria, "STRUCTS_PATH", tmp_path)
+    analyse_convex_hull_alexandria.structure_files.__wrapped__(STRUCTURES)
+    assert sorted(path.stem for path in tmp_path.glob("*.xyz")) == sorted(REFERENCE)
+    atoms = read(tmp_path / "cu3zn.xyz")
+    assert atoms.get_chemical_formula() == "Cu3Zn"
+    assert atoms.cell.lengths() == pytest.approx([3, 3, 3])
+    assert "dft_energy" not in atoms.info
 
 
 def test_classification_f1():

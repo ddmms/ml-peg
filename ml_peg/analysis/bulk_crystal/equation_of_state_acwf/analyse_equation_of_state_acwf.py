@@ -73,6 +73,14 @@ PERIODIC_TABLES = {
     "ε (no +U or magnetic)": "epsilon_unflagged_periodic_table",
     "Δ": "delta_periodic_table",
 }
+# Format of the values printed below the element symbols of the periodic tables
+PERIODIC_TABLE_FORMATS = {
+    "ε": ".2f",
+    "ν": ".1f",
+    "Unphysical E(V)": ".0f",
+    "ε (no +U or magnetic)": ".2f",
+    "Δ": ".1f",
+}
 
 # Metrics that exclude the structures flagged by ``is_flagged``, and their measure
 UNFLAGGED_METRICS = {"ε (no +U or magnetic)": "ε"}
@@ -528,6 +536,7 @@ def periodic_tables(comparisons: dict[str, dict[str, dict] | None]) -> None:
                 zmin=DEFAULT_THRESHOLDS[measure]["good"],
                 zmax=DEFAULT_THRESHOLDS[measure]["bad"],
                 colorscale="Viridis_r",
+                value_format=PERIODIC_TABLE_FORMATS[measure],
             )(element_values)(comparison, measure)
 
 

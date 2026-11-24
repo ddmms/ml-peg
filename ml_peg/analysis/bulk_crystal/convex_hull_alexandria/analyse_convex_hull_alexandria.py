@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 
 from ase import Atoms
-from ase.io import read
+from ase.io import read, write
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -30,6 +30,8 @@ from ml_peg.models.get_models import get_model_names
 MODELS = get_model_names(current_models)
 CALC_PATH = CALCS_ROOT / "bulk_crystal" / "convex_hull_alexandria" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "bulk_crystal" / "convex_hull_alexandria"
+# Structures shown when a point of a hull is clicked, the same for every model
+STRUCTS_PATH = OUT_PATH / "structures"
 
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
@@ -641,11 +643,17 @@ def hull_rows(
     -------
     dict[str, list[dict]]
         For each system that did not fail, its elements and binaries, with
-        ``mat_id``, ``formula``, ``x`` (fraction of the second element of the
-        system), the reference and model ``e_form`` and ``e_hull`` (meV/atom,
-        rounded to 0.1), and whether it is on the reference and model hulls.
+        ``mat_id`` (that of the ground state for an element), ``formula``, ``x``
+        (fraction of the second element of the system), the reference and model
+        ``e_form`` and ``e_hull`` (meV/atom, rounded to 0.1), and whether it is on
+        the reference and model hulls.
     """
     atoms_by_id = {atoms.info["mat_id"]: atoms for atoms in structures}
+    unary_ids = {
+        atoms.get_chemical_symbols()[0]: mat_id
+        for mat_id, atoms in atoms_by_id.items()
+        if len(set(atoms.get_chemical_symbols())) == 1
+    }
     rows = defaultdict(list)
     for mat_id, result in comparison.items():
         if result["e_hull_pred"] is None:
@@ -672,7 +680,9 @@ def hull_rows(
     zero |= {"stable_ref": True, "stable_pred": True}
     for system, system_rows in rows.items():
         for x, element in enumerate(system.split("-")):
-            system_rows.append({"mat_id": element, "formula": element, "x": x} | zero)
+            system_rows.append(
+                {"mat_id": unary_ids[element], "formula": element, "x": x} | zero
+            )
     return dict(rows)
 
 
@@ -728,6 +738,8 @@ def hull_figure(data: dict[str, list], system: str, model: str) -> go.Figure:
         subplot_titles=("PBE (Alexandria)", model),
     )
     x = np.array(data["x"])
+    # Identifies the structure to show when a point is clicked
+    mat_ids = np.array(data["mat_id"])
     hover = [
         f"{formula} ({mat_id})"
         for formula, mat_id in zip(data["formula"], data["mat_id"], strict=True)
@@ -765,6 +777,7 @@ def hull_figure(data: dict[str, list], system: str, model: str) -> go.Figure:
                 "showscale": col == 1,
             },
             text=np.array(texts)[~stable],
+            customdata=mat_ids[~stable],
             hoverinfo="text",
             name="Unstable",
             showlegend=col == 1,
@@ -777,6 +790,7 @@ def hull_figure(data: dict[str, list], system: str, model: str) -> go.Figure:
             mode="markers",
             marker={"color": "black", "size": 10},
             text=np.array(texts)[stable],
+            customdata=mat_ids[stable],
             hoverinfo="text",
             name="Stable",
             showlegend=col == 1,
@@ -807,6 +821,25 @@ def hull_figure(data: dict[str, list], system: str, model: str) -> go.Figure:
         legend={"orientation": "h", "y": -0.2},
     )
     return fig
+
+
+@pytest.fixture
+def structure_files(structures: list[Atoms]) -> None:
+    """
+    Write each structure to its own file, to show it when its point is clicked.
+
+    Parameters
+    ----------
+    structures
+        Unary ground states and binaries.
+    """
+    STRUCTS_PATH.mkdir(parents=True, exist_ok=True)
+    for atoms in structures:
+        # Only the cell and positions are needed to show the structure
+        write(
+            STRUCTS_PATH / f"{atoms.info['mat_id']}.xyz",
+            Atoms(atoms.symbols, positions=atoms.positions, cell=atoms.cell, pbc=True),
+        )
 
 
 @pytest.fixture
@@ -848,6 +881,7 @@ def test_convex_hull_alexandria(
     e_form_density: dict[str, dict],
     violins: None,
     hull_figures: None,
+    structure_files: None,
 ) -> None:
     """
     Run the Alexandria convex-hull analysis.
@@ -866,6 +900,8 @@ def test_convex_hull_alexandria(
         Violin plots of the signed errors (side effect only).
     hull_figures
         PBE and model hulls of each system (side effect only).
+    structure_files
+        Structure of each point of the hulls (side effect only).
     """
     get_struct_info(
         calc_path=CALC_PATH,
