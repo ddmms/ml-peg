@@ -111,7 +111,7 @@ Input structures:
   solids including anisotropy, J. Phys. Chem. Lett. 16, 8714 (2025); data record:
   Materials Cloud Archive, DOI 10.24435/materialscloud:kt-kd (CC-BY-4.0).
 * The ¹³C and ¹⁵N structures are those of S. A. Ramos, L. J. Mueller and G. J. O.
-  Beran, Faraday Discuss. 255, 119 (2024), optimised with PBE-D3(BJ).
+  Beran, Faraday Discuss. 255, 119 (2025), optimised with PBE-D3(BJ).
 
 Experimental reference data:
 
@@ -123,7 +123,7 @@ Experimental reference data:
   10844 (2012); N. Mifsud et al., Phys. Chem. Chem. Phys. 8, 3418 (2006); C. Gervais
   et al., Magn. Reson. Chem. 42, 445 (2004); M. Cordova et al., Nat. Commun. 12, 2964
   (2021).
-* ¹³C and ¹⁵N: Ramos, Mueller & Beran (2024), ESI Tables S5 and S7.
+* ¹³C and ¹⁵N: Ramos, Mueller & Beran (2025), ESI Tables S5 and S7.
 
 
 NMR Shift Tensors

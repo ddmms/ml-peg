@@ -4,7 +4,7 @@ Predict 13C NMR shielding tensors for the experimental tensor benchmark.
 Structures and GIPAW-PBE reference tensors are the 13C structures of the ShiftML3
 data record (Kellner et al., J. Phys. Chem. Lett. 16, 8714 (2025); Materials Cloud
 Archive, DOI 10.24435/materialscloud:kt-kd, CC-BY-4.0), relaxed with PBE-D3(BJ) by
-Ramos, Mueller & Beran, Faraday Discuss. 255, 119 (2024). Experimental principal
+Ramos, Mueller & Beran, Faraday Discuss. 255, 119 (2025). Experimental principal
 components for 20 of them are from Hartman et al., J. Chem. Phys. 143, 102809
 (2015).
 
