@@ -173,3 +173,78 @@ Input structures:
 * Density from: Yang, F., Wang, D., Wang, X. & Liu, Z. Volumetric Properties of
   1-Butyl-3-methylimidazolium Chloride with Organic Solvents. J. Chem. Eng. Data 62,
   3958-3966 (2017). https://doi.org/10.1021/acs.jced.7b00654
+
+
+Reference geometry stability
+============================
+
+Summary
+-------
+
+Ability to preserve the ground-state geometry of small organic molecules during
+energy minimization. Structures are 200 neutral and 20 charged molecules
+selected from the OpenFF industry dataset to maximize chemical diversity.
+The relaxation protocol and scoring follow `MLIPAudit (Wehrhan et al., 2025)
+<https://arxiv.org/abs/2511.20487>`_.
+
+Metrics
+-------
+
+1. Average RMSD
+
+ASE BFGS relaxes each molecule for up to 1,000 steps with a maximum force
+threshold of 0.01 eV/Å. Analysis reads the two OpenFF reference sets and each model’s raw minimization
+output from the calculation directory. It aligns the heavy atoms of the final
+geometry to the reference, then computes the mean RMSD within each subset.
+**Avg RMSD** gives the neutral and charged subset means equal weight, over all 200
+neutral and 20 charged molecules, including any that did not reach the force
+threshold. **Avg RMSD (relaxed only)** averages just the molecules that did reach
+it. Both RMSD columns have zero weight by default.
+
+2. Geometry Score
+
+MLIP Audit gives each molecule a score of one up to 0.075 Å RMSD and applies
+its exponential decay above this threshold.
+**Geometry Score** averages all 220 contributions, scoring a molecule that did not
+reach the force threshold within 1,000 steps as zero rather than scoring its
+unrelaxed geometry.
+
+**Convergence Rate** reports the fraction of the 220 molecules that reached the
+force threshold. It has zero default weight.
+
+These three metrics are NaN unless the model produced a geometry for every
+molecule, since a partial dataset gives neither an average nor a rate comparable
+with a full run. A molecule missing from the calculation output, a minimization
+that raised an error, or a molecule that came apart all make the run partial. For
+Geometry Score this also makes the default leaderboard score NaN.
+
+**Geometry Score (MLIP Audit)** averages over the molecules recorded in the
+archive, applying no convergence criterion, so it is directly comparable with
+MLIP Audit's own score. Recorded failures contribute zero and omitted
+molecules are excluded from the denominator. This diagnostic has zero default
+weight. Select any score column to see the RMSD histogram, which covers the
+relaxed molecules only.
+Select either RMSD column to open the per-molecule plot, then click a point to compare the OpenFF reference
+geometry (first frame) with the relaxed model geometry (second frame). Molecules
+that did not reach the force threshold are plotted as open markers.
+The viewer aligns the heavy atoms and displays all atoms in both frames.
+
+Computational cost
+------------------
+
+Medium: 220 short geometry optimizations of small organic molecules.
+
+Data availability
+-----------------
+
+Input structures:
+
+* 200 neutral and 20 charged molecules from the OpenFF Industry Benchmark
+  Season 1 dataset, selected for chemical diversity as described in MLIP Audit.
+
+Reference data:
+
+* Reference geometries optimised at the B3LYP-D3(BJ)/DZVP level of theory, from:
+  L. D'Amore et al., Collaborative Assessment of Molecular Geometries and Energies
+  from the Open Force Field. J. Chem. Inf. Model. 62, 6094 (2022).
+  https://doi.org/10.1021/acs.jcim.2c01185

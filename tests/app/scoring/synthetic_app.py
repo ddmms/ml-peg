@@ -61,7 +61,7 @@ def serve(root: Path):
         ),
         ("Beta", "B3", ["mlip_audit"], ["C"], [(1, 1, 0.9), (3, 3, 0.7), (1, 1, 0.9)]),
     ]
-    apps, layouts, tables, frameworks = {}, {}, {}, {}
+    apps, layouts, tables, frameworks, names = {}, {}, {}, {}, {}
     for category, name, tags, elements, values in specs:
         folder = assets / category / name
         folder.mkdir(parents=True)
@@ -94,8 +94,15 @@ def serve(root: Path):
         layouts.setdefault(category, {})[name] = benchmark.layout
         tables.setdefault(category, {})[name] = benchmark.table
         frameworks.setdefault(category, {})[name] = tags
+        names.setdefault(category, {})[name] = name
 
-    build_app.get_all_tests = lambda **kwargs: (apps, layouts, tables, frameworks)
+    build_app.get_all_tests = lambda **kwargs: (
+        apps,
+        layouts,
+        tables,
+        frameworks,
+        names,
+    )
     weight_presets.WEIGHT_PRESETS["Test Beta"] = ["Beta"]
     build_app.build_full_app(app)
     server = make_server("127.0.0.1", 0, app.server, threaded=True)
