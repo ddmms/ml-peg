@@ -92,7 +92,7 @@ ShiftML3 GPU    18 s      13 s   14 s    45 s
 ShiftML4 GPU    13 s      11 s   12 s    36 s
 ======== ====== ========= ====== ======= =======
 
-Peak memory on the CPU is about 1.1 GB per model.
+Peak memory on the CPU is 1.0–1.4 GB per model and benchmark.
 
 ShiftML4 is faster because its committee has 7 members to ShiftML3's 8. Times depend
 on the hardware and thread count. The input data (0.25 MB) is downloaded once and
@@ -154,15 +154,8 @@ sites, and the RMSE and MAE are taken over all components.
 Computational cost
 ------------------
 
-Low. Measured as for the isotropic benchmark (21 structures, 1639 atoms; full shielding
-tensors):
-
-======== ========= ============== ===========
-Model    Load (s)  Prediction (s) Peak memory
-======== ========= ============== ===========
-ShiftML3 3.6       63             1.1 GB
-ShiftML4 3.7       48             1.0 GB
-======== ========= ============== ===========
+Low (21 structures, 1639 atoms; full shielding tensors). Run times on CPU and GPU are
+given with the isotropic benchmark, in one table for all three benchmarks.
 
 The input data (0.09 MB) is downloaded once and cached.
 
@@ -212,14 +205,8 @@ rank of the correct structure and its RMSE are also shown, for information.
 Computational cost
 ------------------
 
-Low. Measured as for the isotropic benchmark (29 structures, 4214 atoms):
-
-======== ========= ============== ===========
-Model    Load (s)  Prediction (s) Peak memory
-======== ========= ============== ===========
-ShiftML3 3.9       125            1.1 GB
-ShiftML4 1.3       118            1.4 GB
-======== ========= ============== ===========
+Low (29 structures, 4214 atoms). Run times on CPU and GPU are given with the isotropic
+benchmark, in one table for all three benchmarks.
 
 
 Data availability
