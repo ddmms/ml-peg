@@ -403,9 +403,11 @@ Benchmark speed
 Multi-day: one search takes from ten minutes to six and a half hours, and the
 thirty of one model add up to 46 to 59 hours on an NVIDIA H200 for the four
 MACE models measured, with four searches sharing each GPU. The searches are
-independent, so they can be spread over GPUs. The check step adds roughly one
-to five hours per model; it is marked multi-day with the search it judges, so
-that one option runs both.
+independent, so they can be spread over GPUs. The check step adds 25 to 80
+minutes per model on one H200 (the five models measured, run side by side); it
+is marked multi-day with the search it judges, so that one option runs both.
+The analysis of those five models together takes about an hour and a half on
+CPU.
 
 Data availability
 -----------------
