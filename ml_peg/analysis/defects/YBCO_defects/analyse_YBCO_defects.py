@@ -93,27 +93,45 @@ def _name_class(stem: str) -> tuple[str, str]:
     return name, KIND_TO_CLASS[kind]
 
 
-# Defect labels and elements (for filtering), from the mock outputs. Perfect cell and
-# references live in _energetics/ and are excluded by the glob.
+def _kind(name: str) -> str:
+    """
+    Get the file prefix of a defect ("vac", "anti" or "int") from its name.
+
+    Parameters
+    ----------
+    name
+        Defect name (e.g. "O1", "Ba_Cu1", "Oint1").
+
+    Returns
+    -------
+    str
+        File prefix used by the calc step.
+    """
+    if "_" in name:
+        return "anti"
+    if name.startswith("Oint"):
+        return "int"
+    return "vac"
+
+
+# Elements (for filtering), from the mock outputs. Perfect cell and references live in
+# _energetics/ and are excluded by the glob.
 try:
-    INFO = get_struct_info(
+    get_struct_info(
         calc_path=CALC_PATH,
         glob_pattern="*-traj.extxyz",
         index="-1",
         write_info=True,
         write_structs=False,
         out_path=OUT_PATH,
-        include_filenames=True,
     )
 except ValueError:
-    INFO = {"filenames": [], "elements": []}
+    pass
 
-DEFECTS, CLASSES = [], []
-for _stem in INFO["filenames"]:
-    _n, _c = _name_class(_stem)
-    DEFECTS.append(_n)
-    CLASSES.append(_c)
-CLASS = dict(zip(DEFECTS, CLASSES, strict=True))
+# Defects in reference order, so missing model outputs give NaN rather than dropping out
+STEMS = [f"{_kind(name)}_{name}-traj" for name in REFERENCE_FE]
+DEFECTS = list(REFERENCE_FE)
+CLASSES = [_name_class(stem)[1] for stem in STEMS]
 REF_FLAT = [REFERENCE_FE[d] for d in DEFECTS]
 
 
@@ -182,14 +200,14 @@ def _formation_energies(model_name: str) -> dict[str, float]:
         if not traj.is_file():
             mu[elem] = np.nan
             continue
-        atoms = read(traj, index="-1")
         try:
+            atoms = read(traj, index="-1")
             mu[elem] = float(atoms.get_potential_energy()) / len(atoms)
         except Exception:  # noqa: BLE001
             mu[elem] = np.nan
 
     out: dict[str, float] = {}
-    for stem, name, cls in zip(INFO["filenames"], DEFECTS, CLASSES, strict=True):
+    for stem, name, cls in zip(STEMS, DEFECTS, CLASSES, strict=True):
         e_def = _energy(model_dir / f"{stem}.extxyz")
         delta = e_def - e_perf
         if cls == "vacancy":
@@ -232,7 +250,7 @@ def _reaction_energies(model_name: str) -> dict[str, float]:
     title="YBCO defect formation energies",
     x_label="Predicted formation energy / eV",
     y_label="CP2K PBE formation energy / eV",
-    hoverdata={"Defect": DEFECTS, "Class": CLASSES},
+    hoverdata={"Class": CLASSES, "Defect": DEFECTS},
 )
 def ybco_defects() -> dict[str, list]:
     """
@@ -241,20 +259,23 @@ def ybco_defects() -> dict[str, list]:
     Returns
     -------
     dict[str, list]
-        Reference and predicted formation energies, ordered as ``INFO["filenames"]``.
+        Reference and predicted formation energies, ordered as ``DEFECTS``.
     """
     results = {"ref": REF_FLAT} | {mlip: [] for mlip in MODELS}
     for model_name in MODELS:
         model_dir = CALC_PATH / model_name
         fe = _formation_energies(model_name)
-        for stem, name in zip(INFO["filenames"], DEFECTS, strict=True):
+        for stem, name in zip(STEMS, DEFECTS, strict=True):
             results[model_name].append(fe.get(name, np.nan))
             # copy structure to app dir for visualisation
             src = model_dir / f"{stem}.extxyz"
             if src.is_file():
                 structs_dir = OUT_PATH / model_name
                 structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / f"{name}.xyz", read(src, index="-1"))
+                try:
+                    write(structs_dir / f"{name}.xyz", read(src, index="-1"))
+                except Exception:  # noqa: BLE001
+                    pass
     return results
 
 

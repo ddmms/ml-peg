@@ -359,18 +359,18 @@ energies to about this level, which is also the scale of the DFT finite-size err
 (arXiv:2511.22592), so differences below it are within the reference uncertainty. For
 vacancies and antisites the bad threshold is 0.6 eV: because defect concentrations depend
 exponentially on the formation energy, an absolute error beyond a few tenths of an eV
-makes them unreliable, so an absolute threshold is used. For interstitials the bad threshold is loosened to 0.8 eV.
----------------
-
-The reference is CP2K PBE. Models trained to a different level of theory carry a red
-level-of-theory flag.
+makes them unreliable, so an absolute threshold is used. For interstitials the bad threshold is loosened to 0.8 eV: all interstitial formation
+energies share the same :math:`-\mu_\text{O}` term, so an inaccurate oxygen chemical
+potential shifts them by a constant that inflates the RMSD without changing their ordering.
 
 Computational cost
 ------------------
 
-Medium/Long: 28 geometry optimisations of a 936-atom supercell per model (1 perfect
-cell, 4 elemental references, 23 defects). A few hours on CPU per PBE-family model;
-the molecular models are considerably slower on the defect cells.
+Fast: 28 geometry optimisations per model: the 936-atom perfect supercell, 23 defect
+supercells and 4 small elemental reference cells. With mace-mp-0a, this takes about 6 min
+per model on one AMD MI250X GPU (~10-25 s per defect), or about an hour on a 48-core AMD
+EPYC 7A53 CPU node (2-5 min per defect). The molecular models (mace-omol, mace-polar-1)
+are much slower, taking 13-41 hours on the same CPU node.
 
 Data availability
 -----------------

@@ -17,6 +17,7 @@ from ase import Atoms
 from ase.filters import FrechetCellFilter
 from ase.io import read
 from janus_core.calculations.geom_opt import GeomOpt
+import numpy as np
 import pytest
 
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -34,6 +35,9 @@ VACANCIES = ["O1", "O2", "O3", "O4", "Cu1", "Cu2", "Ba", "Y"]
 ANTISITES = ["Ba_Cu1", "Ba_Cu2", "Ba_Y", "Y_Ba", "Y_Cu1", "Y_Cu2", "Cu_Y", "Cu_Ba"]
 INTERSTITIALS = ["Oint1", "Oint2", "Oint3", "Oint4", "Oint5", "Oint6", "Oint7"]
 REFERENCES = ["O2", "Ba", "Cu", "Y"]
+
+FMAX = 0.02
+MAX_ATTEMPTS = 3
 
 
 def _read_struct(path: Path) -> Atoms:
@@ -73,15 +77,20 @@ def _relax(atoms: Atoms, calc, prefix: Path, relax_cell: bool) -> None:
         Whether to relax the cell (True for host/references, False for defects).
     """
     atoms.calc = copy(calc)
-    GeomOpt(
-        struct=atoms,
-        fmax=0.02,
-        write_traj=True,
-        file_prefix=prefix,
-        filter_class=FrechetCellFilter if relax_cell else None,
-    ).run()
+    for _ in range(MAX_ATTEMPTS):
+        GeomOpt(
+            struct=atoms,
+            fmax=FMAX,
+            write_traj=True,
+            file_prefix=prefix,
+            filter_class=FrechetCellFilter if relax_cell else None,
+        ).run()
+        if np.abs(atoms.get_forces()).max() < FMAX:
+            return
+    warn(f"{prefix.name} not converged after {MAX_ATTEMPTS} attempts", stacklevel=2)
 
 
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_ybco_defects(mlip: tuple[str, Any]) -> None:
     """

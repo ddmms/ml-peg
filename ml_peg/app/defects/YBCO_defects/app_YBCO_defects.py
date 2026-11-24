@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from dash import Dash
+from dash.dcc import Graph
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils.build_callbacks import (
     plot_from_table_column,
-    struct_from_scatter,
+    struct_from_multi_scatters,
 )
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "YBCO defects"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
@@ -23,6 +20,37 @@ DOCS_URL = (
 )
 DATA_PATH = APP_ROOT / "data" / "defects" / "YBCO_defects"
 INFO_PATH = DATA_PATH / "info.json"
+
+
+def _model_structs(scatter: Graph, asset_dir: str) -> list[list[str]]:
+    """
+    Get relaxed structure paths for each model trace and point of a parity plot.
+
+    Parameters
+    ----------
+    scatter
+        Parity plot, with one trace per model and point labels as the last
+        ``customdata`` entry.
+    asset_dir
+        Asset directory containing a subdirectory of structures per model.
+
+    Returns
+    -------
+    list[list[str]]
+        Structure paths indexed by trace then point, empty where unavailable.
+    """
+    structs = []
+    for trace in (scatter.figure or {}).get("data", []):
+        model = trace.get("name")
+        structs.append(
+            [
+                f"/assets/{asset_dir}/{model}/{point[-1]}.xyz"
+                if (DATA_PATH / model / f"{point[-1]}.xyz").exists()
+                else ""
+                for point in trace.get("customdata") or []
+            ]
+        )
+    return structs
 
 
 class YBCODefectsApp(BaseApp):
@@ -34,15 +62,9 @@ class YBCODefectsApp(BaseApp):
             DATA_PATH / "figure_ybco_defects.json", id=f"{BENCHMARK_NAME}-figure"
         )
         scatter_reactions = read_plot(
-            DATA_PATH / "figure_ybco_reactions.json", id=f"{BENCHMARK_NAME}-figure"
+            DATA_PATH / "figure_ybco_reactions.json",
+            id=f"{BENCHMARK_NAME}-reactions-figure",
         )
-
-        # one structure per scatter point, from the first model
-        structs_dir = DATA_PATH / MODELS[0]
-        structs = [
-            f"/assets/defects/YBCO_defects/{MODELS[0]}/{f.stem}.xyz"
-            for f in sorted(structs_dir.glob("*.xyz"))
-        ]
 
         plot_from_table_column(
             table_id=self.table_id,
@@ -55,10 +77,10 @@ class YBCODefectsApp(BaseApp):
             },
         )
 
-        struct_from_scatter(
+        struct_from_multi_scatters(
             scatter_id=f"{BENCHMARK_NAME}-figure",
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
+            structs=_model_structs(scatter, "defects/YBCO_defects"),
             mode="struct",
         )
 
@@ -87,11 +109,3 @@ def get_app() -> YBCODefectsApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    ybco_defects_app = get_app()
-    full_app.layout = ybco_defects_app.layout
-    ybco_defects_app.register_callbacks()
-    full_app.run(port=8056, debug=True)
