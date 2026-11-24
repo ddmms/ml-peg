@@ -28,7 +28,11 @@
     greyed out. If you do not want to include this failed benchmark in the overall score,
     you can assign it a weight of 0 and the box will now show a valid score, or apply
     the element filter with any elements involved in the benchmark. A greyed-out box
-    with no tint means that the element filter has applied to the benchmark
+    with no tint means there is no result to show, either because the element filter
+    has applied to the benchmark, or because the benchmark has not yet been run for any
+    model. A whole column shown faded is one that counts towards nobody's score: either
+    you have weighted it 0, or no model has a result in it, in which case it is
+    discarded rather than blocking everyone's score
   docs_url: null
 
 - question: "How are scores calculated?"
@@ -69,7 +73,8 @@
     useful if a model does not support certain elements, or simply to help narrow down
     benchmarks to those within a domain of interest. We provide shortcuts for common
     combinations of elements to assist with this. Filtered benchmarks are indicated by
-    greyed-out boxes
+    greyed-out boxes, and a benchmark the filter empties completely is faded, to show
+    that it no longer counts towards any score
   docs_url: null
 
 - question: "How can I add my model?"
