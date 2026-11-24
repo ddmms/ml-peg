@@ -16,12 +16,14 @@ import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
+    FOLMSBEE_DATASET_FILENAME,
     ConformerSelectionModelOutput,
 )
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    check_dataset,
     load_metrics_config,
     mae,
 )
@@ -34,6 +36,8 @@ from ml_peg.models.get_models import load_models
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map()
 
+BENCHMARK = MlPegConformerSelectionBenchmark.name
+
 CALC_PATH = CALCS_ROOT / "conformers" / "Folmsbee" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "conformers" / "Folmsbee"
 
@@ -41,6 +45,9 @@ METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
 )
+
+
+DATASET_PATH = CALC_PATH / BENCHMARK / FOLMSBEE_DATASET_FILENAME
 
 
 @cache
@@ -53,9 +60,14 @@ def labels() -> list[str]:
     list[str]
         List of all system names.
     """
+    check_dataset(DATASET_PATH)
+
     mock_path = CALC_PATH / "mock" / "model_output.json"
     if not mock_path.exists():
-        raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
+        pytest.skip(
+            f"{mock_path} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
     raw = mock_path.read_text()
     output = ConformerSelectionModelOutput.model_validate_json(raw)
     benchmark = MlPegConformerSelectionBenchmark(
@@ -94,6 +106,8 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
     """
+    check_dataset(DATASET_PATH)
+
     results = {}
     for model_name in MODELS:
         model_path = CALC_PATH / model_name / "model_output.json"

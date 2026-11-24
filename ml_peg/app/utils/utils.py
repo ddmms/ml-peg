@@ -10,6 +10,7 @@ from numbers import Number
 from pathlib import Path
 from typing import Any, TypedDict
 
+from dash.dash_table import DataTable
 import dash.dash_table.Format as TableFormat
 from matplotlib import colormaps
 import numpy as np
@@ -39,6 +40,37 @@ class ThresholdEntry(TypedDict):
 
 
 Thresholds = dict[str, ThresholdEntry]
+
+
+def default_weight_store_data(table: DataTable) -> dict[str, float]:
+    """
+    Build initial weight-store data covering every configurable table column.
+
+    Missing values are filled with ``1.0``. The category and overall summary
+    weight stores are mounted at the top level of the app, rather than inside an
+    individual page, so a weight changed from one page (such as a framework
+    page) must still find a complete set for a category page that is not open.
+
+    This sets the store's initial data only. A persisted session store replaces
+    it on mount, so the weight callbacks must still cope with absent columns.
+
+    Parameters
+    ----------
+    table
+        Table whose configurable columns need explicit stored weights.
+
+    Returns
+    -------
+    dict[str, float]
+        Weight mapping containing one entry for every non-reserved table column
+        (i.e. not Score etc).
+    """
+    weights = dict(getattr(table, "weights", None) or {})
+    for column in table.columns:
+        column_id = column.get("id")
+        if column_id not in RESERVED_TABLE_COLUMNS:
+            weights.setdefault(column_id, 1.0)
+    return weights
 
 
 def store_data_equal(left: Any, right: Any) -> bool:

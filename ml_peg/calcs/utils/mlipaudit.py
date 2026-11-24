@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import functools
+import logging
+from typing import Any
 
+from ase import Atoms
+from mlip.simulation import SimulationState
 from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
     ConformerSelectionBenchmark,
     FoldingStabilityBenchmark,
     InferenceSpeedBenchmark,
     ReactivityBenchmark,
+    ReferenceGeometryStabilityBenchmark,
     RingPlanarityBenchmark,
     StabilityBenchmark,
     TautomersBenchmark,
@@ -17,11 +22,17 @@ from mlipaudit.benchmarks import (
 from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import (
     NudgedElasticBandBenchmark,
 )
+from mlipaudit.benchmarks.reference_geometry_stability import (
+    reference_geometry_stability as rgs,
+)
+from mlipaudit.utils.simulation import get_simulation_engine
+
+logger = logging.getLogger(__name__)
 
 
-class MlPegBondLengthDistributionBenchmark(BondLengthDistributionBenchmark):
+class MlPegAuditBenchmark:
     """
-    ``BondLengthDistributionBenchmark`` wired up for ml-peg's ASE calculators.
+    Mixin wiring up mlipaudit benchmarks for ml-peg's ASE calculators.
 
     ``skip_if_elements_missing`` is disabled because ml-peg's ASE ``Calculator``
     objects do not expose the set of elements the underlying model supports, so
@@ -32,53 +43,33 @@ class MlPegBondLengthDistributionBenchmark(BondLengthDistributionBenchmark):
     skip_if_elements_missing = False
 
 
-class MlPegConformerSelectionBenchmark(ConformerSelectionBenchmark):
+class MlPegBondLengthDistributionBenchmark(
+    MlPegAuditBenchmark, BondLengthDistributionBenchmark
+):
+    """``BondLengthDistributionBenchmark`` wired up for ml-peg."""
+
+
+class MlPegConformerSelectionBenchmark(
+    MlPegAuditBenchmark, ConformerSelectionBenchmark
+):
+    """``ConformerSelectionBenchmark`` wired up for ml-peg."""
+
+
+class MlPegFoldingStabilityBenchmark(MlPegAuditBenchmark, FoldingStabilityBenchmark):
+    """``FoldingStabilityBenchmark`` wired up for ml-peg."""
+
+
+class MlPegGrambowBarrierHeightsBenchmark(MlPegAuditBenchmark, ReactivityBenchmark):
+    """``ReactivityBenchmark`` wired up for ml-peg."""
+
+
+class MlPegInferenceSpeedBenchmark(MlPegAuditBenchmark, InferenceSpeedBenchmark):
     """
-    ConformerSelectionBenchmark wired up for ml-peg's ASE calculators.
-
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
-    """
-
-    skip_if_elements_missing = False
-
-
-class MlPegFoldingStabilityBenchmark(FoldingStabilityBenchmark):
-    """
-    ``FoldingStabilityBenchmark`` wired up for ml-peg's ASE calculators.
-
-    ``skip_if_elements_missing`` is disabled because ml-peg's ASE ``Calculator``
-    objects do not expose the set of elements the underlying model supports, so
-    the benchmark cannot decide up front whether to skip. Missing element errors
-    are instead handled at runtime.
-    """
-
-    skip_if_elements_missing = False
-
-
-class MlPegGrambowBarrierHeightsBenchmark(ReactivityBenchmark):
-    """
-    ReactivityBenchmark wired up for ml-peg's ASE calculators.
-
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
-    """
-
-    skip_if_elements_missing = False
-
-
-class MlPegInferenceSpeedBenchmark(InferenceSpeedBenchmark):
-    """
-    InferenceSpeedBenchmark wired up for ml-peg's ASE calculators.
-
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
+    ``InferenceSpeedBenchmark`` wired up for ml-peg.
 
     The MD runs are disabled, as ml-peg only reports forward-pass timings and the
     MD runs would otherwise dominate the benchmark's runtime.
     """
-
-    skip_if_elements_missing = False
 
     @functools.cached_property
     def _md_backends(self) -> list[str]:
@@ -93,47 +84,70 @@ class MlPegInferenceSpeedBenchmark(InferenceSpeedBenchmark):
         return []
 
 
-class MlPegRingPlanarityBenchmark(RingPlanarityBenchmark):
+class MlPegRingPlanarityBenchmark(MlPegAuditBenchmark, RingPlanarityBenchmark):
+    """``RingPlanarityBenchmark`` wired up for ml-peg."""
+
+
+class MlPegTautomersBenchmark(MlPegAuditBenchmark, TautomersBenchmark):
+    """``TautomersBenchmark`` wired up for ml-peg."""
+
+
+class MlPegStabilityBenchmark(MlPegAuditBenchmark, StabilityBenchmark):
+    """``StabilityBenchmark`` wired up for ml-peg."""
+
+
+class MlPegGrambowOrganicsBenchmark(MlPegAuditBenchmark, NudgedElasticBandBenchmark):
+    """``NudgedElasticBandBenchmark`` wired up for ml-peg."""
+
+
+def run_simulation_saving_final_frame(
+    atoms: Atoms, force_field: Any, **kwargs: Any
+) -> SimulationState | None:
     """
-    ``RingPlanarityBenchmark`` wired up for ml-peg's ASE calculators.
+    Run a simulation through mlip, saving the frame it finished on.
 
-    ``skip_if_elements_missing`` is disabled because ml-peg's ASE ``Calculator``
-    objects do not expose the set of elements the underlying model supports, so
-    the benchmark cannot decide up front whether to skip. Missing element errors
-    are instead handled at runtime.
+    Replaces ``mlipaudit.utils.run_simulation``. mlip copies recorded frames into the
+    simulation state only every ``log_interval`` steps, so a minimization that
+    converges before the final step never saves its relaxed geometry.
+
+    Parameters
+    ----------
+    atoms
+        Structure to simulate.
+    force_field
+        Calculator or force field to run the simulation with.
+    **kwargs
+        Simulation configuration options.
+
+    Returns
+    -------
+    SimulationState | None
+        Final simulation state, or `None` if the simulation failed.
     """
+    engine = get_simulation_engine(atoms=atoms, force_field=force_field, **kwargs)
 
-    skip_if_elements_missing = False
+    try:
+        engine.run()
+        # Record the frame the simulation finished on, then flush the interval.
+        engine._update_temporary_state()
+        engine._update_state(engine.state.step, 0.0)
+    except Exception as exc:
+        logger.info("Error running simulation on system %s: %s", atoms, exc)
+        return None
 
-
-class MlPegTautomersBenchmark(TautomersBenchmark):
-    """
-    TautomersBenchmark wired up for ml-peg's ASE calculators.
-
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
-    """
-
-    skip_if_elements_missing = False
-
-
-class MlPegStabilityBenchmark(StabilityBenchmark):
-    """
-    StabilityBenchmark wired up for ml-peg's ASE calculators.
-
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
-    """
-
-    skip_if_elements_missing = False
+    return engine.state
 
 
-class MlPegGrambowOrganicsBenchmark(NudgedElasticBandBenchmark):
-    """
-    NudgedElasticBandBenchmark wired up for ml-peg's ASE calculators.
+class MlPegReferenceGeometryStabilityBenchmark(
+    MlPegAuditBenchmark, ReferenceGeometryStabilityBenchmark
+):
+    """``ReferenceGeometryStabilityBenchmark`` wired up for ml-peg."""
 
-    ``skip_if_elements_missing`` is disabled because ASE ``Calculator`` objects
-    do not expose ``allowed_atomic_numbers``.
-    """
-
-    skip_if_elements_missing = False
+    def run_model(self) -> None:
+        """Minimize each molecule, saving the geometry it converged to."""
+        run_simulation = rgs.run_simulation
+        rgs.run_simulation = run_simulation_saving_final_frame
+        try:
+            super().run_model()
+        finally:
+            rgs.run_simulation = run_simulation

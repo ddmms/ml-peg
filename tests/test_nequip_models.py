@@ -130,14 +130,16 @@ def test_nequip_falls_back_to_eager_model(monkeypatch):
 
 
 def test_eager_nequip_model_uses_gpu_kernels(monkeypatch):
-    """Eager models use GPU kernels, as compiled models do."""
+    """Eager models use GPU kernels, in eval mode, as compiled models do."""
     pytest.importorskip("nequip")
     import nequip.model.modify_utils
+    import torch
 
     applied = []
 
     def modify(model, modifiers):
         applied.extend(modifiers)
+        model.swapped = torch.nn.Linear(1, 1)  # new modules start in training mode
         return model
 
     monkeypatch.setitem(sys.modules, "openequivariance", SimpleNamespace())
@@ -145,8 +147,9 @@ def test_eager_nequip_model_uses_gpu_kernels(monkeypatch):
     monkeypatch.setattr(nequip.model.modify_utils, "modify", modify)
     model = load_models(("nequip-oam-s-0p2",))["nequip-oam-s-0p2"]
 
-    dataclasses.replace(model, compile=False).get_calculator(precision="high")
+    calc = dataclasses.replace(model, compile=False).get_calculator(precision="high")
     assert applied == [{"modifier": OEQ}]
+    assert not calc.model.swapped.training
 
 
 def test_nequip_registry_options(tmp_path):
@@ -182,6 +185,7 @@ def test_oam_s_compiled_matches_eager(name):
     assert model.get_calculator(precision="high").model is compiled.model
     assert torch.get_default_dtype() == default_dtype
     assert eager.model.metadata["model_dtype"] == "float32"
+    assert not any(module.training for module in eager.model.modules())
     assert set(eager.model.metadata["type_names"].split()) == OAM_ELEMENTS
 
     cell = bulk("NaCl", "rocksalt", a=5.64, cubic=True) * (2, 2, 2)
