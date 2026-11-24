@@ -115,9 +115,9 @@ CHECKS_SUFFIX = "_checks.npz"
 _UMASK = os.umask(0)
 os.umask(_UMASK)
 DATA_URI = (
-    "https://github.com/VladCarare/mlp-landscapes/releases/download/landscape17-data-v1"
+    "https://github.com/VladCarare/mlp-landscapes/releases/download/landscape17-data-v2"
 )
-DATA_FILENAME = "Landscape17.zip"
+DATA_FILENAME = "Landscape17_v2.zip"
 STARTS_FILENAME = "landscape17_starts.zip"
 
 CHARGE = 0
@@ -154,11 +154,11 @@ ENERGY_CRITERION = 5e-3
 # Symmetry copies -- one minimum with equivalent atoms relabelled -- are kept
 # apart rather than merged into one node, so that a saddle between two copies
 # can be proposed: pair selection never pairs a node with itself. Of the
-# reference's 17 saddles recorded as joining a minimum to itself, 2 end in a
+# reference's 15 saddles recorded as joining a minimum to itself, 2 end in a
 # relabelled copy and need this (azobenzene ts1_1_0, malonaldehyde ts1_1_1);
-# 13 join a conformer to its mirror image, which the search keeps apart anyway,
-# as its comparison does not allow inversion; and 2 are mislabelled in the
-# reference. This departs from the published runs, which merged copies.
+# the other 13 join a conformer to its mirror image, which the search keeps
+# apart anyway, as its comparison does not allow inversion. This departs from
+# the published runs, which merged copies.
 KEEP_SYMMETRY_COPIES = True
 
 MAX_DISPLACEMENT = 180.0
@@ -222,7 +222,7 @@ def _data_dir() -> Path:
         Directory holding the six molecule directories.
     """
     return download_github_data(filename=DATA_FILENAME, github_uri=DATA_URI) / (
-        "Landscape17"
+        "Landscape17_v2"
     )
 
 

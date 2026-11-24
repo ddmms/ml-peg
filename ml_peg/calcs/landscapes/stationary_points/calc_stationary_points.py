@@ -57,9 +57,9 @@ MODELS = load_models(current_models)
 
 OUT_PATH = Path(__file__).parent / "outputs"
 DATA_URI = (
-    "https://github.com/VladCarare/mlp-landscapes/releases/download/landscape17-data-v1"
+    "https://github.com/VladCarare/mlp-landscapes/releases/download/landscape17-data-v2"
 )
-DATA_FILENAME = "Landscape17.zip"
+DATA_FILENAME = "Landscape17_v2.zip"
 
 # Every Landscape17 molecule is a neutral closed-shell singlet.
 CHARGE = 0
@@ -112,7 +112,7 @@ def _data_dir() -> Path:
         Directory holding the six molecule directories.
     """
     return download_github_data(filename=DATA_FILENAME, github_uri=DATA_URI) / (
-        "Landscape17"
+        "Landscape17_v2"
     )
 
 
@@ -864,7 +864,7 @@ def test_reconverge_transition_states(mlip: tuple[str, Any]) -> None:
 # not dominated by the model's own numerical noise. Each structure costs 6N
 # force evaluations, so the whole reference set is a few thousand calls.
 HESSIAN_STEP = 1e-3
-HESSIAN_FILENAME = "landscape17_hessians.zip"
+HESSIAN_FILENAME = "landscape17_hessians_v2.zip"
 
 
 def _hessian_dir() -> Path:
@@ -877,7 +877,7 @@ def _hessian_dir() -> Path:
         Directory holding one subdirectory per molecule.
     """
     return download_github_data(filename=HESSIAN_FILENAME, github_uri=DATA_URI) / (
-        "landscape17_hessians"
+        "landscape17_hessians_v2"
     )
 
 

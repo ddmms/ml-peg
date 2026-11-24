@@ -196,6 +196,12 @@ Input structures:
   a testing and training arena for machine learned potentials. npj Comput.
   Mater. (2025). https://doi.org/10.1038/s41524-025-01878-x
 
+Both landscapes benchmarks use the corrected release, Landscape17 v2
+(https://github.com/VladCarare/mlp-landscapes/releases/tag/landscape17-data-v2).
+The original records two aspirin saddles as joining a minimum to itself, while
+their own DFT steepest-descent paths join minima 4 and 10, and minima 6 and 9;
+v2 records them as such. No geometry, energy or path frame changes.
+
 Reference data:
 
 * Energies at the stationary points, and energies and forces along the paths:
@@ -426,10 +432,4 @@ Reference data:
   Psi4: Cărare, V. et al. Global properties of the energy landscape: a testing
   and training arena for machine learned potentials. npj Comput. Mater. (2025).
   https://doi.org/10.1038/s41524-025-01878-x
-
-Two of the reference saddles are recorded as joining a minimum to itself while
-their own DFT steepest-descent paths join two different minima: aspirin
-ts4_4_0 joins minima 10 and 4, and ts6_6_0 minima 6 and 9. No model can be
-credited with their connectivity as recorded, in this benchmark or the
-stationary points one, which caps connectivity at 65 of 67 for every model,
-DFT included. A corrected release of Landscape17 will follow.
+  (Landscape17 v2; see the stationary points data availability above)
