@@ -22,13 +22,13 @@ import tempfile
 from typing import TYPE_CHECKING, Any, Literal, get_args
 from warnings import warn
 
+from ase.calculators.calculator import Calculator, PropertyNotImplementedError
 from mlipx import GenericASECalculator as MlipxGenericASECalc
 from mlipx.nodes.generic_ase import Device
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
-    from ase.calculators.calculator import Calculator
     from ase.calculators.mixing import SumCalculator
 
 Precision = Literal["low", "high"]
@@ -1273,6 +1273,123 @@ class MockCalc(SumCalc):
         return MockCalculator()
 
 
+class _SO3LRCalculator(Calculator):
+    """
+    Route ASE calls to the periodic or isolated SO3LR backend on one device.
+
+    Parameters
+    ----------
+    make_backend
+        Cached factory accepting a stress flag and returning an unused backend.
+    device
+        JAX device for model evaluation.
+    calculate_stress
+        Whether to compute stress for fully periodic structures.
+    """
+
+    def __init__(self, make_backend, device, calculate_stress):
+        """
+        Initialise the device adapter.
+
+        Parameters
+        ----------
+        make_backend
+            Factory for unused SO3LR backends.
+        device
+            Selected JAX device.
+        calculate_stress
+            Enable the periodic stress calculation.
+        """
+        super().__init__()
+        self._make_backend = make_backend
+        self._device = device
+        self._calculate_stress = calculate_stress
+        self._backends = {}
+        template = make_backend(calculate_stress)
+        self.implemented_properties = [
+            name
+            for name in template.implemented_properties
+            if name != "stress" or calculate_stress
+        ]
+        self.precision = template.precision
+        self.dtype = template.dtype
+
+    def calculate(self, atoms=None, properties=("energy",), system_changes=None):
+        """
+        Evaluate the structure with a compatible SO3LR backend.
+
+        Parameters
+        ----------
+        atoms
+            Structure to evaluate, or the preceding structure if omitted.
+        properties
+            ASE properties requested for this calculation.
+        system_changes
+            Changes reported by ASE since the previous calculation.
+        """
+        import jax
+
+        if atoms is None:
+            atoms = self.atoms
+        pbc = atoms.get_pbc()
+        periodic = bool(pbc.all())
+        if pbc.any() and not periodic:
+            raise ValueError("SO3LR requires either full periodicity or no periodicity")
+        stress = self._calculate_stress and periodic
+        if "stress" in properties and not stress:
+            raise PropertyNotImplementedError("SO3LR stress requires a periodic cell")
+        if periodic and atoms.cell.volume == 0:
+            raise ValueError("SO3LR requires a nonzero-volume periodic cell")
+
+        super().calculate(atoms, properties, system_changes)
+        with jax.default_device(self._device):
+            if periodic not in self._backends:
+                # The template has no evaluation state. Keep its loaded model and
+                # compiled functions, but give each wrapper its own backend state.
+                self._backends[periodic] = copy.copy(self._make_backend(stress))
+            backend = self._backends[periodic]
+            # The pinned SO3LR backend already checks the atom count on its
+            # exact-periodic path. GLP requires us to invalidate both caches.
+            if (
+                backend.neighbors is not None
+                and backend.neighbors.reference_positions.shape[0] != len(atoms)
+            ):
+                backend.neighbors = None
+                backend.spatial_partitioning = None
+
+            backend.calculate(atoms, properties, system_changes)
+            self.results = backend.results
+
+    def __copy__(self):
+        """
+        Copy the calculator configuration.
+
+        Returns
+        -------
+        Calculator
+            A calculator with empty ASE and neighbour caches.
+        """
+        return type(self)(self._make_backend, self._device, self._calculate_stress)
+
+    def __deepcopy__(self, memo):
+        """
+        Copy the calculator while sharing its compiled backend templates.
+
+        Parameters
+        ----------
+        memo
+            Objects already visited by the current deepcopy operation.
+
+        Returns
+        -------
+        Calculator
+            A calculator with independent evaluation state.
+        """
+        calculator = self.__copy__()
+        memo[id(self)] = calculator
+        return calculator
+
+
 @dataclasses.dataclass(kw_only=True)
 class SO3LRCalc(SumCalc):
     """SO3LR ASE calculator with explicit JAX precision and device placement."""
@@ -1297,7 +1414,7 @@ class SO3LRCalc(SumCalc):
         Returns
         -------
         Calculator
-            SO3LR ASE calculator with its original public API preserved.
+            ASE calculator for isolated and fully periodic SO3LR predictions.
 
         Raises
         ------
@@ -1340,35 +1457,28 @@ class SO3LRCalc(SumCalc):
             self.class_name,
             reserved=("device", "default_dtype", "dtype", "precision"),
         )
-        with jax.default_device(selected):
-            calculator = target(precision=dtype, **options)
+        calculate_stress = options.pop("calculate_stress", False)
 
-        # SO3LR has no device constructor argument. Creation alone is insufficient:
-        # later geometry/neighbour arrays must also use the selected default device.
-        calculate = calculator.calculate
-
-        @wraps(calculate)
-        def calculate_on_device(*args, **calc_kwargs):
+        @cache
+        def make_backend(stress):
             """
-            Evaluate ASE properties under the calculator's JAX device context.
+            Build a template with the requested differentiation kernel.
 
             Parameters
             ----------
-            *args
-                Positional arguments forwarded to the backend ASE calculation.
-            **calc_kwargs
-                Keyword arguments forwarded to the backend ASE calculation.
+            stress
+                Whether the backend should build its stress calculation.
 
             Returns
             -------
-            None
-                Results are stored on the backend calculator.
+            Calculator
+                An unevaluated SO3LR backend.
             """
+            # The backend selects its JAX differentiation function at construction.
             with jax.default_device(selected):
-                return calculate(*args, **calc_kwargs)
+                return target(precision=dtype, calculate_stress=stress, **options)
 
-        calculator.calculate = calculate_on_device
-        return calculator
+        return _SO3LRCalculator(make_backend, selected, calculate_stress)
 
 
 @dataclasses.dataclass(kw_only=True)

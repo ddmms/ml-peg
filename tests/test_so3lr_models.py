@@ -6,9 +6,13 @@ Prepared with AI assistance; human review is still required before submission.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from copy import copy, deepcopy
 import sys
 from types import ModuleType, SimpleNamespace
 
+from ase.build import molecule
+from ase.calculators.calculator import Calculator, PropertyNotImplementedError
+import numpy as np
 import pytest
 
 from ml_peg.models.get_models import load_models
@@ -18,7 +22,7 @@ from ml_peg.models.models import SO3LRCalc
 @pytest.fixture
 def backend(monkeypatch):
     """Provide a recording JAX/SO3LR pair without optional model dependencies."""
-    state = SimpleNamespace(current=None, x64=False, calls=[], gpu=True)
+    state = SimpleNamespace(current=None, x64=False, calls=[], evaluations=[], gpu=True)
     jax = ModuleType("jax")
 
     def update(key, value):
@@ -44,6 +48,30 @@ def backend(monkeypatch):
     jax.default_device = default_device
     so3lr = ModuleType("so3lr")
 
+    class Backend(Calculator):
+        implemented_properties = ["energy", "forces", "stress"]
+
+        def __init__(self, precision, stress):
+            super().__init__()
+            self.precision = precision
+            self.dtype = np.dtype(precision)
+            self.stress = stress
+            self.neighbors = self.spatial_partitioning = None
+
+        def calculate(self, atoms, properties, system_changes):
+            super().calculate(atoms, properties, system_changes)
+            assert not self.stress or atoms.pbc.all()
+            if self.spatial_partitioning is None:
+                assert self.neighbors is None
+                self.neighbors = SimpleNamespace(reference_positions=atoms.positions)
+                self.spatial_partitioning = object()
+            else:
+                assert self.neighbors.reference_positions.shape == atoms.positions.shape
+            state.evaluations.append((state.current, self))
+            self.results = {"energy": float((atoms.numbers**2).sum())}
+            if self.stress:
+                self.results["stress"] = np.zeros(6)
+
     def calculator(
         model=None,
         precision=None,
@@ -55,10 +83,7 @@ def backend(monkeypatch):
             {"model": model, "precision": precision, "device": state.current}
         )
 
-        def calculate(atoms=None, properties=None, system_changes=None):
-            return state.current, atoms
-
-        return SimpleNamespace(calculate=calculate)
+        return Backend(precision, calculate_stress)
 
     so3lr.So3lrCalculator = calculator
     monkeypatch.setitem(sys.modules, "jax", jax)
@@ -97,9 +122,62 @@ def test_so3lr_device_used_for_construction_and_later_ase_calls(
     )
     assert backend.calls[-1]["device"] == expected
     assert backend.current is None
-    for atoms in ["original geometry", "changed geometry and cell"]:
-        assert calc.calculate(atoms=atoms) == (expected, atoms)
+    atoms = molecule("H2O")
+    atoms.calc = calc
+    for shift in (0, 0.02):
+        atoms.positions[0, 0] += shift
+        assert np.isfinite(atoms.get_potential_energy())
+        assert backend.evaluations[-1][0] == expected
         assert backend.current is None
+
+
+def test_so3lr_switches_stress_mode_on_one_calculator(backend):
+    """Use the periodic stress kernel only for truly periodic structures."""
+    calc = load_models("so3lr-v1")["so3lr-v1"].get_calculator(precision="high")
+    atoms = molecule("H2O")
+    atoms.calc = calc
+    isolated_energy = atoms.get_potential_energy()
+    atoms.cell = [30, 30, 30]
+    assert atoms.get_potential_energy() == isolated_energy
+    with pytest.raises(PropertyNotImplementedError):
+        atoms.get_stress()
+    atoms.pbc = True
+    assert atoms.get_stress().shape == (6,)
+    atoms.pbc = False
+    assert atoms.get_potential_energy() == isolated_energy
+    assert "stress" not in calc.results
+    assert len(backend.calls) == 2
+
+
+def test_so3lr_rebuilds_glp_cache_when_atom_count_changes(backend):
+    """Keep a compatible neighbour state for same-sized molecules."""
+    calc = SO3LRCalc().get_calculator(precision="low")
+    partitions = []
+    for formula in ("H2O", "SH2", "CH4", "H2O"):
+        atoms = molecule(formula)
+        atoms.calc = calc
+        assert atoms.get_potential_energy() == (atoms.numbers**2).sum()
+        partitions.append(backend.evaluations[-1][1].spatial_partitioning)
+    assert partitions[0] is partitions[1]
+    assert len(set(partitions)) == 3
+    assert len(backend.calls) == 1
+
+
+@pytest.mark.parametrize("clone", [copy, deepcopy])
+def test_so3lr_copied_calculator_updates_its_own_state(backend, clone):
+    """A copy of an evaluated calculator has independent ASE and neighbour state."""
+    original = molecule("H2O")
+    original.calc = SO3LRCalc().get_calculator(precision="high")
+    energy = original.get_potential_energy()
+    original_backend = backend.evaluations[-1][1]
+    neighbours = original_backend.neighbors
+    other = molecule("CH4")
+    other.calc = clone(original.calc)
+    assert other.get_potential_energy() != energy
+    assert backend.evaluations[-1][1] is not original_backend
+    assert original_backend.neighbors is neighbours
+    assert original.calc.results["energy"] == energy
+    assert len(backend.calls) == 1
 
 
 def test_so3lr_explicit_unavailable_gpu_does_not_fall_back_to_cpu(backend):

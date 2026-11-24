@@ -75,9 +75,11 @@ families:
       H/C/N/O/F/P/S/Cl model, not the current package's Tauri default.
       Electrostatics and dispersion are already included; no D3 is added.
       Periodic calculations use the configured 12 Angstrom real-space cutoff
-      and 2 Angstrom dispersion damping. Isolated systems use the backend's
-      nonperiodic long-range treatment. The original code and weights are MIT
-      licensed. SO3LR Tauri models are outside this entry's scope.
+      and 2 Angstrom dispersion damping. Stress is available for fully periodic
+      cells. Isolated structures use the nonperiodic backend for energy and
+      forces, even if they carry a bounding box. One calculator can evaluate
+      molecules with different atom counts. The original code and weights are
+      MIT licensed. SO3LR Tauri models are outside this entry's scope.
 
   Vivace:
     class_names: [MLFFCalculator]
