@@ -1,0 +1,10 @@
+implementers:
+  - name: "Niccolò Di Eugenio"
+    github: "nicdieugenio"
+
+contributors: []
+
+citations:
+  - bibtex_key: dieugenio2025ybco
+    role: reference_data
+    detail: PBE
