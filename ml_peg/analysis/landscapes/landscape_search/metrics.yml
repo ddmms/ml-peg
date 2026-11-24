@@ -76,20 +76,6 @@ metrics:
     unit: fraction
     tooltip: "Fraction of the model's settled minima with the molecule's bonding but one of its bonds more than 20% away from its mean length over the DFT minima. Invisible to the row above, which compares bonding graphs: a bond crushed to two thirds of its length is still a bond, so the graph is unchanged and the structure reads as the right molecule at an impossible geometry. No DFT minimum has one. The flagged structures are written out beside the model's results."
     level_of_theory: ωB97X/6-31G(d)
-  Unsettled minima:
-    good: 0.0
-    bad: 0.2
-    weight: 0
-    unit: fraction
-    tooltip: "Fraction of the structures the search reported as minima that the model does not hold as minima: more than 0.01 eV/Å of force left on an atom, or a downhill direction steeper than 0.001 eV/Å² once translation and rotation are projected out. topsearch adds the minima its saddle searches descend into without checking either. They are left out of every other row."
-    level_of_theory: ωB97X/6-31G(d)
-  Saddles not first-order:
-    good: 0.0
-    bad: 0.2
-    weight: 0
-    unit: fraction
-    tooltip: "Fraction of the structures the search reported as transition states whose curvature under the model is not that of a first-order saddle: no downhill direction steeper than 0.001 eV/Å², or a second more than a tenth as steep as the first. topsearch ends a saddle search on the force alone. They are left out of every other row."
-    level_of_theory: ωB97X/6-31G(d)
   Minima near-missed:
     good: 0.0
     bad: 0.2

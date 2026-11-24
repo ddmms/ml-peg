@@ -1392,9 +1392,7 @@ def _compare_molecule(
         "connectivity_preserved": preserved,
         "off_reference_minima": minima_kinds.count(OFF_REFERENCE),
         "distorted_minima": minima_kinds.count(DISTORTED),
-        "unsettled_minima": minima_kinds.count(NOT_STATIONARY),
         "extra_minima": _extra(minima_kinds, minima_distances),
-        "not_first_order_saddles": saddle_kinds.count(NOT_STATIONARY),
         "extra_saddles": _extra(saddle_kinds, saddle_distances),
     }
     return results, distorted
@@ -1719,12 +1717,6 @@ def _metric_values(comparison: dict[str, dict | None]) -> dict[str, dict]:
         ),
         "Distorted minima": _pooled_per_model(
             comparison, "distorted_minima", "n_settled_minima"
-        ),
-        "Unsettled minima": _pooled_per_model(
-            comparison, "unsettled_minima", "n_found_minima"
-        ),
-        "Saddles not first-order": _pooled_per_model(
-            comparison, "not_first_order_saddles", "n_found_saddles"
         ),
         "Minima near-missed": _pooled_per_model(
             comparison, "minima_near_missed", "n_reference_minima"

@@ -748,20 +748,19 @@ def test_a_molecule_where_nothing_was_found_scores_zero(plain_rmsd) -> None:
 # --- the model's checks -------------------------------------------------------
 
 
-def test_an_unsettled_minimum_is_counted_and_not_matched(plain_rmsd) -> None:
+def test_an_unsettled_minimum_is_not_matched(plain_rmsd) -> None:
     """A structure the model does not hold as a minimum is not one."""
     reference = _reference([0.0])
     results, _ = _compare_molecule(
         reference, [_minimum(0.0, 0, 0, stationary=False)], []
     )
     assert results["minima_matched"] == 0
-    assert results["unsettled_minima"] == 1
     assert results["n_settled_minima"] == 0
     assert results["extra_minima"] == 0
     assert results["minima_nearest"] == [np.inf]
 
 
-def test_a_saddle_of_the_wrong_order_is_counted_and_not_matched(plain_rmsd) -> None:
+def test_a_saddle_of_the_wrong_order_is_not_matched(plain_rmsd) -> None:
     """Nor is a saddle the model's curvature says is not first-order."""
     reference = _reference([0.0, np.pi], [np.pi / 2], [(0, 1)])
     results, _ = _compare_molecule(
@@ -770,7 +769,6 @@ def test_a_saddle_of_the_wrong_order_is_counted_and_not_matched(plain_rmsd) -> N
         [_saddle(np.pi / 2, 0, (0, 1), stationary=False)],
     )
     assert results["saddles_matched"] == 0
-    assert results["not_first_order_saddles"] == 1
     assert results["connectivity_preserved"] == 0
 
 
@@ -786,14 +784,13 @@ def test_a_saddle_into_an_unsettled_minimum_joins_nothing(plain_rmsd) -> None:
     assert results["connectivity_preserved"] == 0
 
 
-def test_an_unphysical_saddle_is_counted_and_not_matched(plain_rmsd) -> None:
+def test_an_unphysical_saddle_is_not_matched(plain_rmsd) -> None:
     """A saddle holding a bond at an impossible length is not matched."""
     reference = _reference([0.0, np.pi], [np.pi / 2], [(0, 1)])
     stretched = _scaled_oh(_saddle(np.pi / 2, 0, (0, 1)), 1.25)
     results, _ = _compare_molecule(
         reference, [_minimum(0.0, 0, 0), _minimum(np.pi, 0, 1)], [stretched]
     )
-    assert results["not_first_order_saddles"] == 0
     assert results["saddles_matched"] == 0
 
 
@@ -1490,7 +1487,7 @@ def test_a_structure_the_model_does_not_hold_anchors_no_group(plain_rmsd) -> Non
     ]
     results, _ = _compare_molecule(reference, found, [])
     assert results["minima_matched"] == 2
-    assert results["unsettled_minima"] == 1
+    assert results["n_found_minima"] == 3
 
 
 def test_a_group_never_stretches_past_its_radius(plain_rmsd) -> None:
@@ -1642,9 +1639,7 @@ def _molecule_results(**counts: float) -> dict:
         "connectivity_preserved": 5,
         "off_reference_minima": 2,
         "distorted_minima": 1,
-        "unsettled_minima": 7,
         "extra_minima": 11,
-        "not_first_order_saddles": 13,
         "extra_saddles": 14,
     }
     results.update(counts)
@@ -1682,8 +1677,6 @@ def test_every_row_has_its_own_numerator_and_denominator() -> None:
         "Extra saddles": 28 / 50,
         "Off-reference minima": 4 / 10,
         "Distorted minima": 1 / 10,
-        "Unsettled minima": 14 / 18,
-        "Saddles not first-order": 26 / 24,
         "Minima near-missed": 2 / 16,
         "Matched minima RMSD (median)": 0.03,
         "Matched saddle RMSD (median)": 0.03,
@@ -1808,8 +1801,6 @@ def test_every_metric_is_registered() -> None:
     assert {
         "Extra minima",
         "Extra saddles",
-        "Unsettled minima",
-        "Saddles not first-order",
         "Distorted minima",
     } <= set(DEFAULT_THRESHOLDS)
     assert DEFAULT_WEIGHTS["Extra minima"] == 0.25

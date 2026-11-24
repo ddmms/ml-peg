@@ -308,23 +308,17 @@ structure the model does not hold is never merged with ones it does.
    bonding graphs and cannot see these: a bond crushed to two thirds of its
    length is still a bond, so the structure reads as the right molecule at an
    impossible geometry. The flagged structures are written out beside the
-   model's results.
+   model's results. Like the off-reference fraction, it is a fraction of the
+   minima the model holds.
 
-7. Unsettled minima and saddles not first-order
-
-   The fractions of what the search reported as minima and as transition
-   states that the model does not hold as such, as defined above. They are left
-   out of every other metric; the off-reference and distorted fractions are of
-   the minima the model holds.
-
-8. RMSD to the nearest found structure
+7. RMSD to the nearest found structure
 
    For every reference minimum and transition state, the distance to the
    closest structure the model holds, matched or not; a reference with nothing
    found near it counts as 10 Å, past any real distance. Unlike item 2 this does not condition on success, so it does not
    flatter a model that found two structures precisely and missed the rest.
 
-9. Minima near-missed
+8. Minima near-missed
 
    Reference minima whose closest found structure lies between the 0.3 Å
    matching radius and 0.45 Å. Recovery is a pass rate over a hard radius, so
@@ -362,9 +356,9 @@ The thresholds:
   the 0.3 Å matching radius, which is its *bad*.
 * **Extra structures.** *Good* is 0. *Bad* is 0.5, half as many extra
   structures as the reference holds, a judgement call.
-* **Bonding and shape** (off-reference, distorted, unsettled, not first-order,
-  near-missed). *Good* is 0, which every DFT structure satisfies, and *bad*
-  0.2, one in five, a judgement call.
+* **Bonding and shape** (off-reference, distorted, near-missed). *Good* is 0,
+  which every DFT structure satisfies, and *bad* 0.2, one in five, a judgement
+  call.
 
 Protocol
 --------
@@ -406,8 +400,8 @@ the searches that had not finished.
 Benchmark speed
 ---------------
 
-Multi-day: one search takes from ten minutes to six and a half hours, and the
-thirty of one model add up to 46 to 59 hours on an NVIDIA H200 for the four
+Multi-day: one search takes from ten minutes to seven and a half hours, and the
+thirty of one model add up to 45 to 78 hours on an NVIDIA H200 for the five
 MACE models measured, with four searches sharing each GPU. The searches are
 independent, so they can be spread over GPUs. The check step adds 25 to 80
 minutes per model on one H200 (the five models measured, run side by side); it
