@@ -12,6 +12,7 @@ from typing import Any
 import warnings
 
 from dash import dash_table
+from matplotlib.ticker import SymmetricalLogLocator
 import numpy as np
 import pandas as pd
 import plotly.colors as pc
@@ -30,6 +31,7 @@ from ml_peg.analysis.utils.utils import (
     DENSITY_SAMPLE_SEED,
     calc_table_scores,
     sample_density_grid,
+    symlog_transform,
 )
 from ml_peg.app.utils.plot_helpers import PARITY_LINE_NAME
 from ml_peg.app.utils.utils import Thresholds
@@ -49,6 +51,7 @@ def plot_parity(
     symbol_labels: dict[str, str] | None = None,
     log: bool = False,
     plot_combined: bool = True,
+    group_colors: dict[str, str] | None = None,
 ) -> Callable:
     """
     Plot parity plot of MLIP results against reference data.
@@ -67,8 +70,8 @@ def plot_parity(
         Filename to save plot as JSON. Default is "parity.json".
     symbol_by
         Per-point list of group values. When provided, each point receives a
-        marker symbol based on its group, while trace colours still represent
-        models. Legend-only traces above the plot show one marker symbol per group.
+        marker symbol based on its group. Colours represent models unless
+        ``group_colors`` is supplied. Legend-only traces show each group.
     symbol_labels
         Optional mapping from ``symbol_by`` values to shorter display names
         used in the legend. Values absent from this dict are shown as-is.
@@ -77,6 +80,9 @@ def plot_parity(
         data range. Default is False.
     plot_combined
         Whether to combine models in one plot or write a plot per model.
+    group_colors
+        Optional colour mapping for every group in ``symbol_by``, applied to both
+        points and group legend markers. Default preserves model colours.
 
     Returns
     -------
@@ -138,6 +144,13 @@ def plot_parity(
                 marker_kwargs = {
                     "marker": {"symbol": [group_symbol[g] for g in symbol_by]}
                 }
+                if group_colors is not None:
+                    missing = [group for group in groups if group not in group_colors]
+                    if missing:
+                        raise ValueError(f"Missing group colours for {missing}")
+                    marker_kwargs["marker"]["color"] = [
+                        group_colors[group] for group in symbol_by
+                    ]
 
             for mlip, value in results.items():
                 if mlip == "ref":
@@ -180,7 +193,7 @@ def plot_parity(
                                 mode="markers",
                                 marker={
                                     "symbol": group_symbol[group],
-                                    "color": "black",
+                                    "color": (group_colors or {}).get(group, "black"),
                                 },
                                 hoverinfo="skip",
                                 legend="legend2",
@@ -1245,6 +1258,7 @@ def plot_periodic_table(
     colorscale: str = "Viridis",
     zmin: float | None = None,
     zmax: float | None = None,
+    symlog_scale: float | None = None,
 ) -> Callable:
     """
     Plot a periodic-table heatmap for element-wise metrics.
@@ -1263,6 +1277,13 @@ def plot_periodic_table(
         Plotly colourscale name. Default is ``"Viridis"``.
     zmin, zmax
         Optional colour scale limits. If not provided, they are inferred from the data.
+    symlog_scale
+        If set, colours are mapped symmetrically logarithmically, with this magnitude
+        setting the width of the near-linear region about zero. Typically the "good"
+        threshold for the metric, so values scoring as good stay near the midpoint,
+        while outliers remain distinguishable instead of saturating the scale.
+        The colour bar is labelled in the original units. Default is `None`,
+        corresponding to a linear scale.
 
     Returns
     -------
@@ -1329,6 +1350,37 @@ def plot_periodic_table(
                 hover_grid[row, col] = "<br>".join(hover_parts)
                 text_grid[row, col] = element
 
+            colorbar = {"title": colorbar_title}
+            plot_min, plot_max = zmin, zmax
+            if symlog_scale is not None:
+                if symlog_scale <= 0:
+                    raise ValueError("`symlog_scale` must be positive")
+
+                if plot_min is None or plot_max is None:
+                    # Fall back to the linear threshold if every value is missing
+                    finite = np.abs(grid[np.isfinite(grid)])
+                    data_limit = finite.max() if finite.size else symlog_scale
+                    plot_min = -data_limit if plot_min is None else plot_min
+                    plot_max = data_limit if plot_max is None else plot_max
+
+                # Label each decade of the colour bar, within the plotted range
+                limit = max(abs(plot_min), abs(plot_max))
+                locator = SymmetricalLogLocator(
+                    linthresh=symlog_scale, base=10, subs=[1.0, 3.0]
+                )
+                ticks = sorted(
+                    tick
+                    for tick in locator.tick_values(-limit, limit)
+                    if abs(tick) <= limit
+                )
+                colorbar["tickvals"] = symlog_transform(np.array(ticks), symlog_scale)
+                colorbar["ticktext"] = [f"{tick:g}" for tick in ticks]
+
+                grid = symlog_transform(grid, symlog_scale)
+                plot_min, plot_max = symlog_transform(
+                    np.array([plot_min, plot_max]), symlog_scale
+                )
+
             fig = go.Figure(
                 data=go.Heatmap(
                     z=grid,
@@ -1337,10 +1389,10 @@ def plot_periodic_table(
                     text=hover_grid,
                     hovertemplate="%{text}<extra></extra>",
                     colorscale=colorscale,
-                    colorbar={"title": colorbar_title},
+                    colorbar=colorbar,
                     showscale=True,
-                    zmin=zmin,
-                    zmax=zmax,
+                    zmin=plot_min,
+                    zmax=plot_max,
                 )
             )
 

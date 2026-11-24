@@ -1,3 +1,16 @@
+aceff-2p0:
+  module: torchmdnet.calculators
+  class_name: TMDNETCalculator
+  datasets: null
+  additional_supported_elements: ["H", "B", "C", "N", "O", "F", "Si", "P", "S", "Cl", "Br", "I"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPPD
+  kwargs:
+    repo_id: "Acellera/AceFF-2.0"
+    filename: "aceff_v2.0.ckpt"
+    revision: "67ad6a3b06ee9b44cfbac3bc32117dd6276e9122"
+
 aimnet2:
   module: aimnet.calculators
   class_name: AIMNet2ASE
@@ -19,6 +32,66 @@ aimnet2-2025:
   kwargs:
     # Alias for ensemble member 0 (aimnet2-b973c-2025-d3_0), not the 4-member ensemble average.
     model: "aimnet2-2025"
+
+allegro-oam-l-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OAM-L-0.2.nequip.zip/content"
+
+allegro-oam-m-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OAM-M-0.2.nequip.zip/content"
+
+allegro-oam-s-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OAM-S-0.2.nequip.zip/content"
+
+allegro-omat24-l-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OMat24-L-0.2.nequip.zip/content"
+
+allegro-omat24-m-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OMat24-M-0.2.nequip.zip/content"
+
+allegro-omat24-s-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/Allegro-OMat24-S-0.2.nequip.zip/content"
 
 dpa-3p3-1M-omat:
   module: deepmd.calculator
@@ -241,6 +314,86 @@ mattersim-5M:
   kwargs:
     load_path: "mattersim-v1.0.0-5m"
 
+nequip-oam-l-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OAM-L-0.2.nequip.zip/content"
+
+nequip-oam-m-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OAM-M-0.2.nequip.zip/content"
+
+nequip-oam-s-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OAM-S-0.2.nequip.zip/content"
+
+nequip-oam-xl-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [MPtrj, sAlex, OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OAM-XL-0.2.nequip.zip/content"
+
+nequip-omat24-l-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OMat24-L-0.2.nequip.zip/content"
+
+nequip-omat24-m-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OMat24-M-0.2.nequip.zip/content"
+
+nequip-omat24-s-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OMat24-S-0.2.nequip.zip/content"
+
+nequip-omat24-xl-0p2:
+  module: nequip.integrations.ase
+  class_name: NequIPCalculator
+  datasets: [OMAT]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model: "https://zenodo.org/api/records/23472045/files/NequIP-OMat24-XL-0.2.nequip.zip/content"
+
 orb-v3-consv-inf-omat:
   module: orb_models.forcefield.inference.calculator
   class_name: ORBCalculator
@@ -389,6 +542,19 @@ uma-s-1p1-omat:
     model_name: "uma-s-1p1"
     task_name: "omat"
 
+uma-s-1p1-omc:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  # Full checkpoint training datasets; the selected OMC task uses OMC25.
+  datasets: [OMAT, OMol25, OC20, OMC, ODAC25]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: PBE+D3
+  kwargs:
+    model_name: "uma-s-1p1"
+    task_name: "omc"
+
 uma-s-1p1-omol:
   module: fairchem.core
   class_name: FAIRChemCalculator
@@ -412,6 +578,73 @@ uma-s-1p2-omol:
   kwargs:
     model_name: "uma-s-1p2"
     task_name: "omol"
+
+uma-s-1p2p1-ft-d4rev:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-D4rev/def2-TZVPD
+  kwargs:
+    model_name: "uma-s-1p2p1-ft-d4rev"
+    task_name: "omol"
+    inference_settings: "nitro"
+
+uma-s-1p2p1-ft-r2scan:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26, MAD-1p6]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: r2SCAN
+  kwargs:
+    model_name: "uma-s-1p2p1-ft-r2scan"
+    task_name: "omat"
+    inference_settings: "nitro"
+  dispersion_kwargs:
+    xc: r2scan
+
+uma-s-1p2p1-omat:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: false
+  level_of_theory: PBE
+  kwargs:
+    model_name: "uma-s-1p2p1"
+    task_name: "omat"
+    inference_settings: "nitro"
+
+uma-s-1p2p1-omc:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  # Full checkpoint training datasets; the selected OMC task uses OMC25.
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: PBE+D3
+  kwargs:
+    model_name: "uma-s-1p2p1"
+    task_name: "omc"
+    inference_settings: "nitro"
+
+uma-s-1p2p1-omol:
+  module: fairchem.core
+  class_name: FAIRChemCalculator
+  datasets: [OMAT, OMol25, OC20, OC22, OC25, OMC, ODAC25, OPoly26]
+  additional_supported_elements: ["Po", "At", "Rn", "Fr", "Ra", "Am", "Cm", "Bk", "Cf", "Es"]
+  device: "auto"
+  trained_on_dispersion: true
+  level_of_theory: ωB97M-V/def2-TZVPD
+  kwargs:
+    model_name: "uma-s-1p2p1"
+    task_name: "omol"
+    inference_settings: "nitro"
 
 Vivace:
   module: simpoly.vivace.calculator

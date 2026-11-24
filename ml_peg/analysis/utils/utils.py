@@ -225,6 +225,30 @@ DENSITY_MAX_POINTS_PER_CELL = 5
 DENSITY_SAMPLE_SEED = 0
 
 
+def symlog_transform(values: np.ndarray, scale: float) -> np.ndarray:
+    """
+    Apply a symmetric logarithmic transform, preserving sign.
+
+    Values well within ``scale`` are mapped near-linearly, while larger magnitudes
+    are compressed logarithmically. This keeps small and large values legible on a
+    single colour scale, rather than saturating the scale with outliers.
+
+    Parameters
+    ----------
+    values
+        Values to transform.
+    scale
+        Magnitude below which the transform is approximately linear. Typically the
+        "good" threshold for the metric, so values scoring as good stay near zero.
+
+    Returns
+    -------
+    np.ndarray
+        Transformed values.
+    """
+    return np.sign(values) * np.log10(1 + np.abs(values) / scale)
+
+
 def sample_density_grid(
     ref_vals: list[float] | np.ndarray,
     pred_vals: list[float] | np.ndarray,
@@ -1012,6 +1036,25 @@ def clean_info(info: dict[str, Any] | list[Any]) -> None:
 
             if isinstance(value, np.int64):
                 info[key] = int(value)
+
+
+def check_dataset(dataset_path: Path) -> None:
+    """
+    Skip the module if the dataset saved by the calculation is unavailable.
+
+    The calculation copies the downloaded dataset into its outputs, so the
+    analysis does not need to download the input data again.
+
+    Parameters
+    ----------
+    dataset_path
+        Path to the dataset within the calculation outputs.
+    """
+    if not dataset_path.exists():
+        pytest.skip(
+            f"{dataset_path} does not exist. Please run the calculation.",
+            allow_module_level=True,
+        )
 
 
 def get_struct_info(

@@ -135,7 +135,7 @@ def metrics(get_mae: dict[str, float]) -> dict[str, dict]:
     }
 
 
-@pytest.mark.framework("mace-polar-1")
+@pytest.mark.framework("mace-polar-1", "aceff")
 def test_openff_tors(metrics: dict[str, dict]) -> None:
     """
     Run OpenFF-Tors test.

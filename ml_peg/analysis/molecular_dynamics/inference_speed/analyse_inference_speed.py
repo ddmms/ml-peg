@@ -22,6 +22,7 @@ from mlipaudit.io import MODEL_OUTPUT_JSON_FILENAME, MODEL_OUTPUT_ZIP_FILENAME
 
 from ml_peg.analysis.utils.decorators import build_table
 from ml_peg.analysis.utils.utils import (
+    check_dataset,
     load_metrics_config,
     write_struct_info,
 )
@@ -52,19 +53,7 @@ SECONDS_TO_MICROSECONDS = 1.0e6
 COLOURS = qualitative.Dark24
 
 
-def check_dataset() -> None:
-    """
-    Check the dataset saved by the calculation is available.
-
-    The calculation copies and unzips the downloaded dataset into its outputs,
-    so the analysis does not need to download the input data again.
-    """
-    dataset_path = CALC_PATH / BENCHMARK / EXAMPLE_INPUT_FILENAME
-    if not dataset_path.exists():
-        pytest.skip(
-            f"{dataset_path} does not exist. Please run the calculation.",
-            allow_module_level=True,
-        )
+DATASET_PATH = CALC_PATH / BENCHMARK / EXAMPLE_INPUT_FILENAME
 
 
 def _load_inference_speed_output(model_outputs_dir: Path) -> InferenceSpeedModelOutput:
@@ -126,7 +115,7 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to its ``InferenceSpeedResult``.
     """
-    check_dataset()
+    check_dataset(DATASET_PATH)
 
     results = {}
     for model_name in MODELS:
@@ -167,7 +156,7 @@ def num_atoms() -> dict[str, int]:
     dict[str, int]
         Mapping of structure name to its number of atoms.
     """
-    check_dataset()
+    check_dataset(DATASET_PATH)
 
     data_dir = CALC_PATH / BENCHMARK
     return {path.stem: len(read(path)) for path in sorted(data_dir.glob("*.xyz"))}
@@ -176,7 +165,7 @@ def num_atoms() -> dict[str, int]:
 @pytest.fixture
 def struct_info() -> None:
     """Write the combined element set to ``info.json`` for filtering."""
-    check_dataset()
+    check_dataset(DATASET_PATH)
 
     data_dir = CALC_PATH / BENCHMARK
     write_struct_info(

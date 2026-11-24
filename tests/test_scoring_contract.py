@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from types import SimpleNamespace
 
+from dash import no_update
 from dash.dash_table import DataTable
 import numpy as np
 import pytest
@@ -114,6 +115,15 @@ def test_registered_group_callback_preserves_all_models(monkeypatch):
         return decorate
 
     monkeypatch.setattr(register_callbacks, "callback", capture)
+    monkeypatch.setattr(
+        register_callbacks,
+        "ctx",
+        SimpleNamespace(
+            triggered_prop_ids={
+                "B1-table-computed-store.data": "B1-table-computed-store"
+            }
+        ),
+    )
     table = DataTable(id="B1-table")
     register_callbacks.register_benchmark_to_group_callback(
         {"category": {"B1": table}, "framework": {"B1": table}},
@@ -138,5 +148,61 @@ def test_registered_group_callback_preserves_all_models(monkeypatch):
             (0, "Score"): 0.65,
             (1, "B1 Score"): 0.45,
             (1, "Score"): 0.45,
+        }
+    assert rows == before
+
+
+@pytest.mark.parametrize("trigger_group", ["Category title", "framework"])
+def test_group_weight_only_trigger_rescores_without_benchmark_changes(
+    monkeypatch, trigger_group
+):
+    """Weight-only edits rescore all cached models in just the triggered group."""
+    callbacks = []
+
+    def capture(*args, **kwargs):
+        def decorate(function):
+            callbacks.append(function)
+            return function
+
+        return decorate
+
+    group_ids = {"Category title": "category-slug", "framework": "framework-slug"}
+    weight_id = f"{group_ids[trigger_group]}-summary-table-weight-store"
+    monkeypatch.setattr(register_callbacks, "callback", capture)
+    monkeypatch.setattr(
+        register_callbacks,
+        "ctx",
+        SimpleNamespace(triggered_prop_ids={f"{weight_id}.data": weight_id}),
+    )
+    tables = {name: DataTable(id=f"{name}-table") for name in ("B1", "B2")}
+    register_callbacks.register_benchmark_to_group_callback(
+        dict.fromkeys(group_ids, tables), group_ids
+    )
+    rows = [
+        {"MLIP": "A", "B1 Score": 0.2, "B2 Score": 0.8, "Score": 0.5},
+        {"MLIP": "B", "B1 Score": 0.4, "B2 Score": 0.8, "Score": 0.6},
+    ]
+    before = deepcopy(rows)
+    args = []
+    for group in sorted(group_ids):
+        args.extend(
+            [{"B1 Score": 3 if group == trigger_group else 1, "B2 Score": 1}, rows]
+        )
+    for benchmark in ("B1", "B2"):
+        args.append(
+            [{"MLIP": row["MLIP"], "Score": row[f"{benchmark} Score"]} for row in rows]
+        )
+    outputs = callbacks[0](*args)
+    for group, output in zip(sorted(group_ids), outputs, strict=True):
+        if group != trigger_group:
+            assert output is no_update
+            continue
+        updates = {
+            tuple(op["location"]): op["params"]["value"]
+            for op in output.to_plotly_json()["operations"]
+        }
+        assert updates == {
+            (0, "Score"): pytest.approx(0.35),
+            (1, "Score"): pytest.approx(0.5),
         }
     assert rows == before

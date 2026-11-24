@@ -6,4 +6,4 @@ description: NMR chemical shieldings of molecular organic crystals, predicted by
 weight: 0
 # One crystal only, so it does not count towards the category score.
 benchmark_weights:
-  Structure Identification - Cocaine: 0
+  structure_id_cocaine: 0

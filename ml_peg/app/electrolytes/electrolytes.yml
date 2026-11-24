@@ -3,3 +3,5 @@ description: >-
   Solid-state electrolyte properties, battery electrolyte intermolecular and
   intramolecular properties, and volume scans.
 weight: 1
+benchmark_weights:
+  SSEMD: 0

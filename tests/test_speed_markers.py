@@ -7,12 +7,45 @@ from itertools import combinations
 from pathlib import Path
 
 import pytest
+from yaml import safe_load
 
+from ml_peg.app import APP_ROOT
 from ml_peg.app.utils.speed import (
     SPEED_LEVELS,
     SPEED_ORDER,
     get_benchmark_speed,
 )
+from ml_peg.calcs import CALCS_ROOT
+
+# Benchmarks at or beyond this level are excluded from default scores
+SLOW_LEVELS = frozenset(SPEED_ORDER[SPEED_ORDER.index("slow") :])
+
+
+def slow_benchmarks() -> list[tuple[str, str]]:
+    """
+    Find benchmarks marked slow or slower that appear in the app.
+
+    Benchmarks with conflicting speed markers are skipped, since their speed is
+    covered by `test_conflicting_markers_on_one_test_raise`.
+
+    Returns
+    -------
+    list[tuple[str, str]]
+        Category and benchmark directory names for each slow-or-slower benchmark.
+    """
+    benchmarks = []
+    for category in sorted(path for path in CALCS_ROOT.iterdir() if path.is_dir()):
+        for benchmark in sorted(path for path in category.iterdir() if path.is_dir()):
+            # Benchmarks without an app directory have no summary table to weight
+            if not (APP_ROOT / category.name / benchmark.name).is_dir():
+                continue
+            try:
+                speed = get_benchmark_speed(benchmark)
+            except ValueError:
+                continue
+            if speed in SLOW_LEVELS:
+                benchmarks.append((category.name, benchmark.name))
+    return benchmarks
 
 
 def write_calc(tmp_path: Path, marker_groups: Sequence[Sequence[str]]) -> Path:
@@ -432,3 +465,34 @@ def test_pytest_marker_expression_restricts_to_one_tier(marker):
     # requested tier survives the marker expression.
     assert "1 passed" in result.stdout, result.stdout
     assert "1 deselected" in result.stdout, result.stdout
+
+
+@pytest.mark.parametrize(("category", "benchmark"), slow_benchmarks())
+def test_slow_benchmarks_are_zero_weighted(category, benchmark):
+    """Benchmarks marked slow or slower are excluded from the default score."""
+    category_yml = APP_ROOT / category / f"{category}.yml"
+    assert category_yml.is_file(), f"No category yml for {category}"
+
+    weights = (safe_load(category_yml.read_text(encoding="utf8")) or {}).get(
+        "benchmark_weights", {}
+    )
+    assert weights.get(benchmark) == 0, (
+        f"{category}/{benchmark} is marked slow or slower, so it must be listed as "
+        f"`{benchmark}: 0` under `benchmark_weights` in {category_yml.name}"
+    )
+
+
+@pytest.mark.parametrize(
+    "category_yml", sorted(APP_ROOT.glob("*/*.yml")), ids=lambda path: path.parent.name
+)
+def test_benchmark_weights_name_real_benchmarks(category_yml):
+    """Every weighted benchmark name matches an app directory in its category."""
+    category = category_yml.parent.name
+    if category_yml.stem != category:
+        pytest.skip(f"{category_yml.name} is not a category yml")
+
+    weights = (safe_load(category_yml.read_text(encoding="utf8")) or {}).get(
+        "benchmark_weights", {}
+    )
+    unknown = [name for name in weights if not (APP_ROOT / category / name).is_dir()]
+    assert not unknown, f"Unknown benchmarks in {category_yml.name}: {unknown}"

@@ -7,3 +7,5 @@ contributors: []
 citations:
   - bibtex_key: zhang2024efficiency
     role: reference_data
+  - bibtex_key: dragoni2018achieving
+    role: reference_data

@@ -51,7 +51,7 @@ jobs:
         run: uv sync
 
       - name: Install Playwright browser
-        run: uv run playwright install --with-deps chromium
+        run: uv run playwright install chromium
 
       - name: Cache test fixture
         # Keeps the bucket out of every run's critical path; conftest still
