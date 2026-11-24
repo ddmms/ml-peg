@@ -1181,9 +1181,10 @@ the bad thresholds mark the worst case (0.1 Angstrom for a and b, 0.3 for c).
 Computational cost
 ------------------
 
-Medium: 11 cell + position relaxations of a 4x4x2 supercell (~380-420 atoms) per model.
-Of order an hour per model on a 48-core CPU node (~5 min per relaxation), and minutes
-per model on GPU.
+Fast: 11 cell + position relaxations of a 4x4x2 supercell (~380-420 atoms) per model.
+With mace-mp-0a, all 11 relaxations take a few minutes per model on one AMD MI250X GPU
+(~15-30 s per relaxation), or about an hour on a 48-core AMD EPYC 7A53 CPU node (~5 min
+per relaxation).
 
 Data availability
 -----------------

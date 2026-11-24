@@ -15,6 +15,7 @@ from warnings import warn
 
 from ase.io import read
 from janus_core.calculations.geom_opt import GeomOpt
+import numpy as np
 import pytest
 from tqdm import tqdm
 
@@ -34,7 +35,11 @@ REPS = (4, 4, 2)
 # Oxygen contents 6.00 .. 7.00.
 CONCENTRATIONS = [round(6.0 + 0.1 * i, 2) for i in range(11)]
 
+FMAX = 0.01
+MAX_ATTEMPTS = 3
 
+
+@pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
 def test_ybco_lattice_vs_O(mlip: tuple[str, Any]) -> None:  # noqa: N802
     """
@@ -62,29 +67,38 @@ def test_ybco_lattice_vs_O(mlip: tuple[str, Any]) -> None:  # noqa: N802
             warn(f"Missing input structure {struct_file}", stacklevel=2)
             continue
 
-        atoms = read(
-            struct_file,
-            format="lammps-data",
-            Z_of_type=Z_OF_TYPE,
-            atom_style="atomic",
-        )
-        atoms.pbc = True
-        atoms.info["conc"] = conc
-        atoms.info["reps"] = list(REPS)
-        atoms.info["name"] = f"YBCO{conc:.2f}"  # scatter-point label
-        atoms.info.setdefault(
-            "charge", 0
-        )  # same as DFT settings, omol models need these; PBE models ignore
-        atoms.info.setdefault("spin", 1)
-
-        atoms.calc = copy(calc)
         try:
-            # GeomOpt relaxes the cell by default
-            GeomOpt(
-                struct=atoms,
-                fmax=0.01,
-                write_traj=True,
-                file_prefix=OUT_PATH / model_name / f"YBCO{conc:.2f}",
-            ).run()
+            atoms = read(
+                struct_file,
+                format="lammps-data",
+                Z_of_type=Z_OF_TYPE,
+                atom_style="atomic",
+            )
+            atoms.pbc = True
+            atoms.info["conc"] = conc
+            atoms.info["reps"] = list(REPS)
+            atoms.info["name"] = f"YBCO{conc:.2f}"  # scatter-point label
+            atoms.info.setdefault(
+                "charge", 0
+            )  # same as DFT settings, omol models need these; PBE models ignore
+            atoms.info.setdefault("spin", 1)
+
+            atoms.calc = copy(calc)
+            for _ in range(MAX_ATTEMPTS):
+                # GeomOpt relaxes the cell by default
+                GeomOpt(
+                    struct=atoms,
+                    fmax=FMAX,
+                    write_traj=True,
+                    file_prefix=OUT_PATH / model_name / f"YBCO{conc:.2f}",
+                ).run()
+                if np.abs(atoms.get_forces()).max() < FMAX:
+                    break
+            else:
+                warn(
+                    f"YBCO{conc:.2f} not converged after {MAX_ATTEMPTS} attempts "
+                    f"for {model_name}",
+                    stacklevel=2,
+                )
         except Exception as exc:
             warn(f"Error relaxing YBCO{conc:.2f} for {model_name}: {exc}", stacklevel=2)

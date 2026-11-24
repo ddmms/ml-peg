@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from dash import Dash
+from dash.dcc import Graph
 from dash.html import Div
 
 from ml_peg.app import APP_ROOT
 from ml_peg.app.base_app import BaseApp
-from ml_peg.app.utils.build_callbacks import plot_from_table_column, struct_from_scatter
+from ml_peg.app.utils.build_callbacks import (
+    plot_from_table_column,
+    struct_from_multi_scatters,
+)
 from ml_peg.app.utils.load import read_plot
-from ml_peg.models import current_models
-from ml_peg.models.get_models import get_model_names
 
-MODELS = get_model_names(current_models)
 BENCHMARK_NAME = "YBCO lattice vs oxygen"
 DOCS_URL = (
     "https://ddmms.github.io/ml-peg/user_guide/benchmarks/"
@@ -20,6 +20,37 @@ DOCS_URL = (
 )
 DATA_PATH = APP_ROOT / "data" / "bulk_crystal" / "YBCO_lattice_vs_O"
 INFO_PATH = DATA_PATH / "info.json"
+
+
+def _model_structs(scatter: Graph, asset_dir: str) -> list[list[str]]:
+    """
+    Get relaxed structure paths for each model trace and point of a parity plot.
+
+    Parameters
+    ----------
+    scatter
+        Parity plot, with one trace per model and point labels as the last
+        ``customdata`` entry.
+    asset_dir
+        Asset directory containing a subdirectory of structures per model.
+
+    Returns
+    -------
+    list[list[str]]
+        Structure paths indexed by trace then point, empty where unavailable.
+    """
+    structs = []
+    for trace in (scatter.figure or {}).get("data", []):
+        model = trace.get("name")
+        structs.append(
+            [
+                f"/assets/{asset_dir}/{model}/{point[-1]}.xyz"
+                if (DATA_PATH / model / f"{point[-1]}.xyz").exists()
+                else ""
+                for point in trace.get("customdata") or []
+            ]
+        )
+    return structs
 
 
 class YBCOLatticeApp(BaseApp):
@@ -37,13 +68,6 @@ class YBCOLatticeApp(BaseApp):
             DATA_PATH / "figure_ybco_lattice_c.json", id=f"{BENCHMARK_NAME}-figure"
         )
 
-        # one structure per oxygen content, matching the per-parameter scatter points
-        structs_dir = DATA_PATH / MODELS[0]
-        structs = [
-            f"/assets/bulk_crystal/YBCO_lattice_vs_O/{MODELS[0]}/{f.stem}.xyz"
-            for f in sorted(structs_dir.glob("*.xyz"))
-        ]
-
         plot_from_table_column(
             table_id=self.table_id,
             plot_id=f"{BENCHMARK_NAME}-figure-placeholder",
@@ -54,10 +78,10 @@ class YBCOLatticeApp(BaseApp):
             },
         )
 
-        struct_from_scatter(
+        struct_from_multi_scatters(
             scatter_id=f"{BENCHMARK_NAME}-figure",
             struct_id=f"{BENCHMARK_NAME}-struct-placeholder",
-            structs=structs,
+            structs=_model_structs(scatter_a, "bulk_crystal/YBCO_lattice_vs_O"),
             mode="struct",
         )
 
@@ -86,11 +110,3 @@ def get_app() -> YBCOLatticeApp:
         ],
         info_path=INFO_PATH,
     )
-
-
-if __name__ == "__main__":
-    full_app = Dash(__name__, assets_folder=DATA_PATH.parent.parent)
-    ybco_lattice_app = get_app()
-    full_app.layout = ybco_lattice_app.layout
-    ybco_lattice_app.register_callbacks()
-    full_app.run(port=8055, debug=True)

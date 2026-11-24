@@ -93,8 +93,9 @@ try:
         out_path=OUT_PATH,
     )
 except ValueError:
-    with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
-        json.dump({"elements": [], "name": []}, f, indent=1)
+    if not (OUT_PATH / "info.json").exists():
+        with (OUT_PATH / "info.json").open("w", encoding="utf8") as f:
+            json.dump({"elements": [], "name": []}, f, indent=1)
 
 
 def _read_params(model_name: str) -> dict[float, tuple[float, float, float]]:
@@ -119,7 +120,10 @@ def _read_params(model_name: str) -> dict[float, tuple[float, float, float]]:
         traj = model_dir / f"YBCO{conc:.2f}-traj.extxyz"
         if not traj.is_file():
             continue
-        atoms = read(traj, index="-1")
+        try:
+            atoms = read(traj, index="-1")
+        except Exception:  # noqa: BLE001
+            continue
         na, nb, nc = atoms.info.get("reps", (4, 4, 2))
         la, lb, lc = atoms.cell.lengths()
         out[conc] = (la / na, lb / nb, lc / nc)
@@ -155,7 +159,10 @@ def ybco_lattice() -> dict[str, list]:
             if src.is_file():
                 structs_dir = OUT_PATH / model_name
                 structs_dir.mkdir(parents=True, exist_ok=True)
-                write(structs_dir / f"YBCO{conc:.2f}.xyz", read(src, index="-1"))
+                try:
+                    write(structs_dir / f"YBCO{conc:.2f}.xyz", read(src, index="-1"))
+                except Exception:  # noqa: BLE001
+                    pass
     return results
 
 
