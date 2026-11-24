@@ -25,6 +25,7 @@ from ml_peg.app.utils.utils import (
     Thresholds,
     clean_thresholds,
     clean_weights,
+    is_missing_score,
 )
 from ml_peg.models.get_models import get_model_names, load_model_configs
 
@@ -562,6 +563,15 @@ def calc_table_scores(
     ]
     metric_weights = {key: weights.get(key, 1.0) for key in metric_columns}
 
+    # Decide per column, not per row, so every model's score combines the same
+    # columns. A column with a value for nobody is discarded like a zero weight.
+    scored_columns = {
+        key
+        for key in metric_columns
+        if metric_weights[key] != 0
+        and any(not is_missing_score(row.get(key)) for row in metrics_scores)
+    }
+
     for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
         weighted_sum = 0.0
         weight_sum = 0.0
@@ -571,12 +581,11 @@ def calc_table_scores(
             score = scores_row[key]
             weight = metric_weights[key]
 
-            # If weight is zero or score is None, no contribution to overall score
-            if weight == 0 or score is None:
+            if key not in scored_columns:
                 continue
 
-            # If score is NaN, overall score will be NaN
-            if (isinstance(score, float) and np.isnan(score)) or score == "NaN":
+            # Missing a value another model has makes this model's score NaN
+            if is_missing_score(score):
                 contains_nan = True
                 break
 

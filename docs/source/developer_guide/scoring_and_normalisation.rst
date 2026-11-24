@@ -98,6 +98,42 @@ to match. ``tests/test_speed_markers.py::test_slow_benchmarks_are_zero_weighted`
 this, and will fail with the entry that needs adding. The reverse is not enforced: a fast
 benchmark may be weighted 0 for its own reasons.
 
+Missing results
+---------------
+
+Results are missing for all sorts of reasons: a benchmark has not been run yet, a model
+crashed on one system, a model is absent from a benchmark entirely, or an element filter
+removed every system a benchmark covers. Cells show this as either ``None`` or ``NaN``,
+and which one a cell holds reflects where it came from, not anything about the model.
+
+Scoring therefore treats them identically, and decides **per column, not per row**, so
+that a score always means the same thing for every model
+(``calc_table_scores``, ``ml_peg/analysis/utils/utils.py``):
+
+- A column weighted 0 is excluded for every model. Missing values in it are harmless.
+- A column holding a value for **at least one** model is scored for **every** model. Any
+  model missing a value there scores ``NaN``, and that ``NaN`` propagates up the
+  hierarchy, so the model has no benchmark, category or overall score.
+- A column holding a value for **no** model is discarded for everyone, exactly as a
+  weight of 0 would be. It therefore does not stop anyone reaching an overall score.
+- If no column survives, the score is ``None`` rather than ``NaN``: nothing was scored,
+  as opposed to something being wrong.
+
+The guarantee this buys is that, for a given set of weights and element filters, every
+model's score at every level is the weighted average of exactly the same combination of
+metrics. Scores stay comparable between models, which is the point of the leaderboard.
+
+.. warning::
+
+   Do not reintroduce a per-row rule such as "skip a missing value and score the rest".
+   It silently averages different models over different metrics, and lets a weighted
+   column vanish from one model's score while counting in another's.
+
+``build_summary_table`` (``ml_peg/app/utils/build_components.py``) applies the same rule to
+the weights themselves: a summarised benchmark or category that scores nothing for anyone
+has its weight overridden to 0, so the discarded column is dimmed, documented in its
+tooltip, and visibly weighted 0 rather than silently ignored.
+
 Scoring and normalisation
 -------------------------
 
