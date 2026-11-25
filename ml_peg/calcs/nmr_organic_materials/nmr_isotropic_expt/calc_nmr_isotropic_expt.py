@@ -5,7 +5,7 @@ Structures and GIPAW-PBE reference shieldings are the 49 crystals of the ShiftML
 data record (Kellner et al., J. Phys. Chem. Lett. 16, 8714 (2025); Materials Cloud
 Archive, DOI 10.24435/materialscloud:kt-kd, CC-BY-4.0): 13 structures for 1H and the
 36-structure 13C/15N set of Ramos, Mueller & Beran, Faraday Discuss. 255, 119
-(2024).
+(2025).
 
 For each model, the ensemble-mean and per-member isotropic shieldings are written
 per atom, one extxyz file per structure. Comparison with experiment happens in the
