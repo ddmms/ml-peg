@@ -627,6 +627,7 @@ def get_table_style(
     col_names: list[str] | str | None = None,
     cmap_name: str = DEFAULT_COLORMAP,
     weights: dict[str, float] | None = None,
+    score_rows: list[TableRow] | None = None,
 ) -> list[TableRow]:
     """
     Memoized wrapper around :func:`_compute_table_style`.
@@ -654,6 +655,10 @@ def get_table_style(
         Current weight per column id. Columns with a weight of ``0`` are excluded
         from the score, so their cells are dimmed to signal they are switched off.
         Default is None.
+    score_rows
+        Rows that scoring runs on, used to decide which columns hold a value for
+        no model. Pass the unfiltered rows when ``data`` is filtered by model.
+        Default is `None`, which uses ``data``.
 
     Returns
     -------
@@ -663,7 +668,16 @@ def get_table_style(
     """
     try:
         key = json.dumps(
-            [data, scored_data, normalized, all_cols, col_names, cmap_name, weights],
+            [
+                data,
+                scored_data,
+                normalized,
+                all_cols,
+                col_names,
+                cmap_name,
+                weights,
+                score_rows,
+            ],
             sort_keys=True,
             default=str,
         )
@@ -676,6 +690,7 @@ def get_table_style(
             col_names=col_names,
             cmap_name=cmap_name,
             weights=weights,
+            score_rows=score_rows,
         )
 
     with _TABLE_STYLE_CACHE_LOCK:
@@ -694,6 +709,7 @@ def get_table_style(
             col_names=col_names,
             cmap_name=cmap_name,
             weights=weights,
+            score_rows=score_rows,
         )
         with _TABLE_STYLE_CACHE_LOCK:
             _TABLE_STYLE_CACHE[key] = cached
@@ -707,6 +723,34 @@ def get_table_style(
     ]
 
 
+def _column_is_scored(rows: list[TableRow], col: str) -> bool:
+    """
+    Check whether a column holds a usable value for any model.
+
+    Parameters
+    ----------
+    rows
+        Rows that scoring runs on.
+    col
+        Column identifier to check.
+
+    Returns
+    -------
+    bool
+        `True` if any row holds a numeric value in the column.
+    """
+    for row in rows:
+        value = row.get(col)
+        if is_missing_score(value):
+            continue
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            continue
+        return True
+    return False
+
+
 def _compute_table_style(
     data: list[TableRow],
     *,
@@ -716,6 +760,7 @@ def _compute_table_style(
     col_names: list[str] | str | None = None,
     cmap_name: str = DEFAULT_COLORMAP,
     weights: dict[str, float] | None = None,
+    score_rows: list[TableRow] | None = None,
 ) -> list[TableRow]:
     """
     Viridis-style colormap for Dash DataTable.
@@ -739,6 +784,9 @@ def _compute_table_style(
         Current weight per column id. Columns with a weight of ``0`` are excluded
         from the score, so their cells are dimmed to signal they are switched off.
         Default is None.
+    score_rows
+        Rows that scoring runs on, used to decide which columns hold a value for
+        no model at all. Default is `None`, which uses ``data``.
 
     Returns
     -------
@@ -909,9 +957,11 @@ def _compute_table_style(
             )
 
         if not numeric_entries:
-            # Scored for nobody, so excluded from every score: dim it like a
-            # zero weight, whether it is unrun or emptied by an element filter.
-            if col not in RESERVED_TABLE_COLUMNS:
+            # Scored for nobody, so dim it like a zero weight. Checked against
+            # the rows scoring uses, so hiding a model cannot switch a column off.
+            if col not in RESERVED_TABLE_COLUMNS and not _column_is_scored(
+                score_rows if score_rows is not None else data, col
+            ):
                 unscored_columns.add(col)
             continue
 

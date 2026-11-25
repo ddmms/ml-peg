@@ -282,11 +282,18 @@ def build_summary_table(
     tooltip_header = {}
     for header, summarised in tables.items():
         tooltip = summarised.description
-        if table_has_no_scores(summarised):
-            no_results = (
+        # A table with rows but no scores has results; its contents are just
+        # weighted 0, so it is not waiting on data.
+        if not summarised.data:
+            note = (
                 "Data is still being collected for this benchmark, so it is weighted 0."
             )
-            tooltip = f"{tooltip} {no_results}" if tooltip else no_results
+        elif table_has_no_scores(summarised):
+            note = "Nothing here contributes to a score, so it is weighted 0."
+        else:
+            note = ""
+        if note:
+            tooltip = f"{tooltip} {note}" if tooltip else note
         tooltip_header[header + " Score"] = tooltip
 
     for column in columns:

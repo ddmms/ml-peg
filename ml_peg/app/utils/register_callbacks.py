@@ -266,6 +266,7 @@ def register_summary_table_callbacks(
                 filtered_rows,
                 cmap_name=cmap_name or DEFAULT_COLORMAP,
                 weights=stored_weights,
+                score_rows=visible_rows,
             )
             if filtered_rows
             else []
@@ -393,6 +394,7 @@ def register_category_table_callbacks(
                 scored_data=filtered_scores,
                 cmap_name=cmap_name or DEFAULT_COLORMAP,
                 weights=weights,
+                score_rows=display_rows,
             )
             if filtered_rows
             else []
@@ -505,6 +507,7 @@ def register_category_table_callbacks(
                         scored_data=filtered_scores,
                         cmap_name=cmap_name or DEFAULT_COLORMAP,
                         weights=stored_weights,
+                        score_rows=display_rows,
                     )
                     if filtered_rows
                     else []
@@ -551,6 +554,7 @@ def register_category_table_callbacks(
                     scored_data=filtered_scores,
                     cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
+                    score_rows=display_rows,
                 )
                 if filtered_rows
                 else []
@@ -632,6 +636,7 @@ def register_category_table_callbacks(
                     filtered_rows,
                     cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
+                    score_rows=scored_rows,
                 )
                 if filtered_rows
                 else []
@@ -709,6 +714,7 @@ def register_category_table_callbacks(
                     filtered_rows,
                     cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
+                    score_rows=computed_store,
                 )
                 if filtered_rows
                 else []
@@ -1207,7 +1213,6 @@ def register_normalization_callbacks(
             State(f"{table_id}-raw-tooltip-store", "data"),
             State(f"{table_id}", "columns"),
             State("cmap-store", "data"),
-            State(f"{table_id}-weight-store", "data"),
             prevent_initial_call=True,
             optional=True,
             **COMPRESS_STORES,
@@ -1219,7 +1224,6 @@ def register_normalization_callbacks(
             raw_tooltips: dict[str, str] | None,
             current_columns: list[dict] | None,
             cmap_name: str | None,
-            stored_weights: dict[str, float] | None,
         ) -> tuple[list[dict], list[dict], list[dict], dict[str, str] | None]:
             """Toggle between raw and normalised metric values for display only."""
             if not raw_data or current_columns is None:
@@ -1237,7 +1241,6 @@ def register_normalization_callbacks(
                 display_rows,
                 scored_data=scored_rows,
                 cmap_name=cmap_name or DEFAULT_COLORMAP,
-                weights=stored_weights,
             )
             columns = apply_column_decimals(
                 format_metric_columns(

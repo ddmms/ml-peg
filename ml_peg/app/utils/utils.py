@@ -651,15 +651,10 @@ def table_has_no_scores(table: DataTable) -> bool:
     """
     Check whether a summarised table contributes no score to its parent summary.
 
-    A table with no rows has not been run at all. A table whose every row has a
-    ``None`` score is equivalent: `calc_table_scores` returns `None` when no
-    column carries weight, which happens when the table only summarises
-    benchmarks that have not been run. Either way the column must be weighted 0
-    in the parent summary, rather than silently skipped per-row, so the parent's
-    weights describe what its score actually includes.
-
-    A ``NaN`` score is excluded: the benchmark ran but the result is missing or
-    invalid, which should still invalidate the parent score.
+    A table with no rows, or whose every row is missing a score, contributes to
+    nobody's score, so `calc_table_scores` discards its column in the parent
+    summary. Its weight is overridden to 0 to match, so the parent's weights
+    describe what its score actually includes.
 
     Parameters
     ----------
@@ -674,7 +669,7 @@ def table_has_no_scores(table: DataTable) -> bool:
     rows = getattr(table, "data", None)
     if not rows:
         return True
-    return all(row.get("Score") is None for row in rows)
+    return all(is_missing_score(row.get("Score")) for row in rows)
 
 
 def drop_empty_model_rows(

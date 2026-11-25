@@ -71,6 +71,24 @@ def test_summary_weights_ignore_group_without_scores() -> None:
     assert table.weights == {"unrun Score": 0.0}
 
 
+def test_tooltip_separates_absent_results_from_unweighted_contents() -> None:
+    """Only a benchmark that has produced nothing is awaiting data."""
+    mlip = next(iter(get_model_names(current_models)))
+    tables = {
+        "empty": _benchmark_table("empty", None),
+        "unweighted": _benchmark_table("unweighted", {mlip: None}),
+        "scored": _benchmark_table("scored", {mlip: 0.5}),
+    }
+
+    table = build_summary_table(tables, table_id="unit-summary-table-tooltips")
+
+    tooltips = table.tooltip_header
+    assert "still being collected" in tooltips["empty Score"]
+    assert "still being collected" not in tooltips["unweighted Score"]
+    assert "weighted 0" in tooltips["unweighted Score"]
+    assert "weighted 0" not in tooltips["scored Score"]
+
+
 def test_summary_weights_untouched_when_all_benchmarks_have_results() -> None:
     """A benchmark with results keeps its weight, so scores stay a plain average."""
     mlip = next(iter(get_model_names(current_models)))

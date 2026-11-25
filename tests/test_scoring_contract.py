@@ -162,6 +162,19 @@ def test_columns_scored_for_nobody_are_dimmed():
     assert _dimmed_columns(style) == {"off", "unrun", "filtered"}
 
 
+def test_hiding_a_model_does_not_switch_off_its_column():
+    """Deselecting the only model holding a column must not switch it off."""
+    all_rows = [
+        {"MLIP": "A", "shared": 0.8, "only_b": None},
+        {"MLIP": "B", "shared": 0.6, "only_b": 0.3},
+    ]
+    visible = [row for row in all_rows if row["MLIP"] == "A"]
+
+    assert not _dimmed_columns(get_table_style(visible, score_rows=all_rows))
+    # Without the unfiltered rows, the column wrongly looks switched off.
+    assert _dimmed_columns(get_table_style(visible)) == {"only_b"}
+
+
 def test_reserved_columns_are_never_dimmed():
     """``Score`` and ``link`` are not scored columns, so they stay fully opaque."""
     rows = [
