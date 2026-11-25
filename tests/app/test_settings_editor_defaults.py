@@ -36,12 +36,40 @@ def test_weight_defaults_and_reset(editor_page, stored):
     }""",
         stored,
     )
-    assert result["sync"] == ["NO_UPDATE", 2, 3]
+    # Scoring reads the store and treats a missing weight as 1.0, so restoring
+    # a default into the input is not enough: it must reach the store too, or
+    # the column is scored at 1.0 while the user is shown its real default.
+    assert result["sync"][1:] == [2, 3]
+    assert {
+        op["location"][0]: op["params"]["value"]
+        for op in result["sync"][0]["operations"]
+    } == {"M1": 2, "M2": 3}
     assigned = {
         op["location"][0]: op["params"]["value"]
         for op in result["reset"][0]["operations"]
     }
     assert assigned == {**({"other": 1} if stored else {}), "M1": 2, "M2": 3}
+
+
+def test_weight_restoration_preserves_saved_values(editor_page):
+    """A saved weight is kept, including a deliberate zero, and emits no write."""
+    result = editor_page.evaluate("""() => {
+        const config = {columns: ['M1', 'M2'], inputs: ['one', 'two'],
+            defaults: {M1: 2, M2: 3}, reset: 'reset'};
+        return dash_clientside.settingsEditors.weights(
+            config, {M1: 0, M2: 5}, 0, 5, 0);
+    }""")
+    assert result == ["NO_UPDATE", "NO_UPDATE", "NO_UPDATE"]
+
+
+def test_weight_restoration_without_configured_default(editor_page):
+    """An unconfigured column already scores as 1.0, so nothing is written."""
+    result = editor_page.evaluate("""() => {
+        const config = {columns: ['M1'], inputs: ['one'], defaults: {},
+            reset: 'reset'};
+        return dash_clientside.settingsEditors.weights(config, {}, 1, 0);
+    }""")
+    assert result == ["NO_UPDATE", "NO_UPDATE"]
 
 
 def test_threshold_reset_drops_metrics_the_app_no_longer_defines(editor_page):

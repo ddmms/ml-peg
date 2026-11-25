@@ -82,6 +82,16 @@
                 }
             });
         }
+        // Scoring reads the store, where a missing weight counts as 1.0
+        // (calc_table_scores), but a missing weight displays its configured
+        // default. Store that default so a session saved before this column
+        // existed is scored with the weight the user is shown. An explicit 0 is
+        // a saved value, not a gap, so only a nullish entry is filled.
+        for (const key of config.columns) {
+            if (next[key] != null || config.defaults[key] == null) continue;
+            next[key] = config.defaults[key];
+            operations.push(assignment([key], next[key]));
+        }
         return [patch(operations), ...config.columns.map((key, i) =>
             (next[key] ?? config.defaults[key] ?? 1) !== values[i]
                 ? (next[key] ?? config.defaults[key] ?? 1) : nu())];
