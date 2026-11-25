@@ -266,6 +266,7 @@ def register_summary_table_callbacks(
                 filtered_rows,
                 cmap_name=cmap_name or DEFAULT_COLORMAP,
                 weights=stored_weights,
+                score_rows=visible_rows,
             )
             if filtered_rows
             else []
@@ -393,6 +394,7 @@ def register_category_table_callbacks(
                 scored_data=filtered_scores,
                 cmap_name=cmap_name or DEFAULT_COLORMAP,
                 weights=weights,
+                score_rows=display_rows,
             )
             if filtered_rows
             else []
@@ -505,6 +507,7 @@ def register_category_table_callbacks(
                         scored_data=filtered_scores,
                         cmap_name=cmap_name or DEFAULT_COLORMAP,
                         weights=stored_weights,
+                        score_rows=display_rows,
                     )
                     if filtered_rows
                     else []
@@ -551,6 +554,7 @@ def register_category_table_callbacks(
                     scored_data=filtered_scores,
                     cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
+                    score_rows=display_rows,
                 )
                 if filtered_rows
                 else []
@@ -632,6 +636,7 @@ def register_category_table_callbacks(
                     filtered_rows,
                     cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
+                    score_rows=scored_rows,
                 )
                 if filtered_rows
                 else []
@@ -709,6 +714,7 @@ def register_category_table_callbacks(
                     filtered_rows,
                     cmap_name=cmap_name or DEFAULT_COLORMAP,
                     weights=stored_weights,
+                    score_rows=computed_store,
                 )
                 if filtered_rows
                 else []

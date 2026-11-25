@@ -41,6 +41,7 @@ from ml_peg.app.utils.utils import (
     get_framework_config,
     get_mlip_column_width,
     get_threshold_colours,
+    is_missing_score,
     load_model_registry_configs,
     row_has_no_results,
     weight_input_style,
@@ -239,14 +240,18 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, "NaN")
         data.append(row)
 
-    # Set weight to 0 if benchmark has no results, so it does not NaN every row's score.
-    empty_columns = [
-        f"{name} Score" for name, summarised in tables.items() if not summarised.data
-    ]
-    if empty_columns:
+    # Set weight to 0 if a column scores nothing, so it does not NaN every row's
+    # score. Judged on the projected rows, since a score belonging to a model
+    # this summary excludes still leaves the column empty here.
+    unscored_columns = {
+        column
+        for column in category_columns
+        if all(is_missing_score(row[column]) for row in data)
+    }
+    if unscored_columns:
         weights = dict(weights or {})
-        for empty_column in empty_columns:
-            weights[empty_column] = 0.0
+        for column in unscored_columns:
+            weights[column] = 0.0
 
     data = calc_table_scores(data, weights=weights)
 
@@ -279,11 +284,18 @@ def build_summary_table(
     tooltip_header = {}
     for header, summarised in tables.items():
         tooltip = summarised.description
+        # A table with rows but no scores has results; its contents are just
+        # weighted 0, so it is not waiting on data.
         if not summarised.data:
-            no_results = (
+            note = (
                 "Data is still being collected for this benchmark, so it is weighted 0."
             )
-            tooltip = f"{tooltip} {no_results}" if tooltip else no_results
+        elif f"{header} Score" in unscored_columns:
+            note = "Nothing here contributes to a score, so it is weighted 0."
+        else:
+            note = ""
+        if note:
+            tooltip = f"{tooltip} {note}" if tooltip else note
         tooltip_header[header + " Score"] = tooltip
 
     for column in columns:
@@ -292,7 +304,9 @@ def build_summary_table(
             column["type"] = "numeric"
     columns = apply_column_decimals(columns, data)
 
-    style = get_table_style(data)
+    # Pass the weights so zero-weighted columns are dimmed in the first paint,
+    # rather than only once the sync callback re-styles the table on mount.
+    style = get_table_style(data, weights=weights)
     registry_configs = load_model_registry_configs()
     row_models: list[str] = []
     for row in data:

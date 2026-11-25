@@ -21,10 +21,12 @@ from yaml import safe_load
 
 from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
+    RESERVED_TABLE_COLUMNS,
     ThresholdEntry,
     Thresholds,
     clean_thresholds,
     clean_weights,
+    is_missing_score,
 )
 from ml_peg.models.get_models import get_model_names, load_model_configs
 
@@ -562,6 +564,15 @@ def calc_table_scores(
     ]
     metric_weights = {key: weights.get(key, 1.0) for key in metric_columns}
 
+    # Decide per column, not per row, so every model's score combines the same
+    # columns. A column with a value for nobody is discarded like a zero weight.
+    scored_columns = {
+        key
+        for key in metric_columns
+        if metric_weights[key] != 0
+        and any(not is_missing_score(row.get(key)) for row in metrics_scores)
+    }
+
     for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
         weighted_sum = 0.0
         weight_sum = 0.0
@@ -571,12 +582,11 @@ def calc_table_scores(
             score = scores_row[key]
             weight = metric_weights[key]
 
-            # If weight is zero or score is None, no contribution to overall score
-            if weight == 0 or score is None:
+            if key not in scored_columns:
                 continue
 
-            # If score is NaN, overall score will be NaN
-            if (isinstance(score, float) and np.isnan(score)) or score == "NaN":
+            # Missing a value another model has makes this model's score NaN
+            if is_missing_score(score):
                 contains_nan = True
                 break
 
@@ -617,6 +627,7 @@ def get_table_style(
     col_names: list[str] | str | None = None,
     cmap_name: str = DEFAULT_COLORMAP,
     weights: dict[str, float] | None = None,
+    score_rows: list[TableRow] | None = None,
 ) -> list[TableRow]:
     """
     Memoized wrapper around :func:`_compute_table_style`.
@@ -644,6 +655,10 @@ def get_table_style(
         Current weight per column id. Columns with a weight of ``0`` are excluded
         from the score, so their cells are dimmed to signal they are switched off.
         Default is None.
+    score_rows
+        Rows that scoring runs on, used to decide which columns hold a value for
+        no model. Pass the unfiltered rows when ``data`` is filtered by model.
+        Default is `None`, which uses ``data``.
 
     Returns
     -------
@@ -653,7 +668,16 @@ def get_table_style(
     """
     try:
         key = json.dumps(
-            [data, scored_data, normalized, all_cols, col_names, cmap_name, weights],
+            [
+                data,
+                scored_data,
+                normalized,
+                all_cols,
+                col_names,
+                cmap_name,
+                weights,
+                score_rows,
+            ],
             sort_keys=True,
             default=str,
         )
@@ -666,6 +690,7 @@ def get_table_style(
             col_names=col_names,
             cmap_name=cmap_name,
             weights=weights,
+            score_rows=score_rows,
         )
 
     with _TABLE_STYLE_CACHE_LOCK:
@@ -684,6 +709,7 @@ def get_table_style(
             col_names=col_names,
             cmap_name=cmap_name,
             weights=weights,
+            score_rows=score_rows,
         )
         with _TABLE_STYLE_CACHE_LOCK:
             _TABLE_STYLE_CACHE[key] = cached
@@ -697,6 +723,34 @@ def get_table_style(
     ]
 
 
+def _column_is_scored(rows: list[TableRow], col: str) -> bool:
+    """
+    Check whether a column holds a usable value for any model.
+
+    Parameters
+    ----------
+    rows
+        Rows that scoring runs on.
+    col
+        Column identifier to check.
+
+    Returns
+    -------
+    bool
+        `True` if any row holds a numeric value in the column.
+    """
+    for row in rows:
+        value = row.get(col)
+        if is_missing_score(value):
+            continue
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            continue
+        return True
+    return False
+
+
 def _compute_table_style(
     data: list[TableRow],
     *,
@@ -706,6 +760,7 @@ def _compute_table_style(
     col_names: list[str] | str | None = None,
     cmap_name: str = DEFAULT_COLORMAP,
     weights: dict[str, float] | None = None,
+    score_rows: list[TableRow] | None = None,
 ) -> list[TableRow]:
     """
     Viridis-style colormap for Dash DataTable.
@@ -729,6 +784,9 @@ def _compute_table_style(
         Current weight per column id. Columns with a weight of ``0`` are excluded
         from the score, so their cells are dimmed to signal they are switched off.
         Default is None.
+    score_rows
+        Rows that scoring runs on, used to decide which columns hold a value for
+        no model at all. Default is `None`, which uses ``data``.
 
     Returns
     -------
@@ -814,6 +872,8 @@ def _compute_table_style(
         if col not in data[0]:
             raise ValueError(f"Column '{col}' not found in data.")
 
+    unscored_columns: set[str] = set()
+
     for col in cols:
         numeric_entries: list[tuple[object, float, float]] = []
         none_row_indices: list[int] = []  # Track rows with None values
@@ -897,6 +957,12 @@ def _compute_table_style(
             )
 
         if not numeric_entries:
+            # Scored for nobody, so dim it like a zero weight. Checked against
+            # the rows scoring uses, so hiding a model cannot switch a column off.
+            if col not in RESERVED_TABLE_COLUMNS and not _column_is_scored(
+                score_rows if score_rows is not None else data, col
+            ):
+                unscored_columns.add(col)
             continue
 
         numeric_values = [numeric for _, numeric, _ in numeric_entries]
@@ -924,12 +990,14 @@ def _compute_table_style(
                 }
             )
 
-    # Dim any column switched off with a zero weight
-    for column, weight in (weights or {}).items():
-        if weight == 0:
-            style_data_conditional.append(
-                {"if": {"column_id": column}, "opacity": ZERO_WEIGHT_OPACITY}
-            )
+    # Dim any column switched off, by a zero weight or by holding no value
+    dimmed = unscored_columns.union(
+        column for column, weight in (weights or {}).items() if weight == 0
+    )
+    for column in sorted(dimmed):
+        style_data_conditional.append(
+            {"if": {"column_id": column}, "opacity": ZERO_WEIGHT_OPACITY}
+        )
 
     return style_data_conditional
 
