@@ -214,7 +214,7 @@ def test_metric_sort_reset_empty_selection_and_tooltips(ready_page, page_errors)
     )
 
 
-def test_returning_to_random_restores_the_same_draw(ready_page, page_errors):
+def test_seed_survives_mode_switch(ready_page, page_errors):
     """Only Reshuffle may redraw: switching away and back must keep the seed."""
     page = ready_page
     table = "summary-table"
@@ -276,7 +276,7 @@ def test_random_order_ready_on_reload(ready_page, page_errors):
     assert names(page, table) == order
 
 
-def test_reshuffle_button_never_reads_as_disabled(ready_page, page_errors):
+def test_order_button_not_dimmed(ready_page, page_errors):
     """The button always acts, so neither mode may render it dimmed or inert."""
     page = ready_page
     button = page.locator("#model-order-reshuffle")
