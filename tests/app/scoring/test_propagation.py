@@ -586,7 +586,10 @@ def test_control_restoration_is_local(ready_page, page_errors):
     ]
     assert len(weights) == len(thresholds) == 1
     assert "B1-table-M2-input.value" in weights[0]["output"]
-    assert "B1-table-M2-bad-threshold.value" in thresholds[0]["output"]
+    for metric in ("M1", "M2"):
+        for field in ("good", "bad"):
+            bound = f"B1-table-{metric}-{field}-threshold.value"
+            assert bound in thresholds[0]["output"]
 
 
 @pytest.mark.parametrize("kind", ["weight", "threshold"])
@@ -600,6 +603,18 @@ def test_latest_edit_wins_over_delayed_response(ready_page, page_errors, kind, a
         .every(([key, value]) => ['stored', 'completed'].includes(key) ||
             (Array.isArray(value) && value.length === 0))""")
     field = "B1-table-M1-" + ("input" if kind == "weight" else "bad-threshold")
+    if action == "reset":
+        # Reset's target is the default score, so the table must hold a
+        # different one first. Otherwise every assertion below is satisfied by
+        # the starting state and the case cannot tell a working reset from a
+        # reset that did nothing at all.
+        # Distinct from the held edit below, so that edit is a real change.
+        edit(page, field, 2 if kind == "weight" else 5)
+        stored_score(page, "B1-table", 0.6 if kind == "weight" else 0.4)
+        page.wait_for_function("""() =>
+            Object.entries(window.store.getState().callbacks)
+            .every(([key, value]) => ['stored', 'completed'].includes(key) ||
+                (Array.isArray(value) && value.length === 0))""")
     held = []
 
     def delay_first(route):
@@ -699,14 +714,31 @@ def test_settings_survive_interrupted_score_requests(ready_page, app_url):
     page.wait_for_function("""() => Object.entries(window.store.getState().callbacks)
         .every(([key, value]) => ['stored', 'completed'].includes(key) ||
             (Array.isArray(value) && value.length === 0))""")
-    page.route("**/_dash-update-component*", lambda route: route.abort("failed"))
+    aborted = []
+
+    def abort_scores(route):
+        """Fail every request, noting those that would have rescored the table."""
+        payload = route.request.post_data_json or {}
+        if "B1-table-computed-store.data" in payload.get("output", ""):
+            aborted.append(payload)
+        route.abort("failed")
+
+    page.route("**/_dash-update-component*", abort_scores)
     edit(page, "B1-table-M1-input", 3)
     edit(page, "B1-table-M1-bad-threshold", 20)
     page.wait_for_function("""() =>
         JSON.parse(sessionStorage.getItem('B1-table-weight-store')).M1 === 3 &&
         JSON.parse(sessionStorage.getItem('B1-table-thresholds-store')).M1.bad === 20
     """)
-    page.unroute("**/_dash-update-component*")
+    # Settings are saved in the browser, so the stores above would converge even
+    # if no scoring request were ever made. Require a failed one, or this test
+    # stops covering the interruption its name describes.
+    for _ in range(50):
+        if aborted:
+            break
+        page.wait_for_timeout(100)
+    assert aborted, "No scoring request was attempted, so none was interrupted"
+    page.unroute("**/_dash-update-component*", abort_scores)
     page.reload()
     wait_for_app_ready(page)
     chain(page, 0.725, 0.5125, 0.70625)
