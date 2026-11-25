@@ -141,7 +141,17 @@ def analyze_results() -> dict[str, NVEEnergyConservationResult]:
         benchmark.model_output = load_model_output(
             CALC_PATH / model_name, MlPegNVEEnergyConservationBenchmark
         )
-        results[model_name] = benchmark.analyze()
+        result = benchmark.analyze()
+
+        # mlipaudit scores a failed system 0 whether it exploded or the model errored
+        # on it. Only an explosion leaves a trajectory, so drop the score without one.
+        for structure, times in zip(
+            result.structure_results, benchmark.model_output.times_ps, strict=True
+        ):
+            if times is None:
+                structure.score = None
+
+        results[model_name] = result
     return results
 
 
@@ -341,11 +351,12 @@ def get_score(
     analyze_results: dict[str, NVEEnergyConservationResult],
 ) -> dict[str, float]:
     """
-    Get the mlipaudit benchmark score for each model.
+    Get the energy conservation score for each model.
 
-    A trajectory that stopped early is scored 0, as mlipaudit scores one that
-    failed. Its drift is fitted over a shorter window, so it would otherwise score
-    highly for having drifted less.
+    A trajectory that stopped early scores 0, as it is fitted over a shorter window,
+    so would otherwise score highly for having drifted less. A model that errored on
+    any system has no score at all, as averaging over the rest would compare it
+    against models that ran the whole benchmark.
 
     Parameters
     ----------
@@ -359,14 +370,47 @@ def get_score(
     """
     scores = {}
     for model_name, result in analyze_results.items():
+        scorable = [
+            structure for structure in result.structure_results if not structure.skipped
+        ]
+        if not scorable or any(structure.score is None for structure in scorable):
+            scores[model_name] = np.nan
+            continue
+
         system_scores = [
             0.0 if structure.num_frames < MIN_COMPLETE_FRAMES else structure.score
-            for structure in result.structure_results
-            if not structure.skipped and structure.score is not None
+            for structure in scorable
         ]
-        scores[model_name] = float(np.mean(system_scores)) if system_scores else np.nan
+        scores[model_name] = float(np.mean(system_scores))
 
     return scores
+
+
+@pytest.fixture
+def get_mlipaudit_score(
+    analyze_results: dict[str, NVEEnergyConservationResult],
+) -> dict[str, float]:
+    """
+    Get mlipaudit's own benchmark score for each model.
+
+    Reported unweighted, so ML-PEG stays comparable with the MLIP Audit leaderboard
+    without its conventions, of scoring an errored system 0 and fitting a trajectory
+    that stopped early over its shorter window, affecting ML-PEG's score.
+
+    Parameters
+    ----------
+    analyze_results
+        Mapping of model name to its ``NVEEnergyConservationResult``.
+
+    Returns
+    -------
+    dict[str, float]
+        Score mlipaudit reports for the benchmark, between 0 and 1.
+    """
+    return {
+        model_name: (result.score if result.score is not None else np.nan)
+        for model_name, result in analyze_results.items()
+    }
 
 
 @pytest.fixture
@@ -382,6 +426,7 @@ def metrics(
     get_drift_ratio: dict[str, float],
     get_systems_completed: dict[str, int],
     get_score: dict[str, float],
+    get_mlipaudit_score: dict[str, float],
 ) -> dict[str, dict]:
     """
     Get all metrics.
@@ -397,7 +442,9 @@ def metrics(
     get_systems_completed
         Number of successfully simulated systems for all models.
     get_score
-        MLIP Audit benchmark scores for all models.
+        Energy conservation scores for all models.
+    get_mlipaudit_score
+        MLIP Audit's own benchmark scores for all models.
 
     Returns
     -------
@@ -409,6 +456,7 @@ def metrics(
         "Energy Drift Ratio": get_drift_ratio,
         "Systems Completed": get_systems_completed,
         "NVE Score": get_score,
+        "MLIP Audit Score": get_mlipaudit_score,
     }
 
 

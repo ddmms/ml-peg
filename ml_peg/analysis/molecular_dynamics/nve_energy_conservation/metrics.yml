@@ -25,5 +25,12 @@ metrics:
     bad: 0.0
     unit: null
     weight: 1
-    tooltip: mlipaudit per-system soft-threshold score on the energy drift ratio, averaged over the systems (systems that failed or stopped early score 0).
+    tooltip: mlipaudit per-system soft-threshold score on the energy drift ratio, averaged over the systems. A system whose simulation exploded scores 0. A model that errored on any system is left unscored, as averaging over the rest would compare it against models that ran the whole benchmark.
+    level_of_theory: null
+  MLIP Audit Score:
+    good: 1.0
+    bad: 0.0
+    unit: null
+    weight: 0
+    tooltip: Score MLIP Audit itself reports for this benchmark, for comparison with their leaderboard. Unlike NVE Score, it scores an errored system 0 rather than leaving the model unscored, and fits a trajectory that stopped early over the shorter window it produced.
     level_of_theory: null

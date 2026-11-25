@@ -17,7 +17,13 @@ BENCHMARK_NAME = "NVEEnergyConservation"
 DOCS_URL = "https://ddmms.github.io/ml-peg/user_guide/benchmarks/molecular_dynamics.html#nve-energy-conservation"
 DATA_PATH = APP_ROOT / "data" / "molecular_dynamics" / "nve_energy_conservation"
 
-METRICS = ("Energy Drift", "Energy Drift Ratio", "Systems Completed", "NVE Score")
+METRICS = (
+    "Energy Drift",
+    "Energy Drift Ratio",
+    "Systems Completed",
+    "NVE Score",
+    "MLIP Audit Score",
+)
 
 
 class NVEEnergyConservationApp(BaseApp):
