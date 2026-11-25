@@ -260,9 +260,9 @@ class ConvexHullAlexandriaApp(BaseApp):
 
             Returns
             -------
-            tuple[list[dict[str, str]], str]
+            tuple[list[dict[str, str]], str | None]
                 Dropdown options, and the system with the largest MAE, containing the
-                element if one was just clicked.
+                element if one was just clicked (``None`` if no system contains it).
             """
             if not model:
                 raise PreventUpdate
@@ -270,7 +270,7 @@ class ConvexHullAlexandriaApp(BaseApp):
             system = options[0]["value"] if options else None
             # Only when an element was just clicked, not on a later change of model
             if element and HULL_ELEMENT_ID in ctx.triggered_prop_ids.values():
-                system = element_system(model, element) or system
+                system = element_system(model, element)
             return options, system
 
         # Triggered by the system only, which is set again whenever the model changes,
@@ -279,8 +279,9 @@ class ConvexHullAlexandriaApp(BaseApp):
             Output(HULL_FIGURE_ID, "children"),
             Input(HULL_SYSTEM_ID, "value"),
             State(HULL_MODEL_ID, "value"),
+            State(HULL_ELEMENT_ID, "data"),
         )
-        def show_hulls(system, model):
+        def show_hulls(system, model, element):
             """
             Show the PBE and model hulls of the selected system.
 
@@ -290,6 +291,8 @@ class ConvexHullAlexandriaApp(BaseApp):
                 Selected system.
             model : str | None
                 Selected model.
+            element : str | None
+                Element last clicked on a periodic table.
 
             Returns
             -------
@@ -298,6 +301,9 @@ class ConvexHullAlexandriaApp(BaseApp):
             """
             if not model:
                 raise PreventUpdate
+            # The model has systems, but none containing the clicked element
+            if not system and element and system_options(model):
+                return P(f"No successful system containing {element} for {model}.")
             return hull_view(model, system)
 
         # A structure belongs to the hulls it was clicked on

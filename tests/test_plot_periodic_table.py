@@ -59,3 +59,16 @@ def test_plot_periodic_table_label_colours(tmp_path):
         "black",
         "black",
     )
+
+
+def test_plot_periodic_table_label_colours_auto_range(tmp_path):
+    """Test that label colours follow the data range when no limits are given."""
+    # Without limits, Fe and O are the light and dark ends of Viridis_r
+    values = {"Fe": 100.0, "O": 101.0}
+    filename = tmp_path / "colours.json"
+    plot_periodic_table(filename=str(filename), colorscale="Viridis_r")(
+        lambda: values
+    )()
+    labels = read_json(filename).data[1]
+    colours = dict(zip(labels.text, labels.textfont.color, strict=True))
+    assert (colours["Fe"], colours["O"]) == ("black", "white")

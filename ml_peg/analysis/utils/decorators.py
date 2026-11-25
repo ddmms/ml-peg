@@ -1452,8 +1452,14 @@ def plot_periodic_table(
 
             # Without limits, Plotly spans the colour scale over the finite values
             finite = grid[np.isfinite(grid)]
-            colour_min = plot_min if plot_min is not None else finite.min(initial=0)
-            colour_max = plot_max if plot_max is not None else finite.max(initial=1)
+            if plot_min is not None:
+                colour_min = plot_min
+            else:
+                colour_min = finite.min() if finite.size else 0
+            if plot_max is not None:
+                colour_max = plot_max
+            else:
+                colour_max = finite.max() if finite.size else 1
             colours = label_colours(
                 grid[ys, xs], colorscale, float(colour_min), float(colour_max)
             )
