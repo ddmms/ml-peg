@@ -399,12 +399,14 @@ Metrics
 5. MLIP Audit score
 
 The total energy is recorded at every snapshot and its deviation from the first frame is
-fitted with a straight line. The fitted slope, divided by the number of atoms, gives the
-energy drift in meV/atom/ps, which is the form usually quoted in the literature and is
-comparable between the four systems. Dividing the fitted drift over the whole trajectory
-by the standard deviation of the kinetic energy instead gives the dimensionless energy
-drift ratio, where a value of 1 means the accumulated drift has grown as large as the
-natural kinetic energy fluctuation of the system. The NVE score maps that ratio through
+fitted with a straight line. The magnitude of the fitted slope, divided by the number of
+atoms, gives the energy drift in meV/atom/ps, which is the form usually quoted in the
+literature and is comparable between the four systems. Taking the magnitude means
+heating and cooling are not distinguished in the table, though the plot keeps the sign.
+Dividing the fitted drift over the whole trajectory by the standard deviation of the
+kinetic energy instead gives the dimensionless energy drift ratio, where a value of 1
+means the accumulated drift has grown as large as the natural kinetic energy
+fluctuation of the system. The NVE score maps that ratio through
 MLIP Audit's soft threshold at 1 and averages over the systems, and is the only scored
 metric; the two drift columns, the count of completed systems and the MLIP Audit score
 are reported for information.

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import functools
-import logging
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -35,8 +34,6 @@ from mlipaudit.benchmarks.reference_geometry_stability import (
 from mlipaudit.io import MODEL_OUTPUT_JSON_FILENAME, MODEL_OUTPUT_ZIP_FILENAME
 from mlipaudit.utils import run_simulation
 from mlipaudit.utils.simulation import get_simulation_engine
-
-logger = logging.getLogger(__name__)
 
 
 def load_model_output(
@@ -73,7 +70,9 @@ def _run_simulation_or_none(*args: Any, **kwargs: Any) -> Any:
     """
     Run an mlipaudit simulation, returning ``None`` if it raises.
 
-    ``run_model`` already treats ``None`` as a failed system, so the rest still run.
+    ``run_simulation`` catches failures from the run itself, but builds the engine
+    outside its own ``try``, so setup errors still escape it. ``run_model`` treats
+    ``None`` as a failed system, so the remaining systems still run.
 
     Parameters
     ----------
@@ -224,7 +223,7 @@ def run_simulation_saving_final_frame(
         engine._update_temporary_state()
         engine._update_state(engine.state.step, 0.0)
     except Exception as exc:
-        logger.info("Error running simulation on system %s: %s", atoms, exc)
+        warn(f"Error running simulation on system {atoms}: {exc}", stacklevel=2)
         return None
 
     return engine.state
@@ -237,9 +236,5 @@ class MlPegReferenceGeometryStabilityBenchmark(
 
     def run_model(self) -> None:
         """Minimize each molecule, saving the geometry it converged to."""
-        run_simulation = rgs.run_simulation
-        rgs.run_simulation = run_simulation_saving_final_frame
-        try:
+        with patch.object(rgs, "run_simulation", run_simulation_saving_final_frame):
             super().run_model()
-        finally:
-            rgs.run_simulation = run_simulation

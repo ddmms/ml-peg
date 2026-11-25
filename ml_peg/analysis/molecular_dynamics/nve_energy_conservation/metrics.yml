@@ -4,7 +4,7 @@ metrics:
     bad: 1.0
     unit: meV/atom/ps
     weight: 0
-    tooltip: Rate of drift of the total energy along the NVE trajectory, from a linear fit, per atom and averaged over the successfully simulated systems.
+    tooltip: Magnitude of the rate of drift of the total energy along the NVE trajectory, from a linear fit, per atom and averaged over the successfully simulated systems. Heating and cooling are not distinguished here, but the plot keeps the sign.
     level_of_theory: null
   Energy Drift Ratio:
     good: 0.0
