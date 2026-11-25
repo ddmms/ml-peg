@@ -122,14 +122,23 @@ def register_model_order_callbacks() -> None:
         tuple
             Updated state and action button label.
         """
+        current = current or {}
+        seed = current.get("seed")
+        reshuffling = ctx.triggered_id == "model-order-reshuffle"
+
         if mode != "random":
-            return {"mode": "alphabetical", "revision": clicks or 0}, "Reset A–Z"
-        if (
-            current
-            and current.get("mode") == "random"
-            and ctx.triggered_id != "model-order-reshuffle"
-        ):
-            return no_update, "Reshuffle"
+            # Carry the seed through alphabetical mode. Dropping it would mint a
+            # new one on the way back, silently redrawing an order the user never
+            # asked to change.
+            return (
+                {"mode": "alphabetical", "revision": clicks or 0, "seed": seed},
+                "Reset A–Z",
+            )
+        if seed and not reshuffling:
+            # Returning to random, or reloading in it, restores the same draw.
+            if current.get("mode") == "random":
+                return no_update, "Reshuffle"
+            return {"mode": "random", "seed": seed}, "Reshuffle"
         return {"mode": "random", "seed": secrets.token_hex(16)}, "Reshuffle"
 
 

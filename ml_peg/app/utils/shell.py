@@ -21,14 +21,43 @@ STARTUP_MASK_MAX_POLLS = 80
 
 def register_shell_callbacks() -> None:
     """Register the start-up mask and mobile-navigation clientside callbacks."""
-    # Hide the start-up mask once the page has rendered, or after a timeout as
-    # a safety net, then stop polling. Clientside, so it adds no server load.
+    # Hide the start-up mask once the page has rendered and its model order has
+    # settled, or after a timeout as a safety net, then stop polling. Clientside,
+    # so it adds no server load. Only random-mode sessions pay the extra polls;
+    # alphabetical sessions already match the server-rendered order.
     clientside_callback(
         f"""
         function(n) {{
             var nu = window.dash_clientside.no_update;
-            var ready = document.querySelector('#page-content table tbody tr');
+            var ready = !!document.querySelector('#page-content table tbody tr');
             var hidden = [{{'display': 'none'}}, true];
+            // Rows are server-rendered in alphabetical order, so a session in
+            // random mode always has a reorder in flight. Hold the mask until
+            // the rendered order stops changing, otherwise the reorder lands
+            // after the mask lifts and the table visibly jumps.
+            if (ready) {{
+                var order = null;
+                try {{
+                    order = JSON.parse(
+                        sessionStorage.getItem('model-order-store')
+                    );
+                }} catch (err) {{
+                    order = null;
+                }}
+                if (order && order.mode === 'random') {{
+                    var signature = Array.prototype.map.call(
+                        document.querySelectorAll(
+                            '#page-content table tbody tr'
+                            + ' td[data-dash-column="MLIP"]'
+                        ),
+                        function(cell) {{ return cell.textContent; }}
+                    ).join('\\u0000');
+                    if (window.__mlpegOrderSignature !== signature) {{
+                        window.__mlpegOrderSignature = signature;
+                        ready = false;
+                    }}
+                }}
+            }}
             // Finish the ring visibly before dismissing the startup overlay.
             if (ready && window.__mlpegLoadingProgress?.finishStartup) {{
                 return window.__mlpegLoadingProgress.finishStartup().then(

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 
 from conftest import set_model_visible as select_model
+from conftest import wait_for_app_ready
 from playwright.sync_api import expect
 
 from ml_peg.app.utils.model_order import order_model_rows
@@ -183,6 +184,59 @@ def test_metric_sort_reset_empty_selection_and_tooltips(ready_page, page_errors)
     expect(page.locator(f'#{table} td[data-dash-column="M1"]')).to_have_text(
         [expected[name]["M1"] for name in order]
     )
+
+
+def test_returning_to_random_restores_the_same_draw(ready_page, page_errors):
+    """Only Reshuffle may redraw: switching away and back must keep the seed."""
+    page = ready_page
+    table = "summary-table"
+    baseline = rows(page, table)
+
+    page.locator('#model-order-mode input[value="random"]').check()
+    page.wait_for_function(
+        "JSON.parse(sessionStorage.getItem('model-order-store'))?.mode === 'random'"
+    )
+    seed = page.evaluate("JSON.parse(sessionStorage.getItem('model-order-store')).seed")
+    order = random_names(page, baseline)
+    wait_order(page, table, order)
+
+    page.locator('#model-order-mode input[value="alphabetical"]').check()
+    wait_order(page, table, sorted(row["MLIP"] for row in baseline))
+
+    page.locator('#model-order-mode input[value="random"]').check()
+    wait_order(page, table, order)
+    assert (
+        page.evaluate("JSON.parse(sessionStorage.getItem('model-order-store')).seed")
+        == seed
+    )
+
+    # An explicit reshuffle is still allowed to draw a new order.
+    page.locator("#model-order-reshuffle").click()
+    page.wait_for_function(
+        "old => JSON.parse(sessionStorage.getItem('model-order-store')).seed !== old",
+        arg=seed,
+    )
+    wait_order(page, table, random_names(page, baseline))
+
+
+def test_random_order_is_applied_before_the_startup_mask_lifts(ready_page, page_errors):
+    """A reload in random mode must not flash the server-rendered A-Z order."""
+    page = ready_page
+    table = "summary-table"
+    baseline = rows(page, table)
+    page.locator('#model-order-mode input[value="random"]').check()
+    page.wait_for_function(
+        "JSON.parse(sessionStorage.getItem('model-order-store'))?.mode === 'random'"
+    )
+    order = random_names(page, baseline)
+    wait_order(page, table, order)
+    assert order != sorted(order), "seed happened to produce alphabetical order"
+
+    page.reload()
+    wait_for_app_ready(page)
+    # Read immediately, with no polling: the order must already be correct at
+    # the moment the mask lifts, not settle into place afterwards.
+    assert names(page, table) == order
 
 
 def test_reshuffle_button_never_reads_as_disabled(ready_page, page_errors):
