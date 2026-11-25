@@ -32,7 +32,11 @@ def register_shell_callbacks() -> None:
                 ([key, queue]) => ['stored', 'completed'].includes(key) ||
                     (Array.isArray(queue) && queue.every(cb =>
                         cb.callback?.output?.includes('startup-mask.style'))));
-            const loading = page?.querySelector('[data-dash-is-loading="true"]');
+            // Dash marks the loading component itself, so #page-content (the
+            // outer Loading target) needs matches(); querySelector alone only
+            // sees the per-benchmark Loading wrappers nested inside it.
+            const busy = '[data-dash-is-loading="true"]';
+            const loading = page?.matches(busy) || page?.querySelector(busy);
             const rendered = page && page.children.length > 0;
             const now = performance.now();
             if (!rendered || !idle || loading) {{

@@ -99,6 +99,21 @@ def test_loading_or_new_work_restarts_quiet_period(startup_page):
     assert poll(page, 1200) == [{"display": "none"}, True]
 
 
+def test_page_content_own_loading_state_blocks(startup_page):
+    """Dash marks the Loading target itself, and #page-content is one."""
+    page = startup_page
+    page.locator("#page-content").evaluate(
+        "el => el.setAttribute('data-dash-is-loading', 'true')"
+    )
+    assert poll(page, 0) == ["NO_UPDATE"] * 2
+    assert poll(page, 600) == ["NO_UPDATE"] * 2
+    page.locator("#page-content").evaluate(
+        "el => el.removeAttribute('data-dash-is-loading')"
+    )
+    assert poll(page, 700) == ["NO_UPDATE"] * 2
+    assert poll(page, 1200) == [{"display": "none"}, True]
+
+
 @pytest.mark.parametrize("failure", ["renderer", "page", "queue"])
 def test_failed_startup_has_bounded_escape(startup_page, failure):
     """Unavailable renderer state or page content cannot trap the user forever."""

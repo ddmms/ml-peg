@@ -907,8 +907,11 @@ def register_weight_callbacks(
             for control in config["inputs"]
             for prop in ("n_submit", "n_blur")
         ],
+        # No optional=True: clientside_callback drops it (it forwards only
+        # `hidden` to insert_callback), so it would read as a guarantee that is
+        # not there. These controls mount per page, and the apps' own
+        # suppress_callback_exceptions=True is what keeps that from erroring.
         prevent_initial_call="initial_duplicate",
-        optional=True,
     )
 
 
@@ -965,8 +968,9 @@ def register_normalization_callbacks(
                 for control in config["inputs"]
                 for prop in ("n_submit", "n_blur")
             ],
+            # No optional=True: clientside_callback drops it (see
+            # register_weight_callbacks).
             prevent_initial_call="initial_duplicate",
-            optional=True,
         )
 
     if metrics:
