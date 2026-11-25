@@ -410,21 +410,24 @@ information.
 
 Both drift metrics average over the systems that completed, so the number of systems
 completed is reported alongside them: a model that only manages one of the four is not
-comparable to one that manages all four. Note also that a trajectory which is stopped
-early, because the simulation exploded, is fitted over the shorter window it produced.
+comparable to one that manages all four. A trajectory that stops early, because the
+simulation exploded, does not count as completed: it scores 0, and is excluded from the
+two drift metrics, which would otherwise flatter it by fitting over a shorter window.
 
 Clicking a row shows the total energy drift per atom along the trajectory for each of
 that model's systems, keeping its sign, so heating can be told apart from cooling.
+Systems that stopped early are shown as well, labelled as such, with their trace ending
+where the simulation did.
 
 Benchmark speed
 ---------------
 
-High: 4 systems of 46 to 2642 atoms, one MD simulation each, of 50,000 steps, i.e. 50 ps
-at a 1 fs timestep. That is 200,000 force evaluations per model, and three of the four
-systems are periodic and over 1300 atoms, so tests are likely to take many hours to run
-on GPU. The simulations are driven through ASE, one calculator call per step, with no
-jit and no episode batching; faster inference can be achieved using the jax-accelerated
-simulations in MLIP Audit directly.
+Very slow: 4 systems of 46 to 2642 atoms, one MD simulation each, of 50,000 steps, i.e.
+50 ps at a 1 fs timestep. That is 200,000 force evaluations per model, and three of the
+four systems are periodic and over 1300 atoms, so tests are likely to take many hours to
+run on GPU. The simulations are driven through ASE, one calculator call per step, with
+no jit and no episode batching; faster inference can be achieved using the
+jax-accelerated simulations in MLIP Audit directly.
 
 Data availability
 -----------------
