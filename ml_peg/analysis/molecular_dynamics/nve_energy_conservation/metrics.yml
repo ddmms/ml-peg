@@ -25,5 +25,5 @@ metrics:
     bad: 0.0
     unit: null
     weight: 1
-    tooltip: mlipaudit per-system soft-threshold score on the energy drift ratio, averaged over the systems (failed systems score 0).
+    tooltip: mlipaudit per-system soft-threshold score on the energy drift ratio, averaged over the systems (systems that failed or stopped early score 0).
     level_of_theory: null
