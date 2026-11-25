@@ -203,3 +203,12 @@ def test_reexpanded_card_keeps_session_edits(ready_page: Page, order: str) -> No
     expect(
         ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
     ).to_have_text(expected_order, timeout=TIMEOUT)
+
+    # The regression this guards against is a *late* stale re-render chained off
+    # the store write-back, so the correct paint arriving is not enough: let the
+    # callback graph settle, then confirm nothing overwrote it.
+    ready_page.wait_for_timeout(1000)
+    expect(score).to_have_text("1.000", timeout=TIMEOUT)
+    expect(
+        ready_page.locator('#IONPI19-table td[data-dash-column="MLIP"]')
+    ).to_have_text(expected_order, timeout=TIMEOUT)

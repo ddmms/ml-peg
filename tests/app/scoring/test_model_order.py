@@ -185,6 +185,29 @@ def test_metric_sort_reset_empty_selection_and_tooltips(ready_page, page_errors)
     )
 
 
+def test_reshuffle_button_is_only_highlighted_in_random_mode(ready_page, page_errors):
+    """The action button must not read as permanently dimmed in random mode."""
+    page = ready_page
+    button = page.locator("#model-order-reshuffle")
+
+    def colour():
+        return button.evaluate("node => getComputedStyle(node).color")
+
+    page.locator('#model-order-mode input[value="alphabetical"]').check()
+    expect(button).to_have_text("Reset A–Z")
+    expect(button).not_to_have_class("is-active")
+    muted = colour()
+
+    page.locator('#model-order-mode input[value="random"]').check()
+    expect(button).to_have_text("Reshuffle")
+    expect(button).to_have_class("is-active")
+    assert colour() != muted
+
+    page.locator('#model-order-mode input[value="alphabetical"]').check()
+    expect(button).not_to_have_class("is-active")
+    assert colour() == muted
+
+
 def test_order_controls_mobile_and_desktop(ready_page, page_errors, tmp_path):
     """Controls remain visible, usable and within the viewport at both sizes."""
     page = ready_page

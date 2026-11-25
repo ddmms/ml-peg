@@ -20,13 +20,33 @@
     margin-right: 4px;
     accent-color: var(--mlpeg-accent);
 }
+/* Muted by default: in A-Z mode "Reset A-Z" only does something once a column
+   arrow has been used, so it should not advertise itself. */
 #model-order-reshuffle {
-    color: inherit;
+    color: var(--mlpeg-muted);
     background: transparent;
     border: 1px solid var(--mlpeg-border);
     border-radius: 5px;
     padding: 3px 8px;
     cursor: pointer;
+}
+#model-order-reshuffle:hover {
+    color: var(--mlpeg-accent);
+    background: var(--mlpeg-surface-2);
+}
+#model-order-reshuffle:focus-visible {
+    outline: 2px solid var(--mlpeg-accent);
+    outline-offset: 2px;
+}
+/* Random mode: "Reshuffle" is always a live action, so it reads as enabled. */
+#model-order-reshuffle.is-active {
+    color: var(--mlpeg-accent);
+    border-color: var(--mlpeg-accent);
+}
+#model-order-reshuffle.is-active:hover {
+    color: var(--mlpeg-accent-strong);
+    border-color: var(--mlpeg-accent-strong);
+    background: var(--mlpeg-surface-2);
 }
 .mlpeg-model-order small {
     display: block;
