@@ -70,6 +70,12 @@ def enforce_threshold_direction(
     """
     Preserve the original good/bad threshold direction after a user edit.
 
+    Edits are now corrected in the browser, by ``correctBounds`` in
+    ``settings_editors.js``, so nothing in the app calls this. It is retained
+    deliberately as the reference implementation that
+    ``test_threshold_correction_matches_python`` checks the browser against:
+    delete it and that test has nothing left to compare to.
+
     Parameters
     ----------
     edited_field

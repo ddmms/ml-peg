@@ -67,16 +67,12 @@ def build_global_weights(summary_table: DataTable, category_views: dict) -> Deta
             continue
         table = view["summary_table"]
         benchmark_reset = f"global-{table.id}-reset"
-        benchmarks = [
-            _weight_row(table, col["id"])
-            for col in table.columns
-            if col["id"] not in RESERVED_TABLE_COLUMNS
-        ]
         columns = [
             col["id"]
             for col in table.columns
             if col["id"] not in RESERVED_TABLE_COLUMNS
         ]
+        benchmarks = [_weight_row(table, col) for col in columns]
         register_weight_callbacks(
             table.id,
             columns,

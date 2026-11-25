@@ -16,6 +16,7 @@
         (args[count + 2 + index * 2] || 0) > 0;
     const assignment = (location, value) => ({operation: "Assign", location,
         params: {value}});
+    const deletion = location => ({operation: "Delete", location});
     const patch = operations => operations.length
         ? {__dash_patch_update: "__dash_patch_update", operations} : nu();
 
@@ -96,6 +97,14 @@
             for (const [metric, entry] of Object.entries(config.defaults)) {
                 next[metric] = {...entry};
                 operations.push(assignment([metric], next[metric]));
+            }
+            // A session store saved before a metric was renamed or removed keeps
+            // that key, and clean_thresholds reads whichever keys the store has.
+            // Reset repairs the store, so drop what this app no longer defines.
+            for (const metric of Object.keys(next)) {
+                if (metric in config.defaults) continue;
+                delete next[metric];
+                operations.push(deletion([metric]));
             }
         } else {
             config.metrics.forEach((metric, i) => {

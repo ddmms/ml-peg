@@ -44,6 +44,27 @@ def test_weight_defaults_and_reset(editor_page, stored):
     assert assigned == {**({"other": 1} if stored else {}), "M1": 2, "M2": 3}
 
 
+def test_threshold_reset_drops_metrics_the_app_no_longer_defines(editor_page):
+    """Reset repairs a store saved before a metric was renamed or removed."""
+    result = editor_page.evaluate("""() => {
+        const config = {metrics: ['M1'], inputs: ['good', 'bad'],
+            defaults: {M1: {good: 0, bad: 10, unit: 'eV'}},
+            reset: 'reset', step: 0.1, digits: 2};
+        dash_clientside.callback_context.triggered = [{prop_id: 'reset.n_clicks'}];
+        return dash_clientside.settingsEditors.thresholds(config,
+            {M1: {good: 5, bad: 6, unit: 'eV'},
+             gone: {good: 1, bad: 2, unit: 'eV'}}, 5, 6, 1);
+    }""")
+    assert result[0]["operations"] == [
+        {
+            "operation": "Assign",
+            "location": ["M1"],
+            "params": {"value": {"good": 0, "bad": 10, "unit": "eV"}},
+        },
+        {"operation": "Delete", "location": ["gone"]},
+    ]
+
+
 def test_missing_threshold_can_be_edited(editor_page):
     """A new metric accepts an edit without requiring a preliminary reset."""
     result = editor_page.evaluate("""() => {
