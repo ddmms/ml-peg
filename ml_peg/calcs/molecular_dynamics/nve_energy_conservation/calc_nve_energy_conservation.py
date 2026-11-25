@@ -21,6 +21,7 @@ pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.nve_energy_conservation.nve_energy_conservation import (
     NVEEnergyConservationModelOutput,
 )
+from mlipaudit.io import write_model_output_to_disk
 
 from ml_peg.calcs.utils.mlipaudit import MlPegNVEEnergyConservationBenchmark
 from ml_peg.calcs.utils.utils import download_s3_data
@@ -55,9 +56,6 @@ def test_nve_energy_conservation(mlip: tuple[str, Any]) -> None:
         filename=f"{BENCHMARK}.zip",
     )
 
-    out_path = OUT_PATH / model_name
-    out_path.mkdir(parents=True, exist_ok=True)
-
     # Copy the input structures into the outputs, so the analysis can rebuild the
     # benchmark without downloading the data again.
     shutil.copytree(
@@ -86,6 +84,4 @@ def test_nve_energy_conservation(mlip: tuple[str, Any]) -> None:
             skipped_structures=[],
         )
 
-    (out_path / "model_output.json").write_text(
-        benchmark.model_output.model_dump_json()
-    )
+    write_model_output_to_disk(BENCHMARK, benchmark.model_output, OUT_PATH / model_name)

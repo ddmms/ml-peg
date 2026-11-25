@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import functools
 import logging
+from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 from warnings import warn
+from zipfile import ZipFile
 
 from ase import Atoms
 from mlip.simulation import SimulationState
+from mlipaudit.benchmark import Benchmark, ModelOutput
 from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
     ConformerSelectionBenchmark,
@@ -29,10 +32,41 @@ from mlipaudit.benchmarks.nve_energy_conservation import nve_energy_conservation
 from mlipaudit.benchmarks.reference_geometry_stability import (
     reference_geometry_stability as rgs,
 )
+from mlipaudit.io import MODEL_OUTPUT_JSON_FILENAME, MODEL_OUTPUT_ZIP_FILENAME
 from mlipaudit.utils import run_simulation
 from mlipaudit.utils.simulation import get_simulation_engine
 
 logger = logging.getLogger(__name__)
+
+
+def load_model_output(
+    model_outputs_dir: Path, benchmark_class: type[Benchmark]
+) -> ModelOutput:
+    """
+    Load a model output zip written by mlipaudit.
+
+    Replaces ``mlipaudit.io.load_model_output_from_disk``, which cannot rebuild an
+    output whose JSON nests a list directly inside a list, as the NVE benchmark's
+    per-system energies do. Such an output has no arrays to pull out of the zip's
+    npz, so its JSON is the whole output and can be validated on its own.
+
+    Parameters
+    ----------
+    model_outputs_dir
+        Directory holding the benchmark's model output directory.
+    benchmark_class
+        Benchmark the model output belongs to.
+
+    Returns
+    -------
+    ModelOutput
+        Model output loaded from disk.
+    """
+    zip_path = model_outputs_dir / benchmark_class.name / MODEL_OUTPUT_ZIP_FILENAME
+    with ZipFile(zip_path) as archive:
+        raw = archive.read(MODEL_OUTPUT_JSON_FILENAME)
+
+    return benchmark_class.model_output_class.model_validate_json(raw)
 
 
 def _run_simulation_or_none(*args: Any, **kwargs: Any) -> Any:

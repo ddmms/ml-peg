@@ -14,7 +14,6 @@ pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.nve_energy_conservation.nve_energy_conservation import (
     SIMULATION_CONFIG,
     SYSTEMS,
-    NVEEnergyConservationModelOutput,
     NVEEnergyConservationResult,
     NVEStructureResult,
 )
@@ -23,7 +22,10 @@ from ml_peg.analysis.utils.decorators import build_table, plot_scatter
 from ml_peg.analysis.utils.utils import load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
-from ml_peg.calcs.utils.mlipaudit import MlPegNVEEnergyConservationBenchmark
+from ml_peg.calcs.utils.mlipaudit import (
+    MlPegNVEEnergyConservationBenchmark,
+    load_model_output,
+)
 from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
@@ -119,10 +121,6 @@ def analyze_results() -> dict[str, NVEEnergyConservationResult]:
     """
     Run the mlipaudit analysis for each model.
 
-    The model output is read from the JSON written by the calculation, as in the
-    Folmsbee and tautomers benchmarks. It holds only plain lists, so no data is
-    lost by writing it as JSON rather than as an npz archive.
-
     Returns
     -------
     dict[str, NVEEnergyConservationResult]
@@ -132,16 +130,16 @@ def analyze_results() -> dict[str, NVEEnergyConservationResult]:
 
     results = {}
     for model_name in MODELS:
-        output_path = CALC_PATH / model_name / "model_output.json"
-        if not output_path.exists():
+        output_dir = CALC_PATH / model_name / BENCHMARK
+        if not (output_dir / "model_output.zip").exists():
             continue
         benchmark = MlPegNVEEnergyConservationBenchmark(
             force_field=Calculator(),
             data_input_dir=CALC_PATH,
             run_mode="standard",
         )
-        benchmark.model_output = NVEEnergyConservationModelOutput.model_validate_json(
-            output_path.read_text()
+        benchmark.model_output = load_model_output(
+            CALC_PATH / model_name, MlPegNVEEnergyConservationBenchmark
         )
         results[model_name] = benchmark.analyze()
     return results
