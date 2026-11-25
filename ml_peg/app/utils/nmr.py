@@ -72,7 +72,7 @@ def plots_from_table_column(
     table_id: str, plot_id: str, column_to_plots: dict[str, list[Graph]]
 ) -> None:
     """
-    Show one or more plots, stacked, when a table column is clicked.
+    Show one or more plots side by side when a table column is clicked.
 
     As ml-peg's ``plot_from_table_column``, which shows a single plot, so that a
     column can open its parity plot and the shielding-vs-experiment plot.
