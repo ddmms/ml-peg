@@ -370,3 +370,91 @@ Reference data:
 
 * Not applicable: this is a wall-clock hardware measurement, not a comparison to a
   reference level of theory.
+
+
+NVE energy conservation
+=======================
+
+Summary
+-------
+
+Performance in conserving the total mechanical energy ``E = PE + KE`` during
+microcanonical (NVE) molecular dynamics. Four systems are simulated: a 46 atom organic
+molecule in vacuum, a periodic box of 500 water molecules, and two solvated peptides
+(Oxytocin, and Neurotensin with counter-ions), spanning 46 to 2642 atoms. Each runs for
+50,000 velocity-Verlet steps at a 1 fs timestep, i.e. 50 ps, with velocities initialised
+at 300 K and no thermostat.
+
+Without a thermostat, the total energy is a conserved quantity of the dynamics, so this
+benchmark needs no external reference: any systematic drift is a defect of the potential
+energy surface or of the consistency between the energies and forces derived from it.
+
+Metrics
+-------
+
+1. Energy drift
+2. Energy drift ratio
+3. Systems completed
+4. NVE score
+5. MLIP Audit score
+
+The total energy is recorded at every snapshot and its deviation from the first frame is
+fitted with a straight line. The magnitude of the fitted slope, divided by the number of
+atoms, gives the energy drift in meV/atom/ps, which is the form usually quoted in the
+literature and is comparable between the four systems. Taking the magnitude means
+heating and cooling are not distinguished in the table, though the plot keeps the sign.
+Dividing the fitted drift over the whole trajectory by the standard deviation of the
+kinetic energy instead gives the dimensionless energy drift ratio, where a value of 1
+means the accumulated drift has grown as large as the natural kinetic energy
+fluctuation of the system. The NVE score maps that ratio through
+MLIP Audit's soft threshold at 1 and averages over the systems, and is the only scored
+metric; the two drift columns, the count of completed systems and the MLIP Audit score
+are reported for information.
+
+Both drift metrics average over the systems that completed, so the number of systems
+completed is reported alongside them: a model that only manages one of the four is not
+comparable to one that manages all four. A trajectory that stops early, because the
+simulation exploded, does not count as completed: it scores 0, and is excluded from the
+two drift metrics, which would otherwise flatter it by fitting over a shorter window.
+
+Exploding is distinguished from erroring. A model that blows up still produces a
+trajectory, up to the point the dynamics were stopped, and is scored 0 on that system.
+A model that raises instead, because it does not support an element of the system or
+cannot run it at all, produces no trajectory, and is not scored: a model that errors on
+any of the four has no NVE score, since averaging over the rest would compare it
+against models that ran the whole benchmark.
+
+The MLIP Audit score is the score MLIP Audit itself reports, included so results here
+can be compared with their leaderboard. It follows their conventions rather than the
+two above, scoring an errored system 0 and fitting a trajectory that stopped early over
+the shorter window it produced. It is reported for information only and is not weighted,
+so those conventions do not feed into ML-PEG's score.
+
+Clicking a row shows the total energy drift per atom along the trajectory for each of
+that model's systems, keeping its sign, so heating can be told apart from cooling.
+Systems that stopped early are shown as well, labelled as such, with their trace ending
+where the simulation did.
+
+Benchmark speed
+---------------
+
+Very slow: 4 systems of 46 to 2642 atoms, one MD simulation each, of 50,000 steps, i.e.
+50 ps at a 1 fs timestep. That is 200,000 force evaluations per model, and three of the
+four systems are periodic and over 1300 atoms, so tests are likely to take many hours to
+run on GPU. The simulations are driven through ASE, one calculator call per step, with
+no jit and no episode batching; faster inference can be achieved using the
+jax-accelerated simulations in MLIP Audit directly.
+
+Data availability
+-----------------
+
+Input structures:
+
+* MLIP Audit benchmark suite, InstaDeep. The equilibrated 500-molecule water box is
+  shared with the water radial distribution benchmark. The peptides are Oxytocin
+  (PDB: 7OFG) and Neurotensin with counter-ions (PDB: 2LNF).
+
+Reference data:
+
+* None. Energy conservation is an internal consistency property of the potential, so
+  there is no reference method to compare against.

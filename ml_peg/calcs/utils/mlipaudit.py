@@ -3,16 +3,21 @@
 from __future__ import annotations
 
 import functools
-import logging
+from pathlib import Path
 from typing import Any
+from unittest.mock import patch
+from warnings import warn
+from zipfile import ZipFile
 
 from ase import Atoms
 from mlip.simulation import SimulationState
+from mlipaudit.benchmark import Benchmark, ModelOutput
 from mlipaudit.benchmarks import (
     BondLengthDistributionBenchmark,
     ConformerSelectionBenchmark,
     FoldingStabilityBenchmark,
     InferenceSpeedBenchmark,
+    NVEEnergyConservationBenchmark,
     ReactivityBenchmark,
     ReferenceGeometryStabilityBenchmark,
     RingPlanarityBenchmark,
@@ -22,12 +27,70 @@ from mlipaudit.benchmarks import (
 from mlipaudit.benchmarks.nudged_elastic_band.nudged_elastic_band import (
     NudgedElasticBandBenchmark,
 )
+from mlipaudit.benchmarks.nve_energy_conservation import nve_energy_conservation
 from mlipaudit.benchmarks.reference_geometry_stability import (
     reference_geometry_stability as rgs,
 )
+from mlipaudit.io import MODEL_OUTPUT_JSON_FILENAME, MODEL_OUTPUT_ZIP_FILENAME
+from mlipaudit.utils import run_simulation
 from mlipaudit.utils.simulation import get_simulation_engine
 
-logger = logging.getLogger(__name__)
+
+def load_model_output(
+    model_outputs_dir: Path, benchmark_class: type[Benchmark]
+) -> ModelOutput:
+    """
+    Load a model output zip written by mlipaudit.
+
+    Replaces ``mlipaudit.io.load_model_output_from_disk``, which cannot rebuild an
+    output whose JSON nests a list directly inside a list, as the NVE benchmark's
+    per-system energies do. Such an output has no arrays to pull out of the zip's
+    npz, so its JSON is the whole output and can be validated on its own.
+
+    Parameters
+    ----------
+    model_outputs_dir
+        Directory holding the benchmark's model output directory.
+    benchmark_class
+        Benchmark the model output belongs to.
+
+    Returns
+    -------
+    ModelOutput
+        Model output loaded from disk.
+    """
+    zip_path = model_outputs_dir / benchmark_class.name / MODEL_OUTPUT_ZIP_FILENAME
+    with ZipFile(zip_path) as archive:
+        raw = archive.read(MODEL_OUTPUT_JSON_FILENAME)
+
+    return benchmark_class.model_output_class.model_validate_json(raw)
+
+
+def _run_simulation_or_none(*args: Any, **kwargs: Any) -> Any:
+    """
+    Run an mlipaudit simulation, returning ``None`` if it raises.
+
+    ``run_simulation`` catches failures from the run itself, but builds the engine
+    outside its own ``try``, so setup errors still escape it. ``run_model`` treats
+    ``None`` as a failed system, so the remaining systems still run.
+
+    Parameters
+    ----------
+    *args
+        Positional arguments for ``run_simulation``.
+    **kwargs
+        Keyword arguments for ``run_simulation``.
+
+    Returns
+    -------
+    Any
+        Final simulation state, or ``None`` if the simulation raised.
+    """
+    try:
+        return run_simulation(*args, **kwargs)
+    except Exception as exc:
+        warn(f"Simulation failed: {exc}", stacklevel=2)
+        return None
 
 
 class MlPegAuditBenchmark:
@@ -100,6 +163,34 @@ class MlPegGrambowOrganicsBenchmark(MlPegAuditBenchmark, NudgedElasticBandBenchm
     """``NudgedElasticBandBenchmark`` wired up for ml-peg."""
 
 
+class MlPegNVEEnergyConservationBenchmark(
+    MlPegAuditBenchmark, NVEEnergyConservationBenchmark
+):
+    """
+    ``NVEEnergyConservationBenchmark`` wired up for ml-peg.
+
+    ``run_model`` is patched to avoid two upstream bugs: ``skip_unallowed_elements``
+    raises for ASE ``Calculator`` objects, and an unguarded ``run_simulation`` lets
+    one failing system discard the systems already simulated.
+    """
+
+    def run_model(self) -> None:
+        """Run the benchmark, tolerating per-system simulation failures."""
+        with (
+            patch.object(
+                nve_energy_conservation,
+                "skip_unallowed_elements",
+                lambda force_field, structure_tuples: [],
+            ),
+            patch.object(
+                nve_energy_conservation,
+                "run_simulation",
+                _run_simulation_or_none,
+            ),
+        ):
+            super().run_model()
+
+
 def run_simulation_saving_final_frame(
     atoms: Atoms, force_field: Any, **kwargs: Any
 ) -> SimulationState | None:
@@ -132,7 +223,7 @@ def run_simulation_saving_final_frame(
         engine._update_temporary_state()
         engine._update_state(engine.state.step, 0.0)
     except Exception as exc:
-        logger.info("Error running simulation on system %s: %s", atoms, exc)
+        warn(f"Error running simulation on system {atoms}: {exc}", stacklevel=2)
         return None
 
     return engine.state
@@ -145,9 +236,5 @@ class MlPegReferenceGeometryStabilityBenchmark(
 
     def run_model(self) -> None:
         """Minimize each molecule, saving the geometry it converged to."""
-        run_simulation = rgs.run_simulation
-        rgs.run_simulation = run_simulation_saving_final_frame
-        try:
+        with patch.object(rgs, "run_simulation", run_simulation_saving_final_frame):
             super().run_model()
-        finally:
-            rgs.run_simulation = run_simulation

@@ -28,6 +28,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 @pytest.mark.very_slow
 @pytest.mark.parametrize("mlip", MODELS.items())
+@pytest.mark.framework("mlip_audit")
 def test_stability(mlip: tuple[str, Any]) -> None:
     """
     Benchmark molecular dynamics stability.

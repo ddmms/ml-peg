@@ -230,6 +230,7 @@ def metrics(
     }
 
 
+@pytest.mark.framework("mlip_audit")
 def test_ring_planarity(metrics: dict[str, dict], struct_info: dict) -> None:
     """
     Run ring planarity analysis.

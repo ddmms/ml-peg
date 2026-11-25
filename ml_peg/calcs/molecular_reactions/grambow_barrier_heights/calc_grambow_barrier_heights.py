@@ -35,6 +35,7 @@ OUT_PATH = Path(__file__).parent / "outputs"
 
 @pytest.mark.fast
 @pytest.mark.parametrize("mlip", MODELS.items())
+@pytest.mark.framework("mlip_audit")
 def test_grambow_barrier_heights(mlip: tuple[str, Any]) -> None:
     """
     Benchmark the Grambow reaction barrier dataset.
