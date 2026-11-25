@@ -100,7 +100,6 @@ def register_model_order_callbacks() -> None:
     @callback(
         Output("model-order-store", "data"),
         Output("model-order-reshuffle", "children"),
-        Output("model-order-reshuffle", "className"),
         Input("model-order-mode", "value"),
         Input("model-order-reshuffle", "n_clicks"),
         State("model-order-store", "data"),
@@ -121,23 +120,17 @@ def register_model_order_callbacks() -> None:
         Returns
         -------
         tuple
-            Updated state, action button label, and the button's style class.
-            The button is only highlighted in random mode, where reshuffling
-            always does something.
+            Updated state and action button label.
         """
         if mode != "random":
-            return {"mode": "alphabetical", "revision": clicks or 0}, "Reset A–Z", ""
+            return {"mode": "alphabetical", "revision": clicks or 0}, "Reset A–Z"
         if (
             current
             and current.get("mode") == "random"
             and ctx.triggered_id != "model-order-reshuffle"
         ):
-            return no_update, "Reshuffle", "is-active"
-        return (
-            {"mode": "random", "seed": secrets.token_hex(16)},
-            "Reshuffle",
-            "is-active",
-        )
+            return no_update, "Reshuffle"
+        return {"mode": "random", "seed": secrets.token_hex(16)}, "Reshuffle"
 
 
 def register_model_order_reset(table_id: str) -> None:

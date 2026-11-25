@@ -185,27 +185,33 @@ def test_metric_sort_reset_empty_selection_and_tooltips(ready_page, page_errors)
     )
 
 
-def test_reshuffle_button_is_only_highlighted_in_random_mode(ready_page, page_errors):
-    """The action button must not read as permanently dimmed in random mode."""
+def test_reshuffle_button_never_reads_as_disabled(ready_page, page_errors):
+    """The button always acts, so neither mode may render it dimmed or inert."""
     page = ready_page
     button = page.locator("#model-order-reshuffle")
+    # The help text below the control is the muted colour the button must avoid.
+    muted = page.locator(".mlpeg-model-order small").evaluate(
+        "node => getComputedStyle(node).color"
+    )
 
     def colour():
         return button.evaluate("node => getComputedStyle(node).color")
 
-    page.locator('#model-order-mode input[value="alphabetical"]').check()
-    expect(button).to_have_text("Reset A–Z")
-    expect(button).not_to_have_class("is-active")
-    muted = colour()
+    resting = {}
+    hovered = {}
+    for mode, label in [("alphabetical", "Reset A–Z"), ("random", "Reshuffle")]:
+        page.locator(f'#model-order-mode input[value="{mode}"]').check()
+        expect(button).to_have_text(label)
+        resting[mode] = colour()
+        button.hover()
+        hovered[mode] = colour()
+        page.mouse.move(0, 0)
+        assert resting[mode] != muted, f"{mode}: button is dimmed at rest"
+        assert hovered[mode] != resting[mode], f"{mode}: button ignores hover"
 
-    page.locator('#model-order-mode input[value="random"]').check()
-    expect(button).to_have_text("Reshuffle")
-    expect(button).to_have_class("is-active")
-    assert colour() != muted
-
-    page.locator('#model-order-mode input[value="alphabetical"]').check()
-    expect(button).not_to_have_class("is-active")
-    assert colour() == muted
+    # One resting style and one hover style, shared by both modes.
+    assert resting["alphabetical"] == resting["random"]
+    assert hovered["alphabetical"] == hovered["random"]
 
 
 def test_order_controls_mobile_and_desktop(ready_page, page_errors, tmp_path):

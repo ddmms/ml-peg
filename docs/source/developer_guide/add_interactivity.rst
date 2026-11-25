@@ -7,6 +7,13 @@ behaviour. Check exact benchmark, category, framework and overall scores, not
 just whether a value changes. Check that edits survive navigation and interact
 correctly with model and element filters.
 
+Any callback that writes a table's ``data`` must also preserve the global model
+order. Pass the rows through
+:func:`ml_peg.app.utils.model_order.order_model_rows` with the current
+``model-order-store`` state, and emit ``tooltip_data`` alongside ``data``, since
+tooltips are index-aligned to the rows. Row styles must stay value-based
+(``filter_query``), never row-index based, so they survive reordering.
+
 Testing
 -------
 
