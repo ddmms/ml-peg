@@ -47,6 +47,34 @@ def random_names(page, baseline):
     return [row["MLIP"] for row in order_model_rows(baseline, state)]
 
 
+def shuffled_seed(baseline):
+    """
+    Return a fixed seed whose draw differs from alphabetical, and that draw.
+
+    Searched rather than hardcoded so the seed stays valid if the fixture's
+    models change. A server-drawn seed cannot be used: with few models it
+    reproduces alphabetical order often enough to make tests flaky.
+    """
+    alphabetical = [row["MLIP"] for row in order_model_rows(baseline)]
+    for index in range(100):
+        seed = f"pinned-{index}"
+        draw = [
+            row["MLIP"]
+            for row in order_model_rows(baseline, {"mode": "random", "seed": seed})
+        ]
+        if draw != alphabetical:
+            return seed, draw
+    raise AssertionError("no seed produced a non-alphabetical order")
+
+
+def pin_seed(page, seed):
+    """Force the session onto a known seed, replacing the server-drawn one."""
+    page.evaluate(
+        "state => sessionStorage.setItem('model-order-store', JSON.stringify(state))",
+        {"mode": "random", "seed": seed},
+    )
+
+
 def test_order_filter_sort_and_navigation(ready_page, page_errors):
     """Keep every cell with its model across shuffle, filtering and native sorts."""
     page = ready_page
@@ -219,23 +247,32 @@ def test_returning_to_random_restores_the_same_draw(ready_page, page_errors):
     wait_order(page, table, random_names(page, baseline))
 
 
-def test_random_order_is_applied_before_the_startup_mask_lifts(ready_page, page_errors):
-    """A reload in random mode must not flash the server-rendered A-Z order."""
+def test_random_order_ready_on_reload(ready_page, page_errors):
+    """A reload in random mode must not expose the server-rendered A-Z order.
+
+    Rows are server-rendered alphabetically and reordered by a follow-up
+    callback, so the reordered rows must be in place by the time the start-up
+    mask lifts, rather than settling in afterwards where the user would see
+    the table jump.
+    """
     page = ready_page
     table = "summary-table"
     baseline = rows(page, table)
+    seed, order = shuffled_seed(baseline)
+
     page.locator('#model-order-mode input[value="random"]').check()
     page.wait_for_function(
         "JSON.parse(sessionStorage.getItem('model-order-store'))?.mode === 'random'"
     )
-    order = random_names(page, baseline)
-    wait_order(page, table, order)
-    assert order != sorted(order), "seed happened to produce alphabetical order"
+    # Pin the seed before reloading. A server-drawn one could coincide with
+    # alphabetical order, leaving the assertion below unable to tell the two
+    # apart. With only a few fixture models that happens often.
+    pin_seed(page, seed)
 
     page.reload()
     wait_for_app_ready(page)
-    # Read immediately, with no polling: the order must already be correct at
-    # the moment the mask lifts, not settle into place afterwards.
+    # Read immediately, with no polling: the order must already be correct when
+    # the app reports itself ready, not settle into place afterwards.
     assert names(page, table) == order
 
 
