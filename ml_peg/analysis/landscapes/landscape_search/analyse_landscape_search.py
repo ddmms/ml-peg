@@ -137,12 +137,13 @@ NEAR_MISS_FACTOR = 1.5
 # pairings within it, so the assignment makes as many of those as it can before
 # it minimises their RMSD, and finite, which the solver requires.
 UNMATCHABLE = 1.0e6
-# What a reference with nothing found near it adds to the median nearest
-# distance, in A. Infinite would be the truth, but the app reads an infinite
-# cell as missing and voids the model's whole score; any distance past the
-# scoring threshold scores the same, and this one is past any distance between
-# two conformers of these molecules, so it reads as what it is.
-UNFOUND_DISTANCE = 10.0
+# Most a reference adds to the mean nearest distance, in A: one missed by more,
+# or with nothing found near it at all, counts as this far. The separation of
+# the closest two distinct reference minima, which is also those rows' *bad*,
+# so a miss scores as a miss however far it is. A mean rather than a median:
+# with about half the saddles found, the median falls among the furthest found
+# ones, and moves with them from run to run.
+NEAREST_CAP = 0.34
 # A found saddle is first-order when its lowest curvature, translation and
 # rotation projected out, is below -REACTION_MODE eV/A^2 -- the floor topsearch's
 # own check_valid_ts puts on a reaction mode -- and any second negative
@@ -1461,13 +1462,14 @@ def _pooled(comparison: dict | None, numerator: str, denominator: str) -> float:
     return float(top / bottom) if bottom else 0.0
 
 
-def _median_nearest(comparison: dict | None, key: str) -> float:
+def _capped_mean_nearest(comparison: dict | None, key: str) -> float:
     """
-    Take the median nearest distance over every reference structure.
+    Take the mean nearest distance over every reference structure, capped.
 
-    A reference with nothing usable found near it stays in, at
-    ``UNFOUND_DISTANCE``, so that a model is not scored on the references it
-    happened to reach.
+    Every reference counts, none for more than ``NEAREST_CAP``: one missed by
+    3 Å, or with nothing usable found near it, counts as one missed by the cap,
+    so the model is neither scored on the references it happened to reach nor
+    swung by how far it missed the rest.
 
     Parameters
     ----------
@@ -1479,13 +1481,12 @@ def _median_nearest(comparison: dict | None, key: str) -> float:
     Returns
     -------
     float
-        The median in Å; ``UNFOUND_DISTANCE`` if more than half the references
-        had nothing near them, NaN if the outputs were rejected.
+        The mean in Å, NaN if the outputs were rejected.
     """
     if comparison is None:
         return np.nan
-    distances = [min(d, UNFOUND_DISTANCE) for v in comparison.values() for d in v[key]]
-    return float(np.median(distances)) if distances else np.nan
+    distances = [min(d, NEAREST_CAP) for v in comparison.values() for d in v[key]]
+    return float(np.mean(distances)) if distances else np.nan
 
 
 @pytest.fixture
@@ -1721,11 +1722,11 @@ def _metric_values(comparison: dict[str, dict | None]) -> dict[str, dict]:
         "Minima near-missed": _pooled_per_model(
             comparison, "minima_near_missed", "n_reference_minima"
         ),
-        "Nearest minima RMSD (median)": {
-            m: _median_nearest(c, "minima_nearest") for m, c in comparison.items()
+        "Nearest minima RMSD (capped mean)": {
+            m: _capped_mean_nearest(c, "minima_nearest") for m, c in comparison.items()
         },
-        "Nearest saddle RMSD (median)": {
-            m: _median_nearest(c, "saddle_nearest") for m, c in comparison.items()
+        "Nearest saddle RMSD (capped mean)": {
+            m: _capped_mean_nearest(c, "saddle_nearest") for m, c in comparison.items()
         },
     }
 

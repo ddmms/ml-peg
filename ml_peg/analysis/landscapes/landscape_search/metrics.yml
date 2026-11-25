@@ -83,17 +83,17 @@ metrics:
     unit: fraction
     tooltip: "Fraction of the DFT minima whose closest counterpart lies between the 0.3 Å matching radius and half as much again. Recovery above is a pass rate over a hard radius, so a reference missed by 0.31 Å scores the same as one missed by 3 Å; this row separates the two. A model with low recovery and a high value here is systematically displaced rather than failing to find the structures, which is a correctable offset."
     level_of_theory: ωB97X/6-31G(d)
-  Nearest minima RMSD (median):
+  Nearest minima RMSD (capped mean):
     good: 0.01
     bad: 0.34
     weight: 1
     unit: Å
-    tooltip: "Median distance from each DFT minimum to the closest minimum the model holds, with the molecule's bonding and no distorted bond, over every reference rather than only the matched ones. A reference the search found nothing near counts as 10 Å, past any real distance, so it still counts. Unlike the RMSD rows this does not condition on success, so it does not flatter a model that found two structures precisely and missed the rest."
+    tooltip: "Mean distance from each DFT minimum to the closest minimum the model holds, with the molecule's bonding and no distorted bond, over every reference rather than only the matched ones. Each distance is capped at 0.34 Å, this row's bad value: a reference missed by more, or with nothing found near it, counts as 0.34 Å, so a miss scores as a miss however far it is. Unlike the RMSD rows this does not condition on success, so it does not flatter a model that found two structures precisely and missed the rest."
     level_of_theory: ωB97X/6-31G(d)
-  Nearest saddle RMSD (median):
+  Nearest saddle RMSD (capped mean):
     good: 0.01
     bad: 0.34
     weight: 1
     unit: Å
-    tooltip: "Median distance from each DFT transition state to the closest first-order saddle the model holds, with the molecule's bonding and no distorted bond, over every reference rather than only the matched ones."
+    tooltip: "Mean distance from each DFT transition state to the closest first-order saddle the model holds, with the molecule's bonding and no distorted bond, over every reference rather than only the matched ones, each distance capped at 0.34 Å as in the minima row."
     level_of_theory: ωB97X/6-31G(d)

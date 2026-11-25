@@ -30,8 +30,8 @@ FIGURES = {
     "Matched minima RMSD (90th pct)": "figure_minima_rmsd.json",
     "Matched saddle RMSD (median)": "figure_saddle_rmsd.json",
     "Matched saddle RMSD (90th pct)": "figure_saddle_rmsd.json",
-    "Nearest minima RMSD (median)": "figure_minima_nearest.json",
-    "Nearest saddle RMSD (median)": "figure_saddle_nearest.json",
+    "Nearest minima RMSD (capped mean)": "figure_minima_nearest.json",
+    "Nearest saddle RMSD (capped mean)": "figure_saddle_nearest.json",
 }
 
 

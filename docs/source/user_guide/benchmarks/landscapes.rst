@@ -314,9 +314,15 @@ structure the model does not hold is never merged with ones it does.
 7. RMSD to the nearest found structure
 
    For every reference minimum and transition state, the distance to the
-   closest structure the model holds, matched or not; a reference with nothing
-   found near it counts as 10 Å, past any real distance. Unlike item 2 this does not condition on success, so it does not
-   flatter a model that found two structures precisely and missed the rest.
+   closest structure the model holds, matched or not, averaged with each
+   distance capped at 0.34 Å: a reference missed by more, or with nothing found
+   near it, counts as 0.34 Å, the row's *bad*, so a miss scores as a miss
+   however far it is. Unlike item 2 this does not condition on success, so it
+   does not flatter a model that found two structures precisely and missed the
+   rest. It is a mean rather than a median because, with about half the saddles
+   found, the median falls among the furthest found ones: over three runs of
+   the same searches it moved by up to 0.13 Å, the capped mean by at most
+   0.01 Å.
 
 8. Minima near-missed
 

@@ -29,13 +29,14 @@ from ml_peg.analysis.landscapes.landscape_search.analyse_landscape_search import
     MATCH_RADIUS,
     MINIMA_GROUP_RADIUS,
     NEAR_MISS_FACTOR,
+    NEAREST_CAP,
     OFF_REFERENCE,
     REACTION_MODE,
     SECOND_MODE_RATIO,
-    UNFOUND_DISTANCE,
     _assign,
     _bond_deviations,
     _bonds,
+    _capped_mean_nearest,
     _classify,
     _compare_molecule,
     _distances,
@@ -45,7 +46,6 @@ from ml_peg.analysis.landscapes.landscape_search.analyse_landscape_search import
     _held_minimum,
     _in_reference_labelling,
     _is_distorted,
-    _median_nearest,
     _metric_values,
     _near_missed,
     _nearest,
@@ -1680,8 +1680,8 @@ def test_every_row_has_its_own_numerator_and_denominator() -> None:
         "Minima near-missed": 2 / 16,
         "Matched minima RMSD (median)": 0.03,
         "Matched saddle RMSD (median)": 0.03,
-        "Nearest minima RMSD (median)": 0.04,
-        "Nearest saddle RMSD (median)": UNFOUND_DISTANCE,
+        "Nearest minima RMSD (capped mean)": (0.01 + 0.03 + 0.05 + NEAREST_CAP) / 4,
+        "Nearest saddle RMSD (capped mean)": (0.02 + 2 * NEAREST_CAP) / 3,
     }
     for name, value in expected.items():
         assert values[name]["a"] == pytest.approx(value), name
@@ -1744,18 +1744,20 @@ def test_a_model_with_no_results_pools_to_nan() -> None:
     assert np.isnan(_pooled(None, "minima_matched", "n_reference_minima"))
 
 
-def test_the_nearest_median_counts_references_with_nothing_found() -> None:
+def test_the_nearest_mean_counts_every_reference_up_to_the_cap() -> None:
     """
-    A reference the search never came near stays in the median.
+    Every reference counts, a miss as the cap however far it was.
 
-    Dropped, a model that found two molecules' structures well would report a
-    small median over those alone.
+    Dropped, a reference with nothing found near it would leave a small mean
+    over the ones the search happened to reach; uncapped, one missed by 3 Å
+    would outweigh every structure found.
     """
-    one = {"a": {"minima_nearest": [0.05, np.inf]}, "b": {"minima_nearest": [np.inf]}}
-    two = {"a": {"minima_nearest": [0.05, 0.1]}, "b": {"minima_nearest": [np.inf]}}
-    assert _median_nearest(one, "minima_nearest") == UNFOUND_DISTANCE
-    assert _median_nearest(two, "minima_nearest") == pytest.approx(0.1)
-    assert np.isnan(_median_nearest(None, "minima_nearest"))
+    one = {"a": {"minima_nearest": [0.05, np.inf]}, "b": {"minima_nearest": [0.2]}}
+    two = {"a": {"minima_nearest": [0.05, 3.0]}, "b": {"minima_nearest": [0.2]}}
+    expected = (0.05 + NEAREST_CAP + 0.2) / 3
+    assert _capped_mean_nearest(one, "minima_nearest") == pytest.approx(expected)
+    assert _capped_mean_nearest(two, "minima_nearest") == pytest.approx(expected)
+    assert np.isnan(_capped_mean_nearest(None, "minima_nearest"))
 
 
 # --- the reference ----------------------------------------------------------
