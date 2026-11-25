@@ -19,7 +19,7 @@ from mlipaudit.benchmarks.nve_energy_conservation.nve_energy_conservation import
 )
 
 from ml_peg.analysis.utils.decorators import build_table, plot_scatter
-from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.analysis.utils.utils import check_dataset, load_metrics_config
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs import CALCS_ROOT
 from ml_peg.calcs.utils.mlipaudit import (
@@ -50,20 +50,10 @@ MIN_COMPLETE_FRAMES = (
 )
 
 
-def check_dataset() -> None:
-    """
-    Check the input structures saved by the calculation are available.
-
-    The calculation copies the downloaded structures into its outputs, so the
-    analysis does not need to download the input data again.
-    """
+def check_datasets() -> None:
+    """Check the input structures saved by the calculation are available."""
     for spec in SYSTEMS:
-        structure_path = CALC_PATH / BENCHMARK / spec.filename
-        if not structure_path.exists():
-            pytest.skip(
-                f"{structure_path} does not exist. Please run the calculation.",
-                allow_module_level=True,
-            )
+        check_dataset(CALC_PATH / BENCHMARK / spec.filename)
 
 
 def fitted(result: NVEEnergyConservationResult) -> list[NVEStructureResult]:
@@ -126,7 +116,7 @@ def analyze_results() -> dict[str, NVEEnergyConservationResult]:
     dict[str, NVEEnergyConservationResult]
         Mapping of model name to its ``NVEEnergyConservationResult``.
     """
-    check_dataset()
+    check_datasets()
 
     results = {}
     for model_name in MODELS:
@@ -169,7 +159,7 @@ def struct_info() -> dict:
     dict
         Mapping with the per-system lists of elements.
     """
-    check_dataset()
+    check_datasets()
 
     info = {
         "systems": [spec.name for spec in SYSTEMS],
@@ -201,7 +191,8 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
     change.
 
     Trajectories that stopped early are plotted too, labelled as such, as a model
-    blowing up is what the plot is most useful for.
+    blowing up is what the plot is most useful for. No figure is written for a model
+    with nothing to plot.
 
     Parameters
     ----------
@@ -224,6 +215,10 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
         for structure in fitted(result)
         if structure.num_atoms
     }
+
+    # Writing an empty figure would show blank axes rather than "No data available"
+    if not drifts:
+        return
 
     @plot_scatter(
         filename=OUT_PATH / f"{model_name}_drift_scatter.json",
