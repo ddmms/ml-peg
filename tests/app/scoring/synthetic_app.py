@@ -19,7 +19,9 @@ from ml_peg.app.base_app import BaseApp
 from ml_peg.app.utils import build_components, weight_presets
 from ml_peg.app.utils.head_scripts import inject_head_scripts
 
-MODELS = ["mace-mp-0a", "mace-mp-0b3", "mace-mpa-0"]
+# "mace-omat-0" is absent from B2 entirely, so an element filter that empties
+# B2 leaves its column holding nothing for any model.
+MODELS = ["mace-mp-0a", "mace-mp-0b3", "mace-mpa-0", "mace-omat-0"]
 
 
 class SyntheticBenchmark(BaseApp):
@@ -50,16 +52,22 @@ def serve(root: Path):
             "B1",
             ["mace-polar-1", "mace-multihead"],
             ["H"],
-            [(2, 8, 0.5), (6, 4, 0.5), (2, None, 0.8)],
+            [(2, 8, 0.5), (6, 4, 0.5), (2, None, 0.8), (2, 8, 0.5)],
         ),
         (
             "Alpha",
             "B2",
             ["mace-multihead"],
             ["O"],
-            [(7, 7, 0.3), (5, 5, 0.5), ("NaN", 7, "NaN")],
+            [(7, 7, 0.3), (5, 5, 0.5), ("NaN", 7, "NaN"), (None, None, None)],
         ),
-        ("Beta", "B3", ["mlip_audit"], ["C"], [(1, 1, 0.9), (3, 3, 0.7), (1, 1, 0.9)]),
+        (
+            "Beta",
+            "B3",
+            ["mlip_audit"],
+            ["C"],
+            [(1, 1, 0.9), (3, 3, 0.7), (1, 1, 0.9), (1, 1, 0.9)],
+        ),
     ]
     apps, layouts, tables, frameworks, names = {}, {}, {}, {}, {}
     for category, name, tags, elements, values in specs:
