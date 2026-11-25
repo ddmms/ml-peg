@@ -41,8 +41,9 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 EV_TO_MEV = 1000.0
 
-# Snapshots a full trajectory produces, used to spot one that stopped early.
-EXPECTED_FRAMES = (
+# Snapshots a trajectory must reach to count as complete, in the standard run mode the
+# calculation uses. A full run records the initial frame too, so produces one more.
+MIN_COMPLETE_FRAMES = (
     SIMULATION_CONFIG["num_steps"] // SIMULATION_CONFIG["snapshot_interval"]
 )
 
@@ -63,14 +64,38 @@ def check_dataset() -> None:
             )
 
 
+def fitted(result: NVEEnergyConservationResult) -> list[NVEStructureResult]:
+    """
+    Get the systems mlipaudit was able to fit a drift curve to.
+
+    Skipped systems have no score and failed systems have no drift statistics, so both
+    are excluded. A trajectory that stopped early is still fitted, so is included.
+
+    Parameters
+    ----------
+    result
+        Result of the mlipaudit analysis for a single model.
+
+    Returns
+    -------
+    list[NVEStructureResult]
+        Per-system results with a drift curve, however short.
+    """
+    return [
+        structure
+        for structure in result.structure_results
+        if not structure.skipped
+        and not structure.failed
+        and structure.energy_drift_ratio is not None
+    ]
+
+
 def completed(result: NVEEnergyConservationResult) -> list[NVEStructureResult]:
     """
-    Get the systems that were simulated and analysed successfully.
+    Get the systems that ran to the end of their trajectory.
 
-    Skipped systems have no score, and failed systems have no drift statistics, so
-    both are excluded from the averaged metrics and from the drift plot. A
-    trajectory that stopped early is still fitted by mlipaudit, over its shorter
-    window, so the frame count is checked too.
+    A trajectory that stopped early is fitted over a shorter window, so would be
+    flattered by being averaged in alongside full ones.
 
     Parameters
     ----------
@@ -84,11 +109,8 @@ def completed(result: NVEEnergyConservationResult) -> list[NVEStructureResult]:
     """
     return [
         structure
-        for structure in result.structure_results
-        if not structure.skipped
-        and not structure.failed
-        and structure.energy_drift_ratio is not None
-        and structure.num_frames >= EXPECTED_FRAMES
+        for structure in fitted(result)
+        if structure.num_frames >= MIN_COMPLETE_FRAMES
     ]
 
 
@@ -170,6 +192,9 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
     left offset from the zero line. Only the slope is scored, which a shift cannot
     change.
 
+    Trajectories that stopped early are plotted too, labelled as such, as a model
+    blowing up is what the plot is most useful for.
+
     Parameters
     ----------
     model_name
@@ -177,15 +202,18 @@ def plot_drift(model_name: str, result: NVEEnergyConservationResult) -> None:
     result
         Result of the mlipaudit analysis for this model.
     """
+    complete = {structure.structure_name for structure in completed(result)}
+
     drifts = {
-        structure.structure_name: [
+        structure.structure_name
+        + ("" if structure.structure_name in complete else " (stopped early)"): [
             structure.times_ps,
             [
                 (drift - structure.intercept_ev) / structure.num_atoms * EV_TO_MEV
                 for drift in structure.energy_drift_ev
             ],
         ]
-        for structure in completed(result)
+        for structure in fitted(result)
         if structure.num_atoms
     }
 
@@ -334,7 +362,7 @@ def get_score(
     scores = {}
     for model_name, result in analyze_results.items():
         system_scores = [
-            0.0 if structure.num_frames < EXPECTED_FRAMES else structure.score
+            0.0 if structure.num_frames < MIN_COMPLETE_FRAMES else structure.score
             for structure in result.structure_results
             if not structure.skipped and structure.score is not None
         ]
