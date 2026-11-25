@@ -89,6 +89,22 @@ def test_tooltip_separates_absent_results_from_unweighted_contents() -> None:
     assert "weighted 0" not in tooltips["scored Score"]
 
 
+def test_summary_weights_ignore_scores_for_excluded_models() -> None:
+    """A score belonging to a model this summary excludes leaves the column empty."""
+    mlip = next(iter(get_model_names(current_models)))
+    tables = {
+        "scored": _benchmark_table("scored", {mlip: 0.5}),
+        "other-models-only": _benchmark_table("other-models-only", {"retired": 0.4}),
+    }
+
+    table = build_summary_table(tables, table_id="unit-summary-table-excluded")
+
+    assert table.weights == {"other-models-only Score": 0.0}
+    tooltip = table.tooltip_header["other-models-only Score"]
+    assert "weighted 0" in tooltip
+    assert "still being collected" not in tooltip
+
+
 def test_summary_weights_untouched_when_all_benchmarks_have_results() -> None:
     """A benchmark with results keeps its weight, so scores stay a plain average."""
     mlip = next(iter(get_model_names(current_models)))

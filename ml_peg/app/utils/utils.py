@@ -547,14 +547,13 @@ def clean_table_data(rows: list[dict], weights: dict[str, float] | None = None):
     weights = weights or {}
 
     # Listed up front: ``row["Score"]`` is assigned below, which would otherwise
-    # risk mutating a row while iterating it.
-    metrics = (
-        [key for key in rows[0] if key not in RESERVED_TABLE_COLUMNS] if rows else []
-    )
+    # risk mutating a row while iterating it. Rows need not share their keys, so
+    # take every metric any row has, and treat one a row lacks as missing.
+    metrics = {key for row in rows for key in row if key not in RESERVED_TABLE_COLUMNS}
 
     for row in rows:
         for key in metrics:
-            value = row[key]
+            value = row.get(key)
             if value is None or (
                 isinstance(value, int | float)
                 and (value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min)
@@ -565,11 +564,11 @@ def clean_table_data(rows: list[dict], weights: dict[str, float] | None = None):
         key
         for key in metrics
         if weights.get(key, 1.0) != 0
-        and any(not is_missing_score(row[key]) for row in rows)
+        and any(not is_missing_score(row.get(key)) for row in rows)
     ]
 
     for row in rows:
-        if any(is_missing_score(row[key]) for key in scored_metrics):
+        if any(is_missing_score(row.get(key)) for key in scored_metrics):
             row["Score"] = "NaN"
 
 
@@ -645,31 +644,6 @@ def row_has_no_results(row: dict[str, str | float | None]) -> bool:
             continue
         return False
     return True
-
-
-def table_has_no_scores(table: DataTable) -> bool:
-    """
-    Check whether a summarised table contributes no score to its parent summary.
-
-    A table with no rows, or whose every row is missing a score, contributes to
-    nobody's score, so `calc_table_scores` discards its column in the parent
-    summary. Its weight is overridden to 0 to match, so the parent's weights
-    describe what its score actually includes.
-
-    Parameters
-    ----------
-    table
-        Summarised table to check.
-
-    Returns
-    -------
-    bool
-        `True` if the table has no rows, or no row holds a usable score.
-    """
-    rows = getattr(table, "data", None)
-    if not rows:
-        return True
-    return all(is_missing_score(row.get("Score")) for row in rows)
 
 
 def drop_empty_model_rows(

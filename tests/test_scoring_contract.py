@@ -17,6 +17,7 @@ from ml_peg.analysis.utils.utils import (
     normalize_metric,
 )
 from ml_peg.app.utils import register_callbacks
+from ml_peg.app.utils.utils import clean_table_data
 
 
 @pytest.mark.xfail(
@@ -141,6 +142,21 @@ def test_column_with_data_for_no_model_is_discarded(absent):
     scored = calc_table_scores(rows, weights={"x": 1, "y": 1})
     assert scored[0]["Score"] == pytest.approx(0.8)
     assert scored[1]["Score"] == pytest.approx(0.6)
+
+
+def test_clean_table_data_handles_rows_with_different_keys():
+    """Rows need not share keys, and a key a row lacks counts as missing."""
+    rows = [
+        {"MLIP": "A", "x": 0.8, "y": 0.4},
+        {"MLIP": "B", "x": 0.6},
+        {"MLIP": "C", "x": 0.5, "y": 0.2, "z": 0.1},
+    ]
+    clean_table_data(rows)
+
+    assert rows[1]["y"] == "NaN"
+    assert rows[1]["Score"] == "NaN"
+    assert rows[0]["z"] == "NaN"
+    assert "Score" not in rows[2]
 
 
 def _dimmed_columns(style: list[dict]) -> set[str]:
