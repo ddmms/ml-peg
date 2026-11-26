@@ -152,11 +152,18 @@ The common fields are:
    ``false``, ML-PEG may add a separate D3 correction for those benchmarks; if it
    is ``true``, the base calculator is used unchanged.
 
+``dispersion_method``
+   Optional dispersion method included in the training data: ``D3``, ``D4``,
+   ``VV10``, or ``MBD``. Defaults to ``none`` when
+   ``trained_on_dispersion: false``. Otherwise, omission means unknown.
+   This field describes the model. Settings for added corrections belong in
+   ``dispersion_kwargs``.
+
 ``level_of_theory``
-   Functional or method represented by the model training data. The app compares
-   this string against benchmark metric metadata and displays warnings when they
-   differ. See :doc:`Levels of theory </developer_guide/levels_of_theory>` for
-   naming conventions.
+   Functional or method represented by the model training data, e.g. ``PBE``.
+   Record dispersion separately in ``dispersion_method``.
+   See :doc:`Levels of theory </developer_guide/levels_of_theory>` for naming
+   conventions and app comparisons.
 
 ``datasets``
    Optional list of training-dataset names, e.g. ``[MPtrj]`` or

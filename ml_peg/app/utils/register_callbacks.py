@@ -112,7 +112,7 @@ def apply_level_of_theory_warnings(
     rows: list[dict[str, Any]],
     base_style: list[dict[str, Any]],
     model_levels: dict[str, str | None] | None = None,
-    metric_levels: dict[str, str | None] | None = None,
+    metric_levels: dict[str, str | dict | None] | None = None,
     model_configs: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
@@ -147,7 +147,7 @@ def apply_level_of_theory_warnings(
 def register_summary_table_callbacks(
     initial_rows: list[dict] | None = None,
     model_levels: dict[str, str | None] | None = None,
-    metric_levels: dict[str, str | None] | None = None,
+    metric_levels: dict[str, str | dict | None] | None = None,
     model_configs: dict[str, Any] | None = None,
     prefix: str = SUMMARY_TABLE_ID,
 ) -> None:
@@ -294,7 +294,7 @@ def register_category_table_callbacks(
     table_id: str,
     use_thresholds: bool = False,
     model_levels: dict[str, str | None] | None = None,
-    metric_levels: dict[str, str | None] | None = None,
+    metric_levels: dict[str, str | dict | None] | None = None,
     model_configs: dict[str, Any] | None = None,
     scores_store_id: str = "summary-table-scores-store",
     summary_suffix: str = "-summary-table",

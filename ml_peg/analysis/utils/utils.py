@@ -29,6 +29,7 @@ from ml_peg.app.utils.utils import (
     is_missing_score,
 )
 from ml_peg.models.get_models import get_model_names, load_model_configs
+from ml_peg.models.methods import DispersionNameMap, dispersion_method
 
 MetricRow = dict[str, float | int | str | None]
 TableRow = dict[str, object]
@@ -64,11 +65,12 @@ def build_dispersion_name_map(
     -------
     dict[str, str]
         Mapping of model -> display name for models not trained with dispersion.
+        Carries the D3 declaration into table metadata, independent of the suffix.
     """
     models = tuple(get_model_names() if models is None else models)
 
     configs, _ = load_model_configs(models)
-    name_map: dict[str, str] = {}
+    name_map: dict[str, str] = DispersionNameMap()
 
     for model in models:
         if configs[model]["trained_on_dispersion"]:
@@ -134,6 +136,10 @@ def load_metrics_config(
             "unit": unit_value,
             "level_of_theory": level_of_theory,
         }
+        if "dispersion_method" in metric_config:
+            metric_threshold["dispersion_method"] = dispersion_method(
+                metric_config["dispersion_method"]
+            )
 
         thresholds[metric_name] = metric_threshold
 
@@ -152,6 +158,8 @@ def load_metrics_config(
             tooltip_lines[0] = f"{tooltip_lines[0]} [{unit_value}]"
         if level_of_theory:
             tooltip_lines.append(f"Level of theory: {level_of_theory}")
+        if metric_threshold.get("dispersion_method") is not None:
+            tooltip_lines.append(f"Dispersion: {metric_threshold['dispersion_method']}")
         markdown_value = "\n".join(tooltip_lines).replace("\n", "  \n")
         tooltips[metric_name] = {
             "value": markdown_value,

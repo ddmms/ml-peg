@@ -6,6 +6,7 @@ metrics:
     weight: 0
     tooltip: Mean absolute error of the reaction activation energy (barrier height).
     level_of_theory: wB97X-D3/def2-TZVP
+    dispersion_method: D3
   Reaction Energy MAE:
     good: 0.0
     bad: 2.0
@@ -13,6 +14,7 @@ metrics:
     weight: 0
     tooltip: Mean absolute error of the enthalpy of reaction.
     level_of_theory: wB97X-D3/def2-TZVP
+    dispersion_method: D3
   Grambow Score:
     good: 1.0
     bad: 0.0
@@ -20,3 +22,4 @@ metrics:
     weight: 1
     tooltip: mlipaudit soft-threshold score combining activation energy and reaction energy errors (failed reactions score 0).
     level_of_theory: wB97X-D3/def2-TZVP
+    dispersion_method: D3

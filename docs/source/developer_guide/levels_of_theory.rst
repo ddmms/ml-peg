@@ -40,6 +40,10 @@ The icon colour is currently determined by the mismatched benchmark metric's ``l
 model's. When mismatches of different types occur within the same benchmark, the highest-priority
 warning is shown: DFT functional mismatch > High-level theory mismatch > Experimental reference mismatch.
 
+The app compares the base method and dispersion separately, including the
+benchmark's configured D3 correction. A dispersion mismatch uses the DFT warning
+icon. Damping is not compared.
+
 .. note::
 
     A warning does not indicate that a model is unsuitable, but it is a prompt to consider whether the
@@ -81,22 +85,26 @@ paper:
 Dispersion corrections
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Append the dispersion correction to the base functional using a ``+`` separator, with no spaces:
+Record the base functional and dispersion method separately in both ``models.yml``
+and ``metrics.yml``:
 
 .. code-block:: yaml
 
-   level_of_theory: PBE+D3
+   level_of_theory: PBE
+   dispersion_method: D3
 
-The same convention applies on both sides: if a model was trained on PBE+D3 data, its ``models.yml``
-entry should read ``PBE+D3``, and any benchmark metric derived from PBE+D3 reference data should
-also read ``PBE+D3``.
+Accepted methods are ``D3``, ``D4``, ``VV10``, and ``MBD``.
+Use ``none`` for no dispersion. Omission means unknown, except for models with
+``trained_on_dispersion: false``, where it defaults to ``none``.
+Existing labels such as ``PBE+D3`` are also supported. Keep named composite
+methods (e.g. ``B97-3c``) and refitted functionals (e.g. ``wB97X-D3``)
+intact, and record their dispersion method separately.
 
-.. note::
-
-    Dispersion corrections added at inference time (via ``trained_on_dispersion: false`` in
-    ``models.yml``) are handled separately by the ``add_d3_calculator`` mechanism. Only set
-    ``level_of_theory`` to include ``+D3`` if the training data itself was generated with
-    dispersion corrections.
+For models, these fields describe the training data. Analysis uses
+``build_dispersion_name_map`` to identify models receiving the benchmark's D3
+correction, independently of the display suffix. Regenerate analysis tables from
+existing outputs to update this metadata. Calculations do not need to be rerun.
+See :doc:`Adding models </developer_guide/add_models>` for runtime settings.
 
 .. _special-values:
 
@@ -136,15 +144,14 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``PBEsol``
 - ``r2SCAN``
 - ``ωB97M/def2-TZVPP``
-- ``ωB97M-D4rev/def2-TZVPD``
-- ``ωB97M-V``
-- ``ωB97M-V/def2-TZVPD``
-- ``ωB97M-V/def2-TZVPPD``
+- ``ωB97M``
+- ``ωB97M/def2-TZVPD``
+- ``ωB97M/def2-TZVPP``
+- ``ωB97M/def2-TZVPPD``
 
 **Benchmarks** (``ml_peg/analysis/<category>/<benchmark>/metrics.yml``)
 
 - ``PBE``
-- ``PBE+D3``
 - ``r2SCAN``
 - ``r2SCAN-3c``
 - ``CCSD(T)``
@@ -156,7 +163,7 @@ please add it to this table when making a pull request for your benchmark or mod
 - ``PNO-LCCSD(T)-F12/AVQZ``
 - ``DMC``
 - ``ph-AFQMC``
-- ``wb97md3 + 1b CCSD(T)``
+- ``ωB97M + 1b CCSD(T)``
 - ``Experimental`` (see :ref:`special values <special-values>`)
 - ``null`` (see :ref:`special values <special-values>`)
 

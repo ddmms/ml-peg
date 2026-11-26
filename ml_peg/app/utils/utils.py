@@ -8,7 +8,7 @@ from functools import lru_cache
 import json
 from numbers import Number
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 from dash.dash_table import DataTable
 import dash.dash_table.Format as TableFormat
@@ -18,6 +18,7 @@ import yaml
 
 from ml_peg.models import MODELS_ROOT
 from ml_peg.models.get_models import get_model_names
+from ml_peg.models.methods import effective_method, method_metadata
 
 RESERVED_TABLE_COLUMNS = ("MLIP", "Score", "id", "link")
 # Single source of truth for the default table colour scheme. Referenced by the
@@ -37,6 +38,8 @@ class ThresholdEntry(TypedDict):
     good: float
     bad: float
     unit: str
+    level_of_theory: NotRequired[str | None]
+    dispersion_method: NotRequired[str | None]
 
 
 Thresholds = dict[str, ThresholdEntry]
@@ -474,6 +477,9 @@ def clean_thresholds(
         if level_val:
             entry["level_of_theory"] = level_val
 
+        if "dispersion_method" in bounds:
+            entry["dispersion_method"] = bounds["dispersion_method"]
+
         thresholds[metric] = entry
 
     return thresholds
@@ -772,7 +778,7 @@ def _categorize_benchmark_level(level: str | None) -> str | None:
 def build_level_of_theory_warnings(
     rows: list[dict[str, Any]] | None,
     model_theory_levels: dict[str, str | None] | None,
-    metric_levels: dict[str, str | None] | None,
+    metric_levels: dict[str, str | dict | None] | None,
     model_configs: dict[str, dict[str, Any]] | None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """
@@ -802,6 +808,18 @@ def build_level_of_theory_warnings(
     model_theory_levels = model_theory_levels or {}
     metric_levels = {
         metric: level for metric, level in (metric_levels or {}).items() if level
+    }
+    reference_methods = {
+        metric: method_metadata(
+            level.get("level_of_theory"), level.get("dispersion_method")
+        )
+        if isinstance(level, dict)
+        else method_metadata(level)
+        for metric, level in metric_levels.items()
+    }
+    metric_levels = {
+        metric: method["level_of_theory"]
+        for metric, method in reference_methods.items()
     }
     model_configs = model_configs or {}
 
@@ -905,9 +923,16 @@ def build_level_of_theory_warnings(
             if model_theory_level not in (None, "")
             else "n/a"
         )
+        training_method = method_metadata(
+            model_theory_level,
+            config.get("dispersion_method"),
+            trained_on_dispersion=config.get("trained_on_dispersion"),
+        )
+        dispersion_display = training_method["dispersion"] or "unknown"
         overview_lines = [
             f"- **Model:** `{mlip}`",
             f"- **Level of theory:** `{level_display}`",
+            f"- **Dispersion method:** `{dispersion_display}`",
         ]
 
         for key in ("module", "class_name", "device"):
@@ -961,6 +986,8 @@ def build_level_of_theory_warnings(
                 "level_of_theory",
                 "args",
                 "kwargs",
+                "runtime_dispersion_method",
+                "dispersion_method",
             }
         }
         if other_keys:
@@ -992,6 +1019,8 @@ def build_level_of_theory_warnings(
         row_priority = 0
 
         for metric_name, metric_level in metric_levels.items():
+            if metric_level is None:
+                continue
             if model_theory_level is None or model_theory_level != metric_level:
                 mismatch_metrics.append((metric_name, metric_level))
                 category = _categorize_benchmark_level(metric_level)
@@ -1048,7 +1077,7 @@ def build_level_of_theory_warnings(
             return align_lines
         return [
             f"- Model level: `{level_display}`",
-            "- All benchmark metrics match the model level.",
+            "- All benchmark base levels match the model level.",
         ]
 
     # Process each row to build tooltips and warning styles
@@ -1063,10 +1092,40 @@ def build_level_of_theory_warnings(
         # Build tooltip sections
         overview_lines = _build_overview_lines(mlip, config, model_theory_level)
         other_lines = _build_other_settings(config)
-        mismatch_metrics, row_warning_category = _find_level_mismatches(
-            model_theory_level
+        effective = effective_method(
+            {
+                **config,
+                "level_of_theory": model_theory_level,
+            }
         )
-        align_lines = _build_alignment_lines(model_theory_level, mismatch_metrics)
+        comparison_level = effective.get("level_of_theory")
+        mismatch_metrics, row_warning_category = _find_level_mismatches(
+            comparison_level
+        )
+        align_lines = _build_alignment_lines(comparison_level, mismatch_metrics)
+        if config.get("runtime_dispersion_method"):
+            align_lines.insert(
+                0, "- Includes the benchmark's configured D3 correction."
+            )
+        scheme = effective.get("dispersion")
+        for metric_name, reference in reference_methods.items():
+            expected = reference["dispersion"]
+            if expected is None:
+                continue
+            if scheme is None:
+                align_lines.append(
+                    f"- {metric_name}: reference dispersion `{expected}`. "
+                    "Calculation dispersion is unknown."
+                )
+            elif scheme != expected:
+                align_lines.append(
+                    f"- {metric_name}: **Dispersion mismatch**. "
+                    f"Calculation: `{scheme}`. Reference: `{expected}`."
+                )
+                if row_warning_category is None:
+                    row_warning_category = _categorize_benchmark_level("PBE")
+            else:
+                align_lines.append(f"- {metric_name}: dispersion matches (`{scheme}`).")
 
         # Assemble tooltip
         tooltip_sections: list[str] = []
@@ -1084,8 +1143,8 @@ def build_level_of_theory_warnings(
             "value": "\n".join(tooltip_sections),
         }
 
-        # Add warning icon if mismatches exist
-        if mismatch_metrics:
+        # Add warning icon if either base method or dispersion differs.
+        if mismatch_metrics or row_warning_category:
             row_id = row.get("id", mlip)
             filter_query = "{id} = " + json.dumps(str(row_id))
             icon_key = row_warning_category or DEFAULT_WARNING_CATEGORY
