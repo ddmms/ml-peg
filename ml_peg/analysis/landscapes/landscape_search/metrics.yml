@@ -1,0 +1,99 @@
+metrics:
+  Minima recovered:
+    good: 1.0
+    bad: 0.0
+    weight: 0.5
+    unit: fraction
+    tooltip: "Fraction of the DFT minima found by a landscape built from scratch under the MLIP. Strongly dependent on the search settings, which are the same for every model. A minimum counts only if the model holds it as one: no atom with more than 0.01 eV/Å of force left, and no downhill direction steeper than 0.001 eV/Å² once translation and rotation are projected out."
+    level_of_theory: ωB97X/6-31G(d)
+  Matched minima RMSD (median):
+    good: 0.01
+    bad: 0.3
+    weight: 0
+    unit: Å
+    tooltip: "Median RMSD between each DFT minimum and the model minimum matched to it, one to one. Accuracy given recovery, reported separately from coverage."
+    level_of_theory: ωB97X/6-31G(d)
+  Matched minima RMSD (90th pct):
+    good: 0.01
+    bad: 0.3
+    weight: 0
+    unit: Å
+    tooltip: "90th percentile of the same distribution, distinguishing a model that places most minima well but loses a few from one that is uniformly imprecise."
+    level_of_theory: ωB97X/6-31G(d)
+  Saddles recovered:
+    good: 1.0
+    bad: 0.0
+    weight: 1
+    unit: fraction
+    tooltip: "Fraction of the DFT transition states found from scratch. Strongly dependent on how many pairs of minima the search tries to connect: each minimum is paired with its six nearest and each pair gets up to three attempts, the same settings for every model, though the number of pairs grows with the minima a model finds. A saddle counts only if the model holds it as a first-order one: one downhill direction, any second at most a tenth as steep."
+    level_of_theory: ωB97X/6-31G(d)
+  Matched saddle RMSD (median):
+    good: 0.01
+    bad: 0.3
+    weight: 0
+    unit: Å
+    tooltip: "Median RMSD between each DFT transition state and the model saddle matched to it."
+    level_of_theory: ωB97X/6-31G(d)
+  Matched saddle RMSD (90th pct):
+    good: 0.01
+    bad: 0.3
+    weight: 0
+    unit: Å
+    tooltip: "90th percentile of the saddle RMSD distribution."
+    level_of_theory: ωB97X/6-31G(d)
+  Connectivity preserved:
+    good: 1.0
+    bad: 0.0
+    weight: 1
+    unit: fraction
+    tooltip: "Fraction of all 67 reference transition states that the search both recovered and found joining the same two minima as in DFT, through any of its copies of the saddle. Taken over every reference rather than the recovered ones, so a model that finds few cannot score well on the few it finds. Both endpoints must be minima the model holds as such, and two different ones: where the reference records a saddle joining a minimum to itself, a rearrangement between symmetry-equivalent copies, the model is counted correct when its saddle joins two distinct copies of that minimum."
+    level_of_theory: ωB97X/6-31G(d)
+  Extra minima:
+    good: 0.0
+    bad: 0.5
+    weight: 0.25
+    unit: fraction
+    tooltip: "Minima the model holds, with the molecule's bonding and no distorted bond, further than 0.3 Å from every DFT minimum, per DFT minimum. Divided by the reference count rather than by what the model found, so that finding more cannot dilute it. The DFT minima are taken as complete; a model that adds minima has a landscape DFT does not."
+    level_of_theory: ωB97X/6-31G(d)
+  Extra saddles:
+    good: 0.0
+    bad: 0.5
+    weight: 0
+    unit: fraction
+    tooltip: "First-order saddles the model holds, with the molecule's bonding and no distorted bond, further than 0.3 Å from every DFT transition state, per DFT transition state. Unscored: the reference landscape was built with a narrower search than this one, so some of these may be genuine DFT saddles it does not hold."
+    level_of_theory: ωB97X/6-31G(d)
+  Off-reference minima:
+    good: 0.0
+    bad: 0.2
+    weight: 0
+    unit: fraction
+    tooltip: "Fraction of the model's settled minima whose bonding differs from the reference molecule. Not necessarily errors of structure: a model may find a genuine isomer and merely place it at the wrong energy. The search only sets out to change conformation, with basin-hopping steps that rotate dihedral angles, so the bonding framework would stay intact in an ideal case."
+    level_of_theory: ωB97X/6-31G(d)
+  Distorted minima:
+    good: 0.0
+    bad: 0.2
+    weight: 0.5
+    unit: fraction
+    tooltip: "Fraction of the model's settled minima with the molecule's bonding but one of its bonds more than 20% away from its mean length over the DFT minima. Invisible to the row above, which compares bonding graphs: a bond crushed to two thirds of its length is still a bond, so the graph is unchanged and the structure reads as the right molecule at an impossible geometry. No DFT minimum has one. The flagged structures are written out beside the model's results."
+    level_of_theory: ωB97X/6-31G(d)
+  Minima near-missed:
+    good: 0.0
+    bad: 0.2
+    weight: 0
+    unit: fraction
+    tooltip: "Fraction of the DFT minima whose closest counterpart lies between the 0.3 Å matching radius and half as much again. Recovery above is a pass rate over a hard radius, so a reference missed by 0.31 Å scores the same as one missed by 3 Å; this row separates the two. A model with low recovery and a high value here is systematically displaced rather than failing to find the structures, which is a correctable offset."
+    level_of_theory: ωB97X/6-31G(d)
+  Nearest minima RMSD (capped mean):
+    good: 0.01
+    bad: 0.34
+    weight: 1
+    unit: Å
+    tooltip: "Mean distance from each DFT minimum to the closest minimum the model holds, with the molecule's bonding and no distorted bond, over every reference rather than only the matched ones. Each distance is capped at 0.34 Å, this row's bad value: a reference missed by more, or with nothing found near it, counts as 0.34 Å, so a miss scores as a miss however far it is. Unlike the RMSD rows this does not condition on success, so it does not flatter a model that found two structures precisely and missed the rest."
+    level_of_theory: ωB97X/6-31G(d)
+  Nearest saddle RMSD (capped mean):
+    good: 0.01
+    bad: 0.34
+    weight: 1
+    unit: Å
+    tooltip: "Mean distance from each DFT transition state to the closest first-order saddle the model holds, with the molecule's bonding and no distorted bond, over every reference rather than only the matched ones, each distance capped at 0.34 Å as in the minima row."
+    level_of_theory: ωB97X/6-31G(d)

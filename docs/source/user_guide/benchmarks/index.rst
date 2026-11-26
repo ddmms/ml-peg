@@ -14,6 +14,7 @@ Benchmarks
     electrolytes
     f_block
     fracture
+    landscapes
     molecular
     molecular_crystal
     molecular_dynamics
