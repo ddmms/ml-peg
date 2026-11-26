@@ -13,6 +13,8 @@ import pytest
 
 A = "mace-mp-0a"
 B = "mace-mp-0b3"
+# Absent from B2, so its B2 cell is NaN while every other model's is a score
+D = "mace-omat-0"
 
 
 def visit(page, path):
@@ -247,6 +249,33 @@ def test_element_filter_round_trip(ready_page, page_errors):
     page.locator("#element-filter-clear").click()
     page.locator("#element-filter-apply").click()
     chain(page, 0.65, 0.475, 0.6875)
+
+
+def test_filtered_benchmark_stops_blocking_absent_model(ready_page, page_errors):
+    """Emptying a benchmark must discard it for every model, not just those in it.
+
+    D is absent from B2, so its B2 cell is NaN while A's and B's hold scores:
+    D rightly has no Alpha or overall score. Filtering out B2's element leaves
+    the column with nothing for anybody, so it stops counting for everyone, and
+    D scores on B1 alone exactly as A does.
+    """
+    page = ready_page
+    visit(page, "/category/alpha")
+    expect(
+        page.locator('[id="Alpha-summary-table"] tbody tr', has_text=D).locator(
+            '[data-dash-column="Score"]'
+        )
+    ).to_have_text("NaN")
+
+    visit(page, "/")
+    page.locator("#element-filter-details summary").click()
+    page.get_by_role("button", name="O", exact=True).click()
+    page.locator("#element-filter-apply").click()
+
+    score(page, "summary-table", 0.7, D)
+    score(page, "summary-table", 0.7, A)
+    visit(page, "/category/alpha")
+    score(page, "Alpha-summary-table", 0.5, D)
 
 
 def test_edits_while_element_filter_active(ready_page, page_errors):
