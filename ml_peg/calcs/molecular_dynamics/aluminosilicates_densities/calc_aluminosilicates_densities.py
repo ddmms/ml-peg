@@ -56,27 +56,10 @@ from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
 import numpy as np
 import pytest
 
+from ml_peg.models import current_models
 from ml_peg.models.get_models import load_models
 
-ALL_MODELS = [
-    "mace-mp-0a",
-    "mace-mp-0b3",
-    "mace-mpa-0",
-    "mace-omat-0",
-    "mace-matpes-r2scan",
-    "mace-mh-1-omat",
-    "mace-omol",
-    "mace-mh-1-omol",
-    "mace-polar-1-s",
-    "mace-polar-1-m",
-    "mace-polar-1-l",
-    "orb-v3-consv-inf-omat",
-    "pet-mad",
-    "mattersim-5M",
-    "uma-s-1p1-omat",
-]
-
-MODELS = load_models(ALL_MODELS)
+MODELS = load_models(current_models)
 
 # All MACE models use float32 for GPU performance (recommended for MD).
 # ORB and UMA handle precision internally.
@@ -210,13 +193,23 @@ def run_melt_quench(atoms, model_name, model, log_prefix: Path, seed: int = 0):
     ckpt = Path(str(log_prefix) + "_checkpoint.extxyz")
     stages_done = 0
     if ckpt.exists():
-        atoms = read(ckpt)  # positions, cell and momenta of the last finished stage
-        stages_done = int(atoms.info["stages_done"])
-        print(
-            f"Resuming {log_prefix.name} after {stages_done} finished stages",
-            flush=True,
-        )
-
+        try:
+            ckpt_atoms = read(ckpt)  # positions, cell and momenta of the last stage
+            stages_done = int(ckpt_atoms.info["stages_done"])
+        except Exception:  # noqa: BLE001
+            # Empty or truncated checkpoint: discard it and start from the beginning.
+            print(
+                f"Unreadable checkpoint for {log_prefix.name}, starting from scratch",
+                flush=True,
+            )
+            ckpt.unlink()
+            stages_done = 0
+        else:
+            atoms = ckpt_atoms
+            print(
+                f"Resuming {log_prefix.name} after {stages_done} finished stages",
+                flush=True,
+            )
     # Neutral, closed-shell system: total charge 0, spin multiplicity 1.
     atoms.info["charge"] = 0
     atoms.info["spin"] = 1

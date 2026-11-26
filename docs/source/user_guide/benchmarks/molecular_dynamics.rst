@@ -401,7 +401,7 @@ MAE is 0.05 g/cm^3 (MAPE 2 %) or lower which is of the order of the spread
 between replicas of the same model. A model is considered completely inaccurate
 when the MAE is 0.30 g/cm^3 (MAPE 15 %) or higher, which is well above
 the 5-10 % systematic underestimation typical of MD melt-quench simulations.
-This underestimation is expected, because the quench rate (5 K/ps) is many orders
+Some underestimation is expected, because the quench rate (5 K/ps) is many orders
 of magnitude faster than in experiment.
 
 Methodology
@@ -428,10 +428,21 @@ reported in weight per cent, converted to atomic proportions and rounded to whol
 atoms in cells of about 350 atoms: albite Na27Al25Si83O217 (352 atoms), anorthite
 Ca27Al50Si57O216 (350 atoms) and sanidine K25Al29Si81O218 (353 atoms).
 
-The MD uses float32 for the MACE models and MatterSim. The other models use the
-default ML-PEG precision. `mace-omol` and `mace-polar-1-l` did not complete the
-protocol: they performed only a few tens of MD steps in several hours, while the
-full protocol requires 485,000 steps. They are therefore reported without results.
+MD uses float32 for the MACE models and MatterSim. The other models use the
+default ML-PEG precision.
+
+Each model was run for all three compositions with three replicas each. For three
+models, not all runs could be completed, and their metrics are reported only where
+all the replicas they depend on finished:
+
+* ``mace-omol``: none of the nine runs completed. All runs performed only a few tens
+  of MD steps in several hours, while the full protocol requires 485,000 steps.
+  No metric is reported for this model.
+* ``mace-polar-1-m``: seven of nine runs completed. Two runs (albite replica 1 and
+  sanidine replica 0) advanced extremely slowly from the start, and were stopped.
+  Only the anorthite metrics are reported.
+* ``mace-polar-1-l``: six of nine runs completed. The three anorthite runs advanced
+  extremely slowly from the start. Only the albite and sanidine metrics are reported.
 
 Benchmark speed
 ---------------

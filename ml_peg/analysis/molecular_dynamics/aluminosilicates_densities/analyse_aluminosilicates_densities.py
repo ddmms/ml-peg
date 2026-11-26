@@ -40,6 +40,7 @@ from __future__ import annotations
 from functools import cache
 import os
 from pathlib import Path
+import shutil
 
 from ase.io import read, write
 import numpy as np
@@ -237,7 +238,9 @@ def copy_all_structures() -> None:
     """
     Wrap and save .xyz structures to the app output folder.
 
-    Unreadable final files and failed runs are skipped.
+    The folder of each model is emptied first, so no structure from an earlier
+    analysis stays in the app data. Unreadable final files and failed runs are
+    skipped.
 
     Returns
     -------
@@ -245,6 +248,7 @@ def copy_all_structures() -> None:
         This function does not return a value.
     """
     for model_name in MODELS:
+        shutil.rmtree(OUT_PATH / model_name, ignore_errors=True)
         for comp in COMPOSITIONS:
             for replica in range(N_REPLICAS):
                 src = CALC_PATH / model_name / comp / f"replica{replica}_quenched.xyz"
