@@ -1,0 +1,161 @@
+metrics:
+  # good: 2.0 meV/atom is the reference uncertainty. wB97M-V/def2-TZVPD, the OMol25
+  # level of theory, itself scores 1.98 against this reference at these 95
+  # structures, so a model reproducing that level perfectly sits here. bad: 13.8
+  # meV/atom is what a model that knows nothing scores -- one giving every
+  # structure of a molecule the same energy -- which is the spread of the
+  # reference's own relative energies. A model there has captured none of the
+  # energy differences.
+  Energy RMSE:
+    good: 2.0
+    bad: 13.8
+    unit: meV/atom
+    tooltip: "Energy error at the 95 DFT minima and transition states, each method measured from its own per-molecule mean so a constant offset cancels. ωB97M-V/def2-TZVPD, the OMol25 level of theory, itself scores 2.0 here: the reference uncertainty."
+    level_of_theory: ωB97X/6-31G(d)
+  # Not scored, so good and bad only colour the column. The reference geometries
+  # were optimised at ωB97X/6-31G(d) and are not stationary at other levels of
+  # theory: wB97M-V/def2-TZVPD, the OMol25 level, itself has an RMS force of 128.9
+  # meV/Å at them, so the number mostly measures the gap between the two levels.
+  # good: that measured gap. bad: 153 meV/Å, the RMS of the DFT forces along the
+  # paths -- a residual force that large means the model does not see these
+  # structures as stationary at all.
+  Force RMSE:
+    good: 129.0
+    bad: 153.0
+    unit: meV/Å
+    weight: 0
+    tooltip: "Force error at the 95 DFT minima and transition states, where DFT's force is zero, so this is the RMS of the model's own force over every component. Not scored: these are ωB97X/6-31G(d) geometries, and ωB97M-V/def2-TZVPD, the OMol25 level of theory, itself feels an RMS force of 129 meV/Å at them, so this mostly measures the gap between the two levels."
+    level_of_theory: ωB97X/6-31G(d)
+  # Same basis as Energy RMSE. good: 1.5 meV/atom, what wB97M-V/def2-TZVPD scores
+  # on a 300-frame sample of the paths (1.51). bad: the know-nothing level over the
+  # 11,173 path frames, 11.6 meV/atom. Not scored: it tracks Energy RMSE almost
+  # exactly (Pearson 1.00 over the models measured), so scoring both would count
+  # it twice.
+  Path energy RMSE:
+    good: 1.5
+    bad: 11.6
+    unit: meV/atom
+    weight: 0
+    tooltip: "The same energy error along the 11,173 steepest-descent frames joining the stationary points: the shape of the surface between them. Not scored: it tracks Energy RMSE almost exactly, so scoring both would count it twice."
+    level_of_theory: ωB97X/6-31G(d)
+  # Not scored, for both reasons above: it tracks Force RMSE almost exactly, and
+  # the same level-of-theory gap dominates it. good: 123 meV/Å, what
+  # wB97M-V/def2-TZVPD scores on a 300-frame sample of the paths. bad: 153 meV/Å,
+  # what predicting zero force everywhere scores -- no skill.
+  Path force RMSE:
+    good: 123.0
+    bad: 153.0
+    unit: meV/Å
+    weight: 0
+    tooltip: "Force error along the paths, where DFT forces are non-zero. Not scored: it tracks Force RMSE almost exactly, and the same gap between levels of theory dominates it: ωB97M-V/def2-TZVPD itself scores 123 meV/Å here."
+    level_of_theory: ωB97X/6-31G(d)
+  # The four drift metrics share their thresholds. bad: 0.34 Å separates the
+  # closest two distinct reference minima (paracetamol 2 and 3); past it, a
+  # structure that drifted cannot be told from one that landed on another minimum,
+  # and most minima here have another within 0.5 Å. good: 0.01 Å, about the
+  # run-to-run noise of the saddle search on GPU, which also leaves room for the
+  # small geometry differences between DFT functionals.
+  Reconverged minima RMSD (median):
+    good: 0.01
+    bad: 0.34
+    unit: Å
+    tooltip: "RMSD between each reference minimum and where it ends up when relaxed under the model. The closest two distinct reference minima are 0.34 Å apart, so by then it may be a different conformer."
+    level_of_theory: ωB97X/6-31G(d)
+  Reconverged minima RMSD (90th pct):
+    good: 0.01
+    bad: 0.34
+    unit: Å
+    tooltip: "90th percentile of the same distribution, distinguishing a model that holds most minima well but loses a few from one that is uniformly imprecise."
+    level_of_theory: ωB97X/6-31G(d)
+  # The two coverage fractions. A perfect model of the reference scores 1 by
+  # construction: every search starts at its own saddle, so it converges at once
+  # and joins the same two minima. good sits a little below that as a judgement
+  # call, 0.95 and 0.9, leaving room for a model trained on another functional,
+  # whose surface may have lost or moved a few of these saddles; it is not
+  # measured. bad: 0, what a model that finds nothing scores; joining the right
+  # two minima by chance is negligible. Saddles converged is also the coverage
+  # penalty that lets the saddle drift metrics leave out the saddles never
+  # reached. Under the 150-step budget even good is hard to reach: some reference
+  # saddles never converge given 3000 steps.
+  Saddles converged:
+    good: 0.95
+    bad: 0.0
+    unit: fraction
+    tooltip: "Fraction of all 67 reference transition states where eigenvector following reaches a saddle within the step budget."
+    level_of_theory: ωB97X/6-31G(d)
+  Reconverged saddle RMSD (median):
+    good: 0.01
+    bad: 0.34
+    unit: Å
+    tooltip: "RMSD between each reference transition state and where it reconverges to, over those the search reached."
+    level_of_theory: ωB97X/6-31G(d)
+  Reconverged saddle RMSD (90th pct):
+    good: 0.01
+    bad: 0.34
+    unit: Å
+    tooltip: "90th percentile of the same distribution. Saddles that never converge are left out here and counted by Saddles converged; the step budget truncates the far-drifting tail, so this understates it."
+    level_of_theory: ωB97X/6-31G(d)
+  Connectivity preserved:
+    good: 0.9
+    bad: 0.0
+    unit: fraction
+    tooltip: "Fraction of all 67 reference transition states whose steepest-descent paths reach the same two minima as DFT, both relaxing into true minima. A saddle can sit in the right place and still rewire the network."
+    level_of_theory: ωB97X/6-31G(d)
+  # Both overlaps are cosines between matched modes. good: 0.99, an 8° misalignment,
+  # the same mode for any practical purpose. bad: 0.8, a 37° misalignment, where a
+  # mode is mixing with its neighbours. Both are judgement calls, well above the
+  # 0.32 that modes pointing in random directions score after the same matching.
+  Normal mode overlap:
+    good: 0.99
+    bad: 0.8
+    unit: cosine
+    tooltip: "Agreement with the DFT normal modes at the reference geometries, matched one to one after projecting out translation and rotation."
+    level_of_theory: ωB97X/6-31G(d)
+  Reaction mode overlap:
+    good: 0.99
+    bad: 0.8
+    unit: cosine
+    tooltip: "Agreement with the DFT imaginary mode, over the saddles where the model has one at all. Read with Reaction modes present."
+    level_of_theory: ωB97X/6-31G(d)
+  # How many saddles the two reaction mode metrics are taken over. Not scored, so
+  # good and bad only colour the column: Saddles converged is the scored coverage,
+  # and the two count the same saddles on most models. They are the thresholds of
+  # Saddles converged, for the same reason: DFT has a reaction mode at all 67, so
+  # a perfect model scores 1, and one with none scores 0.
+  Reaction modes present:
+    good: 0.95
+    bad: 0.0
+    unit: fraction
+    weight: 0
+    tooltip: "Fraction of the 67 reference transition states where the model, at the DFT geometry, curves downhill along the mode matched to DFT's reaction mode. Reaction mode overlap and Reaction mode curvature are taken over these saddles only. A snapshot, unlike Saddles converged, which counts searches walking to the model's own saddle. Not scored."
+    level_of_theory: ωB97X/6-31G(d)
+  # An error that scales the whole Hessian scales every frequency by its square
+  # root, so 2% and 20% in stiffness are about 1% and 10% in frequency. 10% is
+  # how far uncorrected Hartree-Fock frequencies are off, which is why they are
+  # only used scaled.
+  Stiffness error:
+    good: 2.0
+    bad: 20.0
+    unit: "%"
+    tooltip: "How far the model's overall stiffness is from DFT's, from the least-squares slope of model against DFT eigenvalues; median over structures. Weighted by eigenvalue, so it describes the stiff modes. Click for the signed values: negative is softer than DFT."
+    level_of_theory: ωB97X/6-31G(d)
+  # Judgement calls against the scale of the modes measured: the softest third of
+  # the reference modes has a median curvature of 2.7 eV/Å² (what a model with zero
+  # curvature there would score), so 0.02 and 0.2 eV/Å² are about 1% and 7% of it.
+  Soft mode curvature error:
+    good: 0.02
+    bad: 0.2
+    unit: eV/Å²
+    tooltip: "Absolute eigenvalue error over the softest third of the modes, where a landscape lives. Absolute rather than relative because these eigenvalues approach zero."
+    level_of_theory: ωB97X/6-31G(d)
+  # good: 1, agreement. bad: 0.44, what a model that knows nothing scores: the
+  # best single imaginary eigenvalue predicted for every saddle. The reference
+  # values span three orders of magnitude (-0.003 to -9.2 eV/Å², median -0.16),
+  # and the best constant (-0.10) is typically a factor of 2 off. A model scoring
+  # below it has no skill here.
+  Reaction mode curvature:
+    good: 1.0
+    bad: 0.44
+    unit: ratio
+    tooltip: "The model's imaginary eigenvalue over DFT's, folded as min(r, 1/r) at each transition state where the model has one (see Reaction modes present), so a barrier top twice too sharp or twice too flat both read 0.5. Click for the unfolded ratios: above 1 is too sharp, below 1 too flat. The curvature along the reaction coordinate, a proxy for the imaginary frequency that enters the tunnelling correction and the TST prefactor (these Hessians are Cartesian, not mass-weighted). A single constant predicted for every saddle scores 0.44, so a model at or below that shows no skill here."
+    level_of_theory: ωB97X/6-31G(d)
