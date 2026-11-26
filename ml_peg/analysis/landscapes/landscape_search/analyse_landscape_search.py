@@ -66,7 +66,6 @@ from ml_peg.analysis.landscapes.stationary_points.hessian_metrics import (
 )
 from ml_peg.analysis.utils.decorators import build_table, plot_violin
 from ml_peg.analysis.utils.utils import (
-    build_dispersion_name_map,
     load_metrics_config,
     write_struct_info,
 )
@@ -99,7 +98,6 @@ from topsearch.similarity.molecular_similarity import (  # noqa: E402
 )
 
 MODELS = load_models(current_models)
-DISPERSION_NAME_MAP = build_dispersion_name_map()
 
 CALC_PATH = CALCS_ROOT / "landscapes" / "landscape_search" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "landscapes" / "landscape_search"
@@ -1094,13 +1092,14 @@ def _write_distorted(
     distorted
         Minima ``_is_distorted`` flagged. Nothing is written when there are
         none, so a model with no distorted minima leaves no file rather than
-        an empty one.
+        an empty one, and a file an earlier run left is removed.
     reference_lengths
         Reference bond lengths, as ``_reference_lengths`` returns them.
     """
-    if not distorted:
-        return
     out_dir = OUT_PATH / model_name / DISTORTED_SUBDIR
+    if not distorted:
+        (out_dir / f"{molecule_key}_distorted.extxyz").unlink(missing_ok=True)
+        return
     out_dir.mkdir(parents=True, exist_ok=True)
     annotated = []
     for atoms in distorted:
@@ -1462,6 +1461,31 @@ def _pooled(comparison: dict | None, numerator: str, denominator: str) -> float:
     return float(top / bottom) if bottom else 0.0
 
 
+def _capped_nearest(comparison: dict | None, key: str) -> list[float]:
+    """
+    Get every reference structure's nearest distance, capped.
+
+    Each at most ``NEAREST_CAP``: a reference missed by more, or with nothing
+    usable found near it, counts as one missed by the cap.
+
+    Parameters
+    ----------
+    comparison
+        Per-molecule results, or None if the model's outputs were rejected.
+    key
+        ``minima_nearest`` or ``saddle_nearest``.
+
+    Returns
+    -------
+    list[float]
+        One distance in Å per reference structure, empty if the outputs were
+        rejected.
+    """
+    if comparison is None:
+        return []
+    return [min(d, NEAREST_CAP) for v in comparison.values() for d in v[key]]
+
+
 def _capped_mean_nearest(comparison: dict | None, key: str) -> float:
     """
     Take the mean nearest distance over every reference structure, capped.
@@ -1485,7 +1509,7 @@ def _capped_mean_nearest(comparison: dict | None, key: str) -> float:
     """
     if comparison is None:
         return np.nan
-    distances = [min(d, NEAREST_CAP) for v in comparison.values() for d in v[key]]
+    distances = _capped_nearest(comparison, key)
     return float(np.mean(distances)) if distances else np.nan
 
 
@@ -1517,14 +1541,11 @@ def _per_structure(comparison: dict[str, dict | None], key: str) -> dict[str, li
     Returns
     -------
     dict[str, list]
-        The finite values for each model, empty for a model whose searches are
-        incomplete. Infinite distances, references with nothing found near
-        them, have no place on a plot; the medians keep them.
+        The values for each model, empty for a model whose searches are
+        incomplete.
     """
     return {
-        model_name: [
-            d for v in (results or {}).values() for d in v[key] if np.isfinite(d)
-        ]
+        model_name: [d for v in (results or {}).values() for d in v[key]]
         for model_name, results in comparison.items()
     }
 
@@ -1627,7 +1648,7 @@ def _pooled_per_model(
 @plot_violin(
     filename=OUT_PATH / "figure_minima_nearest.json",
     title="How close the search got to every DFT minimum",
-    y_label="Distance to the nearest found minimum / Å",
+    y_label="Distance to the nearest found minimum (capped at 0.34 Å) / Å",
 )
 def minima_nearest(comparison: dict[str, dict | None]) -> dict[str, list]:
     """
@@ -1645,16 +1666,18 @@ def minima_nearest(comparison: dict[str, dict | None]) -> dict[str, list]:
     Returns
     -------
     dict[str, list]
-        Per-reference distance in Å.
+        Per-reference distance in Å, capped as the table row caps it, so
+        every reference is on the plot, those with nothing found near them
+        included.
     """
-    return _per_structure(comparison, "minima_nearest")
+    return {m: _capped_nearest(c, "minima_nearest") for m, c in comparison.items()}
 
 
 @pytest.fixture
 @plot_violin(
     filename=OUT_PATH / "figure_saddle_nearest.json",
     title="How close the search got to every DFT transition state",
-    y_label="Distance to the nearest found saddle / Å",
+    y_label="Distance to the nearest found saddle (capped at 0.34 Å) / Å",
 )
 def saddle_nearest(comparison: dict[str, dict | None]) -> dict[str, list]:
     """
@@ -1668,9 +1691,11 @@ def saddle_nearest(comparison: dict[str, dict | None]) -> dict[str, list]:
     Returns
     -------
     dict[str, list]
-        Per-reference distance in Å.
+        Per-reference distance in Å, capped as the table row caps it, so
+        every reference is on the plot, those with nothing found near them
+        included.
     """
-    return _per_structure(comparison, "saddle_nearest")
+    return {m: _capped_nearest(c, "saddle_nearest") for m, c in comparison.items()}
 
 
 def _metric_values(comparison: dict[str, dict | None]) -> dict[str, dict]:
@@ -1737,7 +1762,6 @@ def _metric_values(comparison: dict[str, dict | None]) -> dict[str, dict]:
     metric_tooltips=DEFAULT_TOOLTIPS,
     thresholds=DEFAULT_THRESHOLDS,
     weights=DEFAULT_WEIGHTS,
-    mlip_name_map=DISPERSION_NAME_MAP,
 )
 def metrics(
     comparison: dict[str, dict | None],
@@ -1759,9 +1783,7 @@ def metrics(
     saddle_rmsd
         The same.
     minima_nearest
-        The same. The median nearest distance in particular cannot come from
-        the figure's data, which leaves out the references nothing was found
-        near.
+        The same.
     saddle_nearest
         The same.
 

@@ -37,6 +37,7 @@ from ml_peg.analysis.landscapes.landscape_search.analyse_landscape_search import
     _bond_deviations,
     _bonds,
     _capped_mean_nearest,
+    _capped_nearest,
     _classify,
     _compare_molecule,
     _distances,
@@ -264,6 +265,27 @@ def test_nothing_is_written_when_nothing_is_flagged(monkeypatch, tmp_path) -> No
     monkeypatch.setattr(analyse_landscape_search, "OUT_PATH", tmp_path)
     _write_distorted("a_model", "paracetamol", [], {(0, 1): REFERENCE_CO})
     assert not (tmp_path / "a_model").exists()
+
+
+def test_a_rerun_with_nothing_flagged_removes_the_old_file(
+    monkeypatch, tmp_path
+) -> None:
+    """
+    A file an earlier run wrote does not outlive the minima it listed.
+
+    Parameters
+    ----------
+    monkeypatch
+        Pytest monkeypatch fixture.
+    tmp_path
+        Pytest temporary directory.
+    """
+    monkeypatch.setattr(analyse_landscape_search, "OUT_PATH", tmp_path)
+    stale = tmp_path / "a_model" / DISTORTED_SUBDIR / "paracetamol_distorted.extxyz"
+    stale.parent.mkdir(parents=True)
+    stale.write_text("written by an earlier run")
+    _write_distorted("a_model", "paracetamol", [], {(0, 1): REFERENCE_CO})
+    assert not stale.exists()
 
 
 # --- nearest-distance reporting -------------------------------------------
@@ -1760,6 +1782,22 @@ def test_the_nearest_mean_counts_every_reference_up_to_the_cap() -> None:
     assert np.isnan(_capped_mean_nearest(None, "minima_nearest"))
 
 
+def test_the_nearest_plot_shows_every_reference_as_the_row_counts_it() -> None:
+    """
+    The violin holds the capped distances the row averages, misses included.
+
+    Left out, a molecule with nothing found would vanish from the plot and
+    leave a model that missed it looking clean.
+    """
+    results = {"a": {"saddle_nearest": [0.05, 3.0]}, "b": {"saddle_nearest": [np.inf]}}
+    plotted = _capped_nearest(results, "saddle_nearest")
+    assert plotted == pytest.approx([0.05, NEAREST_CAP, NEAREST_CAP])
+    assert _capped_mean_nearest(results, "saddle_nearest") == pytest.approx(
+        np.mean(plotted)
+    )
+    assert _capped_nearest(None, "saddle_nearest") == []
+
+
 # --- the reference ----------------------------------------------------------
 
 
@@ -2580,14 +2618,16 @@ def test_a_finished_start_is_skipped_and_a_failed_one_retried(
     assert len(read(_path(out_dir, 2, FOUND), index=":")) == 1
 
 
-def test_a_setup_failure_fails_every_unfinished_start(
+def test_a_setup_failure_records_no_search_failure(
     out_dir: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     """
-    When the starts cannot be read, each start is recorded with that error.
+    Starts that cannot be read leave the searches missing, not failed.
 
-    A finished start is left alone: its result stands. An empty found file is
-    not a finished start.
+    A missing or unreadable starts file is a problem with the data or the
+    environment, not the model. Recorded as failed searches it would score as
+    searches that found nothing; left unrecorded, the model scores NaN until a
+    rerun finds the starts. A finished start is left alone.
 
     Parameters
     ----------
@@ -2601,19 +2641,13 @@ def test_a_setup_failure_fails_every_unfinished_start(
     (tmp_path / "starts" / f"{TOY}_starts.xyz").unlink()
     out_dir.mkdir(parents=True)
     _path(out_dir, 4, FOUND).write_text("finished earlier")
-    _path(out_dir, 3, FOUND).write_text("")
     seeds = _stub(monkeypatch)
     with pytest.warns(UserWarning, match="FileNotFoundError"):
         calc_landscape_search.test_landscape_search((TOY, _toy_model()))
 
     assert seeds == []
-    for start in range(4):
-        record = _failure(out_dir, start)
-        assert record["seed"] == calc_landscape_search.SEED_OFFSETS[start]
-        assert record["error"].startswith("FileNotFoundError: ")
-    assert not _path(out_dir, 4, FAILED).exists()
-    # Left beside its failure record, the empty file would win and void the model.
-    assert not _path(out_dir, 3, FOUND).exists()
+    assert not any(_path(out_dir, start, FAILED).exists() for start in range(5))
+    assert _path(out_dir, 4, FOUND).read_text() == "finished earlier"
 
 
 def test_an_empty_found_file_does_not_outlive_a_failed_rerun(

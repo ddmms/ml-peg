@@ -11,9 +11,10 @@ Every number in the tables is pooled over the six molecules, and so leans
 heavily on aspirin: aspirin alone is 37 of the 67 transition states and 6,944
 of the 11,173 path frames.
 
-Every benchmark here runs the model in float64. That is a requirement rather than a
+Every benchmark here asks for the model in float64. That matters rather than being a
 preference: eigenvector following takes its curvature from finite differences of
-forces, which in float32 is noise-dominated, and the search wanders.
+forces, which in float32 is noise-dominated, and the search wanders. Some backends
+cannot run in float64 and ignore the request, so their results here are in float32.
 
 Every benchmark here needs topsearch, from the ``topsearch`` extra
 (``uv sync --extra topsearch``), and is skipped without it.
@@ -38,6 +39,10 @@ Metrics
    surface with non-zero forces, so this is a conventional accuracy test -- but
    sampled along the reaction coordinates rather than from a thermal
    distribution, which is where a landscape benchmark should want to look.
+   Energies are compared per atom, each method measured from its own
+   per-molecule mean so that a constant offset cancels, and both errors are
+   RMSEs pooled over every frame of the six molecules, the force error over
+   every force component.
 
 2. Energy and force at each stationary point
 

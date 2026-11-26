@@ -704,9 +704,9 @@ def test_landscape_search(mlip: tuple[str, Any]) -> None:
     """
     Search each molecule's landscape from a single starting conformer.
 
-    Multi-day: on an NVIDIA H200, one search takes ten minutes to six and a
+    Multi-day: on an NVIDIA H200, one search takes ten minutes to seven and a
     half hours with the MACE models measured, and the thirty searches of one
-    model add up to 46 to 59 hours run four to a GPU. The searches are
+    model add up to 45 to 78 hours run four to a GPU. The searches are
     independent, so the wall time is a scheduling question rather than a
     floor.
 
@@ -732,9 +732,15 @@ def test_landscape_search(mlip: tuple[str, Any]) -> None:
         try:
             symbols, potential, starts = _starts(molecule, starts_dir, calc)
         except Exception as exc:
-            for start, seed in enumerate(SEED_OFFSETS):
-                if _needs_search(out_dir, molecule.key, start):
-                    _record_failure(out_dir, molecule.key, start, seed, _describe(exc))
+            # The starts could not be read: the data or the environment, not
+            # the model. Recorded as failed searches, they would score as
+            # searches that found nothing; left missing, the model scores NaN
+            # until a rerun finds them.
+            warn(
+                f"{model_name} {molecule.key}: starts not read, no search run: "
+                f"{_describe(exc)}",
+                stacklevel=2,
+            )
             continue
 
         for start, (conformer, seed) in enumerate(

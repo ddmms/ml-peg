@@ -25,7 +25,7 @@ metrics:
     bad: 0.0
     weight: 1
     unit: fraction
-    tooltip: "Fraction of the DFT transition states found from scratch. Strongly dependent on how many pairs of minima the search attempts to connect, which is the same for every model. A saddle counts only if the model holds it as a first-order one: one downhill direction, any second at most a tenth as steep."
+    tooltip: "Fraction of the DFT transition states found from scratch. Strongly dependent on how many pairs of minima the search tries to connect: each minimum is paired with its six nearest and each pair gets up to three attempts, the same settings for every model, though the number of pairs grows with the minima a model finds. A saddle counts only if the model holds it as a first-order one: one downhill direction, any second at most a tenth as steep."
     level_of_theory: ωB97X/6-31G(d)
   Matched saddle RMSD (median):
     good: 0.01
