@@ -47,6 +47,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
+from io import StringIO
 import json
 from pathlib import Path
 import re
@@ -957,8 +958,9 @@ def _read_search(found_path: Path, checks_path: Path, start: int) -> _Search:
         If the file holds no structures, the checks are of another version of
         it, or a structure is not labelled as the calculation labels them.
     """
-    digest = hashlib.sha256(found_path.read_bytes()).hexdigest()
-    frames = read(found_path, index=":", format="extxyz")
+    content = found_path.read_bytes()
+    digest = hashlib.sha256(content).hexdigest()
+    frames = read(StringIO(content.decode()), index=":", format="extxyz")
     if not frames:
         raise ValueError(f"{found_path.name} holds no structures")
     labels = [str(atoms.info["label"]) for atoms in frames]
