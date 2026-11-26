@@ -9,6 +9,7 @@ Benchmarks
     amorphous_materials
     biomolecules
     bulk_crystal
+    clusters
     conformers
     defects
     electrolytes

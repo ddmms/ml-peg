@@ -1,0 +1,14 @@
+implementers:
+  - name: Filippo Bigi
+    github: frostedoyster
+
+contributors:
+  - name: Sanggyu Chong
+    github: SanggyuChong
+
+citations:
+  - bibtex_key: chong2026bodyorder
+    role: benchmark_method
+  - bibtex_key: levine2025omol25
+    role: reference_method
+    detail: ωB97M-V, OMol25 settings

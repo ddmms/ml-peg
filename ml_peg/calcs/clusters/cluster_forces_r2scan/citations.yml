@@ -1,0 +1,14 @@
+implementers:
+  - name: Filippo Bigi
+    github: frostedoyster
+
+contributors:
+  - name: Sanggyu Chong
+    github: SanggyuChong
+
+citations:
+  - bibtex_key: chong2026bodyorder
+    role: benchmark_method
+  - bibtex_key: malosso2026mad15
+    role: reference_method
+    detail: r2SCAN, MAD-1.5 settings
