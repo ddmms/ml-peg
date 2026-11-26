@@ -666,7 +666,7 @@ minimum count as infinitely bad, and also towards the unphysical E(V) metric.
    Not included in the score.
 
 Each metric can also be shown on a periodic table, as the median over the ten
-structures of each element. Clicking an element shows its ten E(V) curves; hovering
+structures of each element, printed below its symbol. Clicking an element shows its ten E(V) curves; hovering
 over a fitted curve shows the residuals (1 - R²) of the fit.
 
 Clicking a V0, B0 or B1 error shows box plots of the signed relative differences in
@@ -1219,6 +1219,9 @@ of Yu *et al.*, on a 0-100 meV/atom colour scale). Clicking the failed systems s
 periodic table of the percentage of failed systems containing each element. Below the
 table, the PBE and model hulls of any system can be compared side by side; the systems
 of each model are listed from the largest to the smallest energy above hull MAE.
+Clicking an element on one of the periodic tables of a model shows the hulls of its
+system with the largest MAE containing that element, and clicking a point of the hulls
+shows its structure (for an element, its ground state).
 
 **Score thresholds**
 
