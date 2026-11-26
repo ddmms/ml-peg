@@ -223,3 +223,17 @@ Experimental reference data:
 * M. Baias et al., Phys. Chem. Chem. Phys. 15, 8069 (2013), Table 1, as used in the
   atomistic-cookbook recipe, with the values of the C5 bridgehead proton and a C4
   proton restored to the original assignment.
+
+
+Tool and computational resource disclosure
+==========================================
+
+The calculation, analysis and application code of these benchmarks, the shared NMR
+helpers, the supporting changes to ml-peg's model loading and structure viewer, the
+scripts used to prepare the input data, and this page were drafted with an AI coding
+assistant (Claude Code, with Claude Opus 5.5, Anthropic). The implementer chose the
+reference data and the scientific conventions, reviewed, edited and verified the code
+and this page, wrote the unit tests, and takes responsibility for them. No new
+reference calculations were run: the GIPAW-PBE shieldings and experimental shifts are
+taken from the published sources listed under each benchmark, and the timings above
+were measured on the hardware named under "Computational cost".
