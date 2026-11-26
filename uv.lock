@@ -7992,6 +7992,23 @@ wheels = [
 ]
 
 [[package]]
+name = "dynasor"
+version = "2.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ase" },
+    { name = "mdanalysis" },
+    { name = "numba" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7e/51/172dd21c364e90da17ed432484d01f62646ed8d0d91704e18125226993dd/dynasor-2.5.tar.gz", hash = "sha256:c538a91107e64be4a1b71f39c9cd65ba0dd79ea3d44d39214a072b0b9864592d", size = 210092, upload-time = "2026-09-15T08:18:50.779Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/92/264398524163b9a8404e42347130b9ecef0865f1ea5448f8bb0bc5cab9de/dynasor-2.5-py3-none-any.whl", hash = "sha256:a1d62f56b2c68d1e46d92de08cb2607e42e922ed40c8b53676397de9b34945ab", size = 168670, upload-time = "2026-09-15T08:18:49.594Z" },
+]
+
+[[package]]
 name = "e3j"
 version = "0.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -16298,6 +16315,7 @@ dependencies = [
     { name = "ase" },
     { name = "boto3" },
     { name = "dash" },
+    { name = "dynasor" },
     { name = "flask-compress" },
     { name = "janus-core" },
     { name = "kaleido" },
@@ -16440,6 +16458,7 @@ requires-dist = [
     { name = "cuequivariance-torch", marker = "sys_platform != 'linux' and extra == 'vivace'", specifier = "==0.8.1" },
     { name = "dash", specifier = ">=4.5,<5" },
     { name = "deepmd-kit", extras = ["torch"], marker = "extra == 'dpa'", specifier = "==3.2.0" },
+    { name = "dynasor", specifier = ">=2.3,<3" },
     { name = "fairchem-core", marker = "extra == 'uma'", specifier = "==2.25.0" },
     { name = "flask-compress", specifier = ">=1.17,<2" },
     { name = "graph-longrange", marker = "extra == 'mace'", specifier = "==0.4.4" },
