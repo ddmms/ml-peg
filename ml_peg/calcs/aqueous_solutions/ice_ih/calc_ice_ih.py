@@ -1,0 +1,95 @@
+"""Run calculations for ice Ih benchmark."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+from warnings import warn
+
+from ase.io import read
+from janus_core.calculations.md import NVT
+import pytest
+
+from ml_peg.calcs.utils.utils import download_s3_data
+from ml_peg.calcs.utils.water_md import stage_reference_data, water_md_restart
+from ml_peg.models import current_models
+from ml_peg.models.get_models import load_models
+
+MODELS = load_models(current_models)
+
+# Local directory to store output data
+OUT_PATH = Path(__file__).parent / "outputs"
+
+# MD settings
+TEMPERATURE = 250  # Kelvin
+FRICTION = 0.05  # Langevin friction coefficient
+TIMESTEP = 0.5  # fs, MD integration step
+# Frames are written every TRAJ_EVERY steps, so the stored spacing is
+# TIMESTEP * TRAJ_EVERY fs -- this must match the reference's spacing.
+TRAJ_EVERY = 4
+EQUIL_STEPS = 50000  # equilibration steps (not recorded)
+RUN_STEPS = 600000  # production steps (recorded)
+
+
+@pytest.mark.very_slow
+@pytest.mark.parametrize("mlip", MODELS.items())
+def test_ice_ih(mlip: tuple[str, Any]) -> None:
+    """
+    Run Ice Ih test.
+
+    Runs Langevin MD (via janus-core) on hexagonal ice Ih, writing the trajectory
+    (positions and momenta) to ``md-traj.extxyz`` for analysis.
+
+    Parameters
+    ----------
+    mlip
+        Name of model use and model to get calculator.
+    """
+    # Setup calculator with d3 correction
+    model_name, model = mlip
+    write_dir = OUT_PATH / model_name
+    write_dir.mkdir(parents=True, exist_ok=True)
+    failed_marker = write_dir / "md-failed"
+    failed_marker.touch()
+
+    calc = model.get_calculator(precision="low")
+    calc = model.add_d3_calculator(calc)
+
+    # Get ice Ih benchmark data
+    data_dir = (
+        download_s3_data(
+            filename="ice_ih.zip",
+            key="inputs/aqueous_solutions/ice_ih/ice_ih.zip",
+        )
+        / "ice_ih"
+    )
+
+    # Load initial structure
+    # Staged here so the analysis never downloads anything.
+    stage_reference_data(data_dir, OUT_PATH / "references")
+
+    start_config = read(data_dir / "init.xyz")
+    start_config.pbc = [True, True, True]
+    start_config.calc = calc
+
+    md = NVT(
+        **water_md_restart(
+            start_config, write_dir, EQUIL_STEPS, EQUIL_STEPS + RUN_STEPS
+        ),
+        temp=TEMPERATURE,
+        steps=EQUIL_STEPS + RUN_STEPS,
+        equil_steps=EQUIL_STEPS,
+        timestep=TIMESTEP,
+        friction=FRICTION,
+        stats_every=100,
+        traj_every=TRAJ_EVERY,
+        file_prefix=write_dir / "md",
+        write_kwargs={"columns": ["symbols", "positions", "momenta", "masses"]},
+    )
+
+    try:
+        md.run()
+    except Exception as exc:
+        warn(f"Error running MD: {exc}", stacklevel=2)
+    else:
+        failed_marker.unlink()

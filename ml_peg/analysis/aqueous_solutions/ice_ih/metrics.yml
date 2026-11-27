@@ -1,0 +1,21 @@
+# Score cutoffs are provisional: 100 is exact agreement, 80 is 20% normalised
+# curve error. Application-based validation of the bad cutoffs is still needed.
+metrics:
+  rdf_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: "RDF similarity to AIMD (100 = identical curves, 80 = 20% normalised curve error)"
+    level_of_theory: PBE-D3(0)
+  vdos_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: "Vibrational density of states similarity to AIMD (100 = identical curves)"
+    level_of_theory: PBE-D3(0)
+  vacf_score:
+    good: 100.0
+    bad: 80.0
+    unit: null
+    tooltip: "Velocity autocorrelation similarity to AIMD (100 = identical curves)"
+    level_of_theory: PBE-D3(0)
