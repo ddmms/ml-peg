@@ -245,7 +245,7 @@ def material_constants(calc, symbol: str = "Si") -> dict:
         delta=1e-3,
         N_steps=5,
         optimizer=_checked_lbfgs(),
-        fmax=1e-6,
+        fmax=1e-5,
         steps=MAX_STEPS,
         verbose=False,
     )
