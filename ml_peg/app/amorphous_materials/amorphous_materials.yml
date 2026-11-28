@@ -1,2 +1,4 @@
 title: Amorphous materials
 description: Numerical energy/force transferability, melt-quench simulations and structural metrics for amorphous phases
+benchmark_weights:
+  amorphous_carbon_melt_quench: 0

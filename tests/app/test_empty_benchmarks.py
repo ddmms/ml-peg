@@ -49,6 +49,62 @@ def test_summary_weights_ignore_benchmark_without_results() -> None:
     assert weighted.weights == {"scored Score": 3.0, "empty Score": 0.0}
 
 
+def test_summary_weights_ignore_group_without_scores() -> None:
+    """A group whose own score is None everywhere must not count as present.
+
+    A category summarising only unrun benchmarks has rows, but every ``Score``
+    is None, since no column carries weight. Without forcing its weight to 0,
+    `calc_table_scores` silently skips the None per-row, so the overall score
+    looks complete while quietly excluding a weight-1 category.
+    """
+    mlip = next(iter(get_model_names(current_models)))
+    tables = {
+        "scored": _benchmark_table("scored", {mlip: 0.5}),
+        "unrun": _benchmark_table("unrun", {mlip: None}),
+    }
+
+    table = build_summary_table(tables, table_id="unit-summary-table-none")
+
+    row = next(row for row in table.data if row["MLIP"] == mlip)
+    assert row["unrun Score"] is None
+    assert row["Score"] == 0.5
+    assert table.weights == {"unrun Score": 0.0}
+
+
+def test_tooltip_separates_absent_results_from_unweighted_contents() -> None:
+    """Only a benchmark that has produced nothing is awaiting data."""
+    mlip = next(iter(get_model_names(current_models)))
+    tables = {
+        "empty": _benchmark_table("empty", None),
+        "unweighted": _benchmark_table("unweighted", {mlip: None}),
+        "scored": _benchmark_table("scored", {mlip: 0.5}),
+    }
+
+    table = build_summary_table(tables, table_id="unit-summary-table-tooltips")
+
+    tooltips = table.tooltip_header
+    assert "still being collected" in tooltips["empty Score"]
+    assert "still being collected" not in tooltips["unweighted Score"]
+    assert "weighted 0" in tooltips["unweighted Score"]
+    assert "weighted 0" not in tooltips["scored Score"]
+
+
+def test_summary_weights_ignore_scores_for_excluded_models() -> None:
+    """A score belonging to a model this summary excludes leaves the column empty."""
+    mlip = next(iter(get_model_names(current_models)))
+    tables = {
+        "scored": _benchmark_table("scored", {mlip: 0.5}),
+        "other-models-only": _benchmark_table("other-models-only", {"retired": 0.4}),
+    }
+
+    table = build_summary_table(tables, table_id="unit-summary-table-excluded")
+
+    assert table.weights == {"other-models-only Score": 0.0}
+    tooltip = table.tooltip_header["other-models-only Score"]
+    assert "weighted 0" in tooltip
+    assert "still being collected" not in tooltip
+
+
 def test_summary_weights_untouched_when_all_benchmarks_have_results() -> None:
     """A benchmark with results keeps its weight, so scores stay a plain average."""
     mlip = next(iter(get_model_names(current_models)))

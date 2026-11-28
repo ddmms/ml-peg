@@ -31,7 +31,7 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, _ = load_metrics_config(METRICS_CONFIG_PAT
 SYSTEM_INFO = get_struct_info(
     calc_path=CALC_PATH,
     glob_pattern="mol_surface_structs.extxyz",
-    info_keys=["sys_formula"],
+    info_keys=["sys_formula", "PBE_adsorption_energy"],
     write_info=True,
     write_structs=True,
     out_path=OUT_PATH,
@@ -39,6 +39,9 @@ SYSTEM_INFO = get_struct_info(
 
 
 LABELS = SYSTEM_INFO["sys_formula"]
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_ENERGIES = SYSTEM_INFO["PBE_adsorption_energy"]
 
 
 @pytest.fixture
@@ -60,30 +63,24 @@ def adsorption_energies() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted adsorption energies.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_ENERGIES)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
-        model_dir = CALC_PATH / model_name
-        if not model_dir.exists():
-            results[model_name] = []
+        struct_path = CALC_PATH / model_name / "mol_surface_structs.extxyz"
+        if not struct_path.exists():
+            results[model_name] = [float("nan")] * len(LABELS)
             continue
-        mol_surface_list = read(model_dir / "mol_surface_structs.extxyz", index=":")
-        for mol_surface_idx, mol_surface in enumerate(mol_surface_list):
+
+        mol_surface_list = read(struct_path, index=":")
+        if len(mol_surface_list) != len(LABELS):
+            # Systems cannot be matched to the reference, so all results are discarded
+            results[model_name] = [float("nan")] * len(LABELS)
+            continue
+
+        for mol_surface in mol_surface_list:
             # Get pre-calculated adsorption energies
-            pred_ads_energy = mol_surface.info["pred_adsorption_energy"]
-            results[model_name].append(pred_ads_energy)
+            results[model_name].append(mol_surface.info["pred_adsorption_energy"])
 
-            if not ref_stored:
-                ref_ads_energy = mol_surface.info["PBE_adsorption_energy"]
-                results["ref"].append(ref_ads_energy)
-
-            # Write molecule-surface structure to app data
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{mol_surface_idx}.xyz", mol_surface)
-
-        ref_stored = True
     return results
 
 
@@ -145,4 +142,11 @@ def test_cmrads200(metrics: dict[str, dict]) -> None:
     metrics
         All CMRAds200 metrics.
     """
-    return
+    mol_surface_list = read(
+        CALC_PATH / "mock" / "mol_surface_structs.extxyz", index=":"
+    )
+    for mol_surface_idx, mol_surface in enumerate(mol_surface_list):
+        # Write molecule-surface structure to app data
+        structs_dir = OUT_PATH / "mock"
+        structs_dir.mkdir(parents=True, exist_ok=True)
+        write(structs_dir / f"{mol_surface_idx}.xyz", mol_surface)

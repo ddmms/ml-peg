@@ -61,6 +61,52 @@ class SkipActionError(Exception):
     """An action has no applicable data in the current app."""
 
 
+def _is_gzipped(request) -> bool:
+    """
+    Report whether a request body was compressed by ``compress_payload``.
+
+    Parameters
+    ----------
+    request
+        Completed Playwright POST request.
+
+    Returns
+    -------
+    bool
+        True if the body was sent gzipped.
+    """
+    return "gzip" in (request.headers.get("content-encoding") or "")
+
+
+def _callback_name(request) -> str | None:
+    """
+    Read the output name from a callback request.
+
+    Callbacks using ``compress_payload`` send a Blob, which Chromium does not expose
+    to Playwright, so these are unavoidably unnamed here. Their names and sizes are
+    recorded server-side instead (see utils/profiling.py).
+
+    Should a browser expose such a body, reading it raises rather than returning
+    None: UnicodeDecodeError on gzip bytes, or Error on any other non-JSON body.
+    A name is only a diagnostic, so never fail the action being timed over one.
+
+    Parameters
+    ----------
+    request
+        Completed Playwright POST request.
+
+    Returns
+    -------
+    str | None
+        Callback output name, or None if the body is not readable.
+    """
+    try:
+        post_data = request.post_data_json
+    except (Error, UnicodeDecodeError):
+        return None
+    return (post_data or {}).get("output")
+
+
 class Journey:
     """
     Measure actions through a short period of network and DOM inactivity.
@@ -136,6 +182,8 @@ class Journey:
         ):
             response = request.response()
             timing = request.timing
+            # Only a POST carries a request body, so only it can be compressed.
+            is_post = request.method == "POST"
             self.requests.append(
                 {
                     "path": urlsplit(request.url).path,
@@ -144,9 +192,9 @@ class Journey:
                     if timing["responseEnd"] >= 0
                     else None,
                     "failure": request.failure,
-                    "callback": (request.post_data_json or {}).get("output")
-                    if request.method == "POST"
-                    else None,
+                    "callback": _callback_name(request) if is_post else None,
+                    # Explains a null callback: the body was gzipped and unreadable.
+                    "compressed": _is_gzipped(request) if is_post else None,
                     "response_bytes": response.headers.get("content-length")
                     if response
                     else None,

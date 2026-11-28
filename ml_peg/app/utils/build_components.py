@@ -16,6 +16,7 @@ from dash.development.base_component import Component
 from dash.html import H2, H3, Br, Button, Details, Div, Label, Span, Summary
 import yaml
 
+from ml_peg import __version__
 from ml_peg.analysis.utils.utils import Thresholds, calc_table_scores, get_table_style
 from ml_peg.app.utils.build_credits import build_benchmark_credit_components
 from ml_peg.app.utils.register_callbacks import (
@@ -25,6 +26,7 @@ from ml_peg.app.utils.register_callbacks import (
     register_summary_table_callbacks,
     register_weight_callbacks,
 )
+from ml_peg.app.utils.site_update import site_updated_at
 from ml_peg.app.utils.speed import (
     SPEED_LEVELS,
     SPEED_ORDER,
@@ -39,6 +41,7 @@ from ml_peg.app.utils.utils import (
     get_framework_config,
     get_mlip_column_width,
     get_threshold_colours,
+    is_missing_score,
     load_model_registry_configs,
     row_has_no_results,
     weight_input_style,
@@ -237,14 +240,18 @@ def build_summary_table(
             row[category_col] = summary_data[mlip].get(category_col, "NaN")
         data.append(row)
 
-    # Set weight to 0 if benchmark has no results, so it does not NaN every row's score.
-    empty_columns = [
-        f"{name} Score" for name, summarised in tables.items() if not summarised.data
-    ]
-    if empty_columns:
+    # Set weight to 0 if a column scores nothing, so it does not NaN every row's
+    # score. Judged on the projected rows, since a score belonging to a model
+    # this summary excludes still leaves the column empty here.
+    unscored_columns = {
+        column
+        for column in category_columns
+        if all(is_missing_score(row[column]) for row in data)
+    }
+    if unscored_columns:
         weights = dict(weights or {})
-        for empty_column in empty_columns:
-            weights[empty_column] = 0.0
+        for column in unscored_columns:
+            weights[column] = 0.0
 
     data = calc_table_scores(data, weights=weights)
 
@@ -277,11 +284,18 @@ def build_summary_table(
     tooltip_header = {}
     for header, summarised in tables.items():
         tooltip = summarised.description
+        # A table with rows but no scores has results; its contents are just
+        # weighted 0, so it is not waiting on data.
         if not summarised.data:
-            no_results = (
+            note = (
                 "Data is still being collected for this benchmark, so it is weighted 0."
             )
-            tooltip = f"{tooltip} {no_results}" if tooltip else no_results
+        elif f"{header} Score" in unscored_columns:
+            note = "Nothing here contributes to a score, so it is weighted 0."
+        else:
+            note = ""
+        if note:
+            tooltip = f"{tooltip} {note}" if tooltip else note
         tooltip_header[header + " Score"] = tooltip
 
     for column in columns:
@@ -290,7 +304,9 @@ def build_summary_table(
             column["type"] = "numeric"
     columns = apply_column_decimals(columns, data)
 
-    style = get_table_style(data)
+    # Pass the weights so zero-weighted columns are dimmed in the first paint,
+    # rather than only once the sync callback re-styles the table on mount.
+    style = get_table_style(data, weights=weights)
     registry_configs = load_model_registry_configs()
     row_models: list[str] = []
     for row in data:
@@ -570,6 +586,7 @@ def build_weight_input(
             value=default_value,
             step=0.01,
             debounce=True,
+            className="mlpeg-weight-input",
             style=weight_input_style(),
         )
     )
@@ -945,6 +962,7 @@ def build_table_loading_spinner() -> Div:
     """
     return Div(
         _progress_ring("mlpeg-progress-ring--sm"),
+        className="mlpeg-table-spinner",
         style={
             "position": "absolute",
             "top": "0",
@@ -993,6 +1011,7 @@ def build_filter_overlay(table_id: str, child, delay_hide: int = 250) -> Loading
         id={"type": "filter-overlay", "index": table_id},
         fullscreen=False,
         custom_spinner=build_table_loading_spinner(),
+        parent_className="mlpeg-table-loading",
         target_components={table_id: ["data", "style_data_conditional"]},
         show_initially=False,
         # Hold off ~150ms before showing the spinner: fast re-styles (weights,
@@ -1289,6 +1308,7 @@ def build_footer() -> html.Footer:
     html.Footer
         Styled footer component rendered at the bottom of each tab.
     """
+    updated_at = site_updated_at()
     copyright_first_year = "2025"
     current_year = str(time.localtime().tm_year)
     copyright_owners = metadata.metadata("ml-peg")["author"]
@@ -1353,6 +1373,39 @@ def build_footer() -> html.Footer:
                     },
                 ),
                 style={"marginTop": "6px"},
+            ),
+            Div(
+                [
+                    html.Span(f"ML-PEG v{__version__}", id="site-version"),
+                    html.Span("·", **{"aria-hidden": "true"})
+                    if updated_at is not None
+                    else None,
+                    html.Span(
+                        [
+                            "Last updated: ",
+                            html.Time(
+                                updated_at.strftime("%d %b %Y, %H:%M UTC"),
+                                dateTime=updated_at.isoformat(),
+                            ),
+                        ],
+                        id="site-last-updated",
+                        title=(
+                            "Latest application build or benchmark results update "
+                            "(UTC)."
+                        ),
+                    )
+                    if updated_at is not None
+                    else None,
+                ],
+                id="site-build-info",
+                style={
+                    "marginTop": "8px",
+                    "color": "var(--mlpeg-muted)",
+                    "display": "flex",
+                    "justifyContent": "center",
+                    "flexWrap": "wrap",
+                    "gap": "6px",
+                },
             ),
         ],
         style={

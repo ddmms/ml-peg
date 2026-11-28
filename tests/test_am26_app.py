@@ -98,7 +98,7 @@ def app_data(pipeline, reference_frames, monkeypatch):
 
 def test_normal_app_discovery_table_and_info(app_data):
     """AM26 is discovered in its existing category without a registry edit."""
-    apps, layouts, tables, _ = get_all_tests(
+    apps, layouts, tables, _, _ = get_all_tests(
         category="amorphous_materials", test="AM26"
     )
     app = apps["AM26"]
@@ -280,7 +280,7 @@ def test_missing_table_is_skipped_by_normal_registration(app_data, monkeypatch):
     """Follow get_all_tests' existing warning/skip path for absent table data."""
     monkeypatch.setattr(app_module, "DATA_PATH", am26.OUT_PATH / "not-generated")
     with pytest.warns(UserWarning, match="Unable to load layout for AM26"):
-        apps, _, _, _ = get_all_tests(category="amorphous_materials", test="AM26")
+        apps, _, _, _, _ = get_all_tests(category="amorphous_materials", test="AM26")
     assert "AM26" not in apps
 
 

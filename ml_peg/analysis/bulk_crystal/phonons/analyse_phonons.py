@@ -51,16 +51,6 @@ STABILITY_COLUMN = "Stability F1"
 STABILITY_THRESHOLD = -0.05 * THZ_TO_K
 T_300K_INDEX = 3  # Index for 300K in thermal properties (0, 75, 150, 300, 600)
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    sort_key=lambda x: int(x.stem.split("-")[1]),
-    write_info=True,
-    write_structs=False,
-    out_path=OUT_PATH,
-    model_name="DFT",
-)
-
 
 def _load_band_structure(file_path: Path) -> dict[str, Any] | None:
     """
@@ -677,4 +667,12 @@ def test_phonons(metrics, interactive_dataset) -> None:
     interactive_dataset
         Scatter metadata produced by the ``interactive_dataset`` fixture.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        sort_key=lambda x: int(x.stem.split("-")[1]),
+        write_info=True,
+        write_structs=False,
+        out_path=OUT_PATH,
+        model_name="DFT",
+    )

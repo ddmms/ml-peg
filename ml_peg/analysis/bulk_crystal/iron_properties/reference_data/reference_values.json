@@ -1,0 +1,25 @@
+{
+  "sources": {
+    "zhang": "Zhang et al., Acta Materialia 270 (2024) 119788",
+    "dragoni": "Dragoni et al., Physical Review Materials 2 (2018) 013808"
+  },
+  "values": {
+    "a0": {"value": 2.834, "unit": "Angstrom", "source": "dragoni"},
+    "B0": {"value": 199.8, "unit": "GPa", "source": "dragoni"},
+    "C11": {"value": 296.7, "unit": "GPa", "source": "dragoni"},
+    "C12": {"value": 151.4, "unit": "GPa", "source": "dragoni"},
+    "C44": {"value": 104.7, "unit": "GPa", "source": "dragoni"},
+    "E_bcc_fcc": {"value": 162.136884, "unit": "meV/atom", "source": "zhang"},
+    "E_vac": {"value": 2.22, "unit": "eV", "source": "dragoni"},
+    "gamma_100": {"value": 2.543, "unit": "J/m2", "source": "dragoni"},
+    "gamma_110": {"value": 2.495, "unit": "J/m2", "source": "dragoni"},
+    "gamma_111": {"value": 2.752, "unit": "J/m2", "source": "dragoni"},
+    "gamma_112": {"value": 2.629, "unit": "J/m2", "source": "dragoni"},
+    "gamma_us_110": {"value": 0.975490196078431, "unit": "J/m2", "source": "zhang"},
+    "gamma_us_112": {"value": 1.119804400977995, "unit": "J/m2", "source": "zhang"},
+    "max_traction_100": {"value": 35.04506913052803, "unit": "GPa", "source": "zhang"},
+    "max_traction_110": {"value": 34.92996296317308, "unit": "GPa", "source": "zhang"},
+    "max_traction_location_100": {"value": 0.6, "unit": "Angstrom", "source": "zhang"},
+    "max_traction_location_110": {"value": 0.6, "unit": "Angstrom", "source": "zhang"}
+  }
+}

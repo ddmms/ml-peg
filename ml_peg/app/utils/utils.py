@@ -10,6 +10,7 @@ from numbers import Number
 from pathlib import Path
 from typing import Any, TypedDict
 
+from dash.dash_table import DataTable
 import dash.dash_table.Format as TableFormat
 from matplotlib import colormaps
 import numpy as np
@@ -39,6 +40,37 @@ class ThresholdEntry(TypedDict):
 
 
 Thresholds = dict[str, ThresholdEntry]
+
+
+def default_weight_store_data(table: DataTable) -> dict[str, float]:
+    """
+    Build initial weight-store data covering every configurable table column.
+
+    Missing values are filled with ``1.0``. The category and overall summary
+    weight stores are mounted at the top level of the app, rather than inside an
+    individual page, so a weight changed from one page (such as a framework
+    page) must still find a complete set for a category page that is not open.
+
+    This sets the store's initial data only. A persisted session store replaces
+    it on mount, so the weight callbacks must still cope with absent columns.
+
+    Parameters
+    ----------
+    table
+        Table whose configurable columns need explicit stored weights.
+
+    Returns
+    -------
+    dict[str, float]
+        Weight mapping containing one entry for every non-reserved table column
+        (i.e. not Score etc).
+    """
+    weights = dict(getattr(table, "weights", None) or {})
+    for column in table.columns:
+        column_id = column.get("id")
+        if column_id not in RESERVED_TABLE_COLUMNS:
+            weights.setdefault(column_id, 1.0)
+    return weights
 
 
 def store_data_equal(left: Any, right: Any) -> bool:
@@ -447,6 +479,29 @@ def clean_thresholds(
     return thresholds
 
 
+def is_missing_score(score: object) -> bool:
+    """
+    Check whether a metric score holds no usable value.
+
+    ``None`` and ``NaN`` both mean "no result", and which one a cell holds
+    depends on where it came from, not on the model, so scoring treats them
+    alike.
+
+    Parameters
+    ----------
+    score
+        Metric score to check.
+
+    Returns
+    -------
+    bool
+        `True` if the score is missing, otherwise `False`.
+    """
+    if score is None or score == "NaN":
+        return True
+    return isinstance(score, float) and np.isnan(score)
+
+
 def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
     """
     Convert potentially non-numeric weight values into floats.
@@ -473,23 +528,48 @@ def clean_weights(raw_weights: dict[str, float] | None) -> dict[str, float]:
     return weights
 
 
-def clean_table_data(rows: list[dict]):
+def clean_table_data(rows: list[dict], weights: dict[str, float] | None = None):
     """
-    Ensure data does not exceed int limits.
+    Ensure data does not exceed int limits, and invalidate affected scores.
+
+    A metric that is missing or out of range makes the row's overall score
+    meaningless, so it is set to NaN. Metrics that contribute to no model's score
+    leave it alone, matching `calc_table_scores`: those weighted zero, and those
+    missing for every model.
 
     Parameters
     ----------
     rows
         List of table rows to clean.
+    weights
+        Weight for each metric. Default is 1.0 for each metric.
     """
+    weights = weights or {}
+
+    # Listed up front: ``row["Score"]`` is assigned below, which would otherwise
+    # risk mutating a row while iterating it. Rows need not share their keys, so
+    # take every metric any row has, and treat one a row lacks as missing.
+    metrics = {key for row in rows for key in row if key not in RESERVED_TABLE_COLUMNS}
+
     for row in rows:
-        for key, value in row.items():
-            if isinstance(value, int | float) and (
-                value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min
+        for key in metrics:
+            value = row.get(key)
+            if value is None or (
+                isinstance(value, int | float)
+                and (value > np.iinfo(np.int64).max or value < np.iinfo(np.int64).min)
             ):
                 row[key] = "NaN"
-            if value is None:
-                row[key] = "NaN"
+
+    scored_metrics = [
+        key
+        for key in metrics
+        if weights.get(key, 1.0) != 0
+        and any(not is_missing_score(row.get(key)) for row in rows)
+    ]
+
+    for row in rows:
+        if any(is_missing_score(row.get(key)) for key in scored_metrics):
+            row["Score"] = "NaN"
 
 
 def none_to_nan(rows: list[dict]) -> None:

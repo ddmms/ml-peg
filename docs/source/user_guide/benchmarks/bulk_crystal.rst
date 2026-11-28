@@ -572,6 +572,142 @@ Reference data (PBE):
 * ferromagnetic Fe: `Dézerald, L., Marinica, M. C., Ventelon, L., Rodney, D., & Willaime, F. (2014). Stability of self-interstitial clusters with C15 Laves phase structure in iron. Journal of Nuclear Materials, 449(1–3), 219–224. <https://doi.org/10.1016/j.jnucmat.2014.02.012>`_ and `Wang, K., Shang, S. L., Wang, Y., Liu, Z. K., & Liu, F. (2018). Martensitic transition in Fe via Bain path at finite temperatures: A comprehensive first-principles study. Acta Materialia, 147, 261–276. <https://doi.org/10.1016/j.actamat.2018.01.013>`_
 
 
+Equation of state (ACWF)
+========================
+
+Summary
+-------
+
+Energy-volume curves of the 960 crystals of the ACWF verification set: four unaries
+(BCC, FCC, SC and diamond) and six oxides (XO, XO2, XO3, X2O, X2O3 and X2O5) for each
+element from H to Cm (Z = 1-96). The curves are compared with the all-electron PBE
+reference data published with the ACWF verification study, using its measures.
+
+For each structure, the model energy is computed at seven volumes, 0.94, 0.96, ...,
+1.06 times the central volume, scaling the cell isotropically. These are single-point
+calculations on the structures of the ACWF set, as for the DFT codes in the ACWF study:
+neither the central volume nor the atomic positions are relaxed with the model. A
+third-order Birch-Murnaghan equation of state is fitted to these points as in the
+reference data, giving the equilibrium volume :math:`V_0`, the bulk modulus
+:math:`B_0` and its pressure derivative :math:`B_1`.
+
+Metrics
+-------
+
+Following Bosoni *et al.*, the ε, ν and Δ measures are computed with the
+equations of the published ACWF implementation. Each metric is the median over all
+structures. Structures for which a calculation failed or the fitted curve has no
+minimum count as infinitely bad, and also towards the unphysical E(V) metric.
+
+1. ε
+
+   Root-mean-square difference between the model and reference curves, both aligned
+   at their minimum, divided by the geometric mean of the standard deviations of the
+   two curves. All three are taken over 0.94-1.06 times the average :math:`V_0` of
+   the two curves:
+
+   .. math::
+
+      \varepsilon = \sqrt{\frac{\langle (E_\text{model} - E_\text{ref})^2 \rangle}
+      {\sqrt{\langle (E_\text{model} - \langle E_\text{model} \rangle)^2 \rangle
+      \langle (E_\text{ref} - \langle E_\text{ref} \rangle)^2 \rangle}}}
+
+   ε does not depend on the scale of the bulk modulus, so it can be compared across
+   all elements. As in the published implementation, the mean of the model curve is
+   used for both variances.
+
+   The colour scale runs from 0.2, the ACWF threshold for good agreement between DFT
+   codes, to 1.7, which corresponds to a 5% error in :math:`V_0`. The ACWF study uses
+   0.06 for excellent agreement and 1 for outliers. ε saturates near 2 for large
+   errors, above the bad threshold, so this does not affect the score.
+
+2. ν
+
+   Weighted relative differences in the Birch-Murnaghan parameters:
+
+   .. math::
+
+      \nu = 100 \sqrt{\left(\frac{V_0^\text{model} - V_0^\text{ref}}{\bar{V}_0}\right)^2
+      + \left(\frac{1}{20} \frac{B_0^\text{model} - B_0^\text{ref}}{\bar{B}_0}\right)^2
+      + \left(\frac{1}{400} \frac{B_1^\text{model} - B_1^\text{ref}}{\bar{B}_1}\right)^2}
+
+   where :math:`\bar{X}` is the average of the model and reference values. ν is close
+   to the percentage error in :math:`V_0`, as the errors in :math:`B_0` and
+   :math:`B_1` are weighted down. The good threshold, 0.33, is the ACWF threshold for
+   good agreement between DFT codes; the bad threshold, 5, corresponds to a 5% error in
+   :math:`V_0`. The ACWF study uses 0.1 for excellent agreement and 1.65 for
+   outliers.
+
+3. Unphysical E(V)
+
+   Percentage of structures for which a calculation failed, including elements the
+   model does not support, or the fitted curve has no minimum. A minimum outside the
+   sampled volumes is not counted, as ν already penalises the error in :math:`V_0`.
+
+4. ε (no +U or magnetic)
+
+   ε excluding structures for which the reference and typical MLIP training data
+   differ: elements that are magnetic in spin-polarised PBE (Cr, Mn, Fe, Co, Ni,
+   lanthanides and actinides), and oxides of the elements for which Materials Project
+   applies +U (Co, Cr, Fe, Mn, Mo, Ni, V and W). The reference is non-spin-polarised
+   PBE without +U. Not included in the score.
+
+5. Δ
+
+   Root-mean-square energy difference between the curves, aligned at their minimum,
+   over 0.94-1.06 times their average :math:`V_0`, in meV/atom (Lejaeghere *et al.*).
+   This is the ACWF definition. The values cannot be compared with the Δ metric of the
+   *Energy-volume curves for metals* benchmark, which uses a wider volume range. Not
+   included in the score.
+
+6. V0, B0 and B1 errors
+
+   Median absolute relative differences in :math:`V_0`, :math:`B_0` and :math:`B_1`.
+   Not included in the score.
+
+Each metric can also be shown on a periodic table, as the median over the ten
+structures of each element. Clicking an element shows its ten E(V) curves; hovering
+over a fitted curve shows the residuals (1 - R²) of the fit.
+
+Clicking a V0, B0 or B1 error shows box plots of the signed relative differences in
+:math:`V_0`, :math:`B_0` and :math:`B_1` for all models, as in Figure 1 of Yu *et al.*
+The results of FLEUR, WIEN2k and VASP from the ACWF study are shown above the models,
+as baselines of the differences between DFT codes. Structures without a fitted minimum
+are not shown.
+
+Computational cost
+------------------
+
+Fast: 6720 single-point calculations on cells of 1 to 14 atoms. With ``mace-mp-0a``,
+the calculations take a few minutes on a laptop CPU (Apple M-series).
+
+Data availability
+-----------------
+
+Input structures:
+
+* PBE input structures of the ACWF verification set (``xsfs-*-verification-PBE-v1``),
+  from https://github.com/aiidateam/acwf-verification-scripts.
+
+Reference data (PBE):
+
+* All-electron Birch-Murnaghan parameters averaged over WIEN2k and FLEUR, as published
+  with Bosoni *et al.*
+  (``acwf_paper_plots/code-data/results-*-verification-PBE-v1-AE-average.json``), from
+  https://github.com/aiidateam/acwf-verification-scripts.
+* Birch-Murnaghan parameters of FLEUR, WIEN2k and VASP, shown as baselines
+  (``results-*-verification-PBE-v1-{fleur,wien2k-dk_0.06,vasp}.json`` in the same
+  directory).
+* E. Bosoni *et al.*, How to verify the precision of density-functional-theory
+  implementations via reproducible and universal workflows, Nat. Rev. Phys. 6, 45
+  (2024). https://doi.org/10.1038/s42254-023-00655-3
+* K. Lejaeghere *et al.*, Reproducibility in density functional theory calculations
+  of solids, Science 351, aad3000 (2016). https://doi.org/10.1126/science.aad3000
+* H. Yu *et al.*, Systematic assessment of various universal machine-learning
+  interatomic potentials, Mater. Genome Eng. Adv. 2, e58 (2024).
+  https://doi.org/10.1002/mgea.58
+
+
 High-Pressure Relaxation
 ========================
 
@@ -713,132 +849,58 @@ Iron Properties
 Summary
 -------
 
-This benchmark evaluates MLIP performance on a comprehensive set of BCC iron
-properties relevant to plasticity and fracture. The benchmark is based on
-`Zhang et al. (2023) <https://arxiv.org/abs/2307.10072>`_, which assessed the
-efficiency, accuracy, and transferability of machine learning potentials for
-dislocations and cracks in iron.
+This benchmark evaluates BCC iron properties relevant to plasticity and fracture. It
+adapts the validation workflow of `Zhang et al. (2024)
+<https://doi.org/10.1016/j.actamat.2024.119788>`_ by scoring complete Bain,
+generalised stacking-fault energy (GSFE), and traction-separation curves, and by
+grouping related properties. Its score is therefore not directly comparable with the
+quality factor in the original paper.
 
-Seven groups of properties are computed and compared against DFT (PBE) reference
-values: equation of state, elastic constants, the Bain path, vacancy formation
-energy, surface energies, generalised stacking fault energies, and
-traction-separation curves.
+Method and scoring
+------------------
 
-Metrics
--------
+The calculations and reported groups are:
 
-EOS properties
-^^^^^^^^^^^^^^
+* **Bulk response:** lattice parameter (25%), bulk modulus (25%), and
+  :math:`C_{11}`, :math:`C_{12}`, and :math:`C_{44}` (one sixth each). The first two
+  are obtained from a third-order Birch-Murnaghan fit to 30 energy-volume points.
+  Elastic constants use central stress differences at strains of
+  :math:`\pm10^{-5}` in a 4x4x4 BCC supercell.
+* **Defect and phase energetics:** vacancy formation energy (50%) and the Bain path
+  (50%). Vacancy positions are relaxed at fixed cell volume. The Bain path spans
+  :math:`0.72 \leq c/a \leq 2.0`, with volume relaxation at fixed :math:`c/a` and an
+  exact FCC point at :math:`c/a=\sqrt{2}`. Its score combines curve error (70%) and
+  FCC-BCC endpoint error (30%).
+* **Slip:** equally weighted :math:`\{110\}\langle111\rangle` and
+  :math:`\{112\}\langle111\rangle` GSFE curves. Each oriented cell is displaced in
+  0.04 Å increments over one Burgers vector, with relaxation restricted to the fault
+  normal and an exact endpoint.
+* **Cleavage:** the four (100), (110), (111), and (112) surface energies (50%) and
+  unrelaxed (100) and (110) traction-separation curves (25% each). Separation is
+  sampled every 0.05 Å to 5 Å; traction is the finite-difference derivative of the
+  energy and its reported maximum is restricted to positive values.
 
-1. Lattice parameter error (%)
+A scalar relative error :math:`e` is mapped to
+:math:`s=1-\mathrm{clip}(e/e_{\mathrm{bad}},0,1)`. The zero-score cutoffs are 2% for
+:math:`a_0`, 50% for :math:`B_0`, 75% for the elastic constants, and 20% for vacancy
+and surface energies. Scalar components with missing or non-finite predictions, or
+calculation status marked invalid, receive a score of zero (maximum penalty). These
+components retain their assigned weights in the group score, so failed components
+penalise both the group and overall scores.
 
-The equilibrium BCC lattice parameter :math:`a_0` is obtained by fitting a
-third-order Birch-Murnaghan equation of state to 30 energy-volume points
-sampled around 2.834 Å. The percentage error relative to the DFT reference
-value (2.831 Å) is reported.
+GSFE and traction curves compare their model and DFT interpolants over the common
+domain. GSFE scores combine relative integrated absolute error (62.5%) and relative
+peak-height error (37.5%) through a root-mean-square penalty. Traction scores combine
+relative integrated absolute error (50%), relative peak-height error (30%), and
+peak-location error (20%) through the same type of penalty. Integrated and
+peak-height errors reach their maximum penalty at 30%; the peak-location cutoff for
+traction is 0.30 Å. Missing curve coverage is penalised. The Bain curve uses the same
+integrated-error cutoff, with a separate 50% cutoff for its FCC endpoint.
 
-2. Bulk modulus error (%)
-
-The bulk modulus :math:`B_0` is extracted from the same EOS fit. The
-percentage error relative to the DFT reference value (178.0 GPa) is reported.
-
-
-Elastic constants
-^^^^^^^^^^^^^^^^^
-
-3. :math:`C_{11}` error (%)
-
-The elastic constant :math:`C_{11}` is computed using a stress-strain approach
-on a 4x4x4 BCC supercell. Small positive and negative strains
-(:math:`\pm 10^{-5}`) are applied along each Voigt direction, and the elastic
-constants are extracted from the resulting stress differences. The percentage
-error relative to the DFT reference value (296.7 GPa) is reported.
-
-4. :math:`C_{12}` error (%)
-
-Same as (3), for the elastic constant :math:`C_{12}`. Reference: 151.4 GPa.
-
-5. :math:`C_{44}` error (%)
-
-Same as (3), for the elastic constant :math:`C_{44}`. Reference: 104.7 GPa.
-
-
-Vacancy formation energy
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-6. :math:`E_{\mathrm{vac}}` error (%)
-
-A single vacancy is created in a 4x4x4 BCC supercell by removing one atom.
-Atomic positions are relaxed at fixed cell volume. The vacancy formation energy
-is calculated as
-:math:`E_{\mathrm{vac}} = E_{\mathrm{defect}} - E_{\mathrm{perfect}} + E_{\mathrm{coh}}`,
-where :math:`E_{\mathrm{coh}}` is the cohesive energy per atom. The percentage
-error relative to the DFT reference value (2.02 eV) is reported.
-
-
-Bain path
-^^^^^^^^^
-
-7. BCC-FCC energy difference error (meV)
-
-The Bain path maps the continuous tetragonal distortion from BCC
-(:math:`c/a = 1`) to FCC (:math:`c/a = \sqrt{2}`). For each of 65 target
-:math:`c/a` ratios between 0.72 and 2.0, a tetragonally distorted cell is
-created and its volume is relaxed isotropically (uniform scaling preserving the
-:math:`c/a` ratio). The absolute error in the BCC-FCC energy difference
-relative to the DFT reference (83.5 meV/atom) is reported.
-
-
-Surface energies
-^^^^^^^^^^^^^^^^
-
-8. Surface energy MAE (J/m²)
-
-Surface energies are computed for the (100), (110), (111), and (112) cleavage
-planes. For each surface, a slab is created with vacuum and the surface energy
-is calculated as
-:math:`\gamma = (E_{\mathrm{slab}} - E_{\mathrm{bulk}}) / 2A`.
-Atomic positions are relaxed at fixed cell shape. The mean absolute error
-across all four surfaces, relative to DFT reference values
-(:math:`\gamma_{100}` = 2.41, :math:`\gamma_{110}` = 2.37,
-:math:`\gamma_{111}` = 2.58, :math:`\gamma_{112}` = 2.48 J/m²), is reported.
-
-
-Stacking fault energies
-^^^^^^^^^^^^^^^^^^^^^^^
-
-9. Max SFE :math:`\{110\}\langle111\rangle` error (%)
-
-The generalised stacking fault energy (GSFE) curve for the
-:math:`\{110\}\langle111\rangle` slip system is computed by incrementally
-displacing the upper half of a crystallographically oriented supercell along
-the slip direction. The displacement covers one full Burgers vector
-(:math:`b = a\sqrt{3}/2`) in 16 steps. Atoms are constrained to relax only
-perpendicular to the fault plane. The percentage error in the maximum
-(unstable) SFE relative to the DFT reference (0.75 J/m²) is reported.
-
-10. Max SFE :math:`\{112\}\langle111\rangle` error (%)
-
-Same as (9), for the :math:`\{112\}\langle111\rangle` slip system.
-Reference: 1.12 J/m².
-
-
-Traction-separation curves
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-11. Max traction (100) error (%)
-
-A traction-separation curve is computed for the (100) cleavage plane by
-incrementally separating crystal halves in 0.05 Å steps up to 5.0 Å, without
-atomic relaxation, and measuring forces at each step. The traction (tensile
-stress) is obtained from the sum of z-forces on the upper region divided by
-the cross-sectional area. The percentage error in the maximum traction relative
-to the DFT reference (35.0 GPa) is reported.
-
-12. Max traction (110) error (%)
-
-Same as (11), for the (110) cleavage plane. Reference: 30.0 GPa.
-
+Component penalties are combined by weighted root mean square within each group.
+The dashboard then uses ML-PEG's standard weighted mean of the four group scores for
+the overall score. Selecting a group cell displays its component scores, while the
+curve selector shows the model and DFT reference curves.
 
 Benchmark speed
 ------------------
@@ -855,14 +917,16 @@ Input structures:
   supercells are constructed from the equilibrium lattice parameter obtained via EOS
   fitting.
 
-Reference data:
+Reference data (DFT with the PBE exchange-correlation functional):
 
-* DFT (PBE) reference values from:
-
-  * Zhang, L., Csányi, G., van der Giessen, E., & Maresca, F. (2023).
-    "Efficiency, Accuracy, and Transferability of Machine Learning Potentials:
-    Application to Dislocations and Cracks in Iron."
-    `arXiv:2307.10072 <https://arxiv.org/abs/2307.10072>`_
+* Zhang, L., Csányi, G., van der Giessen, E., & Maresca, F. (2024). "Efficiency,
+  Accuracy, and Transferability of Machine Learning Potentials: Application to
+  Dislocations and Cracks in Iron." `Acta Materialia 270, 119788
+  <https://doi.org/10.1016/j.actamat.2024.119788>`_.
+* Dragoni, D., Daff, T. D., Csányi, G., & Marzari, N. (2018). "Achieving DFT accuracy
+  with a machine-learning interatomic potential: Thermomechanics and defects in bcc
+  ferromagnetic iron." `Physical Review Materials 2, 013808
+  <https://doi.org/10.1103/PhysRevMaterials.2.013808>`_.
 
 
 Thermal conductivity
@@ -1080,3 +1144,121 @@ Reference data:
 
 * Same as input data
 * PBE
+
+
+Convex hull (Alexandria)
+========================
+
+Summary
+-------
+
+Energy above the convex hull and formation energy of 41,048 binary crystals from the
+Alexandria PBE database, using single-point energies on the PBE structures. For each
+binary chemical system, the hull is built from the model energies of its binaries and
+of the ground states of its two elements, and compared with the hull built from the
+PBE energies.
+
+The hull uses raw PBE energies, without the MP2020-style energy corrections stored in
+Alexandria, for both the reference and the models. Chemical systems containing a
+PBE+U calculation (oxides and fluorides of Co, Cr, Fe, Mn, Mo, Ni, V and W) are
+excluded, so that all reference energies are plain PBE. As MLIPs are trained on raw
+energies, no corrections are applied to any model.
+
+The structures are all 7,419 binaries on the PBE hull of the 3,482 remaining systems,
+the ground states of the 89 elements, and up to five unstable binaries per system,
+drawn with a fixed seed so that each falls in a different range of energy above the
+hull (0-25, 25-50, 50-100, 100-200 and above 200 meV/atom) where possible. Up to ten
+more unstable binaries per system are drawn close to the hull, seven within
+25 meV/atom and three between 25 and 50 meV/atom, as this is where a model is most
+likely to place a phase on its hull wrongly. As every binary on the reference hull is
+included, the reference energies above the hull are the same as for the full
+database.
+
+Metrics
+-------
+
+Systems in which any calculation failed are excluded from metrics 1, 2 and 4-6, and
+counted in metric 3.
+
+1. Energy above hull MAE
+
+   Mean absolute error in the energy above the hull of each binary, in meV/atom.
+
+2. Stability F1
+
+   F1 score for classifying binaries as stable, that is, on the hull (within
+   10\ :sup:`-6` eV/atom). Stable binaries make up 18% of this set, far more than
+   among all Alexandria binaries, because every stable binary is kept while unstable
+   ones are sampled. The F1 score is therefore higher than it would be on the full
+   database, and is meant for comparing models rather than as an estimate of
+   screening performance.
+
+3. Failed systems
+
+   Percentage of binary systems in which a calculation failed, including systems with
+   elements the model does not support.
+
+4. Formation energy MAE
+
+   Mean absolute error in the formation energy of each binary, relative to the
+   ground states of its elements, in meV/atom. Not included in the score.
+
+5. Formation energy RMSE
+
+   Root-mean-square error in the formation energy, in meV/atom. Not included in the
+   score.
+
+6. Formation energy R²
+
+   Coefficient of determination of the formation energies. Not included in the score.
+
+Clicking the MAE of a model shows the parity plot, violin plots of the signed errors of
+all models (as in Figure 5 of Yu *et al.*, Mater. Genome Eng. Adv. 2, e58 (2024)), and a
+periodic table of the MAE over the binaries containing each element (as in Figure 4
+of Yu *et al.*, on a 0-100 meV/atom colour scale). Clicking the failed systems shows a
+periodic table of the percentage of failed systems containing each element. Below the
+table, the PBE and model hulls of any system can be compared side by side; the systems
+of each model are listed from the largest to the smallest energy above hull MAE.
+
+**Score thresholds**
+
+The thresholds in ``metrics.yml`` are set against the energy scale of metastability:
+the DFT median energy above the hull of known inorganic crystals is 15 meV/atom, and
+the 90th percentile 67 meV/atom (Sun *et al.*). The good energy above hull MAE,
+10 meV/atom, is below this median, so that typical metastable phases are placed
+correctly. The bad threshold, 50 meV/atom, approaches the 90th percentile, beyond which
+known metastable phases cannot be told apart from unstable ones. For the stability F1
+score, 18% of the binaries are stable, so classifying every binary as stable already
+gives 0.31; the bad threshold, 0.6, is set clearly above this trivial classifier. The
+bad threshold for failed systems, 10%, reflects that a model that fails on one system
+in ten cannot be used to screen across the periodic table. The formation-energy metrics are not scored; their
+thresholds only set the colours.
+
+Benchmark speed
+---------------
+
+Medium: 41,137 single-point calculations on cells of 1 to 184 atoms (451,303 atoms in
+total), taking an estimated 15-20 minutes per model on GPU (about 10 minutes for the
+first 24,815 structures). On an Apple M2 Max CPU, ``mace-mp-0a`` takes about
+45 minutes and ``uma-s-1p1-omat`` about 4 hours.
+
+Data availability
+-----------------
+
+Input structures:
+
+* Alexandria PBE database, release 2025.07.02 (https://alexandria.icams.rub.de,
+  CC BY 4.0). J. Schmidt *et al.*, Machine-Learning-Assisted Determination of the
+  Global Zero-Temperature Phase Diagram of Materials, Adv. Mater. 35, 2210788 (2023);
+  T. Cavignac *et al.*, AI-Driven expansion and application of the Alexandria
+  database, J. Phys. Mater. 9, 025014 (2026).
+
+Reference data:
+
+* Same as input data, raw PBE energies
+* PBE
+
+Score thresholds:
+
+* W. Sun *et al.*, The thermodynamic scale of inorganic crystalline metastability,
+  Sci. Adv. 2, e1600225 (2016). https://doi.org/10.1126/sciadv.1600225

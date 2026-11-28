@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cache
 import json
 from pathlib import Path
 
@@ -15,12 +16,14 @@ import pytest
 
 pytest.importorskip("mlipaudit", reason="Please install `mlipaudit` extra")
 from mlipaudit.benchmarks.conformer_selection.conformer_selection import (
+    FOLMSBEE_DATASET_FILENAME,
     ConformerSelectionModelOutput,
 )
 
 from ml_peg.analysis.utils.decorators import build_table, plot_parity
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    check_dataset,
     load_metrics_config,
     mae,
 )
@@ -33,6 +36,8 @@ from ml_peg.models.get_models import load_models
 MODELS = load_models(current_models)
 DISPERSION_NAME_MAP = build_dispersion_name_map()
 
+BENCHMARK = MlPegConformerSelectionBenchmark.name
+
 CALC_PATH = CALCS_ROOT / "conformers" / "Folmsbee" / "outputs"
 OUT_PATH = APP_ROOT / "data" / "conformers" / "Folmsbee"
 
@@ -42,6 +47,10 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 )
 
 
+DATASET_PATH = CALC_PATH / BENCHMARK / FOLMSBEE_DATASET_FILENAME
+
+
+@cache
 def labels() -> list[str]:
     """
     Get list of system names.
@@ -51,9 +60,14 @@ def labels() -> list[str]:
     list[str]
         List of all system names.
     """
+    check_dataset(DATASET_PATH)
+
     mock_path = CALC_PATH / "mock" / "model_output.json"
     if not mock_path.exists():
-        raise ValueError(f"{mock_path} does not exist. Please run mock calculation.")
+        pytest.skip(
+            f"{mock_path} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
     raw = mock_path.read_text()
     output = ConformerSelectionModelOutput.model_validate_json(raw)
     benchmark = MlPegConformerSelectionBenchmark(
@@ -92,6 +106,8 @@ def analyze_results() -> dict:
     dict
         Mapping of model name to ``(benchmark, ConformerSelectionResult)``.
     """
+    check_dataset(DATASET_PATH)
+
     results = {}
     for model_name in MODELS:
         model_path = CALC_PATH / model_name / "model_output.json"
@@ -139,6 +155,7 @@ def conformer_energies(analyze_results) -> dict[str, list]:
     for model_name in MODELS:
         benchmark, result = analyze_results[model_name]
         if benchmark is None or result is None:
+            results[model_name] = [np.nan] * len(labels())
             continue
 
         result_by_name = {m.molecule_name: m for m in result.molecules}
@@ -157,15 +174,18 @@ def conformer_energies(analyze_results) -> dict[str, list]:
             if not ref_stored:
                 results["ref"].append(float(molecule.reference_energy_profile[i]))
 
-            # Write structures for app
-            data_mol = data_by_name[mol_name]
-            atoms = Atoms(
-                symbols=data_mol.atom_symbols,
-                positions=data_mol.conformer_coordinates[i],
-            )
-            structs_dir = OUT_PATH / model_name
-            structs_dir.mkdir(parents=True, exist_ok=True)
-            write(structs_dir / f"{label}.xyz", atoms)
+            if not ref_stored:
+                # Write structures for app. Conformers are defined by the
+                # dataset, so are the same for all models
+                data_mol = data_by_name[mol_name]
+                atoms = Atoms(
+                    symbols=data_mol.atom_symbols,
+                    positions=data_mol.conformer_coordinates[i],
+                )
+                structs_dir = OUT_PATH / "mock"
+                structs_dir.mkdir(parents=True, exist_ok=True)
+                write(structs_dir / f"{label}.xyz", atoms)
+
         ref_stored = True
     return results
 
@@ -186,18 +206,21 @@ def get_mae(conformer_energies) -> dict[str, float]:
         Per-molecule MAE averaged over all molecules, for each model.
     """
     label_mols = [lbl.rsplit("_conf", 1)[0] for lbl in labels()]
+    ref_energies = conformer_energies["ref"]
     results = {}
     for model_name in MODELS:
         groups: dict[str, tuple[list, list]] = {}
+        predictions = conformer_energies[model_name]
 
-        if not conformer_energies[model_name]:
+        # Reference energies come from the models, so are missing if none ran
+        if len(ref_energies) != len(label_mols) or len(predictions) != len(label_mols):
             results[model_name] = None
             continue
 
         for mol, ref, pred in zip(
             label_mols,
-            conformer_energies["ref"],
-            conformer_energies[model_name],
+            ref_energies,
+            predictions,
             strict=True,
         ):
             groups.setdefault(mol, ([], []))

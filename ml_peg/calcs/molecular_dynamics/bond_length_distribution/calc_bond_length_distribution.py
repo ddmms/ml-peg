@@ -52,12 +52,12 @@ def test_bond_length_distribution(mlip: tuple[str, Any]) -> None:
         filename="bond_length_distribution.zip",
     )
 
-    dataset_dir = OUT_PATH / MlPegBondLengthDistributionBenchmark.name
+    benchmark_name = MlPegBondLengthDistributionBenchmark.name
+
+    dataset_dir = OUT_PATH / benchmark_name
     dataset_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy(
-        data_input_dir
-        / MlPegBondLengthDistributionBenchmark.name
-        / BOND_LENGTH_DISTRIBUTION_DATASET_FILENAME,
+        data_input_dir / benchmark_name / BOND_LENGTH_DISTRIBUTION_DATASET_FILENAME,
         dataset_dir,
     )
 

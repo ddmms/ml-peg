@@ -59,13 +59,6 @@ def _frame_and_relative_angles() -> tuple[np.ndarray, list[float]]:
 
 FRAME_ANGLES, RELATIVE_ANGLES = _frame_and_relative_angles()
 
-INFO = get_struct_info(
-    calc_path=CALC_PATH,
-    glob_pattern="*.xyz",
-    write_info=True,
-    write_structs=True,
-    out_path=OUT_PATH,
-)
 
 # Scores require complete results: a model that fails, or lacks outputs, for
 # any structure receives no score, rather than being scored on the structures
@@ -361,4 +354,10 @@ def test_rotational_symmetry(
     angle_breakdown
         Triggers violation-against-angle energy and force plot generation.
     """
-    return
+    get_struct_info(
+        calc_path=CALC_PATH,
+        glob_pattern="*.xyz",
+        write_info=True,
+        write_structs=True,
+        out_path=OUT_PATH,
+    )

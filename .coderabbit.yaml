@@ -18,8 +18,12 @@ reviews:
           assignments such as `atoms.info["charge"] = 0` and `atoms.info["spin"] = 1` are
           sufficient. Preserve supplied non-default values for other systems.
         - Catch failures at the smallest useful unit, warn with model/system context, record NaN
-          or failure metadata, and continue. Bound iterative calculations and determine
-          convergence from the actual optimiser/dynamics state.
+          or failure metadata, and continue. A failed evaluation leaves the written
+          structure with no energy, so check the analysis reads the result the way the
+          calculation recorded it. A bespoke info key is fine if the analysis reads that key,
+          but it must not then call `get_potential_energy`, which raises for a failed system.
+          Bound iterative calculations and determine convergence from the actual
+          optimiser/dynamics state.
         - Save raw model outputs and useful structures/trajectories under outputs/<model>/ in a
           standard ASE format with deterministic ordering. Retain component energies, forces,
           stresses, identifiers, and metadata needed to reproduce derived observables. Metrics
@@ -53,6 +57,13 @@ reviews:
           normalisation.
         - Prefer to generate info.json from mock output files using the helpers provided. Ensure
           elements are stored per structure where relevent.
+        - Module-level code runs when pytest collects the file, so missing mock or input data must
+          skip rather than raise, and reads belong inside fixtures or the test unless a decorator
+          argument needs them at import.
+        - get_struct_info appends info_keys once per structure, but filenames, dirs, and
+          per_file_info once per file. Check these cannot diverge for multi-frame files.
+        - A structure read back from a failed calculation may carry no energy, and a file may be
+          truncated. Neither should raise, or be scored as a result.
 
     - path: "ml_peg/analysis/*/*/metrics.yml"
       instructions: |
@@ -71,6 +82,15 @@ reviews:
         trace/point selects the matching model-specific structure or trajectory. Prefer to use outputs from mock data
         when structures are the same for all models, but use model-specifc data when geometries differ.
         App imports must not run calculations or scientific analysis, and should not generate new figures.
+        Anything indexed by a clicked point (structure lists, frame groups) must stay aligned with
+        the plotted points: keep a gap where a point has no asset rather than compacting the list,
+        and bounds-check before indexing, so a partial analysis cannot show another point's data.
+
+    - path: "ml_peg/calcs/**"
+      instructions: |
+        Calculation outputs and inputs are not kept in git. Flag any added file that is not
+        Python, YAML configuration, or documentation, including outputs/, dvc.lock, dvc.yaml,
+        archives, data files, and editor or OS artefacts such as .DS_Store and __MACOSX.
 
     - path: "docs/source/user_guide/benchmarks/*.rst"
       instructions: |

@@ -26,9 +26,6 @@ CALC_PATH_PBESOL = CALC_PATH / "pbesol"  # oxides
 CALC_PATH_PBE = CALC_PATH / "pbe"  # nitrides
 OUT_PATH = APP_ROOT / "data" / "defects" / "split_vacancy"
 
-print(f"Copying xyz files from {CALC_PATH} to {OUT_PATH} for flask app.")
-shutil.copytree(CALC_PATH, OUT_PATH, dirs_exist_ok=True)
-
 METRICS_CONFIG_PATH = Path(__file__).with_name("metrics.yml")
 DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
     METRICS_CONFIG_PATH
@@ -57,6 +54,12 @@ def iter_mock_pairs(
         normal- and split-vacancy xyz files.
     """
     mock_dir = functional_path / "mock"
+    if not mock_dir.exists():
+        pytest.skip(
+            f"{mock_dir} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
+
     for material_dir in sorted(mock_dir.iterdir()):
         if not material_dir.is_dir():
             continue
@@ -750,6 +753,10 @@ def test_new_benchmark(metrics: dict[str, dict]) -> None:
     metrics
         All new benchmark metric names and dictionary of values for each model.
     """
+    # Structures are shown per model, so all outputs are copied for the app
+    print(f"Copying xyz files from {CALC_PATH} to {OUT_PATH} for flask app.")
+    shutil.copytree(CALC_PATH, OUT_PATH, dirs_exist_ok=True)
+
     # Save the set of elements used by the benchmark (from the mock calculation)
     # so the application can filter results by element. See filter.rst.
     write_struct_info(

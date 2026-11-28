@@ -290,20 +290,13 @@ def download_alex_parallel(sample_every: int = 1, max_threads: int = 16) -> None
     max_threads
         Maximum number of download threads.
     """
-    from bs4 import BeautifulSoup
-
     local_path = BENCHMARK_DATA_DIR / "alex_phonons" / "alex_phonon_data"
     local_path.mkdir(parents=True, exist_ok=True)
 
     url = "https://alexandria.icams.rub.de/data/phonon_benchmark/pbe/"
     response = requests.get(url)
     response.raise_for_status()
-    soup = BeautifulSoup(response.text, "html.parser")
-    mp_ids = [
-        re.match(r"(mp-\d+)\.yaml\.bz2$", link["href"]).group(1)
-        for link in soup.find_all("a", href=True)
-        if re.match(r"(mp-\d+)\.yaml\.bz2$", link["href"])
-    ]
+    mp_ids = re.findall(r"""href=["']?(mp-\d+)\.yaml\.bz2["'\s>]""", response.text)
     print(f"Found {len(mp_ids)} mp-ids.")
 
     (local_path.parent / "mp_ids.txt").write_text("\n".join(mp_ids) + "\n")

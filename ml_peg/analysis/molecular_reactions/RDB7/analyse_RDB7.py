@@ -20,6 +20,7 @@ from tqdm import tqdm
 from ml_peg.analysis.utils.decorators import build_table, plot_density_scatter
 from ml_peg.analysis.utils.utils import (
     build_dispersion_name_map,
+    count_valid,
     get_struct_info,
     load_metrics_config,
     mae,
@@ -44,8 +45,8 @@ DEFAULT_THRESHOLDS, DEFAULT_TOOLTIPS, DEFAULT_WEIGHTS = load_metrics_config(
 
 INFO = get_struct_info(
     calc_path=CALC_PATH,
-    model_name=next(iter(MODELS)),
     glob_pattern="*_ts.xyz",
+    info_keys=["ref_forward_barrier"],
     include_filenames=True,
     write_info=True,
     write_structs=True,
@@ -53,6 +54,9 @@ INFO = get_struct_info(
 )
 
 LABELS = [filename.removesuffix("_ts") for filename in INFO["filenames"]]
+
+# Reference values are taken from the mock calculation, which is always complete
+REF_BARRIERS = [barrier * EV_TO_KCAL for barrier in INFO["ref_forward_barrier"]]
 
 
 @pytest.fixture
@@ -65,21 +69,22 @@ def barrier_heights() -> dict[str, list]:
     dict[str, list]
         Dictionary of all reference and predicted barrier heights.
     """
-    results = {"ref": []} | {mlip: [] for mlip in MODELS}
-    ref_stored = False
+    results = {"ref": list(REF_BARRIERS)} | {mlip: [] for mlip in MODELS}
 
     for model_name in MODELS:
         for label in tqdm(LABELS):
-            atoms = read(CALC_PATH / model_name / f"{label}_ts.xyz")
+            struct_path = CALC_PATH / model_name / f"{label}_ts.xyz"
+            if not struct_path.exists():
+                results[model_name].append(float("nan"))
+                continue
+            atoms = read(struct_path)
             results[model_name].append(atoms.info["model_forward_barrier"] * EV_TO_KCAL)
-            if not ref_stored:
-                results["ref"].append(atoms.info["ref_forward_barrier"] * EV_TO_KCAL)
 
             # Write structures for app
             structs_dir = OUT_PATH / model_name
             structs_dir.mkdir(parents=True, exist_ok=True)
             write(structs_dir / f"{label}_ts.xyz", atoms)
-        ref_stored = True
+
     return results
 
 
@@ -113,7 +118,7 @@ def barrier_density(barrier_heights: dict[str, list]) -> dict[str, dict]:
         density_inputs[model_name] = {
             "ref": ref_vals,
             "pred": preds,
-            "meta": {"system_count": len([val for val in preds if val is not None])},
+            "meta": {"system_count": count_valid(preds)},
         }
         write_density_trajectories(
             labels_list=label_list,

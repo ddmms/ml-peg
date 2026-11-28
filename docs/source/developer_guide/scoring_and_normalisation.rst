@@ -56,6 +56,91 @@ and should be passed to the ``@build_table`` decorator in the analysis file, e.g
        weights=DEFAULT_WEIGHTS,
    )
 
+Benchmark and category weights
+------------------------------
+
+Default weights for whole benchmarks and whole categories are set in the category's
+``ml_peg/app/[category]/[category].yml`` file. ``weight`` sets the category's weight in
+the overall score, and ``benchmark_weights`` sets the weight of individual benchmarks
+within that category's score. Benchmarks that are not listed default to a weight of 1:
+
+.. code-block:: yaml
+
+   title: NEBs
+   description: Nudged Elastic Band comparisons
+   weight: 1
+   benchmark_weights:
+     OC20NEB: 0
+     grambow_organics: 0
+
+Keys under ``benchmark_weights`` must match the benchmark's directory name, and appending
+``" Score"`` to form the summary table column is handled by the app.
+
+A weight of 0 excludes the column from the score entirely: it contributes to neither the
+weighted sum nor the sum of weights, so it does not drag the score down, and the column is
+dimmed in the table. This is not the same as scoring 0. If every benchmark in a category is
+weighted 0, that category has no score.
+
+Weights set this way are defaults only. Users can still change them in the app, using the
+weight boxes below each column, or the weight presets in the sidebar.
+
+Slow benchmarks are weighted 0 by default
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Benchmarks whose calculations are marked ``@pytest.mark.slow``, ``@pytest.mark.very_slow``
+or ``@pytest.mark.multi_day`` are excluded from default scores, since results for them are
+sparse and expensive to reproduce across models. Users who want them can re-weight them in
+the app.
+
+This is a manual mirror of the pytest speed markers, so when adding a slow benchmark, or
+changing an existing benchmark's speed marker, remember to update ``benchmark_weights``
+to match. ``tests/test_speed_markers.py::test_slow_benchmarks_are_zero_weighted`` enforces
+this, and will fail with the entry that needs adding. The reverse is not enforced: a fast
+benchmark may be weighted 0 for its own reasons.
+
+Missing results
+---------------
+
+Results are missing for all sorts of reasons: a benchmark has not been run yet, a model
+crashed on one system, a model is absent from a benchmark entirely, or an element filter
+removed every system a benchmark covers. Cells show this as either ``None`` or ``NaN``,
+and which one a cell holds reflects where it came from, not anything about the model.
+
+Scoring therefore treats them identically, and decides **per column, not per row**, so
+that a score always means the same thing for every model
+(``calc_table_scores``, ``ml_peg/analysis/utils/utils.py``):
+
+- A column weighted 0 is excluded for every model. Missing values in it are harmless.
+- A column holding a value for **at least one** model is scored for **every** model. Any
+  model missing a value there scores ``NaN``, and that ``NaN`` propagates up the
+  hierarchy, so the model has no benchmark, category or overall score.
+- A column holding a value for **no** model is discarded for everyone, exactly as a
+  weight of 0 would be. It therefore does not stop anyone reaching an overall score.
+- If no column survives, the score is ``None`` rather than ``NaN``: nothing was scored,
+  as opposed to something being wrong.
+
+The guarantee this buys is that, for a given set of weights and element filters, every
+model's score at every level is the weighted average of exactly the same combination of
+metrics. Scores stay comparable between models, which is the point of the leaderboard.
+
+.. warning::
+
+   Do not reintroduce a per-row rule such as "skip a missing value and score the rest".
+   It silently averages different models over different metrics, and lets a weighted
+   column vanish from one model's score while counting in another's.
+
+``build_summary_table`` (``ml_peg/app/utils/build_components.py``) applies the same rule to
+the weights themselves: a summarised benchmark or category that scores nothing for anyone
+has its default weight overridden to 0, so it is visibly weighted 0 and says so in its
+header tooltip, rather than being silently ignored.
+
+A column dropped by an element filter is not treated this way, because overwriting the
+stored weight would discard the user's own setting once the filter is lifted. Instead
+``get_table_style`` dims any column holding no value for any model, exactly as it dims a
+zero-weighted one, so a column that stops counting always looks switched off whether it
+was weighted out, never run, or filtered away. Dimming is display only and reverses with
+the filter.
+
 Scoring and normalisation
 -------------------------
 

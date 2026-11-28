@@ -562,6 +562,7 @@ def struct_from_scatter(
     mode: Literal["struct", "traj"] = "struct",
     follow_frames: bool | None = None,
     struct_template: str | None = None,
+    frame_groups: list[list[int]] | None = None,
 ) -> None:
     """
     Attach callback to show a structure when a scatter point is clicked.
@@ -599,9 +600,14 @@ def struct_from_scatter(
     struct_template
         Asset path template containing ``{id}``, filled from the clicked point's
         ``customdata`` (id-based matching). Default is None.
+    frame_groups
+        Optional unique XYZ trajectory frame indices per plotted point. When given,
+        only these frames are displayed, starting at the first selected frame.
     """
     if follow_frames is None:
-        follow_frames = mode == "traj" and isinstance(structs, str)
+        follow_frames = (
+            mode == "traj" and isinstance(structs, str) and frame_groups is None
+        )
     _register_point_highlight(scatter_id, follow_frames=follow_frames)
 
     @callback(
@@ -645,12 +651,28 @@ def struct_from_scatter(
                 return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = point["pointNumber"] if mode == "traj" else 0
         else:
+            # Missing if the benchmark has not been fully analysed
+            if point["pointNumber"] >= len(structs):
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             struct = structs[point["pointNumber"]]
+            if not struct:
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
             index = 0
 
+        frames = None
+        if frame_groups is not None:
+            # Missing if the benchmark has not been fully analysed
+            if point["pointNumber"] >= len(frame_groups):
+                return Div(POINT_HINT, style=INSTRUCTION_STYLE)
+            frames = frame_groups[point["pointNumber"]]
         return Div(
             Iframe(
-                srcDoc=generate_weas_html(struct, mode, index),
+                srcDoc=generate_weas_html(
+                    struct,
+                    mode,
+                    0 if frames is not None else index,
+                    frame_indices=frames,
+                ),
                 style={
                     "height": "550px",
                     "width": "100%",
@@ -739,6 +761,8 @@ def struct_from_multi_scatters(
             struct = curve_structs
             index = idx
         else:
+            if idx >= len(curve_structs) or not curve_structs[idx]:
+                return Div()
             struct = curve_structs[idx]
             index = 0
 

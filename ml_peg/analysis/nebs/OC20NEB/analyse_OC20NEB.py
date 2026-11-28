@@ -259,6 +259,8 @@ def oc20neb_stats() -> dict[str, dict[str, float]]:
                 )
 
             pred_traj_path = CALC_PATH / model_name / f"{reaction}-neb-band.extxyz"
+            if not pred_traj_path.is_file():
+                continue
             pred_traj = read(pred_traj_path, ":")
             write(model_assets_dir / pred_traj_path.name, pred_traj)
 

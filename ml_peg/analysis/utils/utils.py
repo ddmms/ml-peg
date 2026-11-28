@@ -8,21 +8,25 @@ import json
 from pathlib import Path
 import threading
 from typing import Any
+from warnings import warn
 
 from ase import Atoms
 from ase.io import read, write
 from matplotlib import colormaps
 from matplotlib.colors import Colormap
 import numpy as np
+import pytest
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from yaml import safe_load
 
 from ml_peg.app.utils.utils import (
     DEFAULT_COLORMAP,
+    RESERVED_TABLE_COLUMNS,
     ThresholdEntry,
     Thresholds,
     clean_thresholds,
     clean_weights,
+    is_missing_score,
 )
 from ml_peg.models.get_models import get_model_names, load_model_configs
 
@@ -173,9 +177,9 @@ def mae(ref: list, prediction: list) -> float:
     Returns
     -------
     float
-        Mean absolute error.
+        Mean absolute error. NaN if any data is missing.
     """
-    if np.isnan(np.sum(prediction)):
+    if len(ref) != len(prediction) or not len(ref) or np.isnan(np.sum(prediction)):
         return np.nan
     return mean_absolute_error(ref, prediction)
 
@@ -194,16 +198,57 @@ def rmse(ref: list, prediction: list) -> float:
     Returns
     -------
     float
-        Root mean squared error.
+        Root mean squared error. NaN if any data is missing.
     """
-    if np.isnan(np.sum(prediction)):
+    if len(ref) != len(prediction) or not len(ref) or np.isnan(np.sum(prediction)):
         return np.nan
     return np.sqrt(mean_squared_error(ref, prediction))
+
+
+def count_valid(values: Iterable[float | None]) -> int:
+    """
+    Count values from successful calculations, ignoring `None` and NaN.
+
+    Parameters
+    ----------
+    values
+        Values to count, typically predictions for a single model.
+
+    Returns
+    -------
+    int
+        Number of valid values.
+    """
+    return sum(1 for value in values if value is not None and np.isfinite(value))
 
 
 DENSITY_GRID_SIZE = 80
 DENSITY_MAX_POINTS_PER_CELL = 5
 DENSITY_SAMPLE_SEED = 0
+
+
+def symlog_transform(values: np.ndarray, scale: float) -> np.ndarray:
+    """
+    Apply a symmetric logarithmic transform, preserving sign.
+
+    Values well within ``scale`` are mapped near-linearly, while larger magnitudes
+    are compressed logarithmically. This keeps small and large values legible on a
+    single colour scale, rather than saturating the scale with outliers.
+
+    Parameters
+    ----------
+    values
+        Values to transform.
+    scale
+        Magnitude below which the transform is approximately linear. Typically the
+        "good" threshold for the metric, so values scoring as good stay near zero.
+
+    Returns
+    -------
+    np.ndarray
+        Transformed values.
+    """
+    return np.sign(values) * np.log10(1 + np.abs(values) / scale)
 
 
 def sample_density_grid(
@@ -247,6 +292,24 @@ def sample_density_grid(
     if ref_arr.size == 0 or pred_arr.size == 0:
         return [], [], []
 
+    # Points cannot be paired
+    if ref_arr.size != pred_arr.size:
+        warn(
+            f"{pred_arr.size} predictions for {ref_arr.size} reference values. "
+            "No density plotted.",
+            stacklevel=2,
+        )
+        return [], [], []
+
+    # Drop missing data, so a single NaN cannot make all bins NaN
+    valid = np.isfinite(ref_arr) & np.isfinite(pred_arr)
+    orig_indices = np.flatnonzero(valid)
+    ref_arr = ref_arr[valid]
+    pred_arr = pred_arr[valid]
+
+    if ref_arr.size == 0:
+        return [], [], []
+
     delta_x = ref_arr.max() - ref_arr.min()
     delta_y = pred_arr.max() - pred_arr.min()
     eps = 1e-9
@@ -258,7 +321,7 @@ def sample_density_grid(
 
     cell_points: dict[tuple[int, int], list[int]] = defaultdict(list)
     for idx, (cx, cy) in enumerate(zip(bins_x, bins_y, strict=True)):
-        cell_points[(int(cx), int(cy))].append(idx)
+        cell_points[(int(cx), int(cy))].append(int(orig_indices[idx]))
 
     rng = np.random.default_rng(seed)
     sampled_indices: list[int] = []
@@ -376,13 +439,27 @@ def write_density_trajectories(
 
     traj_dir.mkdir(parents=True, exist_ok=True)
 
+    # Sampling depends on the results, so trajectories from a previous run would
+    # otherwise survive as a point the current run did not write
+    for stale in traj_dir.glob("*.extxyz"):
+        stale.unlink()
+
     for point_idx, source_indices in enumerate(sampled_mapping):
         frames = []
         for source_idx in source_indices:
             label = labels_list[source_idx]
             struct_path = struct_dir / struct_filename_builder(label)
-            frames.append(read(struct_path))
-        write(traj_dir / f"{point_idx}.extxyz", frames)
+            if not struct_path.exists():
+                continue
+            try:
+                frames.append(read(struct_path))
+            except Exception as exc:
+                # An interrupted calculation can leave a truncated structure
+                warn(f"Could not read {struct_path}: {exc}", stacklevel=2)
+
+        # Skipped points keep their index, so remaining files match plotted points
+        if frames:
+            write(traj_dir / f"{point_idx}.extxyz", frames)
 
 
 def calc_metric_scores(
@@ -487,6 +564,15 @@ def calc_table_scores(
     ]
     metric_weights = {key: weights.get(key, 1.0) for key in metric_columns}
 
+    # Decide per column, not per row, so every model's score combines the same
+    # columns. A column with a value for nobody is discarded like a zero weight.
+    scored_columns = {
+        key
+        for key in metric_columns
+        if metric_weights[key] != 0
+        and any(not is_missing_score(row.get(key)) for row in metrics_scores)
+    }
+
     for metrics_row, scores_row in zip(metrics_data, metrics_scores, strict=True):
         weighted_sum = 0.0
         weight_sum = 0.0
@@ -496,12 +582,11 @@ def calc_table_scores(
             score = scores_row[key]
             weight = metric_weights[key]
 
-            # If weight is zero or score is None, no contribution to overall score
-            if weight == 0 or score is None:
+            if key not in scored_columns:
                 continue
 
-            # If score is NaN, overall score will be NaN
-            if (isinstance(score, float) and np.isnan(score)) or score == "NaN":
+            # Missing a value another model has makes this model's score NaN
+            if is_missing_score(score):
                 contains_nan = True
                 break
 
@@ -542,6 +627,7 @@ def get_table_style(
     col_names: list[str] | str | None = None,
     cmap_name: str = DEFAULT_COLORMAP,
     weights: dict[str, float] | None = None,
+    score_rows: list[TableRow] | None = None,
 ) -> list[TableRow]:
     """
     Memoized wrapper around :func:`_compute_table_style`.
@@ -569,6 +655,10 @@ def get_table_style(
         Current weight per column id. Columns with a weight of ``0`` are excluded
         from the score, so their cells are dimmed to signal they are switched off.
         Default is None.
+    score_rows
+        Rows that scoring runs on, used to decide which columns hold a value for
+        no model. Pass the unfiltered rows when ``data`` is filtered by model.
+        Default is `None`, which uses ``data``.
 
     Returns
     -------
@@ -578,7 +668,16 @@ def get_table_style(
     """
     try:
         key = json.dumps(
-            [data, scored_data, normalized, all_cols, col_names, cmap_name, weights],
+            [
+                data,
+                scored_data,
+                normalized,
+                all_cols,
+                col_names,
+                cmap_name,
+                weights,
+                score_rows,
+            ],
             sort_keys=True,
             default=str,
         )
@@ -591,6 +690,7 @@ def get_table_style(
             col_names=col_names,
             cmap_name=cmap_name,
             weights=weights,
+            score_rows=score_rows,
         )
 
     with _TABLE_STYLE_CACHE_LOCK:
@@ -609,6 +709,7 @@ def get_table_style(
             col_names=col_names,
             cmap_name=cmap_name,
             weights=weights,
+            score_rows=score_rows,
         )
         with _TABLE_STYLE_CACHE_LOCK:
             _TABLE_STYLE_CACHE[key] = cached
@@ -622,6 +723,34 @@ def get_table_style(
     ]
 
 
+def _column_is_scored(rows: list[TableRow], col: str) -> bool:
+    """
+    Check whether a column holds a usable value for any model.
+
+    Parameters
+    ----------
+    rows
+        Rows that scoring runs on.
+    col
+        Column identifier to check.
+
+    Returns
+    -------
+    bool
+        `True` if any row holds a numeric value in the column.
+    """
+    for row in rows:
+        value = row.get(col)
+        if is_missing_score(value):
+            continue
+        try:
+            float(value)
+        except (TypeError, ValueError):
+            continue
+        return True
+    return False
+
+
 def _compute_table_style(
     data: list[TableRow],
     *,
@@ -631,6 +760,7 @@ def _compute_table_style(
     col_names: list[str] | str | None = None,
     cmap_name: str = DEFAULT_COLORMAP,
     weights: dict[str, float] | None = None,
+    score_rows: list[TableRow] | None = None,
 ) -> list[TableRow]:
     """
     Viridis-style colormap for Dash DataTable.
@@ -654,6 +784,9 @@ def _compute_table_style(
         Current weight per column id. Columns with a weight of ``0`` are excluded
         from the score, so their cells are dimmed to signal they are switched off.
         Default is None.
+    score_rows
+        Rows that scoring runs on, used to decide which columns hold a value for
+        no model at all. Default is `None`, which uses ``data``.
 
     Returns
     -------
@@ -739,6 +872,8 @@ def _compute_table_style(
         if col not in data[0]:
             raise ValueError(f"Column '{col}' not found in data.")
 
+    unscored_columns: set[str] = set()
+
     for col in cols:
         numeric_entries: list[tuple[object, float, float]] = []
         none_row_indices: list[int] = []  # Track rows with None values
@@ -822,6 +957,12 @@ def _compute_table_style(
             )
 
         if not numeric_entries:
+            # Scored for nobody, so dim it like a zero weight. Checked against
+            # the rows scoring uses, so hiding a model cannot switch a column off.
+            if col not in RESERVED_TABLE_COLUMNS and not _column_is_scored(
+                score_rows if score_rows is not None else data, col
+            ):
+                unscored_columns.add(col)
             continue
 
         numeric_values = [numeric for _, numeric, _ in numeric_entries]
@@ -849,12 +990,14 @@ def _compute_table_style(
                 }
             )
 
-    # Dim any column switched off with a zero weight
-    for column, weight in (weights or {}).items():
-        if weight == 0:
-            style_data_conditional.append(
-                {"if": {"column_id": column}, "opacity": ZERO_WEIGHT_OPACITY}
-            )
+    # Dim any column switched off, by a zero weight or by holding no value
+    dimmed = unscored_columns.union(
+        column for column, weight in (weights or {}).items() if weight == 0
+    )
+    for column in sorted(dimmed):
+        style_data_conditional.append(
+            {"if": {"column_id": column}, "opacity": ZERO_WEIGHT_OPACITY}
+        )
 
     return style_data_conditional
 
@@ -963,6 +1106,25 @@ def clean_info(info: dict[str, Any] | list[Any]) -> None:
                 info[key] = int(value)
 
 
+def check_dataset(dataset_path: Path) -> None:
+    """
+    Skip the module if the dataset saved by the calculation is unavailable.
+
+    The calculation copies the downloaded dataset into its outputs, so the
+    analysis does not need to download the input data again.
+
+    Parameters
+    ----------
+    dataset_path
+        Path to the dataset within the calculation outputs.
+    """
+    if not dataset_path.exists():
+        pytest.skip(
+            f"{dataset_path} does not exist. Please run the calculation.",
+            allow_module_level=True,
+        )
+
+
 def get_struct_info(
     *,
     calc_path: Path,
@@ -1045,12 +1207,16 @@ def get_struct_info(
 
     model_dir = calc_path / model_name
     if not model_dir.exists():
-        raise ValueError(f"{model_dir} does not exist. Please run mock calculation.")
+        pytest.skip(
+            f"{model_dir} does not exist. Please run mock calculation.",
+            allow_module_level=True,
+        )
 
     files = sorted(model_dir.glob(glob_pattern), key=sort_key)
     if not files:
-        raise ValueError(
-            f"No file matches in {model_dir}. Please run mock calculation."
+        pytest.skip(
+            f"No file matches in {model_dir}. Please run mock calculation.",
+            allow_module_level=True,
         )
 
     for file in files:
@@ -1094,6 +1260,26 @@ def get_struct_info(
     return info
 
 
+def write_element_info(elements: list[list[str]], out_path: Path) -> None:
+    """
+    Write out element info for benchmarks with a known, fixed set of elements.
+
+    Allows elemental info to be saved for filtering without reading mock
+    calculation outputs, which may be expensive to generate for little benefit,
+    such as for molecular dynamics benchmarks.
+
+    Parameters
+    ----------
+    elements
+        Elements in each system of the benchmark.
+    out_path
+        Path to write out info.
+    """
+    out_path.mkdir(parents=True, exist_ok=True)
+    with (out_path / "info.json").open("w", encoding="utf8") as f:
+        json.dump({"elements": elements}, f, indent=1)
+
+
 def write_struct_info(
     data_path: Path | list[Path], out_path: Path, index: str = ":"
 ) -> None:
@@ -1119,7 +1305,10 @@ def write_struct_info(
 
     for path in data_path:
         if not path.exists():
-            raise ValueError(f"{path} does not exist. Please run mock calculation.")
+            pytest.skip(
+                f"{path} does not exist. Please run mock calculation.",
+                allow_module_level=True,
+            )
 
         structs = read(path, index=index)
         if isinstance(structs, Atoms):

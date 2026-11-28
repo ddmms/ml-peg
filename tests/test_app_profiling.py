@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import json
 import pstats
 
@@ -69,6 +70,33 @@ def test_request_profiles_preserve_responses(tmp_path):
         assert record["status"] == 200
         assert record["elapsed_ms"] >= 0
         assert pstats.Stats(str(tmp_path / record["profile"])).total_calls > 0
+
+
+def test_gzipped_callbacks_are_identified(tmp_path):
+    """Callbacks using compress_payload are still named, not left anonymous."""
+    server = Flask(__name__)
+
+    @server.post("/_dash-update-component")
+    def callback():
+        return jsonify(ok=True)
+
+    enable_request_profiling(server, tmp_path)
+    body = gzip.compress(
+        json.dumps({"output": "table.data", "inputs": [{"value": "x"}]}).encode()
+    )
+    with server.test_client() as client:
+        response = client.post(
+            "/_dash-update-component",
+            data=body,
+            headers={"Content-Encoding": "gzip", "Content-Type": "application/json"},
+        )
+        assert response.status_code == 200
+
+    (record_path,) = tmp_path.glob("*.json")
+    record = json.loads(record_path.read_text())
+    assert record["callback"] == "table.data"
+    assert record["compressed"] is True
+    assert record["request_bytes"] == len(body)
 
 
 def test_profile_runs_are_isolated(monkeypatch, tmp_path):

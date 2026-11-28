@@ -39,10 +39,13 @@ def collect_reference_kappas(filename_no_ext: str, output_name_no_ext: str) -> N
         print(f"No {filename_no_ext} data found. Skipping collection.")
         return
 
+    # reference_generation.py stores its download cache alongside the materials.
     missing = sorted(
         directory.name
         for directory in PBE_DATA_PATH.iterdir()
-        if directory.is_dir() and directory.name not in dicts
+        if directory.is_dir()
+        and directory.name != "downloads"
+        and directory.name not in dicts
     )
     if missing:
         print(
