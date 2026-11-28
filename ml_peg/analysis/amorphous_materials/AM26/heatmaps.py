@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +9,7 @@ import plotly.graph_objects as go
 
 from ml_peg.analysis.amorphous_materials.AM26.metrics import SYSTEM_LABELS, SYSTEM_ORDER
 from ml_peg.analysis.utils.utils import load_metrics_config
+from ml_peg.app.utils.plot_helpers import build_annotated_heatmap
 
 THRESHOLDS, _, _ = load_metrics_config(Path(__file__).with_name("metrics.yml"))
 FIGURE_FILENAMES = {
@@ -42,54 +42,35 @@ def build_heatmap(bundle: dict[str, Any], metric: str) -> go.Figure:
     columns = [SYSTEM_LABELS[system] for system in SYSTEM_ORDER]
     models = bundle.get("models", {})
     names = list(models)
-    values, labels = [], []
-    missing_x, missing_y = [], []
-    for model, data in models.items():
-        row, text = [], []
+    values = []
+    for data in models.values():
         systems = (data or {}).get("systems", {})
-        for system, column in zip(SYSTEM_ORDER, columns, strict=True):
-            value = (systems.get(system) or {}).get(metric)
-            value = float(value) if value is not None else None
-            if value is not None and not math.isfinite(value):
-                value = None
-            row.append(value)
-            text.append(f"{value:.4g}" if value is not None else "")
-            if value is None:
-                missing_x.append(column)
-                missing_y.append(model)
-        values.append(row)
-        labels.append(text)
-
-    fig = go.Figure()
-    if names:
-        # Follow ML-PEG's EOS heatmaps: threshold-limited Viridis_r colours,
-        # with the original values retained for hover rather than clipped z data.
-        fig.add_trace(
-            go.Heatmap(
-                z=values,
-                x=columns,
-                y=names,
-                text=labels,
-                texttemplate="%{text}",
-                colorscale="Viridis_r",
-                zmin=good,
-                zmax=bad,
-                connectgaps=False,
-                hoverongaps=False,
-                xgap=1,
-                ygap=1,
-                colorbar={
-                    "title": {"text": "RelRMSE [%]"},
-                    "tickvals": [0, 25, 50, 75, 100],
-                    "ticktext": ["0", "25", "50", "75", "≥100"],
-                },
-                hovertemplate=(
-                    "Model: %{y}<br>Material system: %{x}<br>"
-                    f"{metric}: %{{z:.15g}}%<extra></extra>"
-                ),
-            )
+        values.append(
+            [(systems.get(system) or {}).get(metric) for system in SYSTEM_ORDER]
         )
-    else:
+
+    fig = build_annotated_heatmap(
+        values,
+        x_labels=columns,
+        y_labels=names,
+        zmin=good,
+        zmax=bad,
+        colorscale="Viridis_r",
+        colorbar={
+            "title": {"text": "RelRMSE [%]"},
+            "tickvals": [0, 25, 50, 75, 100],
+            "ticktext": ["0", "25", "50", "75", "≥100"],
+        },
+        hovertemplate=(
+            "Model: %{y}<br>Material system: %{x}<br>"
+            f"{metric}: %{{z:.15g}}%<extra></extra>"
+        ),
+        missing_hovertemplate=(
+            "Model: %{y}<br>Material system: %{x}<br>"
+            f"{metric}: unavailable or failed<extra></extra>"
+        ),
+    )
+    if not names:
         fig.add_annotation(
             text="No AM26 system results available.",
             x=0.5,
@@ -97,23 +78,6 @@ def build_heatmap(bundle: dict[str, Any], metric: str) -> go.Figure:
             xref="paper",
             yref="paper",
             showarrow=False,
-        )
-    if missing_x:
-        # A gap cannot display Heatmap text. A text-only overlay labels gaps
-        # without inventing numeric values or adding any interactive callbacks.
-        fig.add_trace(
-            go.Scatter(
-                x=missing_x,
-                y=missing_y,
-                mode="text",
-                text=["N/A"] * len(missing_x),
-                textfont={"color": "#666666", "size": 11},
-                showlegend=False,
-                hovertemplate=(
-                    "Model: %{y}<br>Material system: %{x}<br>"
-                    f"{metric}: unavailable or failed<extra></extra>"
-                ),
-            )
         )
     fig.update_layout(
         title={"text": f"AM26 {metric} [%]"},
