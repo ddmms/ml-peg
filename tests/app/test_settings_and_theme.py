@@ -7,10 +7,16 @@ theming/settings work. Card controls and expansion preferences are also covered 
 
 from __future__ import annotations
 
-from conftest import wait_for_app_ready
+from conftest import goto_explorer, wait_for_app_ready
 from playwright.sync_api import Page, expect
 
+from ml_peg.app.utils.explorer_ids import FINDER_GRAPH
+
 TIMEOUT = 60_000
+
+# The Explorer plot this file themes: taken from the page's own id constant so a
+# rename cannot silently turn the dark-mode check into a no-op.
+EXPLORER_PLOT = f"#{FINDER_GRAPH}"
 
 
 def _open_settings(page: Page) -> None:
@@ -23,6 +29,14 @@ def _goto_category(page: Page) -> None:
     """Open the test category page and wait for the benchmark table."""
     page.locator('#sidebar-nav a[href="/category/non-covalent-interactions"]').click()
     expect(page.locator("#IONPI19-table")).to_be_visible(timeout=TIMEOUT)
+
+
+def _goto_explorer(page: Page) -> None:
+    """Open the Explorer page and wait for the model finder's plot."""
+    goto_explorer(page)
+    expect(page.locator(f"{EXPLORER_PLOT} .js-plotly-plot")).to_be_visible(
+        timeout=TIMEOUT
+    )
 
 
 def test_settings_panel_contents(ready_page: Page) -> None:
@@ -92,6 +106,59 @@ def test_settings_popover_closes_on_outside_click(ready_page: Page) -> None:
     # left sidebar, so nothing else is activated.
     ready_page.mouse.click(640, 680)
     expect(ready_page.locator(".mlpeg-settings-panel")).to_be_hidden(timeout=TIMEOUT)
+
+
+def test_dark_mode_themes_plots(ready_page: Page) -> None:
+    """Toggling dark mode repaints plot chrome (paper background) via theme_plots.js."""
+    sel = f"{EXPLORER_PLOT} .js-plotly-plot"
+    _goto_explorer(ready_page)
+    expect(ready_page.locator(sel)).to_be_visible(timeout=TIMEOUT)
+
+    # Wait until the initial (light) repaint has set a paper colour on the figure.
+    ready_page.wait_for_function(
+        """(sel) => {
+            const gd = document.querySelector(sel);
+            const fl = gd && (gd._fullLayout || gd.layout);
+            return !!(fl && fl.paper_bgcolor);
+        }""",
+        arg=sel,
+        timeout=TIMEOUT,
+    )
+    light_paper = ready_page.evaluate(
+        """(sel) => {
+            const gd = document.querySelector(sel);
+            const fl = gd && (gd._fullLayout || gd.layout);
+            return fl ? fl.paper_bgcolor : null;
+        }""",
+        sel,
+    )
+
+    _open_settings(ready_page)
+    ready_page.locator("#theme-toggle").click()
+    expect(ready_page.locator("html")).to_have_attribute(
+        "data-theme", "dark", timeout=TIMEOUT
+    )
+
+    # The plot's paper must follow into dark: it changes from the light value and
+    # resolves to a dark colour (low luminance), rather than staying a white island.
+    ready_page.wait_for_function(
+        """(arg) => {
+            const gd = document.querySelector(arg.sel);
+            const fl = gd && (gd._fullLayout || gd.layout);
+            if (!fl || !fl.paper_bgcolor) return false;
+            const probe = document.createElement('span');
+            probe.style.color = fl.paper_bgcolor;
+            document.body.appendChild(probe);
+            const rgb = getComputedStyle(probe).color;
+            document.body.removeChild(probe);
+            const m = rgb.match(/\\d+/g);
+            if (!m) return false;
+            const lum = (+m[0]) * 0.299 + (+m[1]) * 0.587 + (+m[2]) * 0.114;
+            return fl.paper_bgcolor !== arg.light && lum < 80;
+        }""",
+        arg={"sel": sel, "light": light_paper},
+        timeout=TIMEOUT,
+    )
 
 
 def test_collapse_all_and_reopen_individual_card(ready_page: Page) -> None:

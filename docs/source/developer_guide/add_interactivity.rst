@@ -28,6 +28,12 @@ For only the focused scoring tests, which use a small synthetic dataset:
 
    uv run pytest tests/test_scoring_contract.py tests/app/scoring -q
 
+For the Model Explorer's data and scoring, which need no browser:
+
+.. code-block:: bash
+
+   uv run pytest tests/explorer -q
+
 To watch the browser, or retain traces and screenshots for failures:
 
 .. code-block:: bash

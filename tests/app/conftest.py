@@ -7,7 +7,7 @@ ephemeral port via a background Werkzeug thread. This exercises the real Dash ap
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 import hashlib
 from importlib import import_module
 import logging
@@ -18,10 +18,12 @@ import warnings
 import zipfile
 
 from botocore.exceptions import BotoCoreError, ClientError
-from playwright.sync_api import expect
+from explorer_synthetic_data import write_synthetic_tree
+from playwright.sync_api import Locator, expect
 import pytest
 from werkzeug.serving import make_server
 
+from ml_peg.analysis.explorer import build_explorer_data
 from ml_peg.app import APP_ROOT
 from ml_peg.calcs.utils.utils import BENCHMARK_DATA_DIR
 from ml_peg.data.data import download
@@ -91,6 +93,26 @@ def wait_for_app_ready(page, timeout: int = READY_TIMEOUT) -> None:  # noqa: ANN
           return mask !== null && mask.style.display === 'none';
         }""",
         timeout=timeout,
+    )
+
+
+def goto_explorer(page, timeout: int = READY_TIMEOUT) -> None:  # noqa: ANN001
+    """
+    Open the Explorer from the sidebar and wait until its layout has been delivered.
+
+    Parameters
+    ----------
+    page
+        Playwright page with the app loaded.
+    timeout
+        Maximum time to wait, in milliseconds.
+    """
+    page.locator("#sidebar-nav").get_by_role(
+        "link", name="Explorer", exact=True
+    ).click()
+    # The head-to-head headline renders with the page, so it marks a full delivery
+    expect(page.locator("#explorer-h2h-summary")).to_contain_text(
+        "leads in", timeout=timeout
     )
 
 
@@ -216,12 +238,15 @@ def fixture_data(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(scope="session")
-def benchmark_data(fixture_data: Path, tmp_path_factory) -> Iterator[Path]:
+def benchmark_data(
+    fixture_data: Path, tmp_path_factory, clear_explorer_caches: Callable[[], None]
+) -> Iterator[Path]:
     """
     Make the fixture benchmarks' data available under the app's assets folder.
 
-    Redirect benchmark module paths and Dash assets to an isolated temporary
-    tree. Local analysis outputs cannot change the dataset or be overwritten.
+    Redirect benchmark module paths, Dash assets and the Explorer's data root to
+    an isolated temporary tree. Local analysis outputs cannot change the dataset
+    or be overwritten.
 
     Parameters
     ----------
@@ -229,6 +254,8 @@ def benchmark_data(fixture_data: Path, tmp_path_factory) -> Iterator[Path]:
         Root of the unpacked fixture.
     tmp_path_factory
         Session temporary-directory factory.
+    clear_explorer_caches
+        Clears the Explorer's per-process caches.
 
     Yields
     ------
@@ -248,10 +275,16 @@ def benchmark_data(fixture_data: Path, tmp_path_factory) -> Iterator[Path]:
                 patches.setattr(
                     module, name, data_root / value.relative_to(APP_ROOT / "data")
                 )
+    # The fixture's two non-physicality benchmarks are too few for the finder
+    write_synthetic_tree(data_root)
+    # Clear the Explorer's per-process caches either side of the redirect
+    patches.setattr(build_explorer_data, "DATA_ROOT", data_root)
+    clear_explorer_caches()
     try:
         yield data_root
     finally:
         patches.undo()
+        clear_explorer_caches()
 
 
 @pytest.fixture(scope="session")
@@ -356,3 +389,45 @@ def ready_page(page, app_url):  # noqa: ANN001
     page.goto(app_url)
     wait_for_app_ready(page)
     return page
+
+
+def settle_locator(locator: Locator, timeout: int = READY_TIMEOUT) -> None:
+    """
+    Wait until a locator's bounding box stops moving.
+
+    Pages keep reflowing for a moment after load while their Plotly figures autosize
+    and re-theme; on a slow CI runner that shift can outlast Playwright's own
+    actionability wait, so hovers/clicks time out with "element is not stable". Poll
+    the box until it is unchanged across two ~120ms samples before interacting.
+
+    Parameters
+    ----------
+    locator
+        Element to wait on.
+    timeout
+        Maximum time to wait, in milliseconds.
+    """
+    page = locator.page
+    locator.wait_for(state="visible", timeout=timeout)
+    deadline = timeout
+    prev = locator.bounding_box()
+    while deadline > 0:
+        page.wait_for_timeout(120)
+        deadline -= 120
+        curr = locator.bounding_box()
+        if prev is not None and curr == prev:
+            return
+        prev = curr
+
+
+@pytest.fixture
+def settle() -> Callable[[Locator], None]:
+    """
+    Provide :func:`settle_locator` to tests.
+
+    Returns
+    -------
+    Callable[[Locator], None]
+        Waits until the given locator stops moving.
+    """
+    return settle_locator
