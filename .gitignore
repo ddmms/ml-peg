@@ -53,4 +53,3 @@ profiles/
 
 # Local element-coverage probe logs
 dev/element_coverage/model_supported_elements_errors.jsonl
-/.phase6-runtime-cache/
