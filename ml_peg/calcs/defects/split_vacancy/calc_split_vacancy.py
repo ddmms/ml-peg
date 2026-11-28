@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ase.io import read, write
+from ase.optimize import FIRE
 from ase.optimize.precon import Exp, PreconLBFGS
 import numpy as np
 from pymatgen.core import Structure
@@ -77,6 +78,7 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
 
     nan_counter = 0
     unconverged_counter = 0
+    fallback_counter = 0
     error_counter = 0
     for functional in ["pbe", "pbesol"]:
         for material_dir in tqdm(list((DATA_PATH / functional).iterdir())):
@@ -152,8 +154,20 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
                             opt = PreconLBFGS(
                                 atoms, precon=Exp(A=3), maxstep=0.2, logfile=None
                             )  # optimal Optimiser settings for these relaxations
-                            opt.run(fmax=fmax, steps=steps)
-                            converged = opt.converged()
+                            try:
+                                opt.run(fmax=fmax, steps=steps)
+                                converged = opt.converged()
+                            except RuntimeError as exc:
+                                if "linesearch failed" not in str(exc):
+                                    raise
+                                # PreconLBFGS raises if its line search fails on two
+                                # consecutive steps (can happen with poor convergence).
+                                # If so, finish the relaxation with FIRE (slower but
+                                # better behaved):
+                                fallback_counter += 1
+                                fire = FIRE(atoms, logfile=None)
+                                fire.run(fmax=fmax, steps=steps - opt.nsteps)
+                                converged = fire.converged()
 
                             atoms.info["relaxed_energy"] = atoms.get_potential_energy()
 
@@ -198,6 +212,11 @@ def test_relax_and_calculate_energy(mlip: tuple[str, Any]):
             f"Warning: {unconverged_counter} structures did not converge within "
             f"{steps} steps for model {model_name}. Consider increasing the "
             "number of steps or fmax in calc_split_vacancy.py."
+        )
+    if fallback_counter > 0:
+        print(
+            f"Warning: {fallback_counter} relaxations were finished with FIRE after "
+            f"the PreconLBFGS line search failed for model {model_name}."
         )
     if error_counter > 0:
         print(
