@@ -34,6 +34,39 @@ def unequal_structures():
     }
 
 
+def test_hand_calculated_energy_and_force_errors():
+    """Recover independently specified absolute and relative energy/force errors."""
+    atom_counts = [1, 2]
+
+    dft_energies = [-2, -8]
+    predicted_energies = [-1, -6]
+
+    dft_forces = [
+        [[-1, 0, 1]],
+        [[-1, 0, 1], [-1, 0, 1]],
+    ]
+    predicted_forces = [
+        [[1, 0, -1]],
+        [[1, 0, -1], [1, 0, -1]],
+    ]
+
+    results = calculate_system_metrics(
+        reference_energies=dft_energies,
+        predicted_energies=predicted_energies,
+        atom_counts=atom_counts,
+        reference_forces=dft_forces,
+        predicted_forces=predicted_forces,
+    )
+
+    # Absolute RMSEs: eV/atom for energy, eV/angstrom for forces.
+    assert results["energy_rmse"] == pytest.approx(1.0)
+    assert results["force_rmse"] == pytest.approx(np.sqrt(8 / 3))
+
+    # Relative RMSEs, expressed as percentages.
+    assert results["Energy RelRMSE"] == pytest.approx(100.0)
+    assert results["Force RelRMSE"] == pytest.approx(200.0)
+
+
 def test_per_atom_energy_conversion_and_structure_weighting(unequal_structures):
     """A large frame does not receive extra weight in energy RMSE."""
     metrics = calculate_system_metrics(**unequal_structures)
