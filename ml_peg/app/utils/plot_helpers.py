@@ -109,6 +109,112 @@ def build_violin_distribution(
     return fig
 
 
+def build_annotated_heatmap(
+    matrix: Sequence[Sequence[float | None]],
+    *,
+    x_labels: Sequence[str],
+    y_labels: Sequence[str],
+    hovertemplate: str,
+    missing_hovertemplate: str,
+    zmin: float | None = None,
+    zmax: float | None = None,
+    colorscale: str = "Viridis_r",
+    colorbar: Mapping[str, Any] | None = None,
+) -> go.Figure:
+    """
+    Build a labelled scalar heatmap with explicit unavailable cells.
+
+    Parameters
+    ----------
+    matrix
+        Row-by-column values. None and non-finite values become gaps; finite
+        values remain unchanged even outside the colour limits.
+    x_labels
+        Column labels, in display order.
+    y_labels
+        Row labels, in display order.
+    hovertemplate
+        Plotly hover template for available values.
+    missing_hovertemplate
+        Plotly hover template for unavailable values.
+    zmin
+        Optional lower colour limit, without clipping the underlying values.
+    zmax
+        Optional upper colour limit, without clipping the underlying values.
+    colorscale
+        Plotly colourscale. Default is Viridis_r.
+    colorbar
+        Optional Plotly colourbar configuration.
+
+    Returns
+    -------
+    go.Figure
+        Heatmap with numeric labels and a text-only N/A overlay. The caller
+        supplies titles, layout and explanatory annotations. No rows returns
+        an empty figure.
+
+    Raises
+    ------
+    ValueError
+        If the matrix dimensions do not match the axis labels.
+    """
+    if len(matrix) != len(y_labels) or any(len(row) != len(x_labels) for row in matrix):
+        raise ValueError("Heatmap matrix dimensions must match the axis labels.")
+
+    fig = go.Figure()
+    if len(y_labels) == 0:
+        return fig
+
+    values, labels = [], []
+    missing_x, missing_y = [], []
+    for name, row in zip(y_labels, matrix, strict=True):
+        clean_row, text = [], []
+        for column, value in zip(x_labels, row, strict=True):
+            value = float(value) if value is not None else None
+            if value is not None and not np.isfinite(value):
+                value = None
+            clean_row.append(value)
+            text.append(f"{value:.4g}" if value is not None else "")
+            if value is None:
+                missing_x.append(column)
+                missing_y.append(name)
+        values.append(clean_row)
+        labels.append(text)
+
+    fig.add_trace(
+        go.Heatmap(
+            z=values,
+            x=x_labels,
+            y=y_labels,
+            text=labels,
+            texttemplate="%{text}",
+            colorscale=colorscale,
+            zmin=zmin,
+            zmax=zmax,
+            connectgaps=False,
+            hoverongaps=False,
+            xgap=1,
+            ygap=1,
+            colorbar=colorbar,
+            hovertemplate=hovertemplate,
+        )
+    )
+    if missing_x:
+        # Heatmap gaps cannot display text without a separate overlay.
+        fig.add_trace(
+            go.Scatter(
+                x=missing_x,
+                y=missing_y,
+                mode="text",
+                text=["N/A"] * len(missing_x),
+                textfont={"color": "#666666", "size": 11},
+                showlegend=False,
+                hovertemplate=missing_hovertemplate,
+            )
+        )
+    return fig
+
+
 def build_confusion_heatmap(
     matrix: Sequence[Sequence[float]],
     *,

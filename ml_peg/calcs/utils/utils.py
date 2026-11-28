@@ -112,9 +112,9 @@ def extract_zip(filename: Path) -> Path:
     Path
         Parent directory of unziped file.
     """
+    extract_dir = filename.parent
     # If it's a zip, try to extract it
     if filename.suffix == ".zip":
-        extract_dir = filename.parent
         try:
             with zipfile.ZipFile(filename, "r") as zip_ref:
                 zip_ref.extractall(extract_dir)
