@@ -771,7 +771,6 @@ a:hover {
 
 /* ---- Explorer page (panels reuse .mlpeg-summary-card) ------------------ */
 /* ---- Model report card ------------------------------------------------- */
-/* Report card headline chips: in-domain vs extrapolated accuracy, physicality */
 .mlpeg-report-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -819,7 +818,6 @@ a:hover {
   color: var(--mlpeg-ink-2);
   margin-bottom: 4px;
 }
-/* Report card and selected-structure tables, styled to match the panel */
 .mlpeg-explorer-struct-table {
   /* Scroll a wide table inside its panel, not the page */
   display: block;
@@ -856,7 +854,6 @@ a:hover {
   display: flex;
   gap: var(--sp-4) var(--sp-6);
   flex-wrap: wrap;
-  /* Top-align so every label sits on one line, whatever the control's height */
   align-items: flex-start;
   margin-bottom: var(--sp-4);
 }
@@ -903,7 +900,6 @@ a:hover {
   outline: 2px solid var(--mlpeg-accent);
   outline-offset: 2px;
 }
-/* Per-panel "how this works" disclosure */
 .mlpeg-explorer-help {
   margin: var(--sp-2) 0 var(--sp-3);
 }
@@ -918,7 +914,6 @@ a:hover {
   max-width: 76ch;
   margin: var(--sp-2) 0 0;
 }
-/* Colour key under a colour-coded chart (report profile, finder bars). */
 .mlpeg-explorer-legend {
   display: flex;
   flex-wrap: wrap;
@@ -933,7 +928,6 @@ a:hover {
 .mlpeg-explorer-legend-item {
   white-space: nowrap;
 }
-/* Finder pick cards are buttons: reset the button chrome, lift on hover/focus */
 .mlpeg-explorer-picks {
   display: flex;
   gap: var(--sp-3);
@@ -957,7 +951,6 @@ a:hover {
   outline: 2px solid var(--mlpeg-accent);
   outline-offset: 2px;
 }
-/* Keyboard route into the 3D panel: the ranked structures as link buttons */
 .mlpeg-explorer-list {
   margin: var(--sp-2) 0 0;
   padding-left: 22px;
@@ -1545,7 +1538,6 @@ input[type="number"] {
     z-index: auto;
     box-shadow: none;
   }
-  /* ---- Explorer: tighten the long 7-panel page for phones ------------- */
   .mlpeg-explorer .mlpeg-summary-card {
     padding: var(--sp-4);
   }
@@ -1556,13 +1548,11 @@ input[type="number"] {
   .mlpeg-explorer-nav {
     position: static;
   }
-  /* Stack the labelled controls full-width instead of cramming a flex row. */
   .mlpeg-explorer-controls {
     flex-direction: column;
     align-items: stretch;
     gap: var(--sp-3);
   }
-  /* A stacked control fills the column; its inner dropdown follows suit. */
   .mlpeg-explorer-controls > div {
     width: 100%;
   }

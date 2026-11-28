@@ -110,6 +110,7 @@ def write_synthetic_tree(root: Path) -> list[tuple[str, str]]:
                 {
                     "mode": "markers",
                     "name": model,
+                    "hovertemplate": "<b>Pred: </b>%{x}<br><b>Ref: </b>%{y}<br>",
                     "x": [10.0 + r for r in residuals],
                     "y": [10.0] * len(residuals),
                     "customdata": [[sid] for sid in sids],

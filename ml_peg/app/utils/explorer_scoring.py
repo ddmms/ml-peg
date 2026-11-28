@@ -12,7 +12,9 @@ from functools import lru_cache
 import statistics
 from typing import Any
 
+from ml_peg.analysis.explorer.build_explorer_data import MIN_MODELS
 from ml_peg.app.utils.explorer_data import (
+    error_ranks,
     load_error_matrix,
     load_hardness,
     load_model_benchmark_scores,
@@ -26,35 +28,25 @@ from ml_peg.app.utils.explorer_ids import LOT_CLASS_STYLE
 # Win rates within this band of 50% are shown as a practical tie
 H2H_TIE_BAND = 0.05
 
-# Model-finder extrapolation tolerance -> admissible LoT classes (values of
-# FINDER_TOLERANCE_OPTIONS in explorer_ids).
 _TOLERANCE_CLASSES = {
     "in_domain": {"in_domain"},
     "dft": {"in_domain", "dft"},
     "any": {"in_domain", "dft", "high_level", "experimental", "none"},
 }
 
-# Physicality score below which the finder warns about a model
 _PHYSICALITY_WARN = 0.5
 
-# Minimum admissible benchmarks for a model to be ranked by the finder
 MIN_FINDER_BENCH = 3
 
 # Pseudo-observations shrinking each model's benchmark mean towards the pooled mean,
 # so a model that aced a few benchmarks cannot outrank one solid across many
 _FINDER_PRIOR_STRENGTH = 4.0
 
-# Weight of the benchmark mean in the finder's fit when elements are selected
 FINDER_BENCH_WEIGHT = 0.6
 
-# How many structures the failure ranking keeps by default.
 FAILS_TOP = 15
 
-# Most structures one benchmark may place in a field-wide failure ranking
 FAILS_PER_BENCHMARK = 2
-
-
-# --- Shared filters ------------------------------------------------------------------
 
 
 def categories(rows: list[dict[str, Any]]) -> list[str]:
@@ -125,9 +117,6 @@ def _filter_rows(
         wanted = set(elements)
         out = [row for row in out if wanted & set(row.get("elements") or [])]
     return out
-
-
-# --- Model report card: per-model profile across chemistry + extrapolation ----------
 
 
 @lru_cache(maxsize=128)
@@ -400,19 +389,15 @@ def default_h2h_models(
     return first, second
 
 
-# --- Head-to-head: two models, structure by structure ---------------------------------
-
-
 def head_to_head_stats(
     model_a: str, model_b: str, error_matrix: dict[str, dict[str, float]]
 ) -> dict[str, Any]:
     """
     Compare two models structure-by-structure over the structures they both cover.
 
-    A model wins a structure when its absolute error there is smaller. Each benchmark
-    contributes one win rate, a category averages its benchmarks, and the overall
-    verdict averages the categories, so one large benchmark cannot dominate. Ties are
-    excluded from every denominator, so ``win_rate_a + win_rate_b == 1``.
+    Compare absolute errors and exclude ties from win rates. Average metric win rates
+    within each benchmark, then average benchmarks within each category. The overall
+    rate gives each decisive category equal weight.
 
     Parameters
     ----------
@@ -430,16 +415,13 @@ def head_to_head_stats(
         ``win_rate_a`` is the benchmark-averaged rate and ``n`` the structure count
         (rows sorted by descending structure count).
     """
-    # Per benchmark (category/benchmark/metric): [wins_a, wins_b, ties].
-    per_bench: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
-    bench_category: dict[str, str] = {}
+    per_metric: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
     for key, resids in error_matrix.items():
         if model_a not in resids or model_b not in resids:
             continue
         ea, eb = abs(resids[model_a]), abs(resids[model_b])
-        category, bench, _ = split_structure_key(key)
-        bench_category[bench] = category
-        bucket = per_bench[bench]
+        _, metric_path, _ = split_structure_key(key)
+        bucket = per_metric[metric_path]
         if ea < eb:
             bucket[0] += 1
         elif eb < ea:
@@ -447,18 +429,22 @@ def head_to_head_stats(
         else:
             bucket[2] += 1
 
-    # Roll benchmarks up into categories: each benchmark's win rate counts once.
-    cat_bench_rates: dict[str, list[float]] = defaultdict(list)
-    cat_counts: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])  # a, b, ties
-    for bench, (win_a, win_b, tie) in per_bench.items():
-        category = bench_category[bench]
-        decisive = win_a + win_b
-        if decisive:
-            cat_bench_rates[category].append(win_a / decisive)
+    metric_rates: dict[str, list[float]] = defaultdict(list)
+    cat_counts: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
+    for metric_path, (win_a, win_b, ties) in per_metric.items():
+        benchmark, _, _ = metric_path.rpartition("/")
+        category = benchmark.split("/", 1)[0]
+        if win_a + win_b:
+            metric_rates[benchmark].append(win_a / (win_a + win_b))
         counts = cat_counts[category]
         counts[0] += win_a
         counts[1] += win_b
-        counts[2] += tie
+        counts[2] += ties
+
+    cat_bench_rates: dict[str, list[float]] = defaultdict(list)
+    for benchmark, rates in metric_rates.items():
+        category = benchmark.split("/", 1)[0]
+        cat_bench_rates[category].append(statistics.mean(rates))
 
     per_category = []
     for category, (win_a, win_b, tie) in cat_counts.items():
@@ -470,21 +456,19 @@ def head_to_head_stats(
                 "wins_a": win_a,
                 "wins_b": win_b,
                 "ties": tie,
-                "decisive": win_a + win_b,  # for the Wilson whisker
+                "decisive": win_a + win_b,
                 "n_benchmarks": len(rates),
-                # Equal-weight the benchmarks; an all-tie category reads even.
                 "win_rate_a": sum(rates) / len(rates) if rates else 0.5,
             }
         )
     per_category.sort(key=lambda row: row["n"], reverse=True)
 
-    # Overall verdict: average the category win rates (each area counts equally).
     cat_rates = [row["win_rate_a"] for row in per_category if row["decisive"]]
     overall_win_rate_a = sum(cat_rates) / len(cat_rates) if cat_rates else 0.5
 
-    wins_a = sum(bucket[0] for bucket in per_bench.values())
-    wins_b = sum(bucket[1] for bucket in per_bench.values())
-    ties = sum(bucket[2] for bucket in per_bench.values())
+    wins_a, wins_b, ties = (
+        map(sum, zip(*cat_counts.values(), strict=True)) if cat_counts else (0, 0, 0)
+    )
     return {
         "n_shared": wins_a + wins_b + ties,
         "wins_a": wins_a,
@@ -580,7 +564,8 @@ def benchmark_error_medians(
     """
     Median absolute error per benchmark, for unit-free head-to-head normalisation.
 
-    Dividing by this makes errors from benchmarks with different units comparable.
+    If the median is zero, use the median positive error when there is one. An
+    all-zero metric has scale zero.
 
     Parameters
     ----------
@@ -598,9 +583,12 @@ def benchmark_error_medians(
         _, bench, _ = split_structure_key(key)
         for resid in resids.values():
             groups[bench].append(abs(resid))
-    return {
-        bench: statistics.median(values) for bench, values in groups.items() if values
-    }
+    scales = {}
+    for metric, values in groups.items():
+        median = statistics.median(values)
+        positive = [value for value in values if value > 0] if median == 0 else []
+        scales[metric] = statistics.median(positive) if positive else median
+    return scales
 
 
 @lru_cache(maxsize=1)
@@ -614,9 +602,6 @@ def cached_benchmark_error_medians() -> dict[str, float]:
         ``category/benchmark/metric -> median |error|``.
     """
     return benchmark_error_medians(load_error_matrix())
-
-
-# --- Model finder: "which model for MY system?" --------------------------------------
 
 
 def model_finder_rankings(
@@ -653,13 +638,13 @@ def model_finder_rankings(
     admissible = _TOLERANCE_CLASSES.get(tolerance, _TOLERANCE_CLASSES["any"])
     wanted_cats = set(wanted_categories or [])
     bench: dict[str, list[float]] = defaultdict(list)
+    eligible: dict[tuple[str, str], set[str]] = defaultdict(set)
     in_domain_n: dict[str, int] = defaultdict(int)
     phys: dict[str, list[float]] = defaultdict(list)
     lots: dict[str, str | None] = {}
     for row in load_model_benchmark_scores():
         if lots.get(row["model"]) is None:
             lots[row["model"]] = row["model_lot"]
-        # Physicality applies whatever the selection
         if row["domain"] == "physicality":
             phys[row["model"]].append(row["score"])
             continue
@@ -668,6 +653,7 @@ def model_finder_rankings(
         if row["lot_class"] not in admissible:
             continue
         bench[row["model"]].append(row["score"])
+        eligible[row["category"], row["benchmark"]].add(row["model"])
         if row["lot_class"] == "in_domain":
             in_domain_n[row["model"]] += 1
     candidates = {
@@ -685,11 +671,17 @@ def model_finder_rankings(
         lambda: defaultdict(list)
     )
     if elements:
-        ranks = structure_model_ranks()
+        errors = load_error_matrix()
         for row in _filter_rows(load_hardness(), wanted_categories, elements):
-            bench = (row["category"], row["benchmark"])
-            for model, rank in ranks.get(row["key"], {}).items():
-                standings[model][bench].append(1.0 - rank)
+            benchmark = (row["category"], row["benchmark"])
+            models = eligible.get(benchmark, set())
+            residuals = {
+                model: error
+                for model, error in errors[row["key"]].items()
+                if model in models
+            }
+            for model, rank in error_ranks(residuals).items():
+                standings[model][benchmark].append(1.0 - rank)
 
     results: list[dict[str, Any]] = []
     for model, scores in candidates.items():
@@ -757,9 +749,6 @@ def cached_finder_rankings(
     )
 
 
-# --- Where models fail: the hardest structures ---------------------------------------
-
-
 def structure_fails_ranking(
     rows: list[dict[str, Any]],
     wanted_categories: list[str] | None,
@@ -796,7 +785,11 @@ def structure_fails_ranking(
         ranking value) and, in per-model mode, ``model_rank`` (0 = best of the cohort,
         1 = worst) and ``model_err``.
     """
-    filtered = _filter_rows(rows, wanted_categories, None)
+    filtered = [
+        row
+        for row in _filter_rows(rows, wanted_categories, None)
+        if row["n_models"] >= MIN_MODELS
+    ]
     if model:
         ranks = structure_model_ranks()
         errors = load_error_matrix()
@@ -807,7 +800,6 @@ def structure_fails_ranking(
                 continue
             resids = errors.get(row["key"], {})
             resid = resids.get(model)
-            # Same-precision numerator and denominator, both from the error matrix
             median = statistics.median(abs(v) for v in resids.values())
             if resid is None or not median:
                 continue
@@ -822,7 +814,6 @@ def structure_fails_ranking(
         scored.sort(key=lambda r: (r["fail_score"], r["model_rank"]), reverse=True)
         return scored[:top]
     key = "disagreement" if sort == "contested" else "fail_frac"
-    # "Hardest" lists only structures at least one model fails
     ranked = [
         row
         for row in filtered
@@ -850,9 +841,13 @@ def offered_categories() -> frozenset[str]:
     Returns
     -------
     frozenset[str]
-        Categories with at least one structure.
+        Categories with benchmark scores used by the Finder.
     """
-    return frozenset(categories(load_hardness()))
+    return frozenset(
+        row["category"]
+        for row in load_model_benchmark_scores()
+        if row["domain"] != "physicality"
+    )
 
 
 @lru_cache(maxsize=128)

@@ -2,17 +2,15 @@
 Model Explorer
 ==============
 
-The category tabs answer "how well does each model do on *this* benchmark?". The
-Model Explorer, reached from the ``Explorer`` link in the sidebar (``/explorer``), reads
-across all of them to answer the two questions a user actually has:
+Open **Explorer** in the sidebar (``/explorer``) to shortlist models, compare shared
+observations and inspect individual errors. The page reads the app's shipped metrics
+tables, parity figures and XYZ files at startup. The page header shows scored benchmark
+coverage and the number of observations with comparable errors.
 
-- Which model should I use for my system?
-- Where will it stop working?
-
-Everything on the page is derived at app start-up from the benchmark data already
-shipped with the app (the parity-plot figures, metrics tables and ``.xyz`` geometries in
-``ml_peg/app/data``). There is no separate build step: a newly added benchmark appears in
-the Explorer automatically.
+Only parity points with identifiable observations, aligned arrays and a common reference
+contribute to structure comparisons. Some benchmarks contribute scores only. For example,
+OC157's current relative-energy figure identifies compositions shared by multiple systems.
+Geometry links also depend on an unambiguous match to a shipped XYZ file.
 
 The page is split into seven panels, described below in the order they appear. Each
 panel has a collapsed *How this works* note in the app, and a *Methods & references*
@@ -61,17 +59,18 @@ model--benchmark pairing:
    * - functional mismatch
      - Both are DFT, but with different functionals (e.g. a PBE-trained model on an
        r2SCAN benchmark).
-   * - vs CCSD(T)/MP2
+   * - higher-level reference
      - The reference is a higher-level method (coupled cluster, DMC, ...) than the
        DFT the model was trained on.
    * - vs experiment
      - The reference is experimental.
-   * - soundness
-     - No reference level applies (physicality checks).
+   * - unclassified
+     - The reference or model training level is unavailable.
 
-A benchmark with several metrics takes the most severe mismatch among them. Anything
-other than *in-domain* is an extrapolation. This is not a verdict on the model, but it
-tells you how much the score should be trusted to transfer to your own setting.
+A benchmark with several metrics takes the most severe known mismatch among them.
+A match describes the recorded levels of theory. It does not establish that the
+benchmark chemistry was in the training set or predict how a model will perform on
+your system.
 
 
 Model finder
@@ -86,8 +85,8 @@ Controls
 - **What are you simulating?** — an experiment preset that selects a bundle of
   benchmark areas: *Anything*, *Bulk materials & crystals*, *Surfaces, defects &
   reactions*, *Molecules & non-covalent chemistry*, or *Metals & f-block chemistry*.
-- **Elements in your system** — one or more element symbols. When set, the finder adds
-  evidence from every test structure containing those elements.
+- **Elements (match any selected)** — when set, the Finder adds evidence from
+  observations containing at least one selected element.
 - **Benchmark areas (fine-tune)** — edit the category list directly; this switches the
   preset to custom.
 - **Evidence to trust** — the extrapolation tolerance. *In-domain evidence only* counts
@@ -111,12 +110,11 @@ Each model's fit combines two independent evidence streams:
 
 1. **Benchmark evidence**: the model's mean 0--1 score over the selected areas, counting
    only benchmarks that pass the chosen extrapolation tolerance.
-2. **Structure evidence** (only when elements are selected): on every test structure
-   containing those elements, the models run on it are ranked by error, and the model's
-   average standing is its *mean win rate* (after HELM, Liang *et al.* 2022): the fraction
-   of other models it beats. It is averaged within each benchmark first, so a benchmark
-   with thousands of structures counts the same as a small one. This depends on which
-   models were compared, so it will shift as models are added.
+2. **Structure evidence** (only when elements are selected): the Finder ranks models by
+   absolute error for each matching observation. Only models with a score for that
+   benchmark that passes the selected tolerance enter its comparison. A tie counts as
+   half a win. The mean win rate gives each benchmark equal weight and depends on the
+   set of models evaluated.
 
 The fit is then
 
@@ -124,8 +122,8 @@ The fit is then
 
    \text{fit} = 0.6 \times \text{benchmark} + 0.4 \times \text{structure}
 
-or just the benchmark evidence when no elements are chosen. Two safeguards stop thin
-evidence from winning:
+When no elements are selected or a model has no eligible structure comparisons, its
+fit uses benchmark evidence alone. Coverage affects the benchmark evidence in two ways:
 
 - A model needs at least **3** admissible benchmarks to be ranked at all.
 - Each model's benchmark mean is shrunk towards the pooled mean over all candidates
@@ -166,31 +164,22 @@ individual surface benchmarks in one click.
 Head-to-head
 ------------
 
-Compare two models structure by structure over everything they were both evaluated on.
-A model "wins" a structure when its absolute error is smaller. Since both models are
-measured on the same structure, this is a fair, unit-free comparison (the sign test of
-Demšar 2006).
+Compare two models on observations with a reference and an error for both models. A win
+means the model had the smaller absolute error. The chart shows one bar per category.
 
-The chart shows one horizontal bar per category:
+- **Direction** points toward the model with the higher win rate.
+- **Length** shows the margin from 50/50.
+- **Grey bars** indicate a margin within five percentage points of an even split.
+- **Hover** shows comparison counts, including exact ties.
 
-- **Direction** points to the model that was closer to the reference more often.
-- **Length** is the margin: how far the win rate is from 50/50.
-- **Whiskers** are 95% Wilson intervals, so a bar backed by a few structures reads as
-  less certain than one backed by thousands. They assume structures are independent,
-  which they are not within a benchmark, so they are somewhat optimistic.
-- **Grey bars** fall inside the ±5% practical-tie band and are too close to call.
+Calculate the win rate within each metric, average the rates within each benchmark,
+then average benchmarks within each category. Ties count toward coverage and are
+excluded from the rate. A category with all ties appears even.
 
-Win rates are averaged with *equal weight per benchmark* rather than pooled over raw
-structures, so one benchmark with thousands of structures cannot swamp the verdict for
-its category. Exact ties are shown in the counts but excluded from every win rate, so
-the two models' rates always sum to one.
-
-The win rate counts wins, not how large each win was. Click a bar, or choose an area in
-the *Open an area's structures* picker below the chart, to open that category's
-structure-by-structure scatter, where each point is one structure and the axes are each
-model's error as a multiple of that benchmark's median structure error (so benchmarks
-with different units share an axis). Click any point to load the structure into the
-*Selected structure* panel.
+Select a bar or an area to see individual comparisons. Axes show each model's absolute
+error divided by the metric's median absolute error, using the median positive error
+if the overall median is zero. Zero errors sit at the plot's display floor and appear
+as zero on hover. Click a point to see its errors and any matching 3D geometry.
 
 
 Where models fail
@@ -224,23 +213,18 @@ here as an interactive 3D structure, with a table of every model's error on it.
 Who fails alike
 ---------------
 
-A model-by-model heatmap of error correlation. Each model's per-structure errors are
-standardised within every benchmark and correlated against every other model's over the
-structures they share. Warm cells are pairs that make the same mistakes on the same
-structures; cool cells are complementary. Rows and columns are ordered by hierarchical
-clustering, so models from the same family or training set appear as blocks. If two
-models fail alike, combining them in an ensemble will add little.
-
+The heatmap correlates signed residuals (prediction minus reference) for each model
+pair. Residuals are standardised per model and metric before pooling shared
+observations. Metrics with more shared observations contribute more points. Hover for
+the shared count. A cell is blank when there are fewer than ten comparable points
+or the correlation is undefined.
 
 Coverage rose
 -------------
 
-A polar overview of the field rather than of any one model. Each wedge is a benchmark
-area (or a single benchmark, using the *Group by* control) and its length and colour give
-the mean score across every model evaluated there. Long green wedges are areas current
-models already handle; short red wedges are open problems. Because each wedge averages
-over whichever models were run in that area, read it as a rough guide rather than an
-exact cross-area comparison.
+Each wedge shows the mean score for evaluated models on a benchmark. The area view
+averages its benchmarks equally. Model coverage and scoring thresholds vary by
+benchmark, and counts are shown on hover.
 
 
 See also

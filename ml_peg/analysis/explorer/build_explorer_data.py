@@ -3,17 +3,17 @@ Derive the cross-model Explorer signals from the shipped benchmark data.
 
 Rebuilds a ``structure x model`` error matrix from the parity figures in
 ``ml_peg/app/data``, then derives per-structure hardness rows and a model
-error-correlation matrix. The error of a parity point is ``abs(x - y)``, since axis
-orientation varies between benchmarks.
+error-correlation matrix. A parity residual is the prediction minus the reference.
 """
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
+from collections.abc import Iterator
 from functools import cache
 import json
 import logging
-import os
+import math
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -23,7 +23,6 @@ from scipy.cluster.hierarchy import leaves_list, linkage
 
 logger = logging.getLogger(__name__)
 
-# Data root holds one directory per category, each with benchmark subdirectories.
 DATA_ROOT = Path(__file__).resolve().parents[2] / "app" / "data"
 
 # Models a structure needs for its hardness and disagreement to be meaningful
@@ -39,7 +38,6 @@ MIN_SHARED_STRUCTURES = 10
 # Benchmarks that measure cost rather than accuracy, left out of every Explorer view.
 EXCLUDED_BENCHMARKS = frozenset({("molecular_dynamics", "inference_speed")})
 
-# Rounding that keeps the browser payload compact
 _ERROR_DECIMALS = 6
 _RATIO_DECIMALS = 4
 
@@ -86,12 +84,18 @@ def data_file_index() -> DataFileIndex:
     tables: list[Path] = []
     model_dirs: dict[tuple[str, str], tuple[Path, ...]] = {}
     root = data_root()
-    for dirpath, dirnames, filenames in os.walk(root):
-        here = Path(dirpath)
+    pending = [(root, frozenset())]
+    while pending:
+        here, ancestors = pending.pop()
+        resolved = here.resolve()
+        if resolved in ancestors:
+            continue
+        children = sorted(here.iterdir()) if here.is_dir() else []
+        dirs = [p for p in children if p.is_dir()]
+        filenames = [p.name for p in children if p.is_file()]
         rel = here.relative_to(root).parts
         key = (rel[0], "/".join(rel[1:])) if len(rel) >= 2 else None
         if key in EXCLUDED_BENCHMARKS:
-            dirnames[:] = []
             continue
         figs = [f for f in filenames if f.startswith("figure_") and f.endswith(".json")]
         tabs = [f for f in filenames if f.endswith("_metrics_table.json")]
@@ -99,9 +103,9 @@ def data_file_index() -> DataFileIndex:
         tables.extend(here / f for f in tabs)
         if figs or tabs:
             if key:
-                model_dirs[key] = tuple(sorted(here / d for d in dirnames))
-            # Everything below a benchmark directory is per-model output.
-            dirnames[:] = []
+                model_dirs[key] = tuple(dirs)
+        else:
+            pending.extend((directory, ancestors | {resolved}) for directory in dirs)
     return DataFileIndex(tuple(sorted(figures)), tuple(sorted(tables)), model_dirs)
 
 
@@ -128,42 +132,147 @@ def read_json(path: Path) -> Any:
         return json.loads(data)
 
 
-def _iter_parity_traces(figure: dict[str, Any]):
+# Column positions follow the corresponding analysis producers' hoverdata.
+_OBSERVATION_COLUMNS = {
+    ("BH9", "bh9_barriers"): (2,),
+    ("BH2O_36", "bh2o_36_barriers"): (0, 1),
+    ("GMTKN55", "rel_energies"): (0, 2),
+    ("Wiggle150", "relative_energies"): (0, 1),
+    ("isomer_complexes", "isomer_complexes"): (0, 1),
+}
+_NO_GEOMETRY = {"BH2O_36", "GMTKN55", "Wiggle150"}
+
+
+def _observation_id(customdata: Any, columns: tuple[int, ...]) -> str | None:
     """
-    Yield ``(model, structure_ids, errors)`` for each model trace in a parity figure.
+    Read one observation identifier from the benchmark's hover columns.
+
+    Parameters
+    ----------
+    customdata
+        Scalar or row of hover metadata.
+    columns
+        Positions that jointly identify the observation.
+
+    Returns
+    -------
+    str or None
+        Observation identifier, if all required fields are present.
+    """
+    values = customdata if isinstance(customdata, list) else [customdata]
+    if any(
+        i >= len(values)
+        or type(values[i]) not in (str, int)
+        or not str(values[i]).strip()
+        or "::" in str(values[i])
+        for i in columns
+    ):
+        return None
+    if len(columns) == 1:
+        return str(values[columns[0]])
+    return json.dumps(
+        [values[i] for i in columns], ensure_ascii=False, separators=(",", ":")
+    )
+
+
+def _iter_parity_traces(
+    figure: dict[str, Any], benchmark: str = "", metric: str = ""
+) -> Iterator[tuple[str, list[tuple[str, float | None, float | None]]]]:
+    """
+    Yield each model's observation IDs, references and signed residuals.
 
     Parameters
     ----------
     figure
-        Deserialised Plotly figure dictionary.
+        Saved Plotly figure.
+    benchmark
+        Benchmark directory, including any parent directories.
+    metric
+        Metric identified by the figure filename.
 
     Yields
     ------
-    tuple[str, list[str], list[float]]
-        Model name, per-point structure ids, and per-point signed residuals
-        (``x - y``). Traces without markers, a name or ``customdata`` are skipped.
+    tuple
+        Model name and points containing ID, reference and residual. Missing
+        values retain their IDs so duplicate observations can still be detected.
     """
+    schema = (benchmark.rsplit("/", 1)[-1], metric)
+    columns = _OBSERVATION_COLUMNS.get(schema, (0,))
     for trace in figure.get("data", []):
         if "markers" not in (trace.get("mode") or ""):
             continue
+        hover = trace.get("hovertemplate") or ""
+        if "<b>Pred: </b>%{x}" in hover and "<b>Ref: </b>%{y}" in hover:
+            x, y = trace.get("x"), trace.get("y")
+        elif "<b>Pred: </b>%{y}" in hover and "<b>Ref: </b>%{x}" in hover:
+            x, y = trace.get("y"), trace.get("x")
+        else:
+            continue
         model = trace.get("name")
         customdata = trace.get("customdata")
-        x = trace.get("x")
-        y = trace.get("y")
-        if not model or not isinstance(customdata, list) or x is None or y is None:
+        if (
+            not isinstance(model, str)
+            or not model
+            or not all(isinstance(values, list) for values in (customdata, x, y))
+        ):
             continue
-        if not (len(customdata) == len(x) == len(y)):
+        if len(customdata) != len(x) or len(x) != len(y):
             continue
-        ids: list[str] = []
-        residuals: list[float] = []
-        for cd, xi, yi in zip(customdata, x, y, strict=True):
-            sid = cd[0] if isinstance(cd, list) else cd
-            if xi is None or yi is None:
+        points = []
+        for cd, prediction, reference in zip(customdata, x, y, strict=True):
+            sid = _observation_id(cd, columns)
+            if sid is None or (
+                schema == ("GMTKN55", "rel_energies")
+                and (len(cd) < 4 or cd[3] is not False)
+            ):
                 continue
-            ids.append(str(sid))
-            residuals.append(float(xi) - float(yi))
-        if ids:
-            yield model, ids, residuals
+            residual = None
+            ref = None
+            if type(prediction) in (int, float) and type(reference) in (int, float):
+                difference = prediction - reference
+                if math.isfinite(difference):
+                    ref = reference
+                    residual = difference
+            points.append((sid, ref, residual))
+        if points:
+            yield model, points
+
+
+def _figure_residuals(
+    figure: dict[str, Any], benchmark: str, metric: str
+) -> dict[str, dict[str, float]]:
+    """
+    Collect residuals only for unique IDs with a common reference.
+
+    Parameters
+    ----------
+    figure
+        Saved Plotly figure.
+    benchmark
+        Benchmark directory, including any parent directories.
+    metric
+        Metric identified by the figure filename.
+
+    Returns
+    -------
+    dict
+        Observation IDs mapped to signed residuals by model.
+    """
+    observations: dict[str, dict[str, float]] = defaultdict(dict)
+    references: dict[str, set[float]] = defaultdict(set)
+    counts: Counter[tuple[str, str]] = Counter()
+    for model, points in _iter_parity_traces(figure, benchmark, metric):
+        for sid, ref, residual in points:
+            counts[model, sid] += 1
+            if ref is not None and residual is not None:
+                references[sid].add(ref)
+                observations[sid][model] = residual
+    ambiguous = {sid for (_, sid), count in counts.items() if count > 1}
+    return {
+        sid: residuals
+        for sid, residuals in observations.items()
+        if sid not in ambiguous and len(references[sid]) == 1
+    }
 
 
 def _benchmark_key(figure_path: Path) -> tuple[str, str, str]:
@@ -236,7 +345,7 @@ def _xyz_element_union(path: Path) -> list[str] | None:
 @cache
 def _benchmark_geometry_index(
     category: str, benchmark: str
-) -> tuple[dict[str, Path], dict[str, Path]]:
+) -> tuple[dict[str, Path | None], dict[str, Path | None]]:
     """
     Index a benchmark's shipped ``.xyz`` geometries by structure id.
 
@@ -256,17 +365,18 @@ def _benchmark_geometry_index(
     tuple[dict[str, Path], dict[str, Path]]
         ``(exact, suffix)`` maps from structure id to geometry path; ``exact`` wins.
     """
-    exact: dict[str, Path] = {}
-    suffix: dict[str, Path] = {}
+    exact: dict[str, Path | None] = {}
+    suffix: dict[str, Path | None] = {}
     model_dirs = data_file_index().model_dirs.get((category, benchmark), ())
     if not model_dirs:
         return exact, suffix
-    for file in model_dirs[0].rglob("*.xyz"):
+    for file in sorted(model_dirs[0].rglob("*.xyz")):
         stem = file.stem
-        exact.setdefault(stem, file)
+        exact[stem] = None if stem in exact else file
         pos = stem.find("_")
         while pos != -1:
-            suffix.setdefault(stem[pos + 1 :], file)
+            tail = stem[pos + 1 :]
+            suffix[tail] = None if tail in suffix else file
             pos = stem.find("_", pos + 1)
     return exact, suffix
 
@@ -315,7 +425,7 @@ def _benchmark_element_index(category: str, benchmark: str) -> dict[str, list[st
 
 
 def _resolve_structure(
-    category: str, benchmark: str, sid: str
+    category: str, benchmark: str, sid: str, metric: str = ""
 ) -> tuple[str | None, list[str]]:
     """
     Resolve a structure's shipped geometry path and element set from the shipped data.
@@ -327,7 +437,9 @@ def _resolve_structure(
     benchmark
         Benchmark directory (relative to the category).
     sid
-        Structure id from the parity figure.
+        Observation id from the parity figure.
+    metric
+        Metric from the parity figure.
 
     Returns
     -------
@@ -337,7 +449,12 @@ def _resolve_structure(
         when it cannot be recovered).
     """
     exact, suffix = _benchmark_geometry_index(category, benchmark)
-    file = exact.get(sid) or suffix.get(sid)
+    name = benchmark.rsplit("/", 1)[-1]
+    if name in _NO_GEOMETRY:
+        return None, []
+    if (name, metric) == ("isomer_complexes", "isomer_complexes"):
+        sid = "_".join(map(str, json.loads(sid)))
+    file = exact.get(sid, suffix.get(sid))
     if file is None:
         return None, []
     elements = _benchmark_element_index(category, benchmark).get(file.stem)
@@ -358,9 +475,7 @@ def compute_explorer_data() -> dict[str, Any]:
     """
     figures = data_file_index().figures
 
-    # structure_key -> {"resids": {model: err}, metadata...}
     structures: dict[str, dict[str, Any]] = {}
-    # (benchmark, model) error vectors, keyed by structure_key, for correlation.
     per_benchmark: dict[str, dict[str, dict[str, float]]] = defaultdict(
         lambda: defaultdict(dict)
     )
@@ -373,31 +488,25 @@ def compute_explorer_data() -> dict[str, Any]:
             category, benchmark, metric = _benchmark_key(figure_path)
             bench_id = f"{category}/{benchmark}/{metric}"
 
-            # Parse the whole figure before merging, so a bad one leaves no partial rows
-            traces = [
-                (model, list(zip(ids, residuals, strict=True)))
-                for model, ids, residuals in _iter_parity_traces(figure)
-            ]
-            for model, points in traces:
-                all_models.add(model)
-                for sid, resid in points:
-                    key = f"{bench_id}::{sid}"
+            # OC157 compositions repeat across systems.
+            if benchmark == "OC157" and metric == "rel_energies":
+                continue
+            for sid, resids in _figure_residuals(figure, benchmark, metric).items():
+                key = f"{bench_id}::{sid}"
+                xyz, elements = _resolve_structure(category, benchmark, sid, metric)
+                structures[key] = {
+                    "key": key,
+                    "sid": sid,
+                    "category": category,
+                    "benchmark": benchmark,
+                    "metric": metric,
+                    "elements": elements,
+                    "xyz": xyz,
+                    "resids": resids,
+                }
+                for model, resid in resids.items():
+                    all_models.add(model)
                     per_benchmark[bench_id][model][key] = resid
-                    row = structures.get(key)
-                    if row is None:
-                        xyz, elements = _resolve_structure(category, benchmark, sid)
-                        row = {
-                            "key": key,
-                            "sid": sid,
-                            "category": category,
-                            "benchmark": benchmark,
-                            "metric": metric,
-                            "elements": elements,
-                            "xyz": xyz,
-                            "resids": {},
-                        }
-                        structures[key] = row
-                    row["resids"][model] = resid
         except (ValueError, TypeError, OSError, AttributeError) as exc:
             skipped += 1
             logger.warning(
@@ -439,7 +548,7 @@ def _summarise_structures(
     tuple[list[dict[str, Any]], dict[str, dict[str, float]]]
         Hardness rows without per-model errors, so the plot payload stays small, and
         the ``structure_key -> {model: signed_residual}`` error matrix. Structures with
-        fewer than :data:`MIN_MODELS` models are dropped.
+        fewer than two models are dropped from these views.
     """
     typical = {
         (bench, model): float(np.median(np.abs(list(errs.values()))))
@@ -450,7 +559,7 @@ def _summarise_structures(
     error_matrix: dict[str, dict[str, float]] = {}
     for row in structures.values():
         resids = row.pop("resids")
-        if len(resids) < MIN_MODELS:
+        if len(resids) < 2:
             continue
         abs_by_model = {m: abs(v) for m, v in resids.items()}
         magnitudes = np.array(list(abs_by_model.values()), dtype=float)
@@ -474,9 +583,7 @@ def _summarise_structures(
         row["n_models"] = len(resids)
         row["worst_model"] = max(abs_by_model, key=abs_by_model.get)
         rows.append(row)
-        error_matrix[row["key"]] = {
-            m: round(v, _ERROR_DECIMALS) for m, v in resids.items()
-        }
+        error_matrix[row["key"]] = resids
 
     _add_hardness_percentile(rows)
     return rows, error_matrix
@@ -510,8 +617,8 @@ def _model_similarity(
     """
     Compute the model x model error-correlation matrix and a clustering leaf order.
 
-    Signed residuals are z-scored within each benchmark, so no benchmark dominates,
-    and correlated pairwise over the structures both models cover.
+    Signed residuals are z-scored within each metric, then correlated over shared
+    observations. Metrics with more shared observations contribute more points.
 
     Parameters
     ----------
@@ -523,9 +630,7 @@ def _model_similarity(
     Returns
     -------
     dict[str, Any]
-        ``{"models", "order", "corr"}`` where ``order`` is the model index order from
-        hierarchical clustering (identity order if too few models) and ``corr`` the
-        matrix with ``None`` for pairs sharing too few structures.
+        Model names, clustering order, correlations and pairwise shared counts.
     """
     normalised: dict[str, dict[str, float]] = defaultdict(dict)
     for model_errors in per_benchmark.values():
@@ -542,6 +647,7 @@ def _model_similarity(
 
     n = len(models)
     corr = np.full((n, n), np.nan)
+    shared_counts = np.zeros((n, n), dtype=int)
     np.fill_diagonal(corr, 1.0)
     columns: dict[str, dict[str, float]] = defaultdict(dict)
     for key, model_vals in normalised.items():
@@ -549,9 +655,11 @@ def _model_similarity(
             columns[model][key] = z
 
     for i, mi in enumerate(models):
+        shared_counts[i, i] = len(columns[mi])
         for j in range(i + 1, n):
             mj = models[j]
             shared = columns[mi].keys() & columns[mj].keys()
+            shared_counts[i, j] = shared_counts[j, i] = len(shared)
             if len(shared) < MIN_SHARED_STRUCTURES:
                 continue
             a = np.array([columns[mi][k] for k in shared])
@@ -566,7 +674,12 @@ def _model_similarity(
         [None if np.isnan(v) else round(float(v), _RATIO_DECIMALS) for v in row]
         for row in corr
     ]
-    return {"models": models, "order": order, "corr": corr_out}
+    return {
+        "models": models,
+        "order": order,
+        "corr": corr_out,
+        "shared_counts": shared_counts.tolist(),
+    }
 
 
 def _cluster_order(corr: np.ndarray) -> list[int]:

@@ -65,13 +65,11 @@ LOT_CLASS_STYLE = {
     # Mirrors --mlpeg-accent (theme.css): Plotly cannot read CSS variables server-side,
     # so keep the two in sync.
     "in_domain": {"color": "#0d8ff0", "label": "in-domain"},
-    # Mid-lightness so each reads on both themes
     "dft": {"color": "#8b5cf6", "label": "functional mismatch"},
-    "high_level": {"color": "#d946ef", "label": "vs CCSD(T)/MP2"},
+    "high_level": {"color": "#d946ef", "label": "higher-level reference"},
     "experimental": {"color": "#64748b", "label": "vs experiment"},
-    "none": {"color": "#9aa0a6", "label": "soundness"},
+    "none": {"color": "#9aa0a6", "label": "unclassified"},
 }
-# The class names alone, for code that validates a class without needing its style.
 LOT_CLASSES = tuple(LOT_CLASS_STYLE)
 
 # Head-to-head winner colours (A = blue, B = amber, tie = grey). Semantic data colours,
@@ -80,8 +78,6 @@ H2H_COLOUR_A = "#4c6ef5"
 H2H_COLOUR_B = "#f59f00"
 H2H_COLOUR_TIE = "#b0b6bd"
 
-# Model-finder extrapolation tolerance options (values map to admissible LoT classes
-# in explorer_scoring).
 FINDER_TOLERANCE_OPTIONS = [
     {"label": "In-domain evidence only", "value": "in_domain"},
     {"label": "Allow DFT-functional mismatch", "value": "dft"},

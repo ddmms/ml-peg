@@ -1357,7 +1357,6 @@ def build_nav(
             ), sidebar_children
 
         if pathname == EXPLORER_PATH:
-            # The Explorer has no expand-all state, so one cache entry serves it.
             key = ("explorer", "", False)
             if key not in page_layout_cache:
                 page_layout_cache[key] = build_explorer_layout()
@@ -1469,5 +1468,4 @@ def build_full_app(full_app: Dash, category: str = "*", test: str = "*") -> None
     )
     register_onboarding_callbacks()
     register_explorer_callbacks()
-    # Build the Explorer data before serving, so the page never computes on demand
     warm_explorer_data()

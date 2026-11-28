@@ -92,6 +92,7 @@ def test_iter_parity_traces_signed_residual() -> None:
             {
                 "mode": "markers",
                 "name": "model-x",
+                "hovertemplate": "<b>Pred: </b>%{x}<br><b>Ref: </b>%{y}<br>",
                 "x": [1.0, 2.0, None],
                 "y": [1.5, 1.0, 3.0],
                 "customdata": [["s1"], ["s2"], ["s3"]],
@@ -101,10 +102,59 @@ def test_iter_parity_traces_signed_residual() -> None:
     }
     traces = list(_iter_parity_traces(figure))
     assert len(traces) == 1
-    model, ids, residuals = traces[0]
-    assert model == "model-x"
-    assert ids == ["s1", "s2"]  # the None point is dropped
-    assert residuals == [-0.5, 1.0]
+    assert traces == [
+        ("model-x", [("s1", 1.5, -0.5), ("s2", 1.0, 1.0), ("s3", None, None)])
+    ]
+
+
+def test_parity_requires_aligned_unique_observations_and_shared_reference() -> None:
+    """Keep distinct BH9 structures and skip bad rows without losing valid points."""
+    trace = {
+        "mode": "markers",
+        "hovertemplate": "<b>Pred: </b>%{x}<br><b>Ref: </b>%{y}<br>",
+        "customdata": [
+            [1, i, sid]
+            for i, sid in enumerate(
+                ["01_1", "01_2", "duplicate", "duplicate", "different-ref", "nan"]
+            )
+        ],
+        "y": [10, 20, 30, 30, 40, 50],
+    }
+    first = {**trace, "name": "A", "x": [11, 22, 33, None, 42, float("nan")]}
+    second = {
+        **trace,
+        "name": "B",
+        "x": [9, 16, 28, 29, 41, None],
+        "y": [10, 20, 30, 30, 41, 50],
+    }
+    misaligned = {**first, "name": "C", "x": [0]}
+
+    assert build_explorer_data._figure_residuals(
+        {"data": [first, second, misaligned]}, "BH9", "bh9_barriers"
+    ) == {"01_1": {"A": 1, "B": -1}, "01_2": {"A": 2, "B": -4}}
+
+
+def test_data_file_index_follows_symlinked_category(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep asset paths relative to the data root even when a category is linked."""
+    root = tmp_path / "data"
+    root.mkdir()
+    category = tmp_path / "shipped"
+    benchmark = category / "toy"
+    benchmark.mkdir(parents=True)
+    (benchmark / "figure_energy.json").write_text("{}")
+    (root / "molecular").symlink_to(category, target_is_directory=True)
+    (category / "cycle").symlink_to(root, target_is_directory=True)
+    with monkeypatch.context() as patch:
+        patch.setattr(build_explorer_data, "DATA_ROOT", root)
+        data_file_index.cache_clear()
+        try:
+            assert data_file_index().figures == (
+                root / "molecular" / "toy" / "figure_energy.json",
+            )
+        finally:
+            data_file_index.cache_clear()
 
 
 def test_xyz_element_union_reads_every_frame(tmp_path: Path) -> None:
@@ -275,18 +325,14 @@ def test_head_to_head_stats_and_verdict_bars() -> None:
         assert margin == pytest.approx(per_cat[category]["win_rate_a"] - 0.5)
 
 
-def test_value_labels_clear_bars_whiskers_and_ticks() -> None:
-    """Value labels start past whiskers and mean ticks, with no gridline across them."""
+def test_value_labels_clear_bars_and_ticks() -> None:
+    """Value labels start past bars and mean ticks, with no gridline across them."""
     model_a, model_b = _broadest_pair()
     stats = head_to_head_stats(model_a, model_b, load_error_matrix())
     h2h = build_head_to_head_figure(model_a, model_b, stats)
     bars = h2h.data[0]
-    ends = {
-        category: margin + (plus if margin >= 0 else -minus)
-        for category, margin, plus, minus in zip(
-            bars.y, bars.x, bars.error_x.array, bars.error_x.arrayminus, strict=True
-        )
-    }
+    assert bars.error_x.array is None
+    ends = dict(zip(bars.y, bars.x, strict=True))
     labels = [trace for trace in h2h.data[1:] if trace.mode == "text"]
     placed = {y: x for trace in labels for y, x in zip(trace.y, trace.x, strict=True)}
     assert set(placed) == set(ends)
@@ -331,8 +377,7 @@ def test_head_to_head_detail_scatter() -> None:
     )
     points = figure.data[0]
     assert len(points.x) == stats["per_category"][0]["n"]
-    # Each point carries [key, sid, benchmark]; the key feeds the 3D drilldown.
-    assert all(len(cd) == 3 for cd in points.customdata)
+    assert all(len(cd) == 5 for cd in points.customdata)
     assert all(split_structure_key(cd[0])[0] == category for cd in points.customdata)
     assert all(cd[0] in error_matrix for cd in points.customdata)
     # Log axes with a y=x reference line as the second trace.
@@ -350,7 +395,9 @@ def test_head_to_head_pair_guards_and_messages() -> None:
 
     disjoint = head_to_head_stats("only_a", "only_b", {"cat/b/m::s": {"only_a": 0.1}})
     assert disjoint["n_shared"] == 0
-    assert "share no structures" in render_h2h_summary("only_a", "only_b", disjoint)
+    assert "share no comparable observations" in render_h2h_summary(
+        "only_a", "only_b", disjoint
+    )
     assert not build_head_to_head_figure("only_a", "only_b", disjoint).data
 
     model_a, model_b = _broadest_pair()
@@ -403,6 +450,7 @@ def test_head_to_head_equal_weight_across_benchmarks() -> None:
         error_matrix[f"cat/big/mae::{i}"] = {"A": 0.1, "B": 0.2}  # A closer
     for i in range(2):
         error_matrix[f"cat/small/mae::{i}"] = {"A": 0.2, "B": 0.1}  # B closer
+    error_matrix["cat/big/force::0"] = {"A": 0.1, "B": 0.2}
     error_matrix["cat/tie/mae::0"] = {"A": 0.3, "B": 0.3}  # exact tie
 
     stats = head_to_head_stats("A", "B", error_matrix)
@@ -411,9 +459,9 @@ def test_head_to_head_equal_weight_across_benchmarks() -> None:
     (row,) = stats["per_category"]
     assert row["win_rate_a"] == pytest.approx(0.5)
     # Raw counts are retained for context; the tie is counted but not in the win rate.
-    assert (row["wins_a"], row["wins_b"], row["ties"]) == (100, 2, 1)
-    assert row["decisive"] == 102 and row["n_benchmarks"] == 2
-    assert stats["n_shared"] == 103
+    assert (row["wins_a"], row["wins_b"], row["ties"]) == (101, 2, 1)
+    assert row["decisive"] == 103 and row["n_benchmarks"] == 2
+    assert stats["n_shared"] == 104
 
 
 def test_head_to_head_win_rate_symmetric_in_ties() -> None:
@@ -575,24 +623,40 @@ def test_finder_structure_evidence_weights_benchmarks_equally(
             "elements": ["X"],
         }
     ]
-    ranks = {row["key"]: {"A": 0.0, "B": 1.0} for row in rows[:9]}
-    ranks["cat/small/m::0"] = {"A": 1.0, "B": 0.0}
+    errors = {row["key"]: {"A": 0.0, "B": 1.0, "C": 0.0} for row in rows[:9]}
+    errors["cat/small/m::0"] = {"A": 1.0, "B": 0.0, "C": 0.0}
+    rows.append(
+        {
+            "key": "cat/outside/m::0",
+            "category": "cat",
+            "benchmark": "outside",
+            "elements": ["Y"],
+        }
+    )
+    errors["cat/outside/m::0"] = {"A": 1.0, "B": 0.0, "C": 0.0}
     scores = [
         {
             "model": model,
             "category": "cat",
+            "benchmark": benchmark,
             "domain": "materials",
-            "lot_class": "in_domain",
+            "lot_class": "dft"
+            if model == "C" or benchmark == "outside"
+            else "in_domain",
             "model_lot": "PBE",
             "score": 0.5,
         }
-        for model in ("A", "B")
-        for _ in range(MIN_FINDER_BENCH)
+        for model in ("A", "B", "C")
+        for benchmark in ("big", "small", "third", "outside")
     ]
     monkeypatch.setattr(explorer_scoring, "load_hardness", lambda: rows)
-    monkeypatch.setattr(explorer_scoring, "structure_model_ranks", lambda: ranks)
+    monkeypatch.setattr(explorer_scoring, "load_error_matrix", lambda: errors)
     monkeypatch.setattr(explorer_scoring, "load_model_benchmark_scores", lambda: scores)
-    results = {r["model"]: r for r in model_finder_rankings(elements=["X"])}
+    results = {
+        row["model"]: row
+        for row in model_finder_rankings(elements=["X", "Y"], tolerance="in_domain")
+    }
+    assert set(results) == {"A", "B"}
     assert results["A"]["struct_score"] == pytest.approx(0.5)
     assert results["B"]["struct_score"] == pytest.approx(0.5)
     assert results["A"]["n_struct"] == results["B"]["n_struct"] == 10
@@ -667,6 +731,7 @@ def test_similarity_heatmap_shape_and_order() -> None:
     assert list(heat.x) == [models[k] for k in order]
     # Diagonal is self-correlation (1.0).
     assert heat.z[0][0] == pytest.approx(1.0)
+    assert heat.customdata[0][0] == sim["shared_counts"][order[0]][order[0]]
     # Too few models gives a placeholder rather than a crash.
     assert not build_similarity_heatmap_figure({"models": ["only"], "corr": []}).data
 
@@ -838,6 +903,11 @@ def test_structure_model_ranks_normalised() -> None:
     """Per-structure ranks span 0 (best) to 1 (worst) over the evaluated cohort."""
     ranks = structure_model_ranks()
     assert ranks
+    assert explorer_data_module.error_ranks({"A": -1, "B": 1, "C": 2}) == {
+        "A": 0.25,
+        "B": 0.25,
+        "C": 1.0,
+    }
     key, per_model = next(iter(ranks.items()))
     values = sorted(per_model.values())
     assert values[0] == 0.0 and values[-1] == 1.0
@@ -1017,6 +1087,7 @@ def test_layout_guards_when_data_is_missing(monkeypatch: pytest.MonkeyPatch) -> 
     assert "server log" in unbuilt.children[1].children
 
     monkeypatch.setattr(explorer_layout, "load_hardness", lambda: [])
+    monkeypatch.setattr(explorer_layout, "load_benchmark_scores", lambda: [])
     empty = explorer_layout.build_explorer_body()
     assert "No benchmark data" in empty.children[1].children
 

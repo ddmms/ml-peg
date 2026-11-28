@@ -7,7 +7,6 @@ mirror a theme token say so, as Plotly cannot read CSS variables server-side.
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 from dash import dcc, html
@@ -80,7 +79,6 @@ _TIE_BAND_OPACITY = 0.08
 # axis half-width (a little past ±50% so the annotations clear the outer bars).
 _H2H_ANNOTATION_X = 0.27
 _H2H_AXIS_HALF_WIDTH = 0.56
-# Gap between a bar (or its whisker / mean tick) and its value label, in axis units
 _LABEL_PAD = 0.02
 # Gap between a bar chart's category labels and the bars' baseline, in px
 _TICK_STANDOFF_PX = 10
@@ -184,10 +182,10 @@ def _end_labels(
     x: list[float], y: list[Any], text: list[str], *, left: bool = False
 ) -> go.Scatter:
     """
-    Build value labels that sit just past each bar, whisker or tick.
+    Build value labels that sit just past each bar or reference tick.
 
     A separate text trace, unlike bar ``textposition="outside"``, can be offset
-    past whiskers and reference ticks. It skips hover, so it never sends clicks.
+    past bars and reference ticks. It skips hover, so it never sends clicks.
 
     Parameters
     ----------
@@ -343,9 +341,6 @@ def finder_legend() -> html.Div:
     return _legend(_FINDER_LEGEND, "Bars:")
 
 
-# --- Model report card ---------------------------------------------------------------
-
-
 def build_report_profile_figure(model: str | None) -> go.Figure:
     """
     Build the report-card profile: the model's mean score per category, in context.
@@ -411,8 +406,6 @@ def build_report_profile_figure(model: str | None) -> go.Figure:
             ),
         )
     )
-    # All-model mean per category as a grey tick, so solved-vs-open areas are visible
-    # on the same bars.
     tick_x = [m for m in cohort_means if m is not None]
     tick_y = [
         label for label, m in zip(labels, cohort_means, strict=True) if m is not None
@@ -432,7 +425,6 @@ def build_report_profile_figure(model: str | None) -> go.Figure:
             hovertemplate="all-model mean %{x:.2f}<extra></extra>",
         )
     )
-    # Rank labels clear both the bar and the mean tick, whichever ends further right
     label_x = [
         max(value, mean if mean is not None else value)
         for value, mean in zip(values, cohort_means, strict=True)
@@ -525,8 +517,6 @@ def render_report_summary(model: str | None) -> html.Div:
         ],
         className="mlpeg-report-chip",
     )
-    # Spell out what the extrapolated mean pools, so "0.63" isn't read as one kind of
-    # test when it mixes functional-mismatch, CCSD(T)/MP2 and experimental references.
     kind_bits = " / ".join(
         f"{count} {LOT_CLASS_STYLE[cls]['label']}"
         for cls, count in sorted(
@@ -557,8 +547,6 @@ def render_report_summary(model: str | None) -> html.Div:
         ],
         className="mlpeg-report-summary",
     )
-    # The methodology note sits under the chip row, not inside it, so it never reads
-    # as a fifth (empty) chip.
     caption = html.Div(
         "Chip values are unweighted means of 0–1 benchmark scores.",
         className="mlpeg-report-chip-sub",
@@ -582,8 +570,6 @@ def render_report_table(model: str | None) -> html.Table:
         Benchmark · score · category · reference level · test-type (LoT class) rows.
     """
     rows = sorted(model_scores(model), key=lambda r: r["score"], reverse=True)
-    # Score sits right after the benchmark name: long category names can push later
-    # columns behind the horizontal scroll, and the score is the column that matters.
     header = html.Tr(
         [
             html.Th("Benchmark"),
@@ -627,39 +613,6 @@ def render_report_table(model: str | None) -> html.Table:
     )
 
 
-# --- Head-to-head --------------------------------------------------------------------
-
-
-def _wilson_interval(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
-    """
-    Wilson score interval for a binomial proportion ``k / n``.
-
-    Structures within a benchmark are correlated, so this is a lower bound on the
-    uncertainty.
-
-    Parameters
-    ----------
-    k
-        Number of successes (wins for model A).
-    n
-        Number of trials (shared structures in the category).
-    z
-        Normal quantile (1.96 = 95%).
-
-    Returns
-    -------
-    tuple[float, float]
-        ``(low, high)`` bounds in ``[0, 1]``.
-    """
-    if n <= 0:
-        return 0.0, 1.0
-    p = k / n
-    denom = 1.0 + z * z / n
-    centre = (p + z * z / (2 * n)) / denom
-    half = (z / denom) * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
-    return max(0.0, centre - half), min(1.0, centre + half)
-
-
 def _h2h_message(stats: dict[str, Any] | None) -> str | None:
     """
     Explain why a head-to-head has nothing to draw, if so.
@@ -677,7 +630,7 @@ def _h2h_message(stats: dict[str, Any] | None) -> str | None:
     if stats is None:
         return "Pick two different models to compare."
     if not stats["n_shared"] or not stats["per_category"]:
-        return "These two models share no structures."
+        return "These two models share no comparable observations."
     return None
 
 
@@ -713,20 +666,6 @@ def build_head_to_head_figure(
 
     short_a, short_b = _short(model_a), _short(model_b)
     margins = [row["win_rate_a"] - 0.5 for row in ordered]
-    # Wilson half-widths from the decisive comparisons, drawn around the bar as a
-    # sample-size cue
-    err_plus = []
-    err_minus = []
-    for row in ordered:
-        decisive = row["decisive"]
-        if decisive:
-            lo, hi = _wilson_interval(row["wins_a"], decisive)
-            pooled = row["wins_a"] / decisive
-            err_plus.append(hi - pooled)
-            err_minus.append(pooled - lo)
-        else:
-            err_plus.append(0.0)
-            err_minus.append(0.0)
     colours = []
     for margin in margins:
         if margin > H2H_TIE_BAND:
@@ -743,34 +682,25 @@ def build_head_to_head_figure(
             y=categories,
             orientation="h",
             marker={"color": colours},
-            error_x={
-                "type": "data",
-                "symmetric": False,
-                "array": err_plus,
-                "arrayminus": err_minus,
-                "thickness": 1,
-                "width": 3,
-                "color": _REFERENCE_GREY_SOFT,
-            },
             customdata=[
                 [
                     100 * row["win_rate_a"],
                     row["n"],
                     row["n_benchmarks"],
                     category_title(row["category"]),
+                    row["ties"],
                 ]
                 for row in ordered
             ],
             hovertemplate=(
                 "<b>%{customdata[3]}</b><br>"
-                f"{short_a} more accurate in %{{customdata[0]:.0f}}% "
-                "(evenly weighted across %{customdata[2]} benchmark(s),<br>"
-                "%{customdata[1]:,} structures)<br>"
-                "click to see every structure<extra></extra>"
+                f"{short_a} win rate: %{{customdata[0]:.0f}}%<br>"
+                "%{customdata[2]} decisive benchmark(s)<br>"
+                "%{customdata[1]:,} comparisons, %{customdata[4]:,} exact ties<br>"
+                "Click to see comparisons<extra></extra>"
             ),
         )
     )
-    # Practical-tie band and centre line, so near-even bars aren't over-read.
     figure.add_shape(
         type="rect",
         x0=-H2H_TIE_BAND,
@@ -785,19 +715,14 @@ def build_head_to_head_figure(
         layer="below",
     )
     figure.add_vline(x=0, line={"color": _REFERENCE_GREY, "width": 1})
-    # Labels sit past the whisker end, on the side the bar grows towards
     texts = [f"{100 * row['win_rate_a']:.0f}% · n={row['n']:,}" for row in ordered]
     for left in (False, True):
         rows = [i for i, margin in enumerate(margins) if (margin < 0) == left]
         if not rows:
             continue
-        ends = [
-            margins[i] - err_minus[i] if left else margins[i] + err_plus[i]
-            for i in rows
-        ]
         figure.add_trace(
             _end_labels(
-                ends,
+                [margins[i] for i in rows],
                 [categories[i] for i in rows],
                 [texts[i] for i in rows],
                 left=left,
@@ -869,6 +794,8 @@ def render_h2h_summary(
     message = _h2h_message(stats)
     if message:
         return message
+    if stats["n_shared"] == stats["ties"]:
+        return f"All {stats['ties']:,} shared comparisons are exact ties."
     cats_a, cats_b, cats_tie = h2h_verdict_counts(stats)
     return html.Div(
         [
@@ -885,7 +812,7 @@ def render_h2h_summary(
                 f"in {cats_b}  ·  {cats_tie} too close to call  —  "
                 f"averaged evenly across areas, {model_a} was more "
                 f"accurate {100 * stats['overall_win_rate_a']:.0f}% of the time "
-                f"(over {stats['n_shared']:,} shared structures)"
+                f"(over {stats['n_shared']:,} shared comparisons)"
             ),
         ],
         style={"fontSize": "13px"},
@@ -923,8 +850,7 @@ def build_h2h_detail_figure(
     Returns
     -------
     go.Figure
-        A ``scattergl`` figure whose points carry ``[key, sid, benchmark]`` in
-        ``customdata``; the key is what the shared 3D drilldown needs.
+        Scatter with observation IDs and normalised errors in point metadata.
     """
     xs: list[float] = []
     ys: list[float] = []
@@ -937,11 +863,11 @@ def build_h2h_detail_figure(
         resids = error_matrix.get(key)
         if not resids or model_a not in resids or model_b not in resids:
             continue
-        med = medians.get(split_structure_key(key)[1]) or 1.0
-        floor = _LOG_FLOOR_FRACTION * med
+        scale = medians[split_structure_key(key)[1]]
         ea, eb = abs(resids[model_a]), abs(resids[model_b])
-        xs.append(max(ea, floor) / med)
-        ys.append(max(eb, floor) / med)
+        scaled_a, scaled_b = (ea / scale, eb / scale) if scale else (0.0, 0.0)
+        xs.append(max(scaled_a, _LOG_FLOOR_FRACTION))
+        ys.append(max(scaled_b, _LOG_FLOOR_FRACTION))
         if ea < eb:
             colours.append(H2H_COLOUR_A)
             wins_a += 1
@@ -951,10 +877,11 @@ def build_h2h_detail_figure(
         else:
             colours.append(H2H_COLOUR_TIE)
             ties += 1
-        customdata.append([key, row["sid"], row["benchmark"]])
+        customdata.append([key, row["sid"], row["benchmark"], scaled_a, scaled_b])
     if not xs:
         return _empty_figure(
-            "These two models share no structures here.", height=H2H_DETAIL_HEIGHT
+            "These two models share no comparable observations here.",
+            height=H2H_DETAIL_HEIGHT,
         )
 
     short_a, short_b = _short(model_a), _short(model_b)
@@ -969,9 +896,9 @@ def build_h2h_detail_figure(
             customdata=customdata,
             hovertemplate=(
                 "<b>%{customdata[1]}</b> (%{customdata[2]})<br>"
-                f"{short_a}: %{{x:.2f}}× benchmark median<br>"
-                f"{short_b}: %{{y:.2f}}× benchmark median<br>"
-                "click for 3D structure<extra></extra>"
+                f"{short_a}: %{{customdata[3]:.3g}}× metric error scale<br>"
+                f"{short_b}: %{{customdata[4]:.3g}}× metric error scale<br>"
+                "Click for observation details<extra></extra>"
             ),
         )
     )
@@ -1018,13 +945,10 @@ def build_h2h_detail_figure(
         height=H2H_DETAIL_HEIGHT,
         template="plotly_white",
         showlegend=False,
-        xaxis={"title": f"{short_a} error (× benchmark median)", "type": "log"},
-        yaxis={"title": f"{short_b} error (× benchmark median)", "type": "log"},
+        xaxis={"title": f"{short_a} error (× metric error scale)", "type": "log"},
+        yaxis={"title": f"{short_b} error (× metric error scale)", "type": "log"},
     )
     return figure
-
-
-# --- Model finder --------------------------------------------------------------------
 
 
 def build_finder_figure(
@@ -1063,10 +987,10 @@ def build_finder_figure(
         if row["struct_score"] is not None:
             bits.append(
                 f"element evidence {row['struct_score']:.2f} "
-                f"({row['n_struct']:,} structures)"
+                f"({row['n_struct']:,} comparisons)"
             )
         if row["no_element_evidence"]:
-            bits.append("no tested structures contain your elements")
+            bits.append("Benchmark-only fit. No matching structure evidence.")
         if row.get("physicality") is not None:
             bits.append(f"physicality {row['physicality']:.2f}")
         if row.get("low_physicality"):
@@ -1168,9 +1092,8 @@ def render_finder_picks(
         if row["struct_score"] is not None:
             lines.append(
                 html.Div(
-                    f"Your elements: typically more accurate than "
-                    f"{100 * row['struct_score']:.0f}% of models across "
-                    f"{row['n_struct']:,} test structures",
+                    f"Element evidence: {row['struct_score']:.0%} mean win rate "
+                    f"across {row['n_struct']:,} comparisons",
                     className="mlpeg-report-chip-sub",
                 )
             )
@@ -1179,7 +1102,7 @@ def render_finder_picks(
                 html.Div(
                     [
                         _glyph("⚠", "warning"),
-                        "No tested structures contain your elements",
+                        "Benchmark-only fit. No matching structure evidence.",
                     ],
                     className="mlpeg-report-chip-sub",
                     style={"color": "var(--mlpeg-warn)"},
@@ -1223,9 +1146,6 @@ def render_finder_picks(
             )
         )
     return html.Div(cards, className="mlpeg-explorer-picks")
-
-
-# --- Coverage rose -------------------------------------------------------------------
 
 
 def _coverage_wedges(
@@ -1303,7 +1223,6 @@ def build_coverage_rose_figure(
     scores = [w["mean_score"] for w in wedges]
     n_unit = "models" if granularity == "benchmark" else "benchmarks"
     customdata = [[category_title(w["category"]), w["n"]] for w in wedges]
-    # A category wedge is already labelled with its title
     area = "" if granularity == "category" else " (%{customdata[0]})"
 
     figure = go.Figure(
@@ -1316,9 +1235,8 @@ def build_coverage_rose_figure(
                 "cmin": 0.0,
                 "cmax": 1.0,
                 "colorbar": {
-                    "title": {"text": "mean score, all models", "side": "right"},
+                    "title": {"text": "mean score, evaluated models", "side": "right"},
                     "tickvals": [0, 0.5, 1],
-                    "ticktext": ["0 · open problem", "0.5", "1 · solved"],
                 },
                 # theme_plots.js does not repaint marker lines, so use mid-grey
                 "line": {"color": _REFERENCE_GREY_SOFT, "width": 1},
@@ -1326,7 +1244,7 @@ def build_coverage_rose_figure(
             customdata=customdata,
             hovertemplate=(
                 "<b>%{theta}</b>" + area + "<br>"
-                "mean score across models: %{r:.2f}<br>"
+                "mean score across evaluated models: %{r:.2f}<br>"
                 "%{customdata[1]} " + n_unit + "<extra></extra>"
             ),
         )
@@ -1352,9 +1270,6 @@ def build_coverage_rose_figure(
         },
     )
     return figure
-
-
-# --- Where models fail + selected structure ------------------------------------------
 
 
 def build_structure_fails_figure(
@@ -1444,7 +1359,6 @@ def build_structure_fails_figure(
         )
     )
     if not (ratio_axis or sort == "contested"):
-        # Spell out the share as a count, so ties at 1.0 read as "every model"
         figure.add_trace(
             _end_labels(
                 xvals,
@@ -1478,7 +1392,6 @@ def build_structure_fails_figure(
         bargap=0.28,
     )
     if ratio_axis:
-        # A bar past 1x is worse than the median model on that structure
         figure.add_vline(
             x=1,
             line={"dash": "dash", "width": 1, "color": _REFERENCE_GREY_SOFT},
@@ -1601,7 +1514,7 @@ def render_structure_detail(key: str, row: dict[str, Any]) -> tuple[Any, Any]:
     xyz = row.get("xyz")
     if not xyz:
         viewer = html.Div(
-            "No 3D geometry is shipped for this structure.",
+            "No 3D geometry could be matched to this observation.",
             style={
                 "fontSize": "13px",
                 "color": "var(--mlpeg-ink-3)",
@@ -1609,8 +1522,6 @@ def render_structure_detail(key: str, row: dict[str, Any]) -> tuple[Any, Any]:
             },
         )
         return viewer, table
-    # Same viewer sizing and border as the benchmark pages' structure viewer, so the
-    # two read as one component; geometries are served from the assets folder.
     viewer = html.Iframe(
         title=f"Interactive 3D structure viewer for {row['sid']}",
         srcDoc=generate_weas_html(f"/assets/{xyz}", "struct", 0),
@@ -1623,9 +1534,6 @@ def render_structure_detail(key: str, row: dict[str, Any]) -> tuple[Any, Any]:
         },
     )
     return viewer, table
-
-
-# --- Who fails alike -----------------------------------------------------------------
 
 
 def build_similarity_heatmap_figure(sim: dict[str, Any]) -> go.Figure:
@@ -1654,6 +1562,8 @@ def build_similarity_heatmap_figure(sim: dict[str, Any]) -> go.Figure:
     order = sim.get("order") or list(range(len(models)))
     labels = [models[k] for k in order]  # full names stay unique (heatmap axes need it)
     z = [[corr[oi][oj] for oj in order] for oi in order]
+    counts = sim["shared_counts"]
+    shared = [[counts[oi][oj] for oj in order] for oi in order]
     figure = go.Figure(
         go.Heatmap(
             z=z,
@@ -1664,8 +1574,10 @@ def build_similarity_heatmap_figure(sim: dict[str, Any]) -> go.Figure:
             zmid=0.0,
             zmin=-1.0,
             zmax=1.0,
+            customdata=shared,
             hovertemplate=(
-                "%{y}<br>vs %{x}<br>error correlation: %{z:.2f}<extra></extra>"
+                "%{y}<br>vs %{x}<br>Signed residual correlation: %{z:.2f}<br>"
+                "%{customdata:,} shared comparisons<extra></extra>"
             ),
             colorbar={"title": "corr", "thickness": 12, "tickfont": {"size": 9}},
         )

@@ -10,10 +10,12 @@ from __future__ import annotations
 
 from functools import lru_cache
 import logging
+import math
 import re
 import threading
 from typing import Any
 
+from scipy.stats import rankdata
 from yaml import YAMLError, safe_load
 
 from ml_peg.analysis.explorer.build_explorer_data import (
@@ -28,7 +30,6 @@ from ml_peg.app.utils.utils import (
     WARNING_CATEGORY_PRIORITY,
     category_to_path,
     classify_level_of_theory,
-    is_missing_score,
 )
 
 logger = logging.getLogger(__name__)
@@ -169,8 +170,7 @@ def load_similarity() -> dict[str, Any]:
     Returns
     -------
     dict[str, Any]
-        ``{"models", "order", "corr"}``; all three empty if no benchmark data is
-        shipped.
+        Model names, clustering order, correlations and pairwise shared counts.
     """
     return _ensure_data()["similarity"]
 
@@ -235,14 +235,13 @@ def _benchmark_lot_class(
         ``"in_domain"``, ``"dft"``, ``"high_level"``, ``"experimental"`` or ``"none"``.
     """
     references = [level for level in metric_levels.values() if level]
-    if not references:
+    if not references or not model_lot:
         return "none"
     classes = [classify_level_of_theory(model_lot, level) for level in references]
     mismatches = [cls for cls in classes if cls != "in_domain"]
     if not mismatches:
         return "in_domain"
     worst = max(mismatches, key=lambda cls: WARNING_CATEGORY_PRIORITY.get(cls, 0))
-    # An unexpected class would have no colour or label
     if worst not in LOT_CLASSES:
         logger.warning("Unknown level-of-theory class %r; treating as 'none'", worst)
         return "none"
@@ -279,8 +278,9 @@ def load_model_benchmark_scores() -> list[dict[str, Any]]:
             score = row.get("Score")
             if (
                 not isinstance(name, str)
-                or not isinstance(score, (int, float))
-                or is_missing_score(score)
+                or type(score) not in (int, float)
+                or not math.isfinite(score)
+                or not 0 <= score <= 1
             ):
                 continue
             model_lot = model_levels.get(name)
@@ -300,6 +300,28 @@ def load_model_benchmark_scores() -> list[dict[str, Any]]:
     return rows
 
 
+def error_ranks(residuals: dict[str, float]) -> dict[str, float]:
+    """
+    Rank absolute errors from zero to one, averaging tied ranks.
+
+    Parameters
+    ----------
+    residuals
+        Signed errors keyed by model.
+
+    Returns
+    -------
+    dict
+        Normalised ranks keyed by model, or empty for fewer than two models.
+    """
+    if len(residuals) < 2:
+        return {}
+    ranks = (rankdata([abs(err) for err in residuals.values()]) - 1) / (
+        len(residuals) - 1
+    )
+    return dict(zip(residuals, ranks.tolist(), strict=True))
+
+
 @lru_cache(maxsize=1)
 def structure_model_ranks() -> dict[str, dict[str, float]]:
     """
@@ -314,14 +336,7 @@ def structure_model_ranks() -> dict[str, dict[str, float]]:
         ``structure_key -> {model: normalised rank}``; structures evaluated by fewer
         than two models are omitted (a rank of a single model is meaningless).
     """
-    ranks: dict[str, dict[str, float]] = {}
-    for key, resids in load_error_matrix().items():
-        if len(resids) < 2:
-            continue
-        ordered = sorted(resids, key=lambda m: abs(resids[m]))
-        denom = len(ordered) - 1
-        ranks[key] = {model: i / denom for i, model in enumerate(ordered)}
-    return ranks
+    return {key: error_ranks(resids) for key, resids in load_error_matrix().items()}
 
 
 @lru_cache(maxsize=1)
@@ -381,6 +396,8 @@ def category_page_paths() -> dict[str, str]:
     """
     paths: dict[str, str] = {}
     for category, title in category_titles().items():
+        if category not in CATEGORY_DOMAIN:
+            continue
         try:
             paths[category] = category_to_path(title)
         except ValueError as exc:

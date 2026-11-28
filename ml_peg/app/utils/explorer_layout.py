@@ -82,20 +82,18 @@ from ml_peg.app.utils.explorer_scoring import (
     h2h_area_options,
     h2h_pair_stats,
     model_options,
+    offered_categories,
     report_default_model,
     representative_models,
 )
 
-# The project's scoring guide, linked from the methods panel.
 SCORING_GUIDE_URL = (
     "https://ddmms.github.io/ml-peg/developer_guide/scoring_and_normalisation.html"
 )
 
 # Panel card class: the same card as the home/category summary tables, so the
-# Explorer's panels match the rest of the app.
 _PANEL_CLASS = "mlpeg-summary-card"
 
-# The Explorer's section jump nav: (label, anchor id) for each panel wrapper.
 _EXPLORER_JUMP_NAV: list[tuple[str, str]] = [
     ("Find a model", "explorer-sec-finder"),
     ("Report card", "explorer-sec-report"),
@@ -148,7 +146,8 @@ def build_explorer_body() -> html.Div:
         if no benchmark data is shipped.
     """
     rows = load_hardness()
-    if not rows:
+    benchmark_scores = load_benchmark_scores()
+    if not rows and not benchmark_scores:
         return html.Div(
             [
                 html.H1("ML-PEG Model Explorer"),
@@ -165,8 +164,6 @@ def build_explorer_body() -> html.Div:
     reps = representative_models(models) or models
     default_a, default_b = default_h2h_models(reps, load_error_matrix())
     category_names = categories(rows)
-    # Label head-to-head models with their training level of theory so a cross-level
-    # comparison (itself informative) is explicit.
     variant_meta = model_taxonomy()["variants"]
     h2h_options = [
         {
@@ -178,10 +175,12 @@ def build_explorer_body() -> html.Div:
 
     return html.Div(
         [
-            _build_intro(len(rows), len(models), len(load_benchmark_scores())),
+            _build_intro(len(rows), len(models), len(benchmark_scores)),
             _build_jump_nav(),
             html.Div(
-                _build_finder_panel(category_names, element_options(rows)),
+                _build_finder_panel(
+                    sorted(offered_categories()), element_options(rows)
+                ),
                 id="explorer-sec-finder",
             ),
             html.Div(_build_report_panel(), id="explorer-sec-report"),
@@ -189,8 +188,6 @@ def build_explorer_body() -> html.Div:
                 _build_h2h_panel(h2h_options, default_a, default_b),
                 id="explorer-sec-h2h",
             ),
-            # Both the structure-fails bars and the head-to-head drilldown feed the one
-            # 3D detail panel, so they bracket it.
             html.Div(
                 _build_structure_fails_panel(category_names, model_options()),
                 id="explorer-sec-fails",
@@ -202,9 +199,6 @@ def build_explorer_body() -> html.Div:
         ],
         className="mlpeg-explorer",
     )
-
-
-# --- Building blocks -----------------------------------------------------------------
 
 
 def _chip(text: str) -> html.Div:
@@ -385,9 +379,6 @@ def _multi_select(
     )
 
 
-# --- Panels --------------------------------------------------------------------------
-
-
 def _build_intro(n_rows: int, n_models: int, n_benchmarks: int) -> html.Div:
     """
     Build the Explorer intro: heading, stat chips and orientation copy.
@@ -411,9 +402,9 @@ def _build_intro(n_rows: int, n_models: int, n_benchmarks: int) -> html.Div:
             html.H1("ML-PEG Model Explorer"),
             html.Div(
                 [
-                    _chip(f"{n_rows:,} structures"),
-                    _chip(f"{n_models} models"),
-                    _chip(f"{n_benchmarks} benchmarks"),
+                    _chip(f"{n_rows:,} observations with shared errors"),
+                    _chip(f"{n_models} models with parity data"),
+                    _chip(f"{n_benchmarks} scored benchmarks"),
                 ],
                 style={"display": "flex", "gap": "8px", "flexWrap": "wrap"},
             ),
@@ -495,7 +486,7 @@ def _build_finder_panel(category_names: list[str], elements: list[str]) -> html.
             html.Div(
                 [
                     _labelled_control(
-                        "Elements in your system",
+                        "Elements (match any selected)",
                         _multi_select(FINDER_ELEMENTS, elements, "Any chemistry"),
                     ),
                     _labelled_control(
@@ -523,9 +514,9 @@ def _build_finder_panel(category_names: list[str], elements: list[str]) -> html.
                 "(only tests passing your extrapolation tolerance); each score is "
                 "anchored to that benchmark's own good/bad error thresholds, so it "
                 "is a relative grade, not an absolute error. When you pick elements, "
-                "structure evidence is added: on every test structure containing "
-                "those elements, models are ranked against each other by error, and "
-                "the model's average win rate over the others (averaged per "
+                "structure evidence uses observations containing any selected element. "
+                "Models passing the tolerance are ranked by error, with tied errors "
+                "sharing a rank. A model's mean win rate (averaged per "
                 "benchmark so a large one can't dominate) "
                 f"is blended {round(100 * FINDER_BENCH_WEIGHT)}% benchmark "
                 f"+ {struct_pct}% structure into the fit — so it shifts with the set "
@@ -648,14 +639,11 @@ def _build_h2h_panel(
             _panel_help(
                 "One bar per benchmark area: it points towards the model that "
                 "was closer to the reference more often, and its length is the margin. "
-                "Each area's win rate averages its benchmarks equally, so a benchmark "
-                "with thousands of structures can't swamp the verdict. Grey bars are "
-                f"too close to call (within ±{tie_pct}% of even), and the whiskers "
-                "show a 95% interval (optimistic — structures within an area are "
-                "correlated). Win rate counts wins, not how big each win was; click a "
-                "bar, or pick an area below, to open that area's structure-by-"
-                "structure comparison, where the scatter shows the magnitudes — and "
-                "click any structure to see it in 3D.",
+                "Each benchmark averages its metrics equally, and each area averages "
+                "its benchmarks equally. Hover for comparison counts and exact ties. "
+                f"Grey bars are within ±{tie_pct}% of even. Click a bar or pick an "
+                "area to compare error magnitudes, then select a point to see its "
+                "details and any matching 3D geometry.",
             ),
             html.Div(
                 [
@@ -710,7 +698,6 @@ def _build_h2h_panel(
                 ),
                 style={"marginTop": "var(--sp-3)", **_ROW_GAP},
             ),
-            # The per-category drilldown scatter: hidden until an area is opened.
             _a11y_graph(
                 _graph(
                     H2H_DETAIL_GRAPH,
@@ -841,16 +828,13 @@ def _build_similarity_panel() -> html.Div:
     return html.Div(
         [
             html.H3(
-                "Who fails alike: models that make the same mistakes",
+                "Who fails alike: signed residual correlation",
             ),
             _panel_help(
-                "Each model's per-structure errors are z-scored within every benchmark "
-                "and correlated against every other model's over the structures they "
-                "share. Warm (red) cells are pairs that err in the same direction on "
-                "the same structures — they tend to fail alike, so combining them into "
-                "an ensemble adds little; cool (blue) cells are complementary models. "
-                "Rows and columns are ordered by clustering, so behavioural families "
-                "group together.",
+                "Prediction minus reference is standardised per model and metric. "
+                "Each cell correlates those signed residuals on shared observations. "
+                "Hover for the shared count. Metrics with more shared observations "
+                "contribute more points.",
             ),
             _a11y_graph(
                 _graph(
@@ -876,18 +860,12 @@ def _build_coverage_panel() -> html.Div:
     return html.Div(
         [
             html.H3(
-                "Coverage rose: what's solved, and what's open",
+                "Coverage rose: mean scores for evaluated models",
             ),
             _panel_help(
-                "A bird's-eye view of the field. Each wedge is a benchmark area; its "
-                "length and colour show the mean score across every evaluated model "
-                "— so long green wedges are areas current MLIPs already handle, and "
-                "short red wedges are open problems. This tracks the field as a "
-                "whole, not the best model: use the finder or report card above to "
-                "judge an individual model. Each wedge averages over whichever models "
-                "were run in that area and is anchored to per-benchmark thresholds, so "
-                "read lengths as a rough guide rather than exact cross-area "
-                "comparisons; 'solved' means models meet that benchmark's target.",
+                "Wedge length and colour show the mean score of the models evaluated "
+                "on each benchmark. The area view averages its benchmarks equally. "
+                "Model coverage and scoring thresholds vary by benchmark.",
             ),
             html.Div(
                 _labelled_control(
@@ -906,16 +884,12 @@ def _build_coverage_panel() -> html.Div:
                 _graph(
                     COVERAGE_GRAPH, build_coverage_rose_figure(load_benchmark_scores())
                 ),
-                "Coverage rose: polar chart of the field's mean score per benchmark "
-                "area — long green wedges are solved areas, short red wedges are open "
-                "problems.",
+                "Coverage rose: mean scores for evaluated models by benchmark area.",
             ),
         ],
         className=_PANEL_CLASS,
     )
 
-
-# --- Methods & references: the analytics' provenance, cited ---------------------------
 
 # (what it grounds, citation, url) for the methods panel
 _REFERENCES: list[tuple[str, list[tuple[str, str, str]]]] = [
